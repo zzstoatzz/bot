@@ -1,24 +1,37 @@
 # Project Status
 
-## Current Phase: Initial Setup
+## Current Phase: Placeholder Bot Complete ✅
 
 ### Completed
 - ✅ Created project directory structure (.eggs, tests, sandbox)
 - ✅ Cloned reference projects:
-  - penelope (Bluesky bot in TypeScript)
-  - void (Digital personhood exploration on Bluesky)
-  - marvin/slackbot (Python bot example)
+  - penelope (Go bot with self-modification capabilities)
+  - void (Python/Letta with sophisticated 3-tier memory)
+  - marvin/slackbot (Multi-agent with TurboPuffer)
+- ✅ Deep analysis of all reference projects (see sandbox/)
+- ✅ Basic bot infrastructure working:
+  - FastAPI with async lifespan management
+  - AT Protocol authentication and API calls
+  - Notification polling (10 second intervals)
+  - Placeholder response system
+  - Graceful shutdown for hot reloading
+- ✅ Notification handling using Void's timestamp approach
+- ✅ Test scripts for posting and mentions
 
-### In Progress
-- 🔄 Analyzing reference projects for architectural insights
-- 🔄 Setting up core dependencies
+### Current Implementation Details
+- Bot responds to mentions with random placeholder messages
+- Uses `atproto` Python SDK with proper authentication
+- Notification marking captures timestamp BEFORE fetching (avoids duplicates)
+- Local URI cache (`_processed_uris`) as safety net
+- No @mention in replies (Bluesky handles notification automatically)
 
 ### Next Steps
-1. Add core dependencies (FastAPI, Bluesky/AT Protocol SDK, LLM libraries)
-2. Create justfile for development workflow
-3. Design bot architecture based on reference projects
-4. Implement basic FastAPI structure
-5. Set up Bluesky integration
+1. Add pydantic-ai for LLM agent implementation
+2. Add turbopuffer for vector memory
+3. Implement LLMResponseGenerator to replace PlaceholderResponseGenerator
+4. Design bot persona and system prompts
+5. Build memory system (3-tier like Void)
+6. Add profile self-modification capability (like Penelope)
 
 ## Key Decisions to Make
 - Which LLM provider to use (OpenAI, Anthropic, etc.)
