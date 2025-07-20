@@ -30,13 +30,14 @@
 The immediate goal is to get AI responses working with full thread history in context. This means:
 
 1. **Thread History** - Store and retrieve conversation history per thread
-   - SQLite for simple thread storage (like Marvin)
-   - Pass full thread context to AI
+   - ✅ SQLite for simple thread storage (like Marvin)
+   - ✅ Pass full thread context to AI
+   - ✅ Store both incoming and bot messages
    
 2. **AI Integration** - Working Anthropic responses with personality
    - ✅ Basic pydantic-ai integration 
    - ✅ Personality loaded from markdown
-   - 🚧 Thread-aware responses
+   - ✅ Thread-aware responses
    
 3. **Better DX** - Learn from Marvin's patterns
    - Dynamic system prompts with context
