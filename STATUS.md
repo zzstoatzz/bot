@@ -25,28 +25,29 @@
 - Local URI cache (`_processed_uris`) as safety net
 - No @mention in replies (Bluesky handles notification automatically)
 
-### Near-Term Roadmap
+### Current Focus: AI Responses with Thread Context
 
-#### Phase 1: AI Integration (Current Focus)
-1. **Add pydantic-ai with Anthropic provider**
-   - Use Anthropic as the LLM provider (Mac subscription available)
-   - Redesign ResponseGenerator protocol to be more general/sensible
-   - Implement AI-based response generation
+The immediate goal is to get AI responses working with full thread history in context. This means:
+
+1. **Thread History** - Store and retrieve conversation history per thread
+   - SQLite for simple thread storage (like Marvin)
+   - Pass full thread context to AI
    
-2. **Self-Modification Capability** 
-   - Build in ability to edit own personality/profile from the start
-   - Similar to Void's self-editing and Penelope's profile updates
-   - Essential foundation before adding memory systems
+2. **AI Integration** - Working Anthropic responses with personality
+   - ✅ Basic pydantic-ai integration 
+   - ✅ Personality loaded from markdown
+   - 🚧 Thread-aware responses
+   
+3. **Better DX** - Learn from Marvin's patterns
+   - Dynamic system prompts with context
+   - Clean agent/tool architecture
 
-#### Phase 2: Memory & Persistence
-1. Add turbopuffer for vector memory
-2. Build 3-tier memory system (like Void)
-3. User-specific memory contexts
+### Future Work
 
-#### Phase 3: Personality & Behavior
-1. Design bot persona and system prompts
-2. Implement conversation styles
-3. Add behavioral consistency
+After thread context is working:
+- TurboPuffer for vector memory (user facts, etc)
+- Self-modification capabilities
+- Multi-tier memory system
 
 ## Key Decisions to Make
 - Which LLM provider to use (OpenAI, Anthropic, etc.)

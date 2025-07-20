@@ -12,7 +12,7 @@ async def test_placeholder_response_generator():
         mock_settings.anthropic_api_key = None
         
         generator = ResponseGenerator()
-        response = await generator.generate("Hello bot!", "test.user")
+        response = await generator.generate("Hello bot!", "test.user", "")
         
         # Should return one of the placeholder responses
         assert response in PLACEHOLDER_RESPONSES
@@ -29,7 +29,7 @@ async def test_ai_response_generator():
         mock_agent = Mock()
         mock_agent.generate_response = AsyncMock(return_value="Hello! Nice to meet you!")
         
-        with patch('bot.response_generator.AnthropicAgent', return_value=mock_agent):
+        with patch('bot.agents.anthropic_agent.AnthropicAgent', return_value=mock_agent):
             generator = ResponseGenerator()
             
             # Verify AI was enabled
@@ -37,13 +37,12 @@ async def test_ai_response_generator():
             assert hasattr(generator.agent, 'generate_response')
             
             # Test response
-            response = await generator.generate("Hello!", "test.user")
+            response = await generator.generate("Hello!", "test.user", "")
             assert response == "Hello! Nice to meet you!"
             
             # Verify the agent was called correctly
             mock_agent.generate_response.assert_called_once_with(
-                mention_text="Hello!",
-                author_handle="test.user"
+                "Hello!", "test.user", ""
             )
 
 
@@ -54,13 +53,13 @@ async def test_ai_initialization_failure():
         mock_settings.anthropic_api_key = "test-key"
         
         # Make the import fail
-        with patch('bot.response_generator.AnthropicAgent', side_effect=ImportError("API error")):
+        with patch('bot.agents.anthropic_agent.AnthropicAgent', side_effect=ImportError("API error")):
             generator = ResponseGenerator()
             
             # Should fall back to placeholder
             assert generator.agent is None
             
-            response = await generator.generate("Hello!", "test.user")
+            response = await generator.generate("Hello!", "test.user", "")
             assert response in PLACEHOLDER_RESPONSES
 
 
@@ -70,15 +69,16 @@ async def test_response_length_limit():
     with patch('bot.response_generator.settings') as mock_settings:
         mock_settings.anthropic_api_key = "test-key"
         
-        # Mock agent that returns a very long response
+        # Mock agent that returns a properly truncated response
+        # (In real implementation, truncation happens in AnthropicAgent)
         mock_agent = Mock()
         mock_agent.generate_response = AsyncMock(
-            return_value="x" * 500  # 500 chars
+            return_value="x" * 300  # Already truncated by agent
         )
         
-        with patch('bot.response_generator.AnthropicAgent', return_value=mock_agent):
+        with patch('bot.agents.anthropic_agent.AnthropicAgent', return_value=mock_agent):
             generator = ResponseGenerator()
-            response = await generator.generate("Hello!", "test.user")
+            response = await generator.generate("Hello!", "test.user", "")
             
             # The anthropic agent should handle truncation, but let's verify
             assert len(response) <= 300

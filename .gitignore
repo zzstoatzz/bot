@@ -36,3 +36,4 @@ htmlcov/
 .eggs/
 logs/
 *.log
+threads.db

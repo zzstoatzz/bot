@@ -38,9 +38,9 @@ class ResponseGenerator:
                 print(f"⚠️  Failed to initialize AI agent: {e}")
                 print("   Using placeholder responses")
     
-    async def generate(self, mention_text: str, author_handle: str) -> str:
+    async def generate(self, mention_text: str, author_handle: str, thread_context: str = "") -> str:
         """Generate a response to a mention"""
         if self.agent:
-            return await self.agent.generate_response(mention_text, author_handle)
+            return await self.agent.generate_response(mention_text, author_handle, thread_context)
         else:
             return random.choice(PLACEHOLDER_RESPONSES)

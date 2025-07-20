@@ -27,8 +27,17 @@ class AnthropicAgent:
             result_type=Response,
         )
 
-    async def generate_response(self, mention_text: str, author_handle: str) -> str:
+    async def generate_response(self, mention_text: str, author_handle: str, thread_context: str = "") -> str:
         """Generate a response to a mention"""
-        prompt = f"{author_handle} said: {mention_text}"
+        # Build the full prompt with thread context
+        prompt_parts = []
+        
+        if thread_context and thread_context != "No previous messages in this thread.":
+            prompt_parts.append(thread_context)
+            prompt_parts.append("\nNew message:")
+        
+        prompt_parts.append(f"{author_handle} said: {mention_text}")
+        
+        prompt = "\n".join(prompt_parts)
         result = await self.agent.run(prompt)
         return result.data.text[:300]

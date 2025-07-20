@@ -54,7 +54,8 @@ async def test_response_generator():
         try:
             response = await generator.generate(
                 mention_text=test['mention'],
-                author_handle=test['author']
+                author_handle=test['author'],
+                thread_context=""
             )
             print(f"  Response: {response}")
             print(f"  Length: {len(response)} chars")
@@ -81,7 +82,8 @@ async def test_response_generator():
         for i in range(3):
             response = await generator.generate(
                 mention_text=test_mention,
-                author_handle="consistency.tester"
+                author_handle="consistency.tester",
+                thread_context=""
             )
             responses.append(response)
             print(f"  Response {i+1}: {response[:50]}...")
@@ -110,7 +112,8 @@ async def test_direct_agent():
         # Test a simple response
         response = await agent.generate_response(
             mention_text=f"@{settings.bot_name} explain your name",
-            author_handle="name.curious"
+            author_handle="name.curious",
+            thread_context=""
         )
         
         print(f"Direct agent response: {response}")
