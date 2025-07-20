@@ -1,5 +1,4 @@
 import asyncio
-from typing import Optional
 
 from bot.config import settings
 from bot.core.atproto_client import BotClient
@@ -12,8 +11,8 @@ class NotificationPoller:
         self.client = client
         self.handler = MessageHandler(client)
         self._running = False
-        self._task: Optional[asyncio.Task] = None
-        self._last_seen_at: Optional[str] = None
+        self._task: asyncio.Task | None = None
+        self._last_seen_at: str | None = None
         self._processed_uris: set[str] = set()  # Track processed notifications
 
     async def start(self) -> asyncio.Task:

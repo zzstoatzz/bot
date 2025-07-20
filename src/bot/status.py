@@ -1,8 +1,7 @@
 """Bot status tracking"""
 
-from datetime import datetime
-from typing import Optional
 from dataclasses import dataclass, field
+from datetime import datetime
 
 
 @dataclass
@@ -13,8 +12,8 @@ class BotStatus:
     mentions_received: int = 0
     responses_sent: int = 0
     errors: int = 0
-    last_mention_time: Optional[datetime] = None
-    last_response_time: Optional[datetime] = None
+    last_mention_time: datetime | None = None
+    last_response_time: datetime | None = None
     ai_enabled: bool = False
     polling_active: bool = False
 

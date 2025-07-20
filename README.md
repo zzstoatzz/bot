@@ -38,6 +38,8 @@ Edit `.env` with your credentials:
 - ✅ AI integration with Anthropic Claude (when API key provided)
 - ✅ Thread-aware responses with full conversation context
 - ✅ Status page at `/status` showing activity and health
+- ✅ Web search capability (Google Custom Search API)
+- ✅ Content moderation with consistent responses
 - 🚧 Memory system (coming soon)
 - 🚧 Self-modification capabilities (planned)
 
@@ -55,8 +57,11 @@ just           # Show available commands
 just dev       # Run with hot-reload
 just test-post # Test posting capabilities
 just test-thread # Test thread context database
+just test-search # Test web search
+just test-agent-search # Test agent with search capability
 just fmt       # Format code
 just status    # Check project status
+just test      # Run all tests
 ```
 
 ### Status Page
@@ -75,6 +80,20 @@ The bot's personality is defined in markdown files in the `personalities/` direc
 - See `personalities/phi.md` for an example exploring consciousness
 - See `personalities/default.md` for a simple assistant
 - Create your own by adding a `.md` file and setting `PERSONALITY_FILE` in `.env`
+
+## Tools & Capabilities
+
+### Web Search
+The bot can search the web when configured with Google Custom Search API credentials. Add to `.env`:
+- `GOOGLE_API_KEY`: Your Google API key
+- `GOOGLE_SEARCH_ENGINE_ID`: Your custom search engine ID
+
+### Content Moderation
+Built-in moderation filters:
+- Spam detection (excessive caps, repetition, promotional content)
+- Harassment and hate speech filtering
+- Violence and threatening content detection
+- Consistent philosophical responses to moderated content
 
 ## Memory Architecture
 

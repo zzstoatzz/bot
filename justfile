@@ -10,6 +10,14 @@ test-post:
 test-thread:
     uv run python scripts/test_thread_context.py
 
+# Test search functionality
+test-search:
+    uv run python scripts/test_search.py
+
+# Test agent with search
+test-agent-search:
+    uv run python scripts/test_agent_search.py
+
 # Run tests
 test:
     uv run pytest tests/ -v
@@ -28,3 +36,9 @@ typecheck:
 
 # Run all checks
 check: lint typecheck test
+
+# Show project status
+status:
+    @echo "📊 Project Status"
+    @echo "================"
+    @cat STATUS.md | grep -E "^##|^-|✅|🚧" | head -20

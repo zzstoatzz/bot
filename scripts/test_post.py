@@ -3,7 +3,9 @@
 
 import asyncio
 from datetime import datetime
+
 from atproto import Client
+
 from bot.config import settings
 
 
@@ -39,9 +41,10 @@ async def test_reply(post_uri: str):
     parent_post = client.app.bsky.feed.get_posts(params={"uris": [post_uri]})
     if not parent_post.posts:
         raise ValueError("Parent post not found")
-    
+
     # Build reply reference
     from atproto import models
+
     parent_cid = parent_post.posts[0].cid
     parent_ref = models.ComAtprotoRepoStrongRef.Main(uri=post_uri, cid=parent_cid)
     reply_ref = models.AppBskyFeedPost.ReplyRef(parent=parent_ref, root=parent_ref)

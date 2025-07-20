@@ -3,9 +3,7 @@ name = "bot"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-authors = [
-    { name = "zzstoatzz", email = "thrast36@gmail.com" }
-]
+authors = [{ name = "zzstoatzz", email = "thrast36@gmail.com" }]
 requires-python = ">=3.12"
 dependencies = [
     "fastapi",
@@ -14,8 +12,11 @@ dependencies = [
     "pydantic-settings",
     "pydantic-ai",
     "anthropic",
-    "httpx"
+    "httpx",
 ]
+
+[tool.ruff.lint]
+extend-select = ["I", "UP"]
 
 [tool.uv]
 dev-dependencies = [

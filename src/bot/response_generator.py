@@ -23,24 +23,29 @@ PLACEHOLDER_RESPONSES = [
 
 class ResponseGenerator:
     """Generates responses to mentions"""
-    
+
     def __init__(self):
         self.agent: Optional[object] = None
-        
+
         # Try to initialize AI agent if credentials available
         if settings.anthropic_api_key:
             try:
                 from bot.agents.anthropic_agent import AnthropicAgent
+
                 self.agent = AnthropicAgent()
                 bot_status.ai_enabled = True
                 print("✅ AI responses enabled (Anthropic)")
             except Exception as e:
                 print(f"⚠️  Failed to initialize AI agent: {e}")
                 print("   Using placeholder responses")
-    
-    async def generate(self, mention_text: str, author_handle: str, thread_context: str = "") -> str:
+
+    async def generate(
+        self, mention_text: str, author_handle: str, thread_context: str = ""
+    ) -> str:
         """Generate a response to a mention"""
         if self.agent:
-            return await self.agent.generate_response(mention_text, author_handle, thread_context)
+            return await self.agent.generate_response(
+                mention_text, author_handle, thread_context
+            )
         else:
             return random.choice(PLACEHOLDER_RESPONSES)

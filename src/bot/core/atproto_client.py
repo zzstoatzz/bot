@@ -1,4 +1,5 @@
 from atproto import Client
+
 from bot.config import settings
 
 

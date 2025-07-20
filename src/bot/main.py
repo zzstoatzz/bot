@@ -14,14 +14,14 @@ from datetime import datetime
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print(f"🤖 Starting bot as @{settings.bluesky_handle}")
-    
+
     poller = NotificationPoller(bot_client)
     poller_task = await poller.start()
-    
+
     print(f"✅ Bot is online! Listening for mentions...")
-    
+
     yield
-    
+
     print("🛑 Shutting down bot...")
     await poller.stop()
     print("👋 Bot shutdown complete")
@@ -31,7 +31,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.bot_name,
     description="A Bluesky bot powered by LLMs",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 
@@ -40,7 +40,7 @@ async def root():
     return {
         "name": settings.bot_name,
         "status": "running",
-        "handle": settings.bluesky_handle
+        "handle": settings.bluesky_handle,
     }
 
 
@@ -52,7 +52,7 @@ async def health():
 @app.get("/status", response_class=HTMLResponse)
 async def status_page():
     """Render a simple status page"""
-    
+
     def format_time_ago(timestamp):
         if not timestamp:
             return "Never"
@@ -60,21 +60,25 @@ async def status_page():
         if delta < 60:
             return f"{int(delta)}s ago"
         elif delta < 3600:
-            return f"{int(delta/60)}m ago"
+            return f"{int(delta / 60)}m ago"
         else:
-            return f"{int(delta/3600)}h ago"
-    
+            return f"{int(delta / 3600)}h ago"
+
     return STATUS_PAGE_TEMPLATE.format(
         bot_name=settings.bot_name,
-        status_class='status-active' if bot_status.polling_active else 'status-inactive',
-        status_text='Active' if bot_status.polling_active else 'Inactive',
+        status_class="status-active"
+        if bot_status.polling_active
+        else "status-inactive",
+        status_text="Active" if bot_status.polling_active else "Inactive",
         handle=settings.bluesky_handle,
         uptime=bot_status.uptime_str,
         mentions_received=bot_status.mentions_received,
         responses_sent=bot_status.responses_sent,
-        ai_mode='AI Enabled' if bot_status.ai_enabled else 'Placeholder',
-        ai_description='Using Anthropic Claude' if bot_status.ai_enabled else 'Random responses',
+        ai_mode="AI Enabled" if bot_status.ai_enabled else "Placeholder",
+        ai_description="Using Anthropic Claude"
+        if bot_status.ai_enabled
+        else "Random responses",
         last_mention=format_time_ago(bot_status.last_mention_time),
         last_response=format_time_ago(bot_status.last_response_time),
-        errors=bot_status.errors
+        errors=bot_status.errors,
     )
