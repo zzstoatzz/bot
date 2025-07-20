@@ -13,6 +13,8 @@ just sync
 - `BLUESKY_HANDLE`: Your bot's Bluesky handle
 - `BLUESKY_PASSWORD`: App password from Bluesky settings
 - `ANTHROPIC_API_KEY`: For AI responses (optional, falls back to placeholder)
+- `BOT_NAME`: Your bot's name (default: "Bot")
+- `PERSONALITY_FILE`: Path to personality markdown file (default: "personalities/phi.md")
 
 3. Test posting:
 ```bash
@@ -59,6 +61,14 @@ Visit http://localhost:8000/status while the bot is running to see:
 - AI mode (enabled/placeholder)
 - Last activity timestamps
 - Error count
+
+## Personality System
+
+The bot's personality is defined in markdown files in the `personalities/` directory. This allows for rich, detailed personality definitions that shape how the bot communicates.
+
+- See `personalities/phi.md` for an example exploring consciousness
+- See `personalities/default.md` for a simple assistant
+- Create your own by adding a `.md` file and setting `PERSONALITY_FILE` in `.env`
 
 ## Memory Architecture
 
