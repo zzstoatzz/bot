@@ -72,11 +72,18 @@ FastAPI (lifespan)
 - Good for millions of users
 - Has Python SDK
 
+### Thread History (Implemented)
+- SQLite database for thread message storage
+- Tracks threads by root URI
+- Stores all messages with author info
+- Full thread context passed to AI agent
+- Inspired by Marvin's simple approach
+
 ### Next Session TODOs
-1. Add `turbopuffer` dependency
-2. Create `MemoryManager` service
-3. Implement `LLMResponseGenerator`
-4. Add memory to message context
+1. Add `turbopuffer` dependency for vector memory
+2. Create `MemoryManager` service for user facts
+3. Improve system prompt DX (like Marvin's @agent.system_prompt)
+4. Add memory retrieval to message context
 5. Consider admin-only mode initially (like Penelope)
 
 ### Gotchas Discovered
