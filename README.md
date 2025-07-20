@@ -30,6 +30,7 @@ just dev
 - ✅ Proper notification handling (no duplicates)
 - ✅ Graceful shutdown for hot-reload
 - ✅ AI integration with Anthropic Claude (when API key provided)
+- ✅ Status page at `/status` showing activity and health
 - 🚧 Memory system (coming soon)
 - 🚧 Self-modification capabilities (planned)
 
@@ -49,6 +50,15 @@ just test-post # Test posting capabilities
 just fmt       # Format code
 just status    # Check project status
 ```
+
+### Status Page
+
+Visit http://localhost:8000/status while the bot is running to see:
+- Current bot status and uptime
+- Mentions received and responses sent
+- AI mode (enabled/placeholder)
+- Last activity timestamps
+- Error count
 
 ## Memory Architecture
 
