@@ -32,6 +32,7 @@ just dev
 - ✅ Proper notification handling (no duplicates)
 - ✅ Graceful shutdown for hot-reload
 - ✅ AI integration with Anthropic Claude (when API key provided)
+- ✅ Thread-aware responses with full conversation context
 - ✅ Status page at `/status` showing activity and health
 - 🚧 Memory system (coming soon)
 - 🚧 Self-modification capabilities (planned)
@@ -49,6 +50,7 @@ just dev
 just           # Show available commands
 just dev       # Run with hot-reload
 just test-post # Test posting capabilities
+just test-thread # Test thread context database
 just fmt       # Format code
 just status    # Check project status
 ```
