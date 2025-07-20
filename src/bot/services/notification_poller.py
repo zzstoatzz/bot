@@ -14,6 +14,7 @@ class NotificationPoller:
         self._task: asyncio.Task | None = None
         self._last_seen_at: str | None = None
         self._processed_uris: set[str] = set()  # Track processed notifications
+        self._first_poll = True  # Track if this is our first check
 
     async def start(self) -> asyncio.Task:
         """Start polling for notifications"""
@@ -63,19 +64,22 @@ class NotificationPoller:
         response = await self.client.get_notifications()
         notifications = response.notifications
 
-        if not notifications:
-            return
-
-        # Just print a dot to show activity without spamming
-        print(".", end="", flush=True)
-
         # Count unread mentions
         unread_mentions = [
             n for n in notifications if not n.is_read and n.reason == "mention"
         ]
-        # Only print if we actually have unread mentions
-        if unread_mentions:
+
+        # First poll: show initial state
+        if self._first_poll:
+            self._first_poll = False
+            if notifications:
+                print(f"\n📬 Found {len(notifications)} notifications ({len(unread_mentions)} unread mentions)")
+        # Subsequent polls: only show activity
+        elif unread_mentions:
             print(f"\n📬 {len(unread_mentions)} new mentions", flush=True)
+        elif notifications:
+            # Only print dots if we're actually checking notifications
+            print(".", end="", flush=True)
 
         # Track if we processed any mentions
         processed_any_mentions = False
