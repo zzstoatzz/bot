@@ -5,6 +5,7 @@ from pydantic_ai import Agent
 from pydantic import BaseModel, Field
 
 from bot.config import settings
+from bot.personality import load_personality
 
 
 class Response(BaseModel):
@@ -22,10 +23,7 @@ class AnthropicAgent:
 
         self.agent = Agent(
             "anthropic:claude-3-5-haiku-latest",
-            system_prompt="""You are a friendly AI assistant on Bluesky.
-Keep responses concise (under 300 characters).
-Be conversational and natural.
-Don't use @mentions in replies.""",
+            system_prompt=load_personality(),
             result_type=Response,
         )
 

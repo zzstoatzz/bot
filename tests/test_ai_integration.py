@@ -45,7 +45,11 @@ async def test_response_generator():
     for i, test in enumerate(test_cases, 1):
         print(f"Test {i}: {test['description']}")
         print(f"  From: @{test['author']}")
-        print(f"  Message: {test['mention']}")
+        print(f"  Raw text: {test['mention']}")
+        
+        # In real AT Protocol, mentions are facets with structured data
+        # For testing, we pass the full text (bot can parse if needed)
+        print(f"  (Note: In production, @{settings.bot_name} would be a structured mention)")
         
         try:
             response = await generator.generate(

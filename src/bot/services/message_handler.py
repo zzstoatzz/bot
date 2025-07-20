@@ -32,6 +32,9 @@ class MessageHandler:
             bot_status.record_mention()
             
             # Generate response
+            # Note: We pass the full text including @mention
+            # In AT Protocol, mentions are structured as facets,
+            # but the text representation includes them
             reply_text = await self.response_generator.generate(
                 mention_text=mention_text,
                 author_handle=author_handle

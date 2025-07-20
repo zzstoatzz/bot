@@ -52,7 +52,8 @@ FastAPI (lifespan)
 ### Dependencies
 - `atproto` - Python SDK for Bluesky
 - `pydantic-settings` - Config management
-- `pydantic-ai` - Added but not used yet
+- `pydantic-ai` - LLM agent framework
+- `anthropic` - Claude API client
 - `ty` - Astral's new type checker (replaces pyright)
 
 ### Graceful Shutdown

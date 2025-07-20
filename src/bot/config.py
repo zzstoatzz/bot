@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     
     # Bot configuration
     bot_name: str = "Bot"
-    bot_personality: str = "helpful and friendly"
+    personality_file: str = "personalities/phi.md"
     
     # LLM configuration (support multiple providers)
     openai_api_key: str | None = None
