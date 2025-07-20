@@ -1,6 +1,7 @@
 """Test agent with search capability"""
 
 import asyncio
+
 from bot.agents.anthropic_agent import AnthropicAgent
 from bot.config import settings
 

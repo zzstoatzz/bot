@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+from datetime import datetime
 
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
@@ -8,7 +9,6 @@ from bot.core.atproto_client import bot_client
 from bot.services.notification_poller import NotificationPoller
 from bot.status import bot_status
 from bot.templates import STATUS_PAGE_TEMPLATE
-from datetime import datetime
 
 
 @asynccontextmanager
@@ -16,9 +16,9 @@ async def lifespan(app: FastAPI):
     print(f"🤖 Starting bot as @{settings.bluesky_handle}")
 
     poller = NotificationPoller(bot_client)
-    poller_task = await poller.start()
+    await poller.start()
 
-    print(f"✅ Bot is online! Listening for mentions...")
+    print("✅ Bot is online! Listening for mentions...")
 
     yield
 

@@ -1,8 +1,10 @@
 """Unit tests for response generation"""
 
+from unittest.mock import AsyncMock, Mock, patch
+
 import pytest
-from unittest.mock import Mock, AsyncMock, patch
-from bot.response_generator import ResponseGenerator, PLACEHOLDER_RESPONSES
+
+from bot.response_generator import PLACEHOLDER_RESPONSES, ResponseGenerator
 
 
 @pytest.mark.asyncio

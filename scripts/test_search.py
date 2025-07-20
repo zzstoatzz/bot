@@ -1,18 +1,17 @@
 """Test search functionality"""
 
 import asyncio
-from bot.tools.google_search import GoogleSearchTool
+
 from bot.config import settings
+from bot.tools.google_search import search_google
 
 
 async def test_search():
-    """Test Google search tool"""
+    """Test Google search function"""
     if not settings.google_api_key:
         print("❌ No Google API key configured")
         print("   Add GOOGLE_API_KEY and GOOGLE_SEARCH_ENGINE_ID to .env")
         return
-
-    search = GoogleSearchTool()
 
     queries = [
         "integrated information theory consciousness",
@@ -24,11 +23,8 @@ async def test_search():
         print(f"\nSearching for: {query}")
         print("-" * 50)
 
-        results = await search.search(query)
-        if results:
-            print(search.format_results(results))
-        else:
-            print("No results found")
+        results = await search_google(query)
+        print(results)
 
 
 if __name__ == "__main__":

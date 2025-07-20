@@ -1,11 +1,9 @@
 """Response generation for the bot"""
 
 import random
-from typing import Optional
 
 from bot.config import settings
 from bot.status import bot_status
-
 
 PLACEHOLDER_RESPONSES = [
     "🤖 beep boop! I'm still learning how to chat. Check back soon!",
@@ -25,7 +23,7 @@ class ResponseGenerator:
     """Generates responses to mentions"""
 
     def __init__(self):
-        self.agent: Optional[object] = None
+        self.agent: object | None = None
 
         # Try to initialize AI agent if credentials available
         if settings.anthropic_api_key:

@@ -1,17 +1,16 @@
 from atproto import models
+
+from bot.config import settings
 from bot.core.atproto_client import BotClient
+from bot.database import thread_db
 from bot.response_generator import ResponseGenerator
 from bot.status import bot_status
-from bot.database import thread_db
-from bot.config import settings
-from bot.tools.moderation import ContentModerator
 
 
 class MessageHandler:
     def __init__(self, client: BotClient):
         self.client = client
         self.response_generator = ResponseGenerator()
-        self.moderator = ContentModerator()
 
     async def handle_mention(self, notification):
         """Process a mention notification"""
@@ -35,9 +34,6 @@ class MessageHandler:
 
             # Record mention received
             bot_status.record_mention()
-
-            # Moderate the content
-            moderation_result = self.moderator.moderate(mention_text, author_handle)
 
             # Build reply reference
             parent_ref = models.ComAtprotoRepoStrongRef.Main(uri=post_uri, cid=post.cid)
@@ -64,25 +60,15 @@ class MessageHandler:
             # Get thread context
             thread_context = thread_db.get_thread_context(thread_uri)
 
-            # Generate response based on moderation result
-            if not moderation_result.is_safe:
-                # Use moderation-appropriate response
-                reply_text = self.moderator.get_rejection_response(
-                    moderation_result.category
-                )
-                print(
-                    f"⚠️  Moderated content from @{author_handle}: {moderation_result.reason}"
-                )
-            else:
-                # Generate normal response
-                # Note: We pass the full text including @mention
-                # In AT Protocol, mentions are structured as facets,
-                # but the text representation includes them
-                reply_text = await self.response_generator.generate(
-                    mention_text=mention_text,
-                    author_handle=author_handle,
-                    thread_context=thread_context,
-                )
+            # Generate response
+            # Note: We pass the full text including @mention
+            # In AT Protocol, mentions are structured as facets,
+            # but the text representation includes them
+            reply_text = await self.response_generator.generate(
+                mention_text=mention_text,
+                author_handle=author_handle,
+                thread_context=thread_context,
+            )
 
             reply_ref = models.AppBskyFeedPost.ReplyRef(
                 parent=parent_ref, root=root_ref

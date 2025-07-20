@@ -25,9 +25,9 @@
 - Local URI cache (`_processed_uris`) as safety net
 - No @mention in replies (Bluesky handles notification automatically)
 
-### ✅ MILESTONE ACHIEVED: AI Bot with Thread Context
+### ✅ MILESTONE ACHIEVED: AI Bot with Thread Context & Tools
 
-The bot is now **fully operational** with AI-powered, thread-aware responses!
+The bot is now **fully operational** with AI-powered, thread-aware responses, search capability, and content moderation!
 
 #### What's Working:
 
@@ -46,6 +46,12 @@ The bot is now **fully operational** with AI-powered, thread-aware responses!
    - ✅ Successfully responding to mentions
    - ✅ Maintaining personality (phi - consciousness/IIT focus)
    - ✅ Natural, contextual conversations
+   
+4. **Tools & Safety**
+   - ✅ Google Custom Search integration (when API key provided)
+   - ✅ Content moderation with philosophical rejection responses
+   - ✅ Spam/harassment/violence detection with tests
+   - ✅ Repetition detection to prevent spam
 
 ### Future Work
 

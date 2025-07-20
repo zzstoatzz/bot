@@ -2,10 +2,11 @@
 """Test AI integration without posting to Bluesky"""
 
 import asyncio
+
 import pytest
 
-from bot.response_generator import ResponseGenerator
 from bot.config import settings
+from bot.response_generator import ResponseGenerator
 
 
 @pytest.mark.asyncio

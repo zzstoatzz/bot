@@ -2,6 +2,7 @@
 """Test thread context by simulating a conversation"""
 
 import asyncio
+
 from bot.database import thread_db
 
 

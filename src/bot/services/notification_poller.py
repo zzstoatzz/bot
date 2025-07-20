@@ -66,14 +66,16 @@ class NotificationPoller:
         if not notifications:
             return
 
-        print(f"📬 Found {len(notifications)} notifications")
+        # Just print a dot to show activity without spamming
+        print(".", end="", flush=True)
 
         # Count unread mentions
         unread_mentions = [
             n for n in notifications if not n.is_read and n.reason == "mention"
         ]
+        # Only print if we actually have unread mentions
         if unread_mentions:
-            print(f"  → {len(unread_mentions)} unread mentions")
+            print(f"\n📬 {len(unread_mentions)} new mentions", flush=True)
 
         # Track if we processed any mentions
         processed_any_mentions = False
@@ -94,7 +96,7 @@ class NotificationPoller:
         # This ensures we don't miss any that arrived during processing
         if processed_any_mentions:
             await self.client.mark_notifications_seen(check_time)
-            print(f"✓ Marked all notifications as read (timestamp: {check_time})")
+            print(f"\n✓ Marked all notifications as read", flush=True)
 
             # Clean up old processed URIs to prevent memory growth
             # Keep only the last 1000 processed URIs

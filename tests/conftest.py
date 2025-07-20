@@ -1,7 +1,9 @@
 """Pytest configuration"""
 
-import pytest
 from unittest.mock import Mock
+
+import pytest
+
 from bot.core.atproto_client import BotClient
 
 

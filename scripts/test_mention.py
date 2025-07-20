@@ -2,9 +2,10 @@
 """Test script to mention the bot and see if it responds"""
 
 import asyncio
-from datetime import datetime
-from atproto import Client
 import os
+from datetime import datetime
+
+from atproto import Client
 
 
 async def test_mention():
@@ -29,9 +30,9 @@ async def test_mention():
     print(f"Creating post: {mention_text}")
     response = client.send_post(text=mention_text)
 
-    print(f"✅ Posted mention!")
+    print("✅ Posted mention!")
     print(f"URI: {response.uri}")
-    print(f"\nThe bot should reply within ~10 seconds if it's running")
+    print("\nThe bot should reply within ~10 seconds if it's running")
     print(
         f"Check: https://bsky.app/profile/{test_handle}/post/{response.uri.split('/')[-1]}"
     )

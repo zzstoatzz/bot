@@ -1,6 +1,7 @@
 """Load and manage bot personality from markdown files"""
 
 from pathlib import Path
+
 from bot.config import settings
 
 
@@ -14,7 +15,7 @@ def load_personality() -> str:
         return "You are a helpful AI assistant on Bluesky. Be concise and friendly."
 
     try:
-        with open(personality_path, "r") as f:
+        with open(personality_path) as f:
             content = f.read().strip()
 
         # Convert markdown to a system prompt

@@ -1,14 +1,13 @@
 """Anthropic agent for generating responses"""
 
 import os
-from typing import Optional
 
 from pydantic import BaseModel, Field
 from pydantic_ai import Agent, RunContext
 
 from bot.config import settings
 from bot.personality import load_personality
-from bot.tools.google_search import GoogleSearchTool
+from bot.tools.google_search import search_google
 
 
 class Response(BaseModel):
@@ -24,8 +23,6 @@ class AnthropicAgent:
         if settings.anthropic_api_key:
             os.environ["ANTHROPIC_API_KEY"] = settings.anthropic_api_key
 
-        self.search_tool = GoogleSearchTool() if settings.google_api_key else None
-
         self.agent = Agent(
             "anthropic:claude-3-5-haiku-latest",
             system_prompt=load_personality(),
@@ -33,13 +30,12 @@ class AnthropicAgent:
         )
 
         # Register search tool if available
-        if self.search_tool:
+        if settings.google_api_key:
 
             @self.agent.tool
             async def search_web(ctx: RunContext[None], query: str) -> str:
-                """Search the web for information"""
-                results = await self.search_tool.search(query, num_results=3)
-                return self.search_tool.format_results(results)
+                """Search the web for current information about a topic"""
+                return await search_google(query)
 
     async def generate_response(
         self, mention_text: str, author_handle: str, thread_context: str = ""
@@ -56,9 +52,7 @@ class AnthropicAgent:
 
         prompt = "\n".join(prompt_parts)
 
-        # Add search capability hint if available
-        if self.search_tool:
-            prompt += "\n\n(You can search the web if needed to answer questions about current events or facts)"
+        # No need for hint - agent knows about its tools
 
         result = await self.agent.run(prompt)
         return result.output.text[:300]
