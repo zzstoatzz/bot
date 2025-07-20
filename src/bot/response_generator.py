@@ -4,6 +4,7 @@ import random
 from typing import Optional
 
 from bot.config import settings
+from bot.status import bot_status
 
 
 PLACEHOLDER_RESPONSES = [
@@ -31,6 +32,7 @@ class ResponseGenerator:
             try:
                 from bot.agents.anthropic_agent import AnthropicAgent
                 self.agent = AnthropicAgent()
+                bot_status.ai_enabled = True
                 print("✅ AI responses enabled (Anthropic)")
             except Exception as e:
                 print(f"⚠️  Failed to initialize AI agent: {e}")

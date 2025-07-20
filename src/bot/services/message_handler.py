@@ -1,6 +1,7 @@
 from atproto import models
 from bot.core.atproto_client import BotClient
 from bot.response_generator import ResponseGenerator
+from bot.status import bot_status
 
 
 class MessageHandler:
@@ -26,6 +27,9 @@ class MessageHandler:
             post = posts.posts[0]
             mention_text = post.record.text
             author_handle = post.author.handle
+            
+            # Record mention received
+            bot_status.record_mention()
             
             # Generate response
             reply_text = await self.response_generator.generate(
@@ -55,9 +59,13 @@ class MessageHandler:
             # Send the reply
             await self.client.create_post(reply_text, reply_to=reply_ref)
             
+            # Record successful response
+            bot_status.record_response()
+            
             print(f"✅ Replied to @{author_handle}: {reply_text}")
             
         except Exception as e:
             print(f"❌ Error handling mention: {e}")
+            bot_status.record_error()
             import traceback
             traceback.print_exc()

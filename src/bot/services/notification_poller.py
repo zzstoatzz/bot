@@ -4,6 +4,7 @@ from typing import Optional
 from bot.config import settings
 from bot.core.atproto_client import BotClient
 from bot.services.message_handler import MessageHandler
+from bot.status import bot_status
 
 
 class NotificationPoller:
@@ -18,12 +19,14 @@ class NotificationPoller:
     async def start(self) -> asyncio.Task:
         """Start polling for notifications"""
         self._running = True
+        bot_status.polling_active = True
         self._task = asyncio.create_task(self._poll_loop())
         return self._task
 
     async def stop(self):
         """Stop polling"""
         self._running = False
+        bot_status.polling_active = False
         if self._task and not self._task.done():
             self._task.cancel()
             try:
@@ -40,6 +43,7 @@ class NotificationPoller:
                 await self._check_notifications()
             except Exception as e:
                 print(f"Error in notification poll: {e}")
+                bot_status.record_error()
                 if settings.debug:
                     import traceback
 
