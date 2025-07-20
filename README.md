@@ -2,31 +2,33 @@
 
 A virtual person for Bluesky powered by LLMs, built with FastAPI and pydantic-ai.
 
-> **Quick Start**: See [QUICKSTART.md](QUICKSTART.md) to get running in 5 minutes!
+## Quick Start
 
-## Setup
+Get your bot running in 5 minutes:
 
-1. Install dependencies:
 ```bash
-just sync
-```
+# Clone and install
+git clone <repo>
+cd bot
+uv sync
 
-2. Copy `.env.example` to `.env` and add your credentials:
-- `BLUESKY_HANDLE`: Your bot's Bluesky handle
-- `BLUESKY_PASSWORD`: App password from Bluesky settings
-- `ANTHROPIC_API_KEY`: For AI responses (optional, falls back to placeholder)
-- `BOT_NAME`: Your bot's name (default: "Bot")
-- `PERSONALITY_FILE`: Path to personality markdown file (default: "personalities/phi.md")
+# Configure (copy .env.example and add your credentials)
+cp .env.example .env
 
-3. Test posting:
-```bash
-just test-post
-```
-
-4. Run the bot:
-```bash
+# Run the bot
 just dev
 ```
+
+That's it! Your bot is now listening for mentions.
+
+## Configuration
+
+Edit `.env` with your credentials:
+- `BLUESKY_HANDLE`: Your bot's Bluesky handle
+- `BLUESKY_PASSWORD`: App password (not your main password!)
+- `ANTHROPIC_API_KEY`: Your Anthropic key for AI responses
+- `BOT_NAME`: Your bot's name (default: "Bot")
+- `PERSONALITY_FILE`: Path to personality markdown file (default: "personalities/phi.md")
 
 ## Current Features
 
@@ -77,6 +79,16 @@ The bot's personality is defined in markdown files in the `personalities/` direc
 ## Memory Architecture
 
 See `sandbox/memory_architecture_plan.md` for the planned memory system using TurboPuffer.
+
+## Troubleshooting
+
+**Bot gives placeholder responses?**
+- Check your `ANTHROPIC_API_KEY` is set correctly
+- Restart the bot after changing `.env`
+
+**Not seeing mentions?**
+- Verify your `BLUESKY_HANDLE` and `BLUESKY_PASSWORD`
+- Make sure you're using an app password, not your main password
 
 ## Reference Projects
 

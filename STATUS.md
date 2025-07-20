@@ -1,6 +1,6 @@
 # Project Status
 
-## Current Phase: Placeholder Bot Complete ✅
+## Current Phase: AI Bot with Thread Context Complete ✅
 
 ### Completed
 - ✅ Created project directory structure (.eggs, tests, sandbox)
@@ -49,10 +49,11 @@ The bot is now **fully operational** with AI-powered, thread-aware responses!
 
 ### Future Work
 
-After thread context is working:
-- TurboPuffer for vector memory (user facts, etc)
-- Self-modification capabilities
-- Multi-tier memory system
+- TurboPuffer for vector memory (user facts, long-term memory)
+- Self-modification capabilities (inspired by Penelope)
+- Multi-tier memory system (core/user/archival like Void)
+- Advanced personality switching
+- Proactive posting based on interests
 
 ## Key Decisions to Make
 - Which LLM provider to use (OpenAI, Anthropic, etc.)
