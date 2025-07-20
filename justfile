@@ -6,6 +6,10 @@ dev:
 test-post:
     uv run python scripts/test_post.py
 
+# Test thread context
+test-thread:
+    uv run python scripts/test_thread_context.py
+
 # Run tests
 test:
     uv run pytest tests/ -v
