@@ -25,13 +25,28 @@
 - Local URI cache (`_processed_uris`) as safety net
 - No @mention in replies (Bluesky handles notification automatically)
 
-### Next Steps
-1. Add pydantic-ai for LLM agent implementation
-2. Add turbopuffer for vector memory
-3. Implement LLMResponseGenerator to replace PlaceholderResponseGenerator
-4. Design bot persona and system prompts
-5. Build memory system (3-tier like Void)
-6. Add profile self-modification capability (like Penelope)
+### Near-Term Roadmap
+
+#### Phase 1: AI Integration (Current Focus)
+1. **Add pydantic-ai with Anthropic provider**
+   - Use Anthropic as the LLM provider (Mac subscription available)
+   - Redesign ResponseGenerator protocol to be more general/sensible
+   - Implement AI-based response generation
+   
+2. **Self-Modification Capability** 
+   - Build in ability to edit own personality/profile from the start
+   - Similar to Void's self-editing and Penelope's profile updates
+   - Essential foundation before adding memory systems
+
+#### Phase 2: Memory & Persistence
+1. Add turbopuffer for vector memory
+2. Build 3-tier memory system (like Void)
+3. User-specific memory contexts
+
+#### Phase 3: Personality & Behavior
+1. Design bot persona and system prompts
+2. Implement conversation styles
+3. Add behavioral consistency
 
 ## Key Decisions to Make
 - Which LLM provider to use (OpenAI, Anthropic, etc.)

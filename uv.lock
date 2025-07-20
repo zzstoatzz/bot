@@ -170,6 +170,7 @@ name = "bot"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "anthropic" },
     { name = "atproto" },
     { name = "fastapi" },
     { name = "httpx" },
@@ -187,6 +188,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "anthropic" },
     { name = "atproto" },
     { name = "fastapi" },
     { name = "httpx" },

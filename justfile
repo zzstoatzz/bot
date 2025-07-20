@@ -20,7 +20,7 @@ lint:
 
 # Type check with ty
 typecheck:
-    uv run ty src/
+    uv run ty check
 
 # Run all checks
 check: lint typecheck test

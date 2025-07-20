@@ -12,7 +12,7 @@ just sync
 2. Copy `.env.example` to `.env` and add your credentials:
 - `BLUESKY_HANDLE`: Your bot's Bluesky handle
 - `BLUESKY_PASSWORD`: App password from Bluesky settings
-- `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`: For LLM responses
+- `ANTHROPIC_API_KEY`: For AI responses (optional, falls back to placeholder)
 
 3. Test posting:
 ```bash
@@ -23,6 +23,15 @@ just test-post
 ```bash
 just dev
 ```
+
+## Current Features
+
+- ✅ Responds to mentions with placeholder or AI messages
+- ✅ Proper notification handling (no duplicates)
+- ✅ Graceful shutdown for hot-reload
+- ✅ AI integration with Anthropic Claude (when API key provided)
+- 🚧 Memory system (coming soon)
+- 🚧 Self-modification capabilities (planned)
 
 ## Architecture
 

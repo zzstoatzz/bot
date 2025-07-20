@@ -1,11 +1,12 @@
 from atproto import models
 from bot.core.atproto_client import BotClient
-from bot.core.response_generator import response_generator
+from bot.response_generator import ResponseGenerator
 
 
 class MessageHandler:
     def __init__(self, client: BotClient):
         self.client = client
+        self.response_generator = ResponseGenerator()
     
     async def handle_mention(self, notification):
         """Process a mention notification"""
@@ -26,8 +27,8 @@ class MessageHandler:
             mention_text = post.record.text
             author_handle = post.author.handle
             
-            # Generate placeholder response
-            reply_text = await response_generator.generate_response(
+            # Generate response
+            reply_text = await self.response_generator.generate(
                 mention_text=mention_text,
                 author_handle=author_handle
             )

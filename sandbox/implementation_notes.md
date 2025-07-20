@@ -33,13 +33,16 @@ reply_ref = models.AppBskyFeedPost.ReplyRef(parent=parent_ref, root=root_ref)
 FastAPI (lifespan)
   └── NotificationPoller (async task)
       └── MessageHandler
-          └── ResponseGenerator (swappable)
+          └── ResponseGenerator
+              └── AnthropicAgent (when API key available)
+              └── Placeholder responses (fallback)
 ```
 
 ### Key Files
-- `src/bot/core/atproto_client.py` - Wrapped AT Protocol client
+- `src/bot/core/atproto_client.py` - Wrapped AT Protocol client (truly core)
 - `src/bot/services/notification_poller.py` - Async polling with proper shutdown
-- `src/bot/core/response_generator.py` - Protocol-based for easy swapping
+- `src/bot/response_generator.py` - Simple response generation with AI fallback
+- `src/bot/agents/anthropic_agent.py` - Anthropic Claude integration
 
 ### Testing
 - `scripts/test_post.py` - Creates post and reply
