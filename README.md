@@ -2,6 +2,8 @@
 
 A virtual person for Bluesky powered by LLMs, built with FastAPI and pydantic-ai.
 
+> **Quick Start**: See [QUICKSTART.md](QUICKSTART.md) to get running in 5 minutes!
+
 ## Setup
 
 1. Install dependencies:
