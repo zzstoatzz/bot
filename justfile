@@ -18,6 +18,10 @@ test-search:
 test-agent-search:
     uv run python scripts/test_agent_search.py
 
+# Test ignore notification tool
+test-ignore:
+    uv run python scripts/test_ignore_tool.py
+
 # Run tests
 test:
     uv run pytest tests/ -v

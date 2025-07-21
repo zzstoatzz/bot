@@ -1,3 +1,6 @@
+import logging
+
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -33,7 +36,25 @@ class Settings(BaseSettings):
     notification_poll_interval: int = 10  # seconds (faster for testing)
 
     # Debug mode
-    debug: bool = False
+    debug: bool = True  # Default to True for development
+
+    @model_validator(mode="after")
+    def configure_logging(self):
+        """Configure logging based on debug setting"""
+        if self.debug:
+            logging.basicConfig(
+                level=logging.DEBUG,
+                format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+                datefmt="%H:%M:%S",
+            )
+            logging.getLogger("bot").setLevel(logging.DEBUG)
+        else:
+            logging.basicConfig(
+                level=logging.INFO,
+                format="%(asctime)s [%(levelname)s] %(message)s",
+                datefmt="%H:%M:%S",
+            )
+        return self
 
 
 settings = Settings()  # type: ignore[call-arg]

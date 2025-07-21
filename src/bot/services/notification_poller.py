@@ -1,9 +1,12 @@
 import asyncio
+import logging
 
 from bot.config import settings
 from bot.core.atproto_client import BotClient
 from bot.services.message_handler import MessageHandler
 from bot.status import bot_status
+
+logger = logging.getLogger("bot.poller")
 
 
 class NotificationPoller:
@@ -92,13 +95,18 @@ class NotificationPoller:
         for notification in reversed(notifications):
             # Skip if already seen or processed
             if notification.is_read or notification.uri in self._processed_uris:
+                logger.debug(f"⏭️  Skipping already processed: {notification.uri}")
                 continue
 
+            logger.debug(f"🔍 Found notification: reason={notification.reason}, uri={notification.uri}")
+            
             if notification.reason in ["mention", "reply"]:
                 # Process mentions and replies in threads
                 self._processed_uris.add(notification.uri)
                 await self.handler.handle_mention(notification)
                 processed_any_mentions = True
+            else:
+                logger.debug(f"⏭️  Ignoring notification type: {notification.reason}")
 
         # Mark all notifications as seen using the initial timestamp
         # This ensures we don't miss any that arrived during processing

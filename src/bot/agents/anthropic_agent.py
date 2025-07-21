@@ -1,5 +1,6 @@
 """Anthropic agent for generating responses"""
 
+import logging
 import os
 
 from pydantic import BaseModel, Field
@@ -8,6 +9,8 @@ from pydantic_ai import Agent, RunContext
 from bot.config import settings
 from bot.personality import load_personality
 from bot.tools.google_search import search_google
+
+logger = logging.getLogger("bot.agent")
 
 
 class Response(BaseModel):
@@ -52,6 +55,7 @@ class AnthropicAgent:
 
             Categories: 'spam', 'not_relevant', 'bot_loop', 'handled_elsewhere'
             """
+            logger.debug(f"🚫 ignore_notification called: category={category}, reason={reason}")
             return f"IGNORED_NOTIFICATION::{category}::{reason}"
 
     async def generate_response(
@@ -68,8 +72,14 @@ class AnthropicAgent:
         prompt_parts.append(f"{author_handle} said: {mention_text}")
 
         prompt = "\n".join(prompt_parts)
+        
+        logger.debug(f"🤖 Agent prompt:\n{prompt}")
 
         # No need for hint - agent knows about its tools
 
         result = await self.agent.run(prompt)
-        return result.output.text[:300]
+        response_text = result.output.text[:300]
+        
+        logger.debug(f"💬 Agent response: {response_text}")
+        
+        return response_text

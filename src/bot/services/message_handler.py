@@ -1,3 +1,5 @@
+import logging
+
 from atproto import models
 
 from bot.config import settings
@@ -6,6 +8,8 @@ from bot.database import thread_db
 from bot.response_generator import ResponseGenerator
 from bot.status import bot_status
 
+logger = logging.getLogger("bot.handler")
+
 
 class MessageHandler:
     def __init__(self, client: BotClient):
@@ -13,10 +17,13 @@ class MessageHandler:
         self.response_generator = ResponseGenerator()
 
     async def handle_mention(self, notification):
-        """Process a mention notification"""
+        """Process a mention or reply notification"""
         try:
-            # Skip if not a mention
-            if notification.reason != "mention":
+            logger.debug(f"📨 Processing notification: reason={notification.reason}, uri={notification.uri}")
+            
+            # Skip if not a mention or reply
+            if notification.reason not in ["mention", "reply"]:
+                logger.debug(f"⏭️  Skipping notification with reason: {notification.reason}")
                 return
 
             post_uri = notification.uri
@@ -31,6 +38,8 @@ class MessageHandler:
             mention_text = post.record.text
             author_handle = post.author.handle
             author_did = post.author.did
+            
+            logger.debug(f"📝 Post details: author=@{author_handle}, text='{mention_text}'")
 
             # Record mention received
             bot_status.record_mention()
