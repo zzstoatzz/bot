@@ -109,9 +109,7 @@ class TestToolUsage:
             return f"Info about {query}"
 
         # Ask for multiple things that need searching
-        await agent.run(
-            "Search for information about Python and also about Rust"
-        )
+        await agent.run("Search for information about Python and also about Rust")
 
         assert len(calls) >= 2, f"Expected multiple searches, got {len(calls)}: {calls}"
         assert any("Python" in call for call in calls), f"No Python search in: {calls}"

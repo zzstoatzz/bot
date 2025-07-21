@@ -37,6 +37,23 @@ class AnthropicAgent:
                 """Search the web for current information about a topic"""
                 return await search_google(query)
 
+        # Register ignore notification tool
+        @self.agent.tool
+        async def ignore_notification(
+            ctx: RunContext[None], reason: str, category: str = "not_relevant"
+        ) -> str:
+            """Signal that this notification should be ignored without replying.
+
+            Use when:
+            - The notification is spam
+            - You're not being addressed in a thread
+            - The conversation doesn't involve you
+            - Responding would be intrusive or unwanted
+
+            Categories: 'spam', 'not_relevant', 'bot_loop', 'handled_elsewhere'
+            """
+            return f"IGNORED_NOTIFICATION::{category}::{reason}"
+
     async def generate_response(
         self, mention_text: str, author_handle: str, thread_context: str = ""
     ) -> str:

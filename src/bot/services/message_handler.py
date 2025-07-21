@@ -70,6 +70,17 @@ class MessageHandler:
                 thread_context=thread_context,
             )
 
+            # Check if the agent decided to ignore this notification
+            if reply_text.startswith("IGNORED_NOTIFICATION::"):
+                # Parse the ignore signal
+                parts = reply_text.split("::")
+                category = parts[1] if len(parts) > 1 else "unknown"
+                reason = parts[2] if len(parts) > 2 else "no reason given"
+                print(
+                    f"🚫 Ignoring notification from @{author_handle} ({category}: {reason})"
+                )
+                return
+
             reply_ref = models.AppBskyFeedPost.ReplyRef(
                 parent=parent_ref, root=root_ref
             )

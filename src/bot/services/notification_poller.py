@@ -64,16 +64,20 @@ class NotificationPoller:
         response = await self.client.get_notifications()
         notifications = response.notifications
 
-        # Count unread mentions
+        # Count unread mentions and replies
         unread_mentions = [
-            n for n in notifications if not n.is_read and n.reason == "mention"
+            n
+            for n in notifications
+            if not n.is_read and n.reason in ["mention", "reply"]
         ]
 
         # First poll: show initial state
         if self._first_poll:
             self._first_poll = False
             if notifications:
-                print(f"\n📬 Found {len(notifications)} notifications ({len(unread_mentions)} unread mentions)")
+                print(
+                    f"\n📬 Found {len(notifications)} notifications ({len(unread_mentions)} unread mentions)"
+                )
         # Subsequent polls: only show activity
         elif unread_mentions:
             print(f"\n📬 {len(unread_mentions)} new mentions", flush=True)
@@ -90,8 +94,8 @@ class NotificationPoller:
             if notification.is_read or notification.uri in self._processed_uris:
                 continue
 
-            if notification.reason == "mention":
-                # Only process mentions
+            if notification.reason in ["mention", "reply"]:
+                # Process mentions and replies in threads
                 self._processed_uris.add(notification.uri)
                 await self.handler.handle_mention(notification)
                 processed_any_mentions = True
