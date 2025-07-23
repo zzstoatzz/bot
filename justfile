@@ -1,48 +1,56 @@
-# Run the bot with hot-reload
+# Core development commands
 dev:
     uv run uvicorn src.bot.main:app --reload
 
-# Test posting capabilities  
-test-post:
-    uv run python scripts/test_post.py
-
-# Test thread context
-test-thread:
-    uv run python scripts/test_thread_context.py
-
-# Test search functionality
-test-search:
-    uv run python scripts/test_search.py
-
-# Test agent with search
-test-agent-search:
-    uv run python scripts/test_agent_search.py
-
-# Test ignore notification tool
-test-ignore:
-    uv run python scripts/test_ignore_tool.py
-
-# Run tests
 test:
     uv run pytest tests/ -v
 
-# Format code
 fmt:
     uv run ruff format src/ scripts/ tests/
 
-# Lint code
 lint:
     uv run ruff check src/ scripts/ tests/
 
-# Type check with ty
-typecheck:
-    uv run ty check
+check: lint test
 
-# Run all checks
-check: lint typecheck test
+# Bot testing utilities
+test-post:
+    uv run python scripts/test_bot.py post
 
-# Show project status
-status:
-    @echo "📊 Project Status"
-    @echo "================"
-    @cat STATUS.md | grep -E "^##|^-|✅|🚧" | head -20
+test-mention:
+    uv run python scripts/test_bot.py mention
+
+test-search:
+    uv run python scripts/test_bot.py search
+
+test-thread:
+    uv run python scripts/test_bot.py thread
+
+test-like:
+    uv run python scripts/test_bot.py like
+
+test-non-response:
+    uv run python scripts/test_bot.py non-response
+
+test-dm:
+    uv run python scripts/test_bot.py dm
+
+test-dm-check:
+    uv run python scripts/test_bot.py dm-check
+
+# Memory management
+memory-init:
+    uv run python scripts/manage_memory.py init
+
+memory-check:
+    uv run python scripts/manage_memory.py check
+
+memory-migrate:
+    uv run python scripts/manage_memory.py migrate
+
+# Setup reference projects
+setup:
+    @mkdir -p .eggs
+    @[ -d .eggs/void ] || git clone https://tangled.sh/@cameron.pfiffer.org/void.git .eggs/void
+    @[ -d .eggs/penelope ] || git clone https://github.com/haileyok/penelope.git .eggs/penelope
+    @[ -d .eggs/marvin ] || git clone https://github.com/PrefectHQ/marvin.git .eggs/marvin

@@ -31,6 +31,25 @@ class ThreadDatabase:
                 CREATE INDEX IF NOT EXISTS idx_thread_uri 
                 ON thread_messages(thread_uri)
             """)
+            
+            # Approval requests table
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS approval_requests (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    request_type TEXT NOT NULL,
+                    request_data TEXT NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'pending',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    resolved_at TIMESTAMP,
+                    resolver_comment TEXT,
+                    applied_at TIMESTAMP,
+                    CHECK (status IN ('pending', 'approved', 'denied', 'expired'))
+                )
+            """)
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_approval_status 
+                ON approval_requests(status)
+            """)
 
     @contextmanager
     def _get_connection(self):
@@ -88,6 +107,59 @@ class ThreadDatabase:
             context_parts.append(f"@{msg['author_handle']}: {msg['message_text']}")
 
         return "\n".join(context_parts)
+    
+    def create_approval_request(
+        self, request_type: str, request_data: str
+    ) -> int:
+        """Create a new approval request and return its ID"""
+        import json
+        
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                """
+                INSERT INTO approval_requests (request_type, request_data)
+                VALUES (?, ?)
+                """,
+                (request_type, json.dumps(request_data) if isinstance(request_data, dict) else request_data),
+            )
+            return cursor.lastrowid
+    
+    def get_pending_approvals(self) -> list[dict[str, Any]]:
+        """Get all pending approval requests"""
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                """
+                SELECT * FROM approval_requests 
+                WHERE status = 'pending'
+                ORDER BY created_at ASC
+                """
+            )
+            return [dict(row) for row in cursor.fetchall()]
+    
+    def resolve_approval(
+        self, approval_id: int, approved: bool, comment: str = ""
+    ) -> bool:
+        """Resolve an approval request"""
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                """
+                UPDATE approval_requests 
+                SET status = ?, resolved_at = CURRENT_TIMESTAMP, resolver_comment = ?
+                WHERE id = ? AND status = 'pending'
+                """,
+                ("approved" if approved else "denied", comment, approval_id),
+            )
+            return cursor.rowcount > 0
+    
+    def get_approval_by_id(self, approval_id: int) -> dict[str, Any] | None:
+        """Get a specific approval request by ID"""
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                "SELECT * FROM approval_requests WHERE id = ?",
+                (approval_id,),
+            )
+            row = cursor.fetchone()
+            return dict(row) if row else None
 
 
 # Global database instance

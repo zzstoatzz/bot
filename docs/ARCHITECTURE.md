@@ -1,48 +1,75 @@
-# Architecture Overview
+# Phi Architecture
+
+## Overview
+
+Phi is a Bluesky bot that explores consciousness and integrated information theory through conversation. Built with FastAPI, pydantic-ai, and TurboPuffer for memory.
 
 ## Core Components
 
-### 1. Notification Polling (`notification_poller.py`)
-- Polls Bluesky every 10 seconds for new notifications
-- Uses Void's timestamp approach to prevent duplicates
-- Runs as async task in FastAPI lifespan
+### 1. Web Server (`main.py`)
+- FastAPI application with async lifecycle management
+- Handles `/status` endpoint for monitoring
+- Manages notification polling and bot lifecycle
 
-### 2. Message Handling (`message_handler.py`) 
-- Processes mentions from notifications
-- Stores messages in thread database
-- Generates responses with full thread context
-- Creates proper AT Protocol reply structures
+### 2. AT Protocol Integration (`core/atproto_client.py`)
+- Authentication and session management
+- Post creation and reply handling
+- Thread retrieval for context
 
 ### 3. Response Generation (`response_generator.py`)
-- Factory pattern for AI or placeholder responses
-- Loads Anthropic agent when API key present
-- Falls back gracefully to placeholder messages
+- Coordinates AI agent, memory, and thread context
+- Stores conversations in memory
+- Falls back to placeholder responses if AI unavailable
 
-### 4. Thread Database (`database.py`)
-- SQLite storage for conversation threads
-- Tracks by root URI for proper threading
-- Stores all messages with author info
-- Provides formatted context for AI
+### 4. AI Agent (`agents/anthropic_agent.py`)
+- Uses pydantic-ai with Claude 3.5 Haiku
+- Personality loaded from markdown files
+- Tools: web search (when configured)
+- Structured responses with action/text/reason
 
-### 5. AI Agent (`agents/anthropic_agent.py`)
-- Uses pydantic-ai with Anthropic Claude
-- Loads personality from markdown files
-- Includes thread context in prompts
-- Enforces 300 character limit
+### 5. Memory System (`memory/namespace_memory.py`)
+- **Namespaces**:
+  - `phi-core`: Personality, guidelines, capabilities
+  - `phi-users-{handle}`: Per-user conversations and facts
+- **Key Methods**:
+  - `store_core_memory()`: Store bot personality/guidelines
+  - `store_user_memory()`: Store user interactions
+  - `build_conversation_context()`: Assemble memories for AI context
+- **Features**:
+  - Vector embeddings with OpenAI
+  - Character limits to prevent overflow
+  - Simple append-only design
+
+### 6. Services
+- **NotificationPoller**: Checks for mentions every 10 seconds
+- **MessageHandler**: Processes mentions and generates responses
+- **ProfileManager**: Updates online/offline status in bio
 
 ## Data Flow
 
-1. **Notification arrives** → Poller detects it
-2. **Message handler** → Extracts post data, stores in DB
-3. **Thread context** → Retrieved from database
-4. **AI generation** → Personality + context → response
-5. **Reply posted** → Proper threading maintained
-6. **Response stored** → For future context
+```
+1. Notification received → NotificationPoller
+2. Extract mention → MessageHandler
+3. Get thread context → SQLite database
+4. Build memory context → NamespaceMemory
+5. Generate response → AnthropicAgent
+6. Store in memory → NamespaceMemory
+7. Post reply → AT Protocol client
+```
+
+## Configuration
+
+Environment variables in `.env`:
+- `BLUESKY_HANDLE`, `BLUESKY_PASSWORD`: Bot credentials
+- `ANTHROPIC_API_KEY`: For AI responses
+- `TURBOPUFFER_API_KEY`: For memory storage
+- `OPENAI_API_KEY`: For embeddings
+- `GOOGLE_API_KEY`, `GOOGLE_SEARCH_ENGINE_ID`: For web search
 
 ## Key Design Decisions
 
-- **SQLite for threads**: Simple, effective (like Marvin)
-- **Personality as markdown**: Rich, versionable definitions
-- **Timestamp-first polling**: Prevents missing notifications
-- **Factory pattern**: Clean AI/placeholder switching
-- **Thread tracking by root**: Handles nested conversations
+1. **Namespace-based memory** instead of dynamic blocks for simplicity
+2. **Single agent** architecture (no multi-agent complexity)
+3. **Markdown personalities** for rich, maintainable definitions
+4. **Thread-aware** responses with full conversation context
+5. **Graceful degradation** when services unavailable

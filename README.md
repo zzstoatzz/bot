@@ -27,28 +27,32 @@ Edit `.env` with your credentials:
 - `BLUESKY_HANDLE`: Your bot's Bluesky handle
 - `BLUESKY_PASSWORD`: App password (not your main password!)
 - `ANTHROPIC_API_KEY`: Your Anthropic key for AI responses
+- `TURBOPUFFER_API_KEY`: Your TurboPuffer key for memory storage
+- `OPENAI_API_KEY`: Your OpenAI key for embeddings (memory system)
 - `BOT_NAME`: Your bot's name (default: "Bot")
 - `PERSONALITY_FILE`: Path to personality markdown file (default: "personalities/phi.md")
 
 ## Current Features
 
-- ✅ Responds to mentions with placeholder or AI messages
+- ✅ Responds to mentions with AI-powered messages
 - ✅ Proper notification handling (no duplicates)
-- ✅ Graceful shutdown for hot-reload
-- ✅ AI integration with Anthropic Claude (when API key provided)
+- ✅ Graceful shutdown for hot-reload  
+- ✅ AI integration with Anthropic Claude
 - ✅ Thread-aware responses with full conversation context
 - ✅ Status page at `/status` showing activity and health
 - ✅ Web search capability (Google Custom Search API)
-- ✅ Content moderation with consistent responses
-- 🚧 Memory system (coming soon)
+- ✅ Content moderation with philosophical responses
+- ✅ Namespace-based memory system with TurboPuffer
+- ✅ Online/offline status in bio
 - 🚧 Self-modification capabilities (planned)
 
 ## Architecture
 
 - **FastAPI** web framework with async support
-- **pydantic-ai** for LLM agent management
-- **TurboPuffer** for scalable vector memory (planned)
+- **pydantic-ai** for LLM agent management  
+- **TurboPuffer** for scalable vector memory
 - **AT Protocol** for Bluesky integration
+- **SQLite** for thread context storage
 
 ## Development
 
@@ -62,6 +66,11 @@ just test-agent-search # Test agent with search capability
 just fmt       # Format code
 just status    # Check project status
 just test      # Run all tests
+
+# Memory management
+uv run scripts/init_core_memories.py      # Initialize core memories from personality
+uv run scripts/check_memory.py            # View current memory state
+uv run scripts/migrate_creator_memories.py # Migrate creator conversations
 ```
 
 ### Status Page
@@ -95,9 +104,20 @@ Built-in moderation filters:
 - Violence and threatening content detection
 - Consistent philosophical responses to moderated content
 
-## Memory Architecture
+## Memory System
 
-See `sandbox/memory_architecture_plan.md` for the planned memory system using TurboPuffer.
+The bot uses a namespace-based memory architecture with TurboPuffer:
+
+- **Core Memory** (`phi-core`): Personality, guidelines, and capabilities loaded from personality files
+- **User Memory** (`phi-users-{handle}`): Per-user conversation history and facts
+
+Key features:
+- Vector embeddings using OpenAI's text-embedding-3-small
+- Automatic context assembly for conversations
+- Character limits to prevent token overflow
+- User isolation through separate namespaces
+
+See `docs/memory-architecture.md` for detailed documentation.
 
 ## Troubleshooting
 
@@ -109,11 +129,26 @@ See `sandbox/memory_architecture_plan.md` for the planned memory system using Tu
 - Verify your `BLUESKY_HANDLE` and `BLUESKY_PASSWORD`
 - Make sure you're using an app password, not your main password
 
+## Project Structure
+
+```
+bot/
+├── src/bot/          # Main application code
+│   ├── agents/       # AI agent implementations
+│   ├── core/         # AT Protocol client and profile management
+│   ├── memory/       # TurboPuffer namespace memory system
+│   ├── services/     # Notification polling and message handling
+│   ├── tools/        # Google search tool
+│   └── main.py       # FastAPI application entry
+├── scripts/          # Utility scripts
+│   ├── test_bot.py   # Unified testing script (post, mention, search, thread)
+│   └── manage_memory.py # Memory management (init, check, migrate)
+├── personalities/    # Bot personality definitions
+├── docs/            # Architecture documentation
+├── sandbox/         # Reference project analysis
+└── tests/           # Test suite
+```
+
 ## Reference Projects
 
-This bot is inspired by:
-- **Void** by Cameron Pfiffer - Sophisticated memory system
-- **Penelope** by Hailey - Self-modifying capabilities
-- **Marvin Slackbot** - Multi-agent architecture
-
-See `sandbox/` for detailed analysis of each project.
+Inspired by [Void](https://tangled.sh/@cameron.pfiffer.org/void.git), [Penelope](https://github.com/haileyok/penelope), and [Marvin](https://github.com/PrefectHQ/marvin). See `sandbox/REFERENCE_PROJECTS.md` for details.

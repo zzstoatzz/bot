@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 from datetime import datetime
 
@@ -6,25 +7,39 @@ from fastapi.responses import HTMLResponse
 
 from bot.config import settings
 from bot.core.atproto_client import bot_client
+from bot.core.profile_manager import ProfileManager
 from bot.services.notification_poller import NotificationPoller
 from bot.status import bot_status
 from bot.templates import STATUS_PAGE_TEMPLATE
 
+logger = logging.getLogger("bot.main")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print(f"🤖 Starting bot as @{settings.bluesky_handle}")
+    logger.info(f"🤖 Starting bot as @{settings.bluesky_handle}")
 
+    # Authenticate first
+    await bot_client.authenticate()
+    
+    # Set up profile manager and mark as online
+    profile_manager = ProfileManager(bot_client.client)
+    await profile_manager.set_online_status(True)
+    
     poller = NotificationPoller(bot_client)
     await poller.start()
 
-    print("✅ Bot is online! Listening for mentions...")
+    logger.info("✅ Bot is online! Listening for mentions...")
 
     yield
 
-    print("🛑 Shutting down bot...")
+    logger.info("🛑 Shutting down bot...")
     await poller.stop()
-    print("👋 Bot shutdown complete")
+    
+    # Mark as offline before shutdown
+    await profile_manager.set_online_status(False)
+    
+    logger.info("👋 Bot shutdown complete")
     # The task is already cancelled by poller.stop(), no need to await it again
 
 

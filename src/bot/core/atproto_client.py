@@ -66,5 +66,15 @@ class BotClient:
             params={"q": query, "limit": limit}
         )
 
+    async def like_post(self, uri: str, cid: str):
+        """Like a post"""
+        await self.authenticate()
+        return self.client.like(uri=uri, cid=cid)
+
+    async def repost(self, uri: str, cid: str):
+        """Repost a post"""
+        await self.authenticate()
+        return self.client.repost(uri=uri, cid=cid)
+
 
 bot_client = BotClient()

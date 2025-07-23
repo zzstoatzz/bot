@@ -1,32 +1,37 @@
 [project]
 name = "bot"
-version = "0.1.0"
-description = "Add your description here"
+description = "a bluesky bot"
 readme = "README.md"
 authors = [{ name = "zzstoatzz", email = "thrast36@gmail.com" }]
 requires-python = ">=3.12"
+dynamic = ["version"]
 dependencies = [
-    "fastapi",
-    "uvicorn",
-    "atproto",
-    "pydantic-settings",
-    "pydantic-ai",
     "anthropic",
+    "atproto",
+    "fastapi",
     "httpx",
+    "openai",
+    "pydantic-ai",
+    "pydantic-settings",
+    "rich",
+    "turbopuffer",
+    "uvicorn",
 ]
+
+[tool.hatch.version]
+source = "vcs"
 
 [tool.ruff.lint]
 extend-select = ["I", "UP"]
 
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
 [tool.uv]
-dev-dependencies = [
-    "pytest>=8.0.0",
-    "pytest-asyncio>=0.24.0",
-    "ruff>=0.8.0",
-    "ty",
-]
+dev-dependencies = ["pytest-sugar", "pytest-asyncio", "ruff", "ty"]
 
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"

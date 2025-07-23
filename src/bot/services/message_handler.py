@@ -31,7 +31,7 @@ class MessageHandler:
             # Get the post that mentioned us
             posts = await self.client.get_posts([post_uri])
             if not posts.posts:
-                print(f"Could not find post {post_uri}")
+                logger.warning(f"Could not find post {post_uri}")
                 return
 
             post = posts.posts[0]
@@ -73,23 +73,43 @@ class MessageHandler:
             # Note: We pass the full text including @mention
             # In AT Protocol, mentions are structured as facets,
             # but the text representation includes them
-            reply_text = await self.response_generator.generate(
+            response = await self.response_generator.generate(
                 mention_text=mention_text,
                 author_handle=author_handle,
                 thread_context=thread_context,
             )
 
-            # Check if the agent decided to ignore this notification
-            if reply_text.startswith("IGNORED_NOTIFICATION::"):
-                # Parse the ignore signal
-                parts = reply_text.split("::")
-                category = parts[1] if len(parts) > 1 else "unknown"
-                reason = parts[2] if len(parts) > 2 else "no reason given"
-                print(
-                    f"🚫 Ignoring notification from @{author_handle} ({category}: {reason})"
-                )
+            # Handle structured response or legacy dict
+            if hasattr(response, 'action'):
+                action = response.action
+                reply_text = response.text
+                reason = response.reason
+            else:
+                # Legacy dict format
+                action = response.get('action', 'reply')
+                reply_text = response.get('text', '')
+                reason = response.get('reason', '')
+
+            # Handle different actions
+            if action == 'ignore':
+                logger.info(f"🚫 Ignoring notification from @{author_handle} ({reason})")
+                return
+            
+            elif action == 'like':
+                # Like the post
+                await self.client.like_post(uri=post_uri, cid=post.cid)
+                logger.info(f"💜 Liked post from @{author_handle}")
+                bot_status.record_response()
+                return
+            
+            elif action == 'repost':
+                # Repost the post
+                await self.client.repost(uri=post_uri, cid=post.cid)
+                logger.info(f"🔁 Reposted from @{author_handle}")
+                bot_status.record_response()
                 return
 
+            # Default to reply action
             reply_ref = models.AppBskyFeedPost.ReplyRef(
                 parent=parent_ref, root=root_ref
             )
@@ -103,17 +123,17 @@ class MessageHandler:
                     thread_uri=thread_uri,
                     author_handle=settings.bluesky_handle,
                     author_did=self.client.me.did if self.client.me else "bot",
-                    message_text=reply_text,
+                    message_text=reply_text or "",
                     post_uri=response.uri,
                 )
 
             # Record successful response
             bot_status.record_response()
 
-            print(f"✅ Replied to @{author_handle}: {reply_text}")
+            logger.info(f"✅ Replied to @{author_handle}: {reply_text or '(empty)'}")
 
         except Exception as e:
-            print(f"❌ Error handling mention: {e}")
+            logger.error(f"❌ Error handling mention: {e}")
             bot_status.record_error()
             import traceback
 

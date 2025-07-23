@@ -4,13 +4,26 @@ This is a python project that uses `uv` as python package manager, `fastapi` and
 
 Work from repo root whenever possible.
 
+## Python style
+- 3.10+ and complete typing (T | None preferred over Optional[T] and list[T] over typing.List[T])
+- use prefer functional over OOP
+- keep implementation details private and functions pure
+
 ## Project Structure
 
 - `src/bot/` - Main bot application code
-  - `core/` - Core functionality (AT Protocol client, response generation)
+  - `agents/` - Agents for the LLM
+  - `core/` - Core functionality (AT Protocol client functionality)
   - `services/` - Services (notification polling, message handling)
-  - `config.py` - Configuration using pydantic-settings
+  - `tools/` - Tools for the LLM
+  - `config.py` - Configuration
+  - `database.py` - Database functionality
   - `main.py` - FastAPI application entry point
+  - `personality.py` - Personality definition
+  - `response_generator.py` - Response generation
+  - `status.py` - One page status tracker
+  - `templates.py` - HTML templates
+
 - `tests/` - Test files
 - `scripts/` - Utility scripts (test_post.py, test_mention.py)
 - `sandbox/` - Documentation and analysis
@@ -19,31 +32,9 @@ Work from repo root whenever possible.
   - Implementation notes
 - `.eggs/` - Cloned reference projects (void, penelope, marvin)
 
-## Current State
-
-The bot has a working placeholder implementation that:
-- Authenticates with Bluesky using app password
-- Polls for mentions every 10 seconds
-- Responds with random placeholder messages
-- Properly marks notifications as read
-
-## Key Implementation Details
-
-### Notification Handling
-The bot uses Void's approach: capture timestamp BEFORE fetching notifications, then mark as seen using that timestamp. This prevents missing notifications that arrive during processing.
-
-### Response System
-Uses a Protocol-based ResponseGenerator that's easy to swap:
-- `PlaceholderResponseGenerator` - Current random messages
-- `LLMResponseGenerator` - Future pydantic-ai implementation
-
-### Next Steps
-1. Add TurboPuffer for memory
-2. Implement LLM-based responses
-3. Add memory context to responses
-4. Design bot personality
-
 ## Testing
 - Run bot: `just dev`
 - Test posting: `just test-post`
-- Test mentions: Need TEST_BLUESKY_HANDLE in .env, then mention @zzstoatzz.bsky.social
+
+## Important Development Guidelines
+- STOP DEFERRING IMPORTS. Put all imports at the top of the file unless there's a legitimate circular dependency issue. Deferred imports make code harder to understand and debug.

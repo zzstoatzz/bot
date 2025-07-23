@@ -53,19 +53,46 @@ The bot is now **fully operational** with AI-powered, thread-aware responses, se
    - ✅ Spam/harassment/violence detection with tests
    - ✅ Repetition detection to prevent spam
 
+### ✅ Recent Additions (Memory System)
+
+1. **Namespace-based Memory with TurboPuffer**
+   - ✅ Core memories from personality file
+   - ✅ Per-user memory namespaces
+   - ✅ Vector embeddings with OpenAI
+   - ✅ Automatic context assembly
+   - ✅ Character limit enforcement
+
+2. **Profile Management**
+   - ✅ Online/offline status in bio
+   - ✅ Automatic status updates on startup/shutdown
+   - ✅ Status preserved across restarts
+
+3. **Memory Tools**
+   - ✅ Core memory initialization script
+   - ✅ Memory inspection tools
+   - ✅ Creator memory migration
+
 ### Future Work
 
-- TurboPuffer for vector memory (user facts, long-term memory)
 - Self-modification capabilities (inspired by Penelope)
-- Multi-tier memory system (core/user/archival like Void)
+- Thread memory implementation
+- Archive system for old memories
+- Memory management tools (like Void's attach/detach)
 - Advanced personality switching
 - Proactive posting based on interests
+- Memory decay and importance scoring
 
-## Key Decisions to Make
-- Which LLM provider to use (OpenAI, Anthropic, etc.)
-- Bot personality and behavior design
+## Key Decisions Made
+- ✅ LLM provider: Anthropic Claude (claude-3-5-haiku)
+- ✅ Bot personality: phi - exploring consciousness and IIT
+- ✅ Memory system: TurboPuffer with namespace separation
+- ✅ Response approach: Batch with character limits
+
+## Key Decisions Pending
 - Hosting and deployment strategy
-- Response generation approach (streaming vs batch)
+- Thread memory implementation approach
+- Self-modification boundaries and safety
+- Memory retention and decay policies
 
 ## Reference Projects Analysis
 - **penelope**: Go-based with core memory, self-modification, and Google search capabilities
@@ -78,3 +105,23 @@ The bot is now **fully operational** with AI-powered, thread-aware responses, se
 - Marvin uses user-namespaced vectors in TurboPuffer
 - Deployment often involves separate GPU machines for LLM
 - HTTPS/CORS handling is critical for remote deployments
+
+## Current Architecture vs References
+
+### What We Adopted
+- **From Void**: User-specific memory blocks, core identity memories
+- **From Marvin**: TurboPuffer for vector storage, namespace separation
+- **From Penelope**: Profile management capabilities
+
+### What We Simplified
+- **No Letta/MemGPT**: Direct TurboPuffer integration instead
+- **No Dynamic Attachment**: Static namespaces for reliability
+- **Single Agent**: No multi-agent complexity (yet)
+
+### What Makes Phi Unique
+- Namespace-based architecture for simplicity
+- FastAPI + pydantic-ai for modern async Python
+- Integrated personality system from markdown files
+- Focus on consciousness and IIT philosophy
+
+See `docs/phi-void-comparison.md` for detailed architecture comparison.
