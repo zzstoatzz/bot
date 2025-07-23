@@ -19,11 +19,8 @@ class MessageHandler:
     async def handle_mention(self, notification):
         """Process a mention or reply notification"""
         try:
-            logger.debug(f"📨 Processing notification: reason={notification.reason}, uri={notification.uri}")
-            
             # Skip if not a mention or reply
             if notification.reason not in ["mention", "reply"]:
-                logger.debug(f"⏭️  Skipping notification with reason: {notification.reason}")
                 return
 
             post_uri = notification.uri
@@ -39,8 +36,6 @@ class MessageHandler:
             author_handle = post.author.handle
             author_did = post.author.did
             
-            logger.debug(f"📝 Post details: author=@{author_handle}, text='{mention_text}'")
-
             # Record mention received
             bot_status.record_mention()
 
@@ -77,6 +72,7 @@ class MessageHandler:
                 mention_text=mention_text,
                 author_handle=author_handle,
                 thread_context=thread_context,
+                thread_uri=thread_uri,
             )
 
             # Handle structured response or legacy dict

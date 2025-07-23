@@ -2,7 +2,7 @@ import logging
 from contextlib import asynccontextmanager
 from datetime import datetime
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 
 from bot.config import settings
@@ -10,7 +10,12 @@ from bot.core.atproto_client import bot_client
 from bot.core.profile_manager import ProfileManager
 from bot.services.notification_poller import NotificationPoller
 from bot.status import bot_status
-from bot.templates import STATUS_PAGE_TEMPLATE
+from bot.ui.context_capture import context_capture
+from bot.ui.templates import (
+    CONTEXT_VISUALIZATION_TEMPLATE,
+    STATUS_PAGE_TEMPLATE,
+    build_response_cards_html,
+)
 
 logger = logging.getLogger("bot.main")
 
@@ -19,13 +24,11 @@ logger = logging.getLogger("bot.main")
 async def lifespan(app: FastAPI):
     logger.info(f"🤖 Starting bot as @{settings.bluesky_handle}")
 
-    # Authenticate first
     await bot_client.authenticate()
-    
-    # Set up profile manager and mark as online
+
     profile_manager = ProfileManager(bot_client.client)
     await profile_manager.set_online_status(True)
-    
+
     poller = NotificationPoller(bot_client)
     await poller.start()
 
@@ -35,12 +38,10 @@ async def lifespan(app: FastAPI):
 
     logger.info("🛑 Shutting down bot...")
     await poller.stop()
-    
-    # Mark as offline before shutdown
+
     await profile_manager.set_online_status(False)
-    
+
     logger.info("👋 Bot shutdown complete")
-    # The task is already cancelled by poller.stop(), no need to await it again
 
 
 app = FastAPI(
@@ -97,3 +98,28 @@ async def status_page():
         last_response=format_time_ago(bot_status.last_response_time),
         errors=bot_status.errors,
     )
+
+
+@app.get("/context", response_class=HTMLResponse)
+async def context_visualization():
+    """Context visualization dashboard"""
+
+    recent_responses = context_capture.get_recent_responses(limit=20)
+    responses_html = build_response_cards_html(recent_responses)
+    return CONTEXT_VISUALIZATION_TEMPLATE.format(responses_html=responses_html)
+
+
+@app.get("/context/api/responses")
+async def get_responses():
+    """API endpoint for response context data"""
+    recent_responses = context_capture.get_recent_responses(limit=20)
+    return [context_capture.to_dict(resp) for resp in recent_responses]
+
+
+@app.get("/context/api/response/{response_id}")
+async def get_response_context(response_id: str):
+    """Get context for a specific response"""
+
+    if not (response_context := context_capture.get_response_context(response_id)):
+        raise HTTPException(status_code=404, detail="Response not found")
+    return context_capture.to_dict(response_context)

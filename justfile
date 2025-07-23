@@ -2,6 +2,11 @@
 dev:
     uv run uvicorn src.bot.main:app --reload
 
+context:
+    @echo "🧠 Context visualization available at:"
+    @echo "   http://localhost:8000/context"
+    @echo "   (mention phi first to see context data)"
+
 test:
     uv run pytest tests/ -v
 
@@ -11,7 +16,10 @@ fmt:
 lint:
     uv run ruff check src/ scripts/ tests/
 
-check: lint test
+typecheck:
+    uv run ty check src/ scripts/ tests/
+
+check: lint typecheck test
 
 # Bot testing utilities
 test-post:

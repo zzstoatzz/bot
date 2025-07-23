@@ -62,8 +62,10 @@ class NamespaceMemory:
         return self.client.namespace(ns_name)
 
     def _generate_id(self, namespace: str, label: str, content: str = "") -> str:
-        """Generate deterministic ID for memory entry"""
-        data = f"{namespace}-{label}-{content[:50]}-{datetime.now().date()}"
+        """Generate unique ID for memory entry"""
+        # Use timestamp for uniqueness, not just date
+        timestamp = datetime.now().isoformat()
+        data = f"{namespace}-{label}-{timestamp}-{content}"
         return hashlib.sha256(data.encode()).hexdigest()[:16]
 
     async def _get_embedding(self, text: str) -> list[float]:
@@ -169,17 +171,26 @@ class NamespaceMemory:
         )
 
     async def get_user_memories(
-        self, user_handle: str, limit: int = 50
+        self, user_handle: str, limit: int = 50, query: str | None = None
     ) -> list[MemoryEntry]:
-        """Get memories for a specific user"""
+        """Get memories for a specific user, optionally filtered by semantic search"""
         user_ns = self.get_user_namespace(user_handle)
 
         try:
-            response = user_ns.query(
-                rank_by=("vector", "ANN", [0.5] * 1536),
-                top_k=limit,
-                include_attributes=["type", "content", "created_at"],
-            )
+            # Use semantic search if query provided, otherwise chronological
+            if query:
+                query_embedding = await self._get_embedding(query)
+                response = user_ns.query(
+                    rank_by=("vector", "ANN", query_embedding),
+                    top_k=limit,
+                    include_attributes=["type", "content", "created_at"],
+                )
+            else:
+                response = user_ns.query(
+                    rank_by=None,  # No ranking, we'll sort by date
+                    top_k=limit * 2,  # Get more, then sort
+                    include_attributes=["type", "content", "created_at"],
+                )
 
             entries = []
             if response.rows:
@@ -203,7 +214,7 @@ class NamespaceMemory:
 
     # Main method used by the bot
     async def build_conversation_context(
-        self, user_handle: str, include_core: bool = True
+        self, user_handle: str, include_core: bool = True, query: str | None = None
     ) -> str:
         """Build complete context for a conversation"""
         parts = []
@@ -222,7 +233,7 @@ class NamespaceMemory:
                     parts.append(f"[{label}] {mem.content}")
 
         # User-specific memories
-        user_memories = await self.get_user_memories(user_handle)
+        user_memories = await self.get_user_memories(user_handle, query=query)
         if user_memories:
             parts.append(f"\n[USER CONTEXT - @{user_handle}]")
             for mem in user_memories[:10]:  # Most recent 10

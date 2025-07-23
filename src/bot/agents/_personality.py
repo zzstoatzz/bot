@@ -1,6 +1,5 @@
 """Internal personality loading for agents"""
 
-import asyncio
 import logging
 import os
 from pathlib import Path
@@ -12,8 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 def load_personality() -> str:
-    """Load personality from file and dynamic memory"""
-    # Start with file-based personality as base
+    """Load base personality from file"""
     personality_path = Path(settings.personality_file)
     
     base_content = ""
@@ -23,43 +21,38 @@ def load_personality() -> str:
         except Exception as e:
             logger.error(f"Error loading personality file: {e}")
     
-    # Try to enhance with dynamic memory if available
-    if settings.turbopuffer_api_key and os.getenv("OPENAI_API_KEY"):
-        try:
-            # Create memory instance synchronously for now
-            memory = NamespaceMemory(api_key=settings.turbopuffer_api_key)
-            
-            # Get core memories synchronously (blocking for initial load)
-            loop = asyncio.new_event_loop()
-            core_memories = loop.run_until_complete(memory.get_core_memories())
-            loop.close()
-            
-            # Build personality from memories
-            personality_sections = []
-            
-            # Add base content if any
-            if base_content:
-                personality_sections.append(base_content)
-            
-            # Add dynamic personality sections
-            for mem in core_memories:
-                if mem.memory_type.value == "personality":
-                    label = mem.metadata.get("label", "")
-                    if label:
-                        personality_sections.append(f"## {label}\n{mem.content}")
-                    else:
-                        personality_sections.append(mem.content)
-            
-            final_personality = "\n\n".join(personality_sections)
-            
-        except Exception as e:
-            logger.warning(f"Could not load dynamic personality: {e}")
-            final_personality = base_content
+    if base_content:
+        return f"{base_content}\n\nRemember: My handle is @{settings.bluesky_handle}. Keep responses under 300 characters for Bluesky."
     else:
-        final_personality = base_content
+        return f"I am a bot on Bluesky. My handle is @{settings.bluesky_handle}. I keep responses under 300 characters for Bluesky."
+
+
+async def load_dynamic_personality() -> str:
+    """Load personality with focused enhancements (no duplication)"""
+    # Start with base personality
+    base_content = load_personality()
     
-    # Always add handle and length reminder
-    if final_personality:
-        return f"{final_personality}\n\nRemember: My handle is @{settings.bluesky_handle}. Keep responses under 300 characters for Bluesky."
-    else:
-        return f"I am a bot on Bluesky. My handle is @{settings.bluesky_handle}. I keep responses under 300 characters."
+    if not (settings.turbopuffer_api_key and os.getenv("OPENAI_API_KEY")):
+        return base_content
+    
+    try:
+        memory = NamespaceMemory(api_key=settings.turbopuffer_api_key)
+        enhancements = []
+        
+        # Look for personality evolution (changes/growth only)
+        core_memories = await memory.get_core_memories()
+        for mem in core_memories:
+            label = mem.metadata.get("label", "")
+            # Only add evolution and current_state, not duplicates
+            if label in ["evolution", "current_state"] and mem.metadata.get("type") == "personality":
+                enhancements.append(f"## {label}\n{mem.content}")
+        
+        # Add enhancements if any
+        if enhancements:
+            return f"{base_content}\n\n{''.join(enhancements)}"
+        else:
+            return base_content
+            
+    except Exception as e:
+        logger.warning(f"Could not load personality enhancements: {e}")
+        return base_content

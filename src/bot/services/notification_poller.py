@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 import time
 
@@ -48,12 +49,14 @@ class NotificationPoller:
             try:
                 await self._check_notifications()
             except Exception as e:
+                # Compact error handling (12-factor principle #9)
                 logger.error(f"Error in notification poll: {e}")
                 bot_status.record_error()
                 if settings.debug:
                     import traceback
-
                     traceback.print_exc()
+                # Continue polling - don't let one error stop the bot
+                continue
 
             # Sleep with proper cancellation handling
             try:
@@ -102,18 +105,17 @@ class NotificationPoller:
         for notification in reversed(notifications):
             # Skip if already seen or processed
             if notification.is_read or notification.uri in self._processed_uris:
-                logger.debug(f"⏭️  Skipping already processed: {notification.uri}")
                 continue
 
-            logger.debug(f"🔍 Found notification: reason={notification.reason}, uri={notification.uri}")
-            
             if notification.reason in ["mention", "reply"]:
+                logger.debug(f"🔍 Processing {notification.reason} notification")
                 # Process mentions and replies in threads
                 self._processed_uris.add(notification.uri)
                 await self.handler.handle_mention(notification)
                 processed_any_mentions = True
             else:
-                logger.debug(f"⏭️  Ignoring notification type: {notification.reason}")
+                # Silently ignore other notification types
+                pass
 
         # Mark all notifications as seen using the initial timestamp
         # This ensures we don't miss any that arrived during processing
@@ -133,12 +135,12 @@ class NotificationPoller:
             from bot.core.dm_approval import process_dm_for_approval, check_pending_approvals, notify_operator_of_pending
             from bot.personality import process_approved_changes
             
-            # Check if we have pending approvals
+            # Check if we have pending approvals (include all for DM checking)
             pending = check_pending_approvals()
             if not pending:
                 return
             
-            logger.debug(f"Checking DMs for {len(pending)} pending approvals")
+            # Check DMs for pending approvals
             
             # Get recent DMs
             chat_client = self.client.client.with_bsky_chat_proxy()
@@ -164,7 +166,7 @@ class NotificationPoller:
                             break
                     
                     if sender_handle:
-                        logger.debug(f"DM from @{sender_handle}: {msg.text[:50]}...")
+                        # Process DM from operator
                         # Mark this message as processed
                         self._processed_dm_ids.add(msg.id)
                         
@@ -185,7 +187,7 @@ class NotificationPoller:
                                 chat_client.chat.bsky.convo.update_read(
                                     data={"convoId": convo.id}
                                 )
-                                logger.debug(f"Marked conversation {convo.id} as read")
+                                pass  # Successfully marked as read
                             except Exception as e:
                                 logger.warning(f"Failed to mark conversation as read: {e}")
             
@@ -194,13 +196,72 @@ class NotificationPoller:
                 changes = await process_approved_changes(self.handler.response_generator.memory)
                 if changes:
                     logger.info(f"Applied {changes} approved personality changes")
+                
+                # Notify threads about applied changes
+                await self._notify_threads_about_approvals()
             
             # Notify operator of new pending approvals
-            if len(pending) > 0:
-                await notify_operator_of_pending(self.client, self._notified_approval_ids)
-                # Add all pending IDs to notified set
-                for approval in pending:
-                    self._notified_approval_ids.add(approval["id"])
+            # Use database to track what's been notified instead of in-memory set
+            from bot.database import thread_db
+            unnotified = thread_db.get_pending_approvals(include_notified=False)
+            if unnotified:
+                await notify_operator_of_pending(self.client, None)  # Let DB handle tracking
+                # Mark as notified in database
+                thread_db.mark_operator_notified([a["id"] for a in unnotified])
                 
         except Exception as e:
             logger.warning(f"DM approval check failed: {e}")
+    
+    async def _notify_threads_about_approvals(self):
+        """Notify threads about applied personality changes"""
+        try:
+            from bot.database import thread_db
+            import json
+            
+            # Get approvals that need notification
+            approvals = thread_db.get_recently_applied_approvals()
+            
+            for approval in approvals:
+                try:
+                    data = json.loads(approval["request_data"])
+                    
+                    # Create notification message
+                    message = f"✅ personality update applied: {data.get('section', 'unknown')} has been updated"
+                    
+                    # Get the original post to construct proper reply
+                    from atproto_client import models
+                    thread_uri = approval["thread_uri"]
+                    
+                    # Get the post data to extract CID
+                    posts_response = self.client.client.get_posts([thread_uri])
+                    if not posts_response.posts:
+                        logger.error(f"Could not find post at {thread_uri}")
+                        continue
+                    
+                    original_post = posts_response.posts[0]
+                    
+                    # Create StrongRef with the actual CID
+                    parent_ref = models.ComAtprotoRepoStrongRef.Main(
+                        uri=thread_uri, cid=original_post.cid
+                    )
+                    
+                    # For thread notifications, parent and root are the same
+                    reply_ref = models.AppBskyFeedPost.ReplyRef(
+                        parent=parent_ref, root=parent_ref
+                    )
+                    
+                    # Post to the thread
+                    await self.client.create_post(
+                        text=message,
+                        reply_to=reply_ref
+                    )
+                    
+                    # Mark as notified
+                    thread_db.mark_approval_notified(approval["id"])
+                    logger.info(f"Notified thread about approval #{approval['id']}")
+                    
+                except Exception as e:
+                    logger.error(f"Failed to notify thread for approval #{approval['id']}: {e}")
+                    
+        except Exception as e:
+            logger.warning(f"Thread notification check failed: {e}")

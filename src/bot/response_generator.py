@@ -1,12 +1,13 @@
 """Response generation for the bot"""
 
 import logging
-import os
 import random
 
+from bot.agents._personality import load_dynamic_personality, load_personality
 from bot.config import settings
-from bot.memory import MemoryType, NamespaceMemory
+from bot.memory import MemoryType
 from bot.status import bot_status
+from bot.ui.context_capture import context_capture
 
 logger = logging.getLogger("bot.response")
 
@@ -52,14 +53,35 @@ class ResponseGenerator:
                 self.memory = None
 
     async def generate(
-        self, mention_text: str, author_handle: str, thread_context: str = ""
+        self, mention_text: str, author_handle: str, thread_context: str = "", thread_uri: str | None = None
     ):
         """Generate a response to a mention"""
+        # Capture context components for visualization
+        components = []
+        
+        # 1. Base personality (always present)
+        base_personality = load_personality()
+        components.append({
+            "name": "Base Personality",
+            "type": "personality",
+            "content": base_personality,
+            "metadata": {"source": "personalities/phi.md"}
+        })
+        
         # Enhance thread context with memory if available
         enhanced_context = thread_context
 
         if self.memory and self.agent:
             try:
+                # 2. Dynamic personality memories
+                dynamic_personality = await load_dynamic_personality()
+                components.append({
+                    "name": "Dynamic Personality",
+                    "type": "personality", 
+                    "content": dynamic_personality,
+                    "metadata": {"source": "TurboPuffer core memories"}
+                })
+                
                 # Store the incoming message
                 await self.memory.store_user_memory(
                     author_handle,
@@ -67,19 +89,46 @@ class ResponseGenerator:
                     MemoryType.CONVERSATION,
                 )
 
-                # Build conversation context
+                # Build conversation context with semantic search
                 memory_context = await self.memory.build_conversation_context(
-                    author_handle, include_core=True
+                    author_handle, include_core=True, query=mention_text
                 )
                 enhanced_context = f"{thread_context}\n\n{memory_context}".strip()
                 logger.info("📚 Enhanced context with memories")
+                
+                # 3. User-specific memories (if any)
+                user_memories = await self.memory.build_conversation_context(author_handle, include_core=False, query=mention_text)
+                if user_memories and user_memories.strip():
+                    components.append({
+                        "name": f"User Memories (@{author_handle})",
+                        "type": "memory",
+                        "content": user_memories,
+                        "metadata": {"user": author_handle, "source": "TurboPuffer user namespace"}
+                    })
 
             except Exception as e:
                 logger.warning(f"Memory enhancement failed: {e}")
 
+        # 4. Thread context (if available)
+        if thread_context and thread_context != "No previous messages in this thread.":
+            components.append({
+                "name": "Thread Context",
+                "type": "thread",
+                "content": thread_context,
+                "metadata": {"thread_uri": thread_uri}
+            })
+
+        # 5. Current mention
+        components.append({
+            "name": "Current Mention",
+            "type": "mention",
+            "content": f"@{author_handle} said: {mention_text}",
+            "metadata": {"author": author_handle, "thread_uri": thread_uri}
+        })
+
         if self.agent:
             response = await self.agent.generate_response(
-                mention_text, author_handle, enhanced_context
+                mention_text, author_handle, enhanced_context, thread_uri
             )
 
             # Store bot's response in memory if available
@@ -98,7 +147,28 @@ class ResponseGenerator:
                 except Exception as e:
                     logger.warning(f"Failed to store bot response: {e}")
 
+            # Capture context for visualization
+            response_text = response.text if hasattr(response, 'text') else str(response.get('text', '[no text]'))
+            context_capture.capture_response_context(
+                mention_text=mention_text,
+                author_handle=author_handle,
+                thread_uri=thread_uri,
+                generated_response=response_text,
+                components=components
+            )
+
             return response
         else:
             # Return a simple dict for placeholder responses
-            return {"action": "reply", "text": random.choice(PLACEHOLDER_RESPONSES)}
+            placeholder_text = random.choice(PLACEHOLDER_RESPONSES)
+            
+            # Still capture context for placeholders
+            context_capture.capture_response_context(
+                mention_text=mention_text,
+                author_handle=author_handle,
+                thread_uri=thread_uri,
+                generated_response=placeholder_text,
+                components=components
+            )
+            
+            return {"action": "reply", "text": placeholder_text}

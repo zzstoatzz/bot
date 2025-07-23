@@ -73,3 +73,58 @@ Environment variables in `.env`:
 3. **Markdown personalities** for rich, maintainable definitions
 4. **Thread-aware** responses with full conversation context
 5. **Graceful degradation** when services unavailable
+
+## Memory Architecture
+
+### Design Principles
+- **No duplication**: Each memory block has ONE clear purpose
+- **Focused content**: Only store what enhances the base personality
+- **User isolation**: Per-user memories in separate namespaces
+
+### Memory Types
+
+1. **Base Personality** (`personalities/phi.md`)
+   - Static file containing core identity, style, boundaries
+   - Always loaded as system prompt
+   - ~3,000 characters
+
+2. **Dynamic Enhancements** (TurboPuffer)
+   - `evolution`: Personality growth and changes over time
+   - `current_state`: Bot's current self-reflection
+   - Only contains ADDITIONS, not duplicates
+
+3. **User Memories** (`phi-users-{handle}`)
+   - Conversation history with each user
+   - User-specific facts and preferences
+   - Isolated per user for privacy
+
+### Context Budget
+- Base personality: ~3,000 chars
+- Dynamic enhancements: ~500 chars
+- User memories: ~500 chars
+- **Total**: ~4,000 chars (efficient!)
+
+## Personality System
+
+### Self-Modification Boundaries
+
+1. **Free to modify**:
+   - Add new interests
+   - Update current state/reflection
+   - Learn user preferences
+
+2. **Requires operator approval**:
+   - Core identity changes
+   - Boundary modifications
+   - Communication style overhauls
+
+### Approval Workflow
+1. Bot detects request for protected change
+2. Creates approval request in database
+3. DMs operator (@alternatebuild.dev) for approval
+4. Operator responds naturally (no rigid format)
+5. Bot interprets response using LLM
+6. Applies approved changes to memory
+7. Notifies original thread of update
+
+This event-driven system follows 12-factor-agents principles for reliable async processing.

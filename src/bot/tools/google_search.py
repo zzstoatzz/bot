@@ -1,6 +1,10 @@
+import logging
+
 import httpx
 
 from bot.config import settings
+
+logger = logging.getLogger("bot.tools")
 
 
 async def search_google(query: str, num_results: int = 3) -> str:
@@ -32,4 +36,6 @@ async def search_google(query: str, num_results: int = 3) -> str:
             return "\n\n".join(results) if results else "No search results found"
 
         except Exception as e:
-            return f"Search error: {str(e)}"
+            logger.error(f"Search failed: {e}")
+            # 12-factor principle #4: Tools should throw errors, not return error strings
+            raise

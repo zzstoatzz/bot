@@ -1,6 +1,7 @@
 from atproto import Client
 
 from bot.config import settings
+from bot.core.rich_text import create_facets
 
 
 class BotClient:
@@ -37,15 +38,17 @@ class BotClient:
         self.client.app.bsky.notification.update_seen({"seenAt": seen_at})
 
     async def create_post(self, text: str, reply_to=None):
-        """Create a new post or reply using the simpler send_post method"""
+        """Create a new post or reply with rich text support"""
         await self.authenticate()
 
-        # Use the client's send_post method which handles all the details
+        # Create facets for mentions and URLs
+        facets = create_facets(text, self.client)
+        
+        # Use send_post with facets
         if reply_to:
-            # Build proper reply reference if needed
-            return self.client.send_post(text=text, reply_to=reply_to)
+            return self.client.send_post(text=text, reply_to=reply_to, facets=facets)
         else:
-            return self.client.send_post(text=text)
+            return self.client.send_post(text=text, facets=facets)
 
     async def get_thread(self, uri: str, depth: int = 10):
         """Get a thread by URI"""
@@ -77,4 +80,4 @@ class BotClient:
         return self.client.repost(uri=uri, cid=cid)
 
 
-bot_client = BotClient()
+bot_client: BotClient = BotClient()

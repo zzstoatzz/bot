@@ -1,14 +1,22 @@
-# Bluesky Bot
+# phi 🧠
 
-A virtual person for Bluesky powered by LLMs, built with FastAPI and pydantic-ai.
+a bot inspired by IIT and [Void](https://tangled.sh/@cameron.pfiffer.org/void). Built with `fastapi`, `pydantic-ai`, and `atproto`.
 
 ## Quick Start
+
+### Prerequisites
+
+- `uv`
+- `just`
+- `turbopuffer` (see [turbopuffer](https://github.com/turbopuffer/turbopuffer))
+- `openai` (for embeddings)
+- `anthropic` (for chat completion)
 
 Get your bot running in 5 minutes:
 
 ```bash
 # Clone and install
-git clone <repo>
+git clone https://github.com/zzstoatzz/bot
 cd bot
 uv sync
 
@@ -44,7 +52,9 @@ Edit `.env` with your credentials:
 - ✅ Content moderation with philosophical responses
 - ✅ Namespace-based memory system with TurboPuffer
 - ✅ Online/offline status in bio
-- 🚧 Self-modification capabilities (planned)
+- ✅ Self-modification with operator approval system
+- ✅ Context visualization at `/context`
+- ✅ Semantic search in user memories
 
 ## Architecture
 
@@ -59,28 +69,38 @@ Edit `.env` with your credentials:
 ```bash
 just           # Show available commands
 just dev       # Run with hot-reload
-just test-post # Test posting capabilities
-just test-thread # Test thread context database
-just test-search # Test web search
-just test-agent-search # Test agent with search capability
+just check     # Run linting, type checking, and tests
 just fmt       # Format code
-just status    # Check project status
-just test      # Run all tests
+just lint      # Run ruff linter
+just typecheck # Run ty type checker
+just test      # Run test suite
+
+# Bot testing utilities
+just test-post    # Test posting to Bluesky
+just test-mention # Test mention handling
+just test-search  # Test web search
+just test-thread  # Test thread context
+just test-dm      # Test DM functionality
 
 # Memory management
-uv run scripts/init_core_memories.py      # Initialize core memories from personality
-uv run scripts/check_memory.py            # View current memory state
-uv run scripts/migrate_creator_memories.py # Migrate creator conversations
+just memory-init   # Initialize core memories
+just memory-check  # View current memory state
+just memory-migrate # Migrate memories
 ```
 
-### Status Page
+### Web Interface
 
-Visit http://localhost:8000/status while the bot is running to see:
+**Status Page** (http://localhost:8000/status)
 - Current bot status and uptime
 - Mentions received and responses sent
 - AI mode (enabled/placeholder)
 - Last activity timestamps
 - Error count
+
+**Context Visualization** (http://localhost:8000/context)
+- View all context components that flow into responses
+- Inspect personality, memories, thread context
+- Debug why the bot responded a certain way
 
 ## Personality System
 
@@ -149,6 +169,30 @@ bot/
 └── tests/           # Test suite
 ```
 
+## Self-Modification System
+
+Phi can evolve its personality with built-in safety boundaries:
+
+- **Free Evolution**: Interests and current state update automatically
+- **Guided Evolution**: Communication style changes need validation
+- **Operator Approval**: Core identity and boundaries require explicit approval via DM
+
+The bot will notify its operator (@alternatebuild.dev) when approval is needed.
+
+## Type Checking
+
+This project uses [ty](https://github.com/astral-sh/ty), an extremely fast Rust-based type checker:
+
+```bash
+just typecheck  # Type check all code
+uv run ty check src/  # Check specific directories
+```
+
 ## Reference Projects
 
-Inspired by [Void](https://tangled.sh/@cameron.pfiffer.org/void.git), [Penelope](https://github.com/haileyok/penelope), and [Marvin](https://github.com/PrefectHQ/marvin). See `sandbox/REFERENCE_PROJECTS.md` for details.
+Inspired by:
+- [Void](https://tangled.sh/@cameron.pfiffer.org/void.git) - Letta/MemGPT architecture
+- [Penelope](https://github.com/haileyok/penelope) - Self-modification patterns
+- [Marvin](https://github.com/PrefectHQ/marvin) - pydantic-ai patterns
+
+Reference implementations are cloned to `.eggs/` for learning.

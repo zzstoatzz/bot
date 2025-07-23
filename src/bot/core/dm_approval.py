@@ -35,8 +35,13 @@ class ApprovalDecision(BaseModel):
     interpretation: str  # Brief explanation of why this decision was made
 
 
-def create_approval_request(request_type: str, request_data: dict) -> int:
+def create_approval_request(request_type: str, request_data: dict, thread_uri: str | None = None) -> int:
     """Create a new approval request in the database
+    
+    Args:
+        request_type: Type of approval request
+        request_data: Data for the request
+        thread_uri: Optional thread URI to notify after approval
     
     Returns the approval request ID
     """
@@ -46,7 +51,8 @@ def create_approval_request(request_type: str, request_data: dict) -> int:
         
         approval_id = thread_db.create_approval_request(
             request_type=request_type,
-            request_data=json.dumps(request_data)
+            request_data=json.dumps(request_data),
+            thread_uri=thread_uri
         )
         
         logger.info(f"Created approval request #{approval_id} for {request_type}")
@@ -57,9 +63,9 @@ def create_approval_request(request_type: str, request_data: dict) -> int:
         return 0
 
 
-def check_pending_approvals() -> list[dict]:
+def check_pending_approvals(include_notified: bool = True) -> list[dict]:
     """Get all pending approval requests"""
-    return thread_db.get_pending_approvals()
+    return thread_db.get_pending_approvals(include_notified=include_notified)
 
 
 async def process_dm_for_approval(dm_text: str, sender_handle: str, message_timestamp: str, notification_timestamp: str | None = None) -> list[int]:
@@ -106,7 +112,7 @@ async def process_dm_for_approval(dm_text: str, sender_handle: str, message_time
                 break
         
         if not relevant_approval:
-            logger.debug(f"Message '{dm_text[:30]}...' is not recent enough to be an approval response")
+            # Message is too old to be an approval response
             return []
     except Exception as e:
         logger.warning(f"Could not parse timestamps: {e}")
@@ -152,7 +158,8 @@ Interpret whether this response approves or denies the request."""
             status = "approved" if decision.approved else "denied"
             logger.info(f"Request #{approval_id} {status} ({decision.confidence} confidence): {decision.interpretation}")
         else:
-            logger.debug(f"Low confidence for request #{approval_id}: {decision.interpretation}")
+            # Low confidence interpretation - skip
+            pass
     
     return processed
 
@@ -164,17 +171,10 @@ async def notify_operator_of_pending(client, notified_ids: set | None = None):
         client: The bot client
         notified_ids: Set of approval IDs we've already notified about
     """
-    pending = check_pending_approvals()
-    if not pending:
-        return
-    
-    # Filter out approvals we've already notified about
-    if notified_ids is not None:
-        new_pending = [a for a in pending if a["id"] not in notified_ids]
-        if not new_pending:
-            return  # Nothing new to notify about
-    else:
-        new_pending = pending
+    # Get only unnotified pending approvals
+    new_pending = check_pending_approvals(include_notified=False)
+    if not new_pending:
+        return  # Nothing new to notify about
     
     try:
         chat_client = client.client.with_bsky_chat_proxy()
