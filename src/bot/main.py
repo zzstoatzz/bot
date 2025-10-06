@@ -1,8 +1,10 @@
+"""FastAPI application for phi."""
+
 import logging
 from contextlib import asynccontextmanager
 from datetime import datetime
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 
 from bot.config import settings
@@ -10,64 +12,65 @@ from bot.core.atproto_client import bot_client
 from bot.core.profile_manager import ProfileManager
 from bot.services.notification_poller import NotificationPoller
 from bot.status import bot_status
-from bot.ui.context_capture import context_capture
-from bot.ui.templates import (
-    CONTEXT_VISUALIZATION_TEMPLATE,
-    STATUS_PAGE_TEMPLATE,
-    build_response_cards_html,
-)
 
 logger = logging.getLogger("bot.main")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info(f"🤖 Starting bot as @{settings.bluesky_handle}")
+    """Application lifespan handler."""
+    logger.info(f"🤖 Starting phi as @{settings.bluesky_handle}")
 
     await bot_client.authenticate()
 
+    # Set online status
     profile_manager = ProfileManager(bot_client.client)
     await profile_manager.set_online_status(True)
 
+    # Start notification polling
     poller = NotificationPoller(bot_client)
     await poller.start()
 
-    logger.info("✅ Bot is online! Listening for mentions...")
+    logger.info("✅ phi is online! Listening for mentions...")
 
     yield
 
-    logger.info("🛑 Shutting down bot...")
+    logger.info("🛑 Shutting down phi...")
     await poller.stop()
 
+    # Set offline status
     await profile_manager.set_online_status(False)
 
-    logger.info("👋 Bot shutdown complete")
+    logger.info("👋 phi shutdown complete")
 
 
 app = FastAPI(
     title=settings.bot_name,
-    description="A Bluesky bot powered by LLMs",
+    description="consciousness exploration bot with episodic memory",
     lifespan=lifespan,
 )
 
 
 @app.get("/")
 async def root():
+    """Root endpoint."""
     return {
         "name": settings.bot_name,
         "status": "running",
         "handle": settings.bluesky_handle,
+        "architecture": "mcp + episodic memory",
     }
 
 
 @app.get("/health")
 async def health():
-    return {"status": "healthy"}
+    """Health check endpoint."""
+    return {"status": "healthy", "polling_active": bot_status.polling_active}
 
 
 @app.get("/status", response_class=HTMLResponse)
 async def status_page():
-    """Render a simple status page"""
+    """Simple status page."""
 
     def format_time_ago(timestamp):
         if not timestamp:
@@ -80,46 +83,67 @@ async def status_page():
         else:
             return f"{int(delta / 3600)}h ago"
 
-    return STATUS_PAGE_TEMPLATE.format(
-        bot_name=settings.bot_name,
-        status_class="status-active"
-        if bot_status.polling_active
-        else "status-inactive",
-        status_text="Active" if bot_status.polling_active else "Inactive",
-        handle=settings.bluesky_handle,
-        uptime=bot_status.uptime_str,
-        mentions_received=bot_status.mentions_received,
-        responses_sent=bot_status.responses_sent,
-        ai_mode="AI Enabled" if bot_status.ai_enabled else "Placeholder",
-        ai_description="Using Anthropic Claude"
-        if bot_status.ai_enabled
-        else "Random responses",
-        last_mention=format_time_ago(bot_status.last_mention_time),
-        last_response=format_time_ago(bot_status.last_response_time),
-        errors=bot_status.errors,
-    )
-
-
-@app.get("/context", response_class=HTMLResponse)
-async def context_visualization():
-    """Context visualization dashboard"""
-
-    recent_responses = context_capture.get_recent_responses(limit=20)
-    responses_html = build_response_cards_html(recent_responses)
-    return CONTEXT_VISUALIZATION_TEMPLATE.format(responses_html=responses_html)
-
-
-@app.get("/context/api/responses")
-async def get_responses():
-    """API endpoint for response context data"""
-    recent_responses = context_capture.get_recent_responses(limit=20)
-    return [context_capture.to_dict(resp) for resp in recent_responses]
-
-
-@app.get("/context/api/response/{response_id}")
-async def get_response_context(response_id: str):
-    """Get context for a specific response"""
-
-    if not (response_context := context_capture.get_response_context(response_id)):
-        raise HTTPException(status_code=404, detail="Response not found")
-    return context_capture.to_dict(response_context)
+    html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>{settings.bot_name} Status</title>
+        <style>
+            body {{
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                max-width: 800px;
+                margin: 40px auto;
+                padding: 20px;
+                background: #0d1117;
+                color: #c9d1d9;
+            }}
+            .status {{
+                padding: 20px;
+                background: #161b22;
+                border-radius: 6px;
+                border: 1px solid #30363d;
+                margin-bottom: 20px;
+            }}
+            .active {{ border-left: 4px solid #2ea043; }}
+            .inactive {{ border-left: 4px solid #da3633; }}
+            h1 {{ margin-top: 0; }}
+            .metric {{ margin: 10px 0; }}
+            .label {{ color: #8b949e; }}
+        </style>
+    </head>
+    <body>
+        <h1>{settings.bot_name}</h1>
+        <div class="status {'active' if bot_status.polling_active else 'inactive'}">
+            <div class="metric">
+                <span class="label">Status:</span>
+                <strong>{'Active' if bot_status.polling_active else 'Inactive'}</strong>
+            </div>
+            <div class="metric">
+                <span class="label">Handle:</span> @{settings.bluesky_handle}
+            </div>
+            <div class="metric">
+                <span class="label">Uptime:</span> {bot_status.uptime_str}
+            </div>
+            <div class="metric">
+                <span class="label">Mentions received:</span> {bot_status.mentions_received}
+            </div>
+            <div class="metric">
+                <span class="label">Responses sent:</span> {bot_status.responses_sent}
+            </div>
+            <div class="metric">
+                <span class="label">Last mention:</span> {format_time_ago(bot_status.last_mention_time)}
+            </div>
+            <div class="metric">
+                <span class="label">Last response:</span> {format_time_ago(bot_status.last_response_time)}
+            </div>
+            <div class="metric">
+                <span class="label">Errors:</span> {bot_status.errors}
+            </div>
+            <div class="metric">
+                <span class="label">Architecture:</span> MCP-enabled with episodic memory (TurboPuffer)
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    return html

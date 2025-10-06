@@ -7,13 +7,15 @@ requires-python = ">=3.12"
 dynamic = ["version"]
 dependencies = [
     "anthropic",
-    "atproto",
+    "atproto@git+https://github.com/MarshalX/atproto.git@refs/pull/605/head",
     "fastapi",
     "fastmcp>=0.8.0",
     "httpx",
+    "openai",
     "pydantic-ai",
     "pydantic-settings",
     "rich",
+    "turbopuffer",
     "uvicorn",
     "websockets>=15.0.1",
 ]
@@ -36,6 +38,9 @@ dev-dependencies = [
  "ty",
 ]
 
+
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [build-system]
 requires = ["hatchling", "hatch-vcs"]

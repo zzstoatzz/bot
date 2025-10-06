@@ -1,25 +1,28 @@
+"""Message handler using MCP-enabled agent."""
+
 import logging
 
-from atproto import models
+from atproto_client import models
 
+from bot.agent import PhiAgent
 from bot.config import settings
 from bot.core.atproto_client import BotClient
 from bot.database import thread_db
-from bot.response_generator import ResponseGenerator
 from bot.status import bot_status
 
 logger = logging.getLogger("bot.handler")
 
 
 class MessageHandler:
+    """Handles incoming mentions using phi agent."""
+
     def __init__(self, client: BotClient):
         self.client = client
-        self.response_generator = ResponseGenerator()
+        self.agent = PhiAgent()
 
     async def handle_mention(self, notification):
-        """Process a mention or reply notification"""
+        """Process a mention or reply notification."""
         try:
-            # Skip if not a mention or reply
             if notification.reason not in ["mention", "reply"]:
                 return
 
@@ -35,8 +38,7 @@ class MessageHandler:
             mention_text = post.record.text
             author_handle = post.author.handle
             author_did = post.author.did
-            
-            # Record mention received
+
             bot_status.record_mention()
 
             # Build reply reference
@@ -44,11 +46,9 @@ class MessageHandler:
 
             # Check if this is part of a thread
             if hasattr(post.record, "reply") and post.record.reply:
-                # Use existing thread root
                 root_ref = post.record.reply.root
                 thread_uri = root_ref.uri
             else:
-                # This post is the root
                 root_ref = parent_ref
                 thread_uri = post_uri
 
@@ -64,69 +64,54 @@ class MessageHandler:
             # Get thread context
             thread_context = thread_db.get_thread_context(thread_uri)
 
-            # Generate response
-            # Note: We pass the full text including @mention
-            # In AT Protocol, mentions are structured as facets,
-            # but the text representation includes them
-            response = await self.response_generator.generate(
+            # Process with agent (has episodic memory + MCP tools)
+            response = await self.agent.process_mention(
                 mention_text=mention_text,
                 author_handle=author_handle,
                 thread_context=thread_context,
                 thread_uri=thread_uri,
             )
 
-            # Handle structured response or legacy dict
-            if hasattr(response, 'action'):
-                action = response.action
-                reply_text = response.text
-                reason = response.reason
-            else:
-                # Legacy dict format
-                action = response.get('action', 'reply')
-                reply_text = response.get('text', '')
-                reason = response.get('reason', '')
-
-            # Handle different actions
-            if action == 'ignore':
-                logger.info(f"🚫 Ignoring notification from @{author_handle} ({reason})")
+            # Handle response actions
+            if response.action == "ignore":
+                logger.info(
+                    f"🙈 Ignoring notification from @{author_handle} ({response.reason})"
+                )
                 return
-            
-            elif action == 'like':
-                # Like the post
+
+            elif response.action == "like":
                 await self.client.like_post(uri=post_uri, cid=post.cid)
-                logger.info(f"💜 Liked post from @{author_handle}")
+                logger.info(f"👍 Liked post from @{author_handle}")
                 bot_status.record_response()
                 return
-            
-            elif action == 'repost':
-                # Repost the post
+
+            elif response.action == "repost":
                 await self.client.repost(uri=post_uri, cid=post.cid)
                 logger.info(f"🔁 Reposted from @{author_handle}")
                 bot_status.record_response()
                 return
 
-            # Default to reply action
-            reply_ref = models.AppBskyFeedPost.ReplyRef(
-                parent=parent_ref, root=root_ref
-            )
-
-            # Send the reply
-            response = await self.client.create_post(reply_text, reply_to=reply_ref)
-
-            # Store bot's response in thread history
-            if response and hasattr(response, "uri"):
-                thread_db.add_message(
-                    thread_uri=thread_uri,
-                    author_handle=settings.bluesky_handle,
-                    author_did=self.client.me.did if self.client.me else "bot",
-                    message_text=reply_text or "",
-                    post_uri=response.uri,
+            elif response.action == "reply" and response.text:
+                # Post reply
+                reply_ref = models.AppBskyFeedPost.ReplyRef(
+                    parent=parent_ref, root=root_ref
+                )
+                reply_response = await self.client.create_post(
+                    response.text, reply_to=reply_ref
                 )
 
-            # Record successful response
-            bot_status.record_response()
+                # Store bot's response in thread history
+                if reply_response and hasattr(reply_response, "uri"):
+                    thread_db.add_message(
+                        thread_uri=thread_uri,
+                        author_handle=settings.bluesky_handle,
+                        author_did=self.client.me.did if self.client.me else "bot",
+                        message_text=response.text,
+                        post_uri=reply_response.uri,
+                    )
 
-            logger.info(f"✅ Replied to @{author_handle}: {reply_text or '(empty)'}")
+                bot_status.record_response()
+                logger.info(f"✅ Replied to @{author_handle}: {response.text[:50]}...")
 
         except Exception as e:
             logger.error(f"❌ Error handling mention: {e}")

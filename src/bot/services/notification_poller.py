@@ -1,7 +1,7 @@
+"""Simplified notification poller."""
+
 import asyncio
-import json
 import logging
-import time
 
 from bot.config import settings
 from bot.core.atproto_client import BotClient
@@ -12,26 +12,25 @@ logger = logging.getLogger("bot.poller")
 
 
 class NotificationPoller:
+    """Polls for and processes Bluesky notifications."""
+
     def __init__(self, client: BotClient):
         self.client = client
         self.handler = MessageHandler(client)
         self._running = False
         self._task: asyncio.Task | None = None
-        self._last_seen_at: str | None = None
-        self._processed_uris: set[str] = set()  # Track processed notifications
-        self._first_poll = True  # Track if this is our first check
-        self._notified_approval_ids: set[int] = set()  # Track approvals we've notified about
-        self._processed_dm_ids: set[str] = set()  # Track DMs we've already processed
+        self._processed_uris: set[str] = set()
+        self._first_poll = True
 
     async def start(self) -> asyncio.Task:
-        """Start polling for notifications"""
+        """Start polling for notifications."""
         self._running = True
         bot_status.polling_active = True
         self._task = asyncio.create_task(self._poll_loop())
         return self._task
 
     async def stop(self):
-        """Stop polling"""
+        """Stop polling."""
         self._running = False
         bot_status.polling_active = False
         if self._task and not self._task.done():
@@ -42,41 +41,34 @@ class NotificationPoller:
                 pass
 
     async def _poll_loop(self):
-        """Main polling loop"""
+        """Main polling loop."""
         await self.client.authenticate()
 
         while self._running:
             try:
                 await self._check_notifications()
             except Exception as e:
-                # Compact error handling (12-factor principle #9)
                 logger.error(f"Error in notification poll: {e}")
                 bot_status.record_error()
                 if settings.debug:
                     import traceback
+
                     traceback.print_exc()
-                # Continue polling - don't let one error stop the bot
                 continue
 
-            # Sleep with proper cancellation handling
             try:
                 await asyncio.sleep(settings.notification_poll_interval)
             except asyncio.CancelledError:
                 logger.info("📭 Notification poller shutting down gracefully")
-                raise  # Re-raise to properly propagate cancellation
+                raise
 
     async def _check_notifications(self):
-        """Check and process new notifications"""
-        # Capture timestamp BEFORE fetching (Void's approach)
+        """Check and process new notifications."""
         check_time = self.client.client.get_current_time_iso()
 
         response = await self.client.get_notifications()
         notifications = response.notifications
-        
-        # Also check for DM approvals periodically
-        await self._check_dm_approvals()
 
-        # Count unread mentions and replies
         unread_mentions = [
             n
             for n in notifications
@@ -90,178 +82,27 @@ class NotificationPoller:
                 logger.info(
                     f"📬 Found {len(notifications)} notifications ({len(unread_mentions)} unread mentions)"
                 )
-        # Subsequent polls: only show activity
         elif unread_mentions:
             logger.info(f"📬 {len(unread_mentions)} new mentions")
-        else:
-            # In debug mode, be silent about empty polls
-            # In production, we could add a subtle indicator
-            pass
 
-        # Track if we processed any mentions
         processed_any_mentions = False
 
         # Process notifications from oldest to newest
         for notification in reversed(notifications):
-            # Skip if already seen or processed
             if notification.is_read or notification.uri in self._processed_uris:
                 continue
 
             if notification.reason in ["mention", "reply"]:
                 logger.debug(f"🔍 Processing {notification.reason} notification")
-                # Process mentions and replies in threads
                 self._processed_uris.add(notification.uri)
                 await self.handler.handle_mention(notification)
                 processed_any_mentions = True
-            else:
-                # Silently ignore other notification types
-                pass
 
-        # Mark all notifications as seen using the initial timestamp
-        # This ensures we don't miss any that arrived during processing
+        # Mark all notifications as seen
         if processed_any_mentions:
             await self.client.mark_notifications_seen(check_time)
             logger.info("✓ Marked all notifications as read")
 
             # Clean up old processed URIs to prevent memory growth
-            # Keep only the last 1000 processed URIs
             if len(self._processed_uris) > 1000:
-                # Convert to list, sort by insertion order (oldest first), keep last 500
                 self._processed_uris = set(list(self._processed_uris)[-500:])
-    
-    async def _check_dm_approvals(self):
-        """Check DMs for approval responses and process approved changes"""
-        try:
-            from bot.core.dm_approval import process_dm_for_approval, check_pending_approvals, notify_operator_of_pending
-            from bot.personality import process_approved_changes
-            
-            # Check if we have pending approvals (include all for DM checking)
-            pending = check_pending_approvals()
-            if not pending:
-                return
-            
-            # Check DMs for pending approvals
-            
-            # Get recent DMs
-            chat_client = self.client.client.with_bsky_chat_proxy()
-            convos = chat_client.chat.bsky.convo.list_convos()
-            
-            # Check each conversation for approval messages
-            for convo in convos.convos:
-                # Look for messages from operator
-                messages = chat_client.chat.bsky.convo.get_messages(
-                    params={"convoId": convo.id, "limit": 5}
-                )
-                
-                for msg in messages.messages:
-                    # Skip if we've already processed this message
-                    if msg.id in self._processed_dm_ids:
-                        continue
-                    
-                    # Skip if not from a member of the conversation
-                    sender_handle = None
-                    for member in convo.members:
-                        if member.did == msg.sender.did:
-                            sender_handle = member.handle
-                            break
-                    
-                    if sender_handle:
-                        # Process DM from operator
-                        # Mark this message as processed
-                        self._processed_dm_ids.add(msg.id)
-                        
-                        # Process any approval/denial in the message
-                        processed = await process_dm_for_approval(
-                            msg.text, 
-                            sender_handle,
-                            msg.sent_at
-                        )
-                        if processed:
-                            logger.info(f"Processed {len(processed)} approvals from DM")
-                            # Remove processed IDs from notified set
-                            for approval_id in processed:
-                                self._notified_approval_ids.discard(approval_id)
-                            
-                            # Mark the conversation as read
-                            try:
-                                chat_client.chat.bsky.convo.update_read(
-                                    data={"convoId": convo.id}
-                                )
-                                pass  # Successfully marked as read
-                            except Exception as e:
-                                logger.warning(f"Failed to mark conversation as read: {e}")
-            
-            # Process any approved personality changes
-            if self.handler.response_generator.memory:
-                changes = await process_approved_changes(self.handler.response_generator.memory)
-                if changes:
-                    logger.info(f"Applied {changes} approved personality changes")
-                
-                # Notify threads about applied changes
-                await self._notify_threads_about_approvals()
-            
-            # Notify operator of new pending approvals
-            # Use database to track what's been notified instead of in-memory set
-            from bot.database import thread_db
-            unnotified = thread_db.get_pending_approvals(include_notified=False)
-            if unnotified:
-                await notify_operator_of_pending(self.client, None)  # Let DB handle tracking
-                # Mark as notified in database
-                thread_db.mark_operator_notified([a["id"] for a in unnotified])
-                
-        except Exception as e:
-            logger.warning(f"DM approval check failed: {e}")
-    
-    async def _notify_threads_about_approvals(self):
-        """Notify threads about applied personality changes"""
-        try:
-            from bot.database import thread_db
-            import json
-            
-            # Get approvals that need notification
-            approvals = thread_db.get_recently_applied_approvals()
-            
-            for approval in approvals:
-                try:
-                    data = json.loads(approval["request_data"])
-                    
-                    # Create notification message
-                    message = f"✅ personality update applied: {data.get('section', 'unknown')} has been updated"
-                    
-                    # Get the original post to construct proper reply
-                    from atproto_client import models
-                    thread_uri = approval["thread_uri"]
-                    
-                    # Get the post data to extract CID
-                    posts_response = self.client.client.get_posts([thread_uri])
-                    if not posts_response.posts:
-                        logger.error(f"Could not find post at {thread_uri}")
-                        continue
-                    
-                    original_post = posts_response.posts[0]
-                    
-                    # Create StrongRef with the actual CID
-                    parent_ref = models.ComAtprotoRepoStrongRef.Main(
-                        uri=thread_uri, cid=original_post.cid
-                    )
-                    
-                    # For thread notifications, parent and root are the same
-                    reply_ref = models.AppBskyFeedPost.ReplyRef(
-                        parent=parent_ref, root=parent_ref
-                    )
-                    
-                    # Post to the thread
-                    await self.client.create_post(
-                        text=message,
-                        reply_to=reply_ref
-                    )
-                    
-                    # Mark as notified
-                    thread_db.mark_approval_notified(approval["id"])
-                    logger.info(f"Notified thread about approval #{approval['id']}")
-                    
-                except Exception as e:
-                    logger.error(f"Failed to notify thread for approval #{approval['id']}: {e}")
-                    
-        except Exception as e:
-            logger.warning(f"Thread notification check failed: {e}")

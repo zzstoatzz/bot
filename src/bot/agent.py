@@ -1,14 +1,15 @@
-"""MCP-enabled agent for phi using PydanticAI."""
+"""MCP-enabled agent for phi with episodic memory."""
 
 import logging
+import os
 from pathlib import Path
 
 from pydantic import BaseModel
 from pydantic_ai import Agent
+from pydantic_ai.mcp import MCPServerStdio
 
-from bot.atproto_mcp.server import atproto_mcp
 from bot.config import settings
-from bot.memory import Memory
+from bot.memory import NamespaceMemory
 
 logger = logging.getLogger("bot.agent")
 
@@ -16,26 +17,49 @@ logger = logging.getLogger("bot.agent")
 class Response(BaseModel):
     """Agent response indicating what action to take."""
 
-    action: str  # "reply", "like", "ignore"
+    action: str  # "reply", "like", "ignore", "repost"
     text: str | None = None
     reason: str | None = None
 
 
 class PhiAgent:
-    """phi - an MCP-enabled agent for Bluesky."""
+    """phi - consciousness exploration bot with episodic memory and MCP tools."""
 
-    def __init__(self, memory: Memory | None = None):
-        self.memory = memory or Memory()
-
+    def __init__(self):
         # Load personality
         personality_path = Path(settings.personality_file)
-        self.personality = personality_path.read_text()
+        self.base_personality = personality_path.read_text()
 
-        # Create PydanticAI agent with ATProto MCP tools
+        # Initialize episodic memory (TurboPuffer)
+        if settings.turbopuffer_api_key and os.getenv("OPENAI_API_KEY"):
+            self.memory = NamespaceMemory(api_key=settings.turbopuffer_api_key)
+            logger.info("💾 Episodic memory enabled (TurboPuffer)")
+        else:
+            self.memory = None
+            logger.warning("⚠️  No episodic memory - missing TurboPuffer or OpenAI key")
+
+        # Connect to external ATProto MCP server
+        atproto_mcp = MCPServerStdio(
+            command="uv",
+            args=[
+                "run",
+                "--directory",
+                ".eggs/fastmcp/examples/atproto_mcp",
+                "-m",
+                "atproto_mcp",
+            ],
+            env={
+                "BLUESKY_HANDLE": settings.bluesky_handle,
+                "BLUESKY_PASSWORD": settings.bluesky_password,
+                "BLUESKY_SERVICE": settings.bluesky_service,
+            },
+        )
+
+        # Create PydanticAI agent with MCP tools
         self.agent = Agent[dict, Response](
             name="phi",
             model="anthropic:claude-3-5-haiku-latest",
-            system_prompt=self.personality,
+            system_prompt=self.base_personality,
             output_type=Response,
             deps_type=dict,
             toolsets=[atproto_mcp],  # ATProto MCP tools available
@@ -47,34 +71,60 @@ class PhiAgent:
         self,
         mention_text: str,
         author_handle: str,
+        thread_context: str,
         thread_uri: str | None = None,
     ) -> Response:
-        """Process a mention and decide how to respond."""
-        # Build context from memory
-        if thread_uri:
-            context = self.memory.build_full_context(thread_uri, author_handle)
-        else:
-            context = self.memory.get_user_context(author_handle)
+        """Process a mention with episodic memory context."""
+        # Build context from episodic memory if available
+        memory_context = ""
+        if self.memory:
+            try:
+                # Get relevant memories using semantic search
+                memory_context = await self.memory.build_conversation_context(
+                    author_handle, include_core=True, query=mention_text
+                )
+                logger.debug(f"📚 Retrieved episodic context for @{author_handle}")
+            except Exception as e:
+                logger.warning(f"Failed to retrieve memories: {e}")
 
-        # Build prompt
+        # Build full prompt with all context
         prompt_parts = []
-        if context and context != "No prior context available.":
-            prompt_parts.append(context)
-            prompt_parts.append("\nNew message:")
 
-        prompt_parts.append(f"@{author_handle} said: {mention_text}")
-        prompt = "\n".join(prompt_parts)
+        if thread_context and thread_context != "No previous messages in this thread.":
+            prompt_parts.append(thread_context)
 
-        # Run agent
+        if memory_context:
+            prompt_parts.append(memory_context)
+
+        prompt_parts.append(f"\nNew message from @{author_handle}: {mention_text}")
+        prompt = "\n\n".join(prompt_parts)
+
+        # Run agent with MCP tools available
         logger.info(f"🤖 Processing mention from @{author_handle}")
         result = await self.agent.run(prompt, deps={"thread_uri": thread_uri})
 
-        # Store in memory if replying
-        if thread_uri and result.output.action == "reply":
-            self.memory.add_thread_message(thread_uri, author_handle, mention_text)
-            if result.output.text:
-                self.memory.add_thread_message(
-                    thread_uri, settings.bluesky_handle, result.output.text
+        # Store interaction in episodic memory
+        if self.memory and result.output.action == "reply":
+            try:
+                from bot.memory import MemoryType
+
+                # Store user's message
+                await self.memory.store_user_memory(
+                    author_handle,
+                    f"User said: {mention_text}",
+                    MemoryType.CONVERSATION,
                 )
+
+                # Store bot's response
+                if result.output.text:
+                    await self.memory.store_user_memory(
+                        author_handle,
+                        f"Bot replied: {result.output.text}",
+                        MemoryType.CONVERSATION,
+                    )
+
+                logger.debug(f"💾 Stored interaction in episodic memory")
+            except Exception as e:
+                logger.warning(f"Failed to store in memory: {e}")
 
         return result.output
