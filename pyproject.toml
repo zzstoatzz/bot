@@ -9,13 +9,13 @@ dependencies = [
     "anthropic",
     "atproto",
     "fastapi",
+    "fastmcp>=0.8.0",
     "httpx",
-    "openai",
     "pydantic-ai",
     "pydantic-settings",
     "rich",
-    "turbopuffer",
     "uvicorn",
+    "websockets>=15.0.1",
 ]
 
 [tool.hatch.version]
