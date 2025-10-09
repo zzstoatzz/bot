@@ -8,6 +8,7 @@ Work from repo root whenever possible.
 - 3.10+ and complete typing (T | None preferred over Optional[T] and list[T] over typing.List[T])
 - use prefer functional over OOP
 - keep implementation details private and functions pure
+- never use `pytest.mark.asyncio`, its unnecessary
 
 ## Project Structure
 

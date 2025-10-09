@@ -1,11 +1,8 @@
 """Test phi's basic response behavior."""
 
-import pytest
-
 from bot.agent import Response
 
 
-@pytest.mark.asyncio
 async def test_phi_responds_to_philosophical_question(phi_agent, evaluate_response):
     """Test that phi engages meaningfully with philosophical questions."""
     agent = phi_agent
@@ -39,7 +36,6 @@ async def test_phi_responds_to_philosophical_question(phi_agent, evaluate_respon
         )
 
 
-@pytest.mark.asyncio
 async def test_phi_ignores_spam(phi_agent):
     """Test that phi appropriately ignores spam-like content."""
     agent = phi_agent
@@ -57,7 +53,6 @@ async def test_phi_ignores_spam(phi_agent):
     assert response.reason is not None
 
 
-@pytest.mark.asyncio
 async def test_phi_maintains_thread_context(phi_agent, evaluate_response):
     """Test that phi uses thread context appropriately."""
     agent = phi_agent
@@ -89,7 +84,6 @@ async def test_phi_maintains_thread_context(phi_agent, evaluate_response):
         )
 
 
-@pytest.mark.asyncio
 async def test_phi_respects_character_limit(phi_agent):
     """Test that phi's responses fit Bluesky's 300 character limit."""
     agent = phi_agent
@@ -108,7 +102,6 @@ async def test_phi_respects_character_limit(phi_agent):
         )
 
 
-@pytest.mark.asyncio
 async def test_phi_handles_casual_greeting(phi_agent, evaluate_response):
     """Test that phi responds appropriately to casual greetings."""
     agent = phi_agent
