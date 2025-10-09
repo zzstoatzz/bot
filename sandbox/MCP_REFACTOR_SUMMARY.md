@@ -209,3 +209,27 @@ The correct refactor:
 - `atproto` (from git) - Bluesky protocol
 
 Total codebase reduction: **-2,720 lines** of cruft removed! 🎉
+
+## Post-Refactor Improvements
+
+### Session Persistence (Rate Limit Fix)
+
+After the refactor, we discovered Bluesky has aggressive IP-based rate limits (10 logins/day) that were being hit during testing. Fixed by implementing session persistence:
+
+**Before:**
+- Every agent init → new authentication → hits rate limit fast
+- Tests would fail after 5 runs
+- Dev mode with `--reload` would fail after 10 code changes
+
+**After:**
+- Session tokens saved to `.session` file
+- Tokens automatically refresh every ~2 hours
+- Only re-authenticates after ~2 months when refresh token expires
+- Tests reuse session across runs
+- Rate limits essentially eliminated
+
+**Implementation:**
+- Added `SessionEvent` callback in `atproto_client.py`
+- Session automatically saved on CREATE and REFRESH events
+- Authentication tries session reuse before creating new session
+- Invalid sessions automatically cleaned up and recreated

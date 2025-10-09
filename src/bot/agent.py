@@ -26,12 +26,18 @@ class PhiAgent:
     """phi - consciousness exploration bot with episodic memory and MCP tools."""
 
     def __init__(self):
+        # Ensure API keys from settings are in environment for libraries that check os.environ
+        if settings.anthropic_api_key and not os.environ.get("ANTHROPIC_API_KEY"):
+            os.environ["ANTHROPIC_API_KEY"] = settings.anthropic_api_key
+        if settings.openai_api_key and not os.environ.get("OPENAI_API_KEY"):
+            os.environ["OPENAI_API_KEY"] = settings.openai_api_key
+
         # Load personality
         personality_path = Path(settings.personality_file)
         self.base_personality = personality_path.read_text()
 
         # Initialize episodic memory (TurboPuffer)
-        if settings.turbopuffer_api_key and os.getenv("OPENAI_API_KEY"):
+        if settings.turbopuffer_api_key and settings.openai_api_key:
             self.memory = NamespaceMemory(api_key=settings.turbopuffer_api_key)
             logger.info("💾 Episodic memory enabled (TurboPuffer)")
         else:
@@ -49,9 +55,9 @@ class PhiAgent:
                 "atproto_mcp",
             ],
             env={
-                "BLUESKY_HANDLE": settings.bluesky_handle,
-                "BLUESKY_PASSWORD": settings.bluesky_password,
-                "BLUESKY_SERVICE": settings.bluesky_service,
+                "ATPROTO_HANDLE": settings.bluesky_handle,
+                "ATPROTO_PASSWORD": settings.bluesky_password,
+                "ATPROTO_PDS_URL": settings.bluesky_service,
             },
         )
 

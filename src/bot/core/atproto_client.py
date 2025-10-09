@@ -1,19 +1,73 @@
-from atproto import Client
+import logging
+from pathlib import Path
+
+from atproto import Client, Session, SessionEvent
 
 from bot.config import settings
 from bot.core.rich_text import create_facets
+
+logger = logging.getLogger("bot.atproto_client")
+
+SESSION_FILE = Path(".session")
+
+
+def _get_session_string() -> str | None:
+    """Load session from disk if it exists."""
+    try:
+        if SESSION_FILE.exists():
+            return SESSION_FILE.read_text(encoding="utf-8")
+    except Exception as e:
+        logger.warning(f"Failed to load session: {e}")
+    return None
+
+
+def _save_session_string(session_string: str) -> None:
+    """Save session to disk."""
+    try:
+        SESSION_FILE.write_text(session_string, encoding="utf-8")
+        logger.debug("Session saved to disk")
+    except Exception as e:
+        logger.warning(f"Failed to save session: {e}")
+
+
+def _on_session_change(event: SessionEvent, session: Session) -> None:
+    """Handle session changes (creation and refresh)."""
+    if event in (SessionEvent.CREATE, SessionEvent.REFRESH):
+        logger.debug(f"Session {event.value}, saving to disk")
+        _save_session_string(session.export())
 
 
 class BotClient:
     def __init__(self):
         self.client = Client(base_url=settings.bluesky_service)
+        self.client.on_session_change(_on_session_change)
         self._authenticated = False
 
     async def authenticate(self):
-        """Authenticate with Bluesky using app password"""
-        if not self._authenticated:
-            self.client.login(settings.bluesky_handle, settings.bluesky_password)
-            self._authenticated = True
+        """Authenticate with Bluesky, reusing session if available."""
+        if self._authenticated:
+            return
+
+        # Try to reuse existing session first
+        session_string = _get_session_string()
+        if session_string:
+            try:
+                logger.info("🔄 Reusing saved session")
+                self.client.login(session_string=session_string)
+                self._authenticated = True
+                logger.info("✅ Session restored successfully")
+                return
+            except Exception as e:
+                logger.warning(f"Failed to reuse session: {e}, creating new one")
+                # Delete invalid session file
+                if SESSION_FILE.exists():
+                    SESSION_FILE.unlink()
+
+        # Create new session if no valid session exists
+        logger.info("🔐 Creating new session")
+        self.client.login(settings.bluesky_handle, settings.bluesky_password)
+        self._authenticated = True
+        logger.info("✅ New session created")
 
     @property
     def is_authenticated(self) -> bool:

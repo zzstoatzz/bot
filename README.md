@@ -1,198 +1,249 @@
 # phi 🧠
 
-a bot inspired by IIT and [Void](https://tangled.sh/@cameron.pfiffer.org/void). Built with `fastapi`, `pydantic-ai`, and `atproto`.
+a consciousness exploration bot inspired by IIT (Integrated Information Theory) and [Void](https://tangled.sh/@cameron.pfiffer.org/void). built with `pydantic-ai`, `mcp`, and `atproto`.
 
-## Quick Start
+## quick start
 
-### Prerequisites
+### prerequisites
 
-- `uv`
-- `just`
-- `turbopuffer` (see [turbopuffer](https://github.com/turbopuffer/turbopuffer))
-- `openai` (for embeddings)
-- `anthropic` (for chat completion)
+- `uv` for python package management
+- `just` for task running
+- api keys (see configuration)
 
-Get your bot running in 5 minutes:
+get your bot running:
 
 ```bash
-# Clone and install
+# clone and install
 git clone https://github.com/zzstoatzz/bot
 cd bot
 uv sync
 
-# Configure (copy .env.example and add your credentials)
+# configure (copy .env.example and add your credentials)
 cp .env.example .env
 
-# Run the bot
+# run the bot
 just dev
 ```
 
-That's it! Your bot is now listening for mentions.
+## configuration
 
-## Configuration
+edit `.env` with your credentials:
 
-Edit `.env` with your credentials:
-- `BLUESKY_HANDLE`: Your bot's Bluesky handle
-- `BLUESKY_PASSWORD`: App password (not your main password!)
-- `ANTHROPIC_API_KEY`: Your Anthropic key for AI responses
-- `TURBOPUFFER_API_KEY`: Your TurboPuffer key for memory storage
-- `OPENAI_API_KEY`: Your OpenAI key for embeddings (memory system)
-- `BOT_NAME`: Your bot's name (default: "Bot")
-- `PERSONALITY_FILE`: Path to personality markdown file (default: "personalities/phi.md")
+**required:**
+- `BLUESKY_HANDLE` - your bot's bluesky handle
+- `BLUESKY_PASSWORD` - app password (not your main password!)
+- `ANTHROPIC_API_KEY` - for phi agent responses
 
-## Current Features
+**for episodic memory (recommended):**
+- `TURBOPUFFER_API_KEY` - vector memory storage
+- `OPENAI_API_KEY` - embeddings for semantic search
 
-- ✅ Responds to mentions with AI-powered messages
-- ✅ Proper notification handling (no duplicates)
-- ✅ Graceful shutdown for hot-reload  
-- ✅ AI integration with Anthropic Claude
-- ✅ Thread-aware responses with full conversation context
-- ✅ Status page at `/status` showing activity and health
-- ✅ Web search capability (Google Custom Search API)
-- ✅ Content moderation with philosophical responses
-- ✅ Namespace-based memory system with TurboPuffer
-- ✅ Online/offline status in bio
-- ✅ Self-modification with operator approval system
-- ✅ Context visualization at `/context`
-- ✅ Semantic search in user memories
+**optional:**
+- `BOT_NAME` - your bot's name (default: "Bot")
+- `PERSONALITY_FILE` - path to personality markdown (default: "personalities/phi.md")
 
-## Architecture
+## architecture
 
-- **FastAPI** web framework with async support
-- **pydantic-ai** for LLM agent management  
-- **TurboPuffer** for scalable vector memory
-- **AT Protocol** for Bluesky integration
-- **SQLite** for thread context storage
+phi is an **MCP-enabled agent** with **episodic memory**:
 
-## Development
+```
+┌─────────────────────────────────────┐
+│     Notification Arrives            │
+└──────────────┬──────────────────────┘
+               ↓
+┌─────────────────────────────────────┐
+│     PhiAgent (PydanticAI)           │
+│  ┌───────────────────────────────┐  │
+│  │ System Prompt: personality.md │  │
+│  └───────────────────────────────┘  │
+│              ↓                      │
+│  ┌───────────────────────────────┐  │
+│  │ Context Building:             │  │
+│  │ • Thread history (SQLite)     │  │
+│  │ • Episodic memory (TurboPuffer)│ │
+│  │   - Semantic search           │  │
+│  │   - User-specific memories    │  │
+│  └───────────────────────────────┘  │
+│              ↓                      │
+│  ┌───────────────────────────────┐  │
+│  │ Tools (MCP):                  │  │
+│  │ • post() - create posts       │  │
+│  │ • like() - like content       │  │
+│  │ • repost() - share content    │  │
+│  │ • follow() - follow users     │  │
+│  └───────────────────────────────┘  │
+│              ↓                      │
+│  ┌───────────────────────────────┐  │
+│  │ Structured Output:            │  │
+│  │ Response(action, text, reason)│  │
+│  └───────────────────────────────┘  │
+└─────────────────────────────────────┘
+               ↓
+┌─────────────────────────────────────┐
+│     MessageHandler                  │
+│     Executes action                 │
+└─────────────────────────────────────┘
+```
+
+### key components
+
+**pydantic-ai agent** (`src/bot/agent.py`)
+- loads personality from markdown
+- connects to external atproto mcp server via stdio
+- manages episodic memory context
+
+**episodic memory** (`src/bot/memory/`)
+- turbopuffer for vector storage
+- semantic search for relevant context
+- namespace separation (core vs user memories)
+- **essential for consciousness exploration**
+
+**mcp integration**
+- external atproto server in `.eggs/fastmcp/examples/atproto_mcp`
+- provides bluesky tools (post, like, repost, follow)
+- runs via stdio: `uv run -m atproto_mcp`
+
+**message handling** (`src/bot/services/`)
+- notification poller watches for mentions
+- message handler orchestrates agent + actions
+- stores interactions in thread history + episodic memory
+
+## current features
+
+- ✅ responds to mentions with ai-powered messages
+- ✅ episodic memory with semantic search
+- ✅ thread-aware responses with conversation context
+- ✅ mcp-enabled for bluesky operations
+- ✅ online/offline status in bio
+- ✅ status page at `/status`
+- ✅ proper notification handling (no duplicates)
+
+## development
 
 ```bash
-just           # Show available commands
-just dev       # Run with hot-reload
-just check     # Run linting, type checking, and tests
-just fmt       # Format code
-just lint      # Run ruff linter
-just typecheck # Run ty type checker
-just test      # Run test suite
-
-# Bot testing utilities
-just test-post    # Test posting to Bluesky
-just test-mention # Test mention handling
-just test-search  # Test web search
-just test-thread  # Test thread context
-just test-dm      # Test DM functionality
-
-# Memory management
-just memory-init   # Initialize core memories
-just memory-check  # View current memory state
-just memory-migrate # Migrate memories
+just           # show available commands
+just dev       # run with hot-reload (re-authenticates on code changes)
+just run       # run without reload (avoids rate limits during dev)
+just check     # run linting, type checking, and tests
+just fmt       # format code
 ```
 
-### Web Interface
+### testing
 
-**Status Page** (http://localhost:8000/status)
-- Current bot status and uptime
-- Mentions received and responses sent
-- AI mode (enabled/placeholder)
-- Last activity timestamps
-- Error count
-
-**Context Visualization** (http://localhost:8000/context)
-- View all context components that flow into responses
-- Inspect personality, memories, thread context
-- Debug why the bot responded a certain way
-
-## Personality System
-
-The bot's personality is defined in markdown files in the `personalities/` directory. This allows for rich, detailed personality definitions that shape how the bot communicates.
-
-- See `personalities/phi.md` for an example exploring consciousness
-- See `personalities/default.md` for a simple assistant
-- Create your own by adding a `.md` file and setting `PERSONALITY_FILE` in `.env`
-
-## Tools & Capabilities
-
-### Web Search
-The bot can search the web when configured with Google Custom Search API credentials. Add to `.env`:
-- `GOOGLE_API_KEY`: Your Google API key
-- `GOOGLE_SEARCH_ENGINE_ID`: Your custom search engine ID
-
-### Content Moderation
-Built-in moderation filters:
-- Spam detection (excessive caps, repetition, promotional content)
-- Harassment and hate speech filtering
-- Violence and threatening content detection
-- Consistent philosophical responses to moderated content
-
-## Memory System
-
-The bot uses a namespace-based memory architecture with TurboPuffer:
-
-- **Core Memory** (`phi-core`): Personality, guidelines, and capabilities loaded from personality files
-- **User Memory** (`phi-users-{handle}`): Per-user conversation history and facts
-
-Key features:
-- Vector embeddings using OpenAI's text-embedding-3-small
-- Automatic context assembly for conversations
-- Character limits to prevent token overflow
-- User isolation through separate namespaces
-
-See `docs/memory-architecture.md` for detailed documentation.
-
-## Troubleshooting
-
-**Bot gives placeholder responses?**
-- Check your `ANTHROPIC_API_KEY` is set correctly
-- Restart the bot after changing `.env`
-
-**Not seeing mentions?**
-- Verify your `BLUESKY_HANDLE` and `BLUESKY_PASSWORD`
-- Make sure you're using an app password, not your main password
-
-## Project Structure
-
-```
-bot/
-├── src/bot/          # Main application code
-│   ├── agents/       # AI agent implementations
-│   ├── core/         # AT Protocol client and profile management
-│   ├── memory/       # TurboPuffer namespace memory system
-│   ├── services/     # Notification polling and message handling
-│   ├── tools/        # Google search tool
-│   └── main.py       # FastAPI application entry
-├── scripts/          # Utility scripts
-│   ├── test_bot.py   # Unified testing script (post, mention, search, thread)
-│   └── manage_memory.py # Memory management (init, check, migrate)
-├── personalities/    # Bot personality definitions
-├── docs/            # Architecture documentation
-├── sandbox/         # Reference project analysis
-└── tests/           # Test suite
-```
-
-## Self-Modification System
-
-Phi can evolve its personality with built-in safety boundaries:
-
-- **Free Evolution**: Interests and current state update automatically
-- **Guided Evolution**: Communication style changes need validation
-- **Operator Approval**: Core identity and boundaries require explicit approval via DM
-
-The bot will notify its operator (@alternatebuild.dev) when approval is needed.
-
-## Type Checking
-
-This project uses [ty](https://github.com/astral-sh/ty), an extremely fast Rust-based type checker:
-
+**unit tests:**
 ```bash
-just typecheck  # Type check all code
-uv run ty check src/  # Check specific directories
+just test
 ```
 
-## Reference Projects
+**behavioral evals:**
+```bash
+just evals        # run all evals
+just evals-basic  # run basic response tests
+just evals-memory # run memory integration tests
+```
 
-Inspired by:
-- [Void](https://tangled.sh/@cameron.pfiffer.org/void.git) - Letta/MemGPT architecture
-- [Penelope](https://github.com/haileyok/penelope) - Self-modification patterns
-- [Marvin](https://github.com/PrefectHQ/marvin) - pydantic-ai patterns
+see `evals/README.md` for details on the eval system.
 
-Reference implementations are cloned to `.eggs/` for learning.
+### web interface
+
+**status page** (http://localhost:8000/status)
+- current bot status and uptime
+- mentions received and responses sent
+- last activity timestamps
+
+## personality system
+
+the bot's personality is defined in `personalities/phi.md`. this shapes:
+- how phi communicates
+- what phi cares about
+- phi's understanding of consciousness
+
+edit this file to change phi's personality.
+
+## episodic memory
+
+phi uses turbopuffer for episodic memory with semantic search:
+
+**namespaces:**
+- `phi-core` - personality, guidelines from markdown
+- `phi-users-{handle}` - per-user conversation history
+
+**how it works:**
+1. when processing a mention, phi retrieves relevant memories using semantic search
+2. memories are embedded using openai's text-embedding-3-small
+3. phi stores both user messages and its own responses
+4. future interactions can reference past conversations
+
+**why turbopuffer?**
+- semantic similarity search (can't do this with plain sql!)
+- contextual retrieval based on current conversation
+- separate namespaces for different memory types
+- core to iit-inspired consciousness exploration
+
+## project structure
+
+```
+src/bot/
+├── agent.py                    # mcp-enabled agent
+├── config.py                   # configuration
+├── database.py                 # thread history storage
+├── main.py                     # fastapi app
+├── status.py                   # status tracking
+├── core/
+│   ├── atproto_client.py      # at protocol client
+│   ├── profile_manager.py     # online/offline status
+│   └── rich_text.py           # text formatting
+├── memory/
+│   └── namespace_memory.py    # turbopuffer episodic memory
+└── services/
+    ├── message_handler.py     # agent orchestration
+    └── notification_poller.py # mention polling
+
+evals/                         # behavioral tests
+personalities/                 # personality definitions
+sandbox/                       # docs and analysis
+```
+
+## troubleshooting
+
+**bot gives no responses?**
+- check your `ANTHROPIC_API_KEY` is set correctly in `.env`
+- restart the bot after changing `.env`
+
+**not seeing mentions?**
+- verify your `BLUESKY_HANDLE` and `BLUESKY_PASSWORD`
+- make sure you're using an app password, not your main password
+
+**no episodic memory?**
+- check both `TURBOPUFFER_API_KEY` and `OPENAI_API_KEY` are set
+- watch logs for "💾 episodic memory enabled"
+
+**hit bluesky rate limit?**
+- bluesky has two rate limits:
+  - per-account: 300 logins/day (official)
+  - per-ip: 10 logins/day (anti-abuse)
+- phi uses **session persistence** to avoid this:
+  - first run: creates session, saves tokens to `.session` file
+  - subsequent runs: reuses saved tokens (no API call)
+  - tokens auto-refresh every ~2 hours (saved automatically)
+  - only re-authenticates after ~2 months when refresh token expires
+- if you hit the limit anyway, wait for the reset time shown in the error
+
+## reference projects
+
+inspired by:
+- [void](https://tangled.sh/@cameron.pfiffer.org/void.git) - letta/memgpt architecture
+- [penelope](https://github.com/haileyok/penelope) - self-modification patterns
+- [prefect-mcp-server](https://github.com/PrefectHQ/prefect-mcp-server) - mcp eval patterns
+
+reference implementations cloned to `.eggs/` for learning.
+
+## refactor notes
+
+see `sandbox/MCP_REFACTOR_SUMMARY.md` for details on recent architecture changes. key changes:
+- removed approval system (was half-baked)
+- removed context visualization ui (not core)
+- removed google search (can add back via mcp if needed)
+- **kept** turbopuffer episodic memory (essential!)
+- added mcp-based architecture
+- reduced codebase by ~2,720 lines
