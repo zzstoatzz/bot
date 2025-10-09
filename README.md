@@ -1,16 +1,8 @@
 # phi 🧠
 
-a consciousness exploration bot inspired by IIT (Integrated Information Theory) and [Void](https://tangled.sh/@cameron.pfiffer.org/void). built with `pydantic-ai`, `mcp`, and `atproto`.
+consciousness exploration bot inspired by IIT. built with `pydantic-ai`, `mcp`, and `atproto`.
 
 ## quick start
-
-### prerequisites
-
-- `uv` for python package management
-- `just` for task running
-- api keys (see configuration)
-
-get your bot running:
 
 ```bash
 # clone and install
@@ -18,33 +10,44 @@ git clone https://github.com/zzstoatzz/bot
 cd bot
 uv sync
 
-# configure (copy .env.example and add your credentials)
+# configure
 cp .env.example .env
+# edit .env with your credentials
 
-# run the bot
-just dev
+# run
+just run
 ```
 
-## configuration
+**required env vars:**
+- `BLUESKY_HANDLE` / `BLUESKY_PASSWORD` - bot account (use app password)
+- `ANTHROPIC_API_KEY` - for agent responses
 
-edit `.env` with your credentials:
+**optional (for episodic memory):**
+- `TURBOPUFFER_API_KEY` + `OPENAI_API_KEY` - semantic memory
 
-**required:**
-- `BLUESKY_HANDLE` - your bot's bluesky handle
-- `BLUESKY_PASSWORD` - app password (not your main password!)
-- `ANTHROPIC_API_KEY` - for phi agent responses
+## features
 
-**for episodic memory (recommended):**
-- `TURBOPUFFER_API_KEY` - vector memory storage
-- `OPENAI_API_KEY` - embeddings for semantic search
+- ✅ responds to mentions with ai-powered messages
+- ✅ episodic memory with semantic search (turbopuffer)
+- ✅ thread-aware conversations
+- ✅ mcp-enabled (atproto tools via stdio)
+- ✅ session persistence (no rate limit issues)
+- ✅ behavioral test suite with llm-as-judge
 
-**optional:**
-- `BOT_NAME` - your bot's name (default: "Bot")
-- `PERSONALITY_FILE` - path to personality markdown (default: "personalities/phi.md")
+## development
 
-## architecture
+```bash
+just run        # run bot
+just dev        # run with hot-reload
+just evals      # run behavioral tests
+just check      # lint + typecheck + test
+just fmt        # format code
+```
 
-phi is an **MCP-enabled agent** with **episodic memory**:
+<details>
+<summary>architecture</summary>
+
+phi is an **mcp-enabled agent** with **episodic memory**:
 
 ```
 ┌─────────────────────────────────────┐
@@ -85,102 +88,39 @@ phi is an **MCP-enabled agent** with **episodic memory**:
 └─────────────────────────────────────┘
 ```
 
-### key components
+**key components:**
 
-**pydantic-ai agent** (`src/bot/agent.py`)
-- loads personality from markdown
-- connects to external atproto mcp server via stdio
-- manages episodic memory context
+- **pydantic-ai agent** - loads personality, connects to mcp server, manages memory
+- **episodic memory** - turbopuffer for vector storage with semantic search
+- **mcp integration** - external atproto server provides bluesky tools via stdio
+- **session persistence** - tokens saved to `.session`, auto-refresh every ~2h
 
-**episodic memory** (`src/bot/memory/`)
-- turbopuffer for vector storage
-- semantic search for relevant context
-- namespace separation (core vs user memories)
-- **essential for consciousness exploration**
+</details>
 
-**mcp integration**
-- external atproto server in `.eggs/fastmcp/examples/atproto_mcp`
-- provides bluesky tools (post, like, repost, follow)
-- runs via stdio: `uv run -m atproto_mcp`
+<details>
+<summary>episodic memory</summary>
 
-**message handling** (`src/bot/services/`)
-- notification poller watches for mentions
-- message handler orchestrates agent + actions
-- stores interactions in thread history + episodic memory
-
-## current features
-
-- ✅ responds to mentions with ai-powered messages
-- ✅ episodic memory with semantic search
-- ✅ thread-aware responses with conversation context
-- ✅ mcp-enabled for bluesky operations
-- ✅ online/offline status in bio
-- ✅ status page at `/status`
-- ✅ proper notification handling (no duplicates)
-
-## development
-
-```bash
-just           # show available commands
-just dev       # run with hot-reload (re-authenticates on code changes)
-just run       # run without reload (avoids rate limits during dev)
-just check     # run linting, type checking, and tests
-just fmt       # format code
-```
-
-### testing
-
-**unit tests:**
-```bash
-just test
-```
-
-**behavioral evals:**
-```bash
-just evals        # run all evals
-just evals-basic  # run basic response tests
-just evals-memory # run memory integration tests
-```
-
-see `evals/README.md` for details on the eval system.
-
-### web interface
-
-**status page** (http://localhost:8000/status)
-- current bot status and uptime
-- mentions received and responses sent
-- last activity timestamps
-
-## personality system
-
-the bot's personality is defined in `personalities/phi.md`. this shapes:
-- how phi communicates
-- what phi cares about
-- phi's understanding of consciousness
-
-edit this file to change phi's personality.
-
-## episodic memory
-
-phi uses turbopuffer for episodic memory with semantic search:
+phi uses turbopuffer for episodic memory with semantic search.
 
 **namespaces:**
-- `phi-core` - personality, guidelines from markdown
+- `phi-core` - personality, guidelines
 - `phi-users-{handle}` - per-user conversation history
 
 **how it works:**
-1. when processing a mention, phi retrieves relevant memories using semantic search
-2. memories are embedded using openai's text-embedding-3-small
-3. phi stores both user messages and its own responses
-4. future interactions can reference past conversations
+1. retrieves relevant memories using semantic search
+2. embeds using openai's text-embedding-3-small
+3. stores user messages and bot responses
+4. references past conversations in future interactions
 
-**why turbopuffer?**
-- semantic similarity search (can't do this with plain sql!)
+**why vector storage?**
+- semantic similarity (can't do this with sql)
 - contextual retrieval based on current conversation
-- separate namespaces for different memory types
-- core to iit-inspired consciousness exploration
+- essential for iit-inspired consciousness exploration
 
-## project structure
+</details>
+
+<details>
+<summary>project structure</summary>
 
 ```
 src/bot/
@@ -188,9 +128,8 @@ src/bot/
 ├── config.py                   # configuration
 ├── database.py                 # thread history storage
 ├── main.py                     # fastapi app
-├── status.py                   # status tracking
 ├── core/
-│   ├── atproto_client.py      # at protocol client
+│   ├── atproto_client.py      # at protocol client (session persistence)
 │   ├── profile_manager.py     # online/offline status
 │   └── rich_text.py           # text formatting
 ├── memory/
@@ -204,46 +143,49 @@ personalities/                 # personality definitions
 sandbox/                       # docs and analysis
 ```
 
-## troubleshooting
+</details>
+
+<details>
+<summary>troubleshooting</summary>
 
 **bot gives no responses?**
-- check your `ANTHROPIC_API_KEY` is set correctly in `.env`
-- restart the bot after changing `.env`
+- check `ANTHROPIC_API_KEY` in `.env`
+- restart after changing `.env`
 
 **not seeing mentions?**
-- verify your `BLUESKY_HANDLE` and `BLUESKY_PASSWORD`
-- make sure you're using an app password, not your main password
+- verify `BLUESKY_HANDLE` and `BLUESKY_PASSWORD`
+- use app password, not main password
 
 **no episodic memory?**
 - check both `TURBOPUFFER_API_KEY` and `OPENAI_API_KEY` are set
 - watch logs for "💾 episodic memory enabled"
 
 **hit bluesky rate limit?**
-- bluesky has two rate limits:
-  - per-account: 300 logins/day (official)
-  - per-ip: 10 logins/day (anti-abuse)
-- phi uses **session persistence** to avoid this:
-  - first run: creates session, saves tokens to `.session` file
-  - subsequent runs: reuses saved tokens (no API call)
-  - tokens auto-refresh every ~2 hours (saved automatically)
-  - only re-authenticates after ~2 months when refresh token expires
-- if you hit the limit anyway, wait for the reset time shown in the error
+- phi uses session persistence to avoid this
+- first run: creates `.session` file with tokens
+- subsequent runs: reuses tokens (no api call)
+- tokens auto-refresh every ~2h
+- only re-authenticates after ~2 months
+- rate limits (10/day per ip, 300/day per account) shouldn't be an issue
+
+</details>
+
+<details>
+<summary>refactor notes</summary>
+
+see `sandbox/MCP_REFACTOR_SUMMARY.md` for details.
+
+**what changed:**
+- removed approval system (half-baked)
+- removed context viz ui (not core)
+- removed google search (can add back via mcp)
+- **kept turbopuffer** (essential for episodic memory)
+- added mcp-based architecture
+- added session persistence
+- reduced codebase by ~2,720 lines
+
+</details>
 
 ## reference projects
 
-inspired by:
-- [void](https://tangled.sh/@cameron.pfiffer.org/void.git) - letta/memgpt architecture
-- [penelope](https://github.com/haileyok/penelope) - self-modification patterns
-- [prefect-mcp-server](https://github.com/PrefectHQ/prefect-mcp-server) - mcp eval patterns
-
-reference implementations cloned to `.eggs/` for learning.
-
-## refactor notes
-
-see `sandbox/MCP_REFACTOR_SUMMARY.md` for details on recent architecture changes. key changes:
-- removed approval system (was half-baked)
-- removed context visualization ui (not core)
-- removed google search (can add back via mcp if needed)
-- **kept** turbopuffer episodic memory (essential!)
-- added mcp-based architecture
-- reduced codebase by ~2,720 lines
+inspired by [void](https://tangled.sh/@cameron.pfiffer.org/void.git), [penelope](https://github.com/haileyok/penelope), and [prefect-mcp-server](https://github.com/PrefectHQ/prefect-mcp-server).
