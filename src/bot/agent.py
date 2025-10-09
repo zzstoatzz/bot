@@ -129,7 +129,7 @@ class PhiAgent:
                         MemoryType.CONVERSATION,
                     )
 
-                logger.debug(f"💾 Stored interaction in episodic memory")
+                logger.debug("💾 Stored interaction in episodic memory")
             except Exception as e:
                 logger.warning(f"Failed to store in memory: {e}")
 

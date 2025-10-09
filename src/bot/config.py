@@ -12,58 +12,62 @@ class Settings(BaseSettings):
     )
 
     # Bluesky credentials
-    bluesky_handle: str = Field(..., description="The handle of the Bluesky account")
+    bluesky_handle: str = Field(
+        default=..., description="The handle of the Bluesky account"
+    )
     bluesky_password: str = Field(
-        ..., description="The password of the Bluesky account"
+        default=..., description="The password of the Bluesky account"
     )
     bluesky_service: str = Field(
-        "https://bsky.social", description="The service URL of the Bluesky account"
+        default="https://bsky.social",
+        description="The service URL of the Bluesky account",
     )
 
     # Bot configuration
-    bot_name: str = Field("Bot", description="The name of the bot")
+    bot_name: str = Field(default="Bot", description="The name of the bot")
     personality_file: str = Field(
-        "personalities/phi.md", description="The file containing the bot's personality"
+        default="personalities/phi.md",
+        description="The file containing the bot's personality",
     )
 
     # LLM configuration (support multiple providers)
     openai_api_key: str | None = Field(
-        None, description="The API key for the OpenAI API"
+        default=None, description="The API key for the OpenAI API"
     )
     anthropic_api_key: str | None = Field(
-        None, description="The API key for the Anthropic API"
+        default=None, description="The API key for the Anthropic API"
     )
 
     # Google Search configuration
     google_api_key: str | None = Field(
-        None, description="The API key for the Google API"
+        default=None, description="The API key for the Google API"
     )
     google_search_engine_id: str | None = Field(
-        None, description="The search engine ID for the Google API"
+        default=None, description="The search engine ID for the Google API"
     )
 
     # TurboPuffer configuration
     turbopuffer_api_key: str | None = Field(
-        None, description="The API key for the TurboPuffer API"
+        default=None, description="The API key for the TurboPuffer API"
     )
     turbopuffer_namespace: str = Field(
-        "bot-memories", description="The namespace for the TurboPuffer API"
+        default="bot-memories", description="The namespace for the TurboPuffer API"
     )
     turbopuffer_region: str = Field(
-        "gcp-us-central1", description="The region for the TurboPuffer API"
+        default="gcp-us-central1", description="The region for the TurboPuffer API"
     )
 
     # Server configuration
-    host: str = Field("0.0.0.0", description="The host for the server")
-    port: int = Field(8000, description="The port for the server")
+    host: str = Field(default="0.0.0.0", description="The host for the server")
+    port: int = Field(default=8000, description="The port for the server")
 
     # Polling configuration
     notification_poll_interval: int = Field(
-        10, description="The interval for polling for notifications"
+        default=10, description="The interval for polling for notifications"
     )
 
     # Debug mode
-    debug: bool = Field(True, description="Whether to run in debug mode")
+    debug: bool = Field(default=True, description="Whether to run in debug mode")
 
     @model_validator(mode="after")
     def configure_logging(self) -> Self:
