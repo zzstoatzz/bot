@@ -9,6 +9,7 @@ from bot.config import settings
 from bot.core.atproto_client import BotClient
 from bot.database import thread_db
 from bot.status import bot_status
+from bot.utils.thread import traverse_thread
 
 logger = logging.getLogger("bot.handler")
 
@@ -21,29 +22,24 @@ class MessageHandler:
         self.agent = PhiAgent()
 
     async def _store_thread_messages(self, thread_node, thread_uri: str):
-        """Recursively extract and store all messages from a thread."""
-        if not thread_node or not hasattr(thread_node, "post"):
-            return
+        """Extract and store all messages from a thread."""
 
-        post = thread_node.post
+        def store_post(node):
+            """Store a single post from the thread."""
+            if not hasattr(node, "post"):
+                return
 
-        # Store this message
-        thread_db.add_message(
-            thread_uri=thread_uri,
-            author_handle=post.author.handle,
-            author_did=post.author.did,
-            message_text=post.record.text,
-            post_uri=post.uri,
-        )
+            post = node.post
+            thread_db.add_message(
+                thread_uri=thread_uri,
+                author_handle=post.author.handle,
+                author_did=post.author.did,
+                message_text=post.record.text,
+                post_uri=post.uri,
+            )
 
-        # Recursively store replies
-        if hasattr(thread_node, "replies") and thread_node.replies:
-            for reply in thread_node.replies:
-                await self._store_thread_messages(reply, thread_uri)
-
-        # Also check for parent if this is a reply
-        if hasattr(thread_node, "parent") and thread_node.parent:
-            await self._store_thread_messages(thread_node.parent, thread_uri)
+        # Use utility to traverse and store all posts
+        traverse_thread(thread_node, store_post)
 
     async def handle_mention(self, notification):
         """Process a mention or reply notification."""
