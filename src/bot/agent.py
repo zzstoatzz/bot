@@ -93,16 +93,18 @@ class PhiAgent:
             except Exception as e:
                 logger.warning(f"Failed to retrieve memories: {e}")
 
-        # Build full prompt with all context
+        # Build full prompt with clearly labeled context sections
         prompt_parts = []
 
+        # Thread context is the CURRENT conversation - this is what the user is asking about
         if thread_context and thread_context != "No previous messages in this thread.":
-            prompt_parts.append(thread_context)
+            prompt_parts.append(f"[CURRENT THREAD - these are the messages in THIS thread]:\n{thread_context}")
 
+        # Memory context is PAST conversations - for background/relationship context only
         if memory_context:
-            prompt_parts.append(memory_context)
+            prompt_parts.append(f"[PAST CONVERSATIONS WITH @{author_handle} - for background context only]:\n{memory_context}")
 
-        prompt_parts.append(f"\nNew message from @{author_handle}: {mention_text}")
+        prompt_parts.append(f"\n[NEW MESSAGE]:\n@{author_handle}: {mention_text}")
         prompt = "\n\n".join(prompt_parts)
 
         # Run agent with MCP tools available
