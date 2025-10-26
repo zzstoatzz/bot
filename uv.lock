@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.12"
 
 [[package]]
@@ -181,14 +181,12 @@ dependencies = [
     { name = "atproto" },
     { name = "fastapi" },
     { name = "fastmcp" },
-    { name = "httpx" },
     { name = "openai" },
     { name = "pydantic-ai" },
     { name = "pydantic-settings" },
     { name = "rich" },
     { name = "turbopuffer" },
     { name = "uvicorn" },
-    { name = "websockets" },
 ]
 
 [package.dev-dependencies]
@@ -205,14 +203,12 @@ requires-dist = [
     { name = "atproto", git = "https://github.com/MarshalX/atproto.git?rev=refs%2Fpull%2F605%2Fhead" },
     { name = "fastapi" },
     { name = "fastmcp", specifier = ">=0.8.0" },
-    { name = "httpx" },
     { name = "openai" },
     { name = "pydantic-ai" },
     { name = "pydantic-settings" },
     { name = "rich" },
     { name = "turbopuffer" },
     { name = "uvicorn" },
-    { name = "websockets", specifier = ">=15.0.1" },
 ]
 
 [package.metadata.requires-dev]
@@ -419,7 +415,7 @@ version = "3.24.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "attrs" },
-    { name = "docstring-parser", marker = "python_full_version < '4.0'" },
+    { name = "docstring-parser", marker = "python_full_version < '4'" },
     { name = "rich" },
     { name = "rich-rst" },
 ]
