@@ -20,6 +20,31 @@ class MessageHandler:
         self.client = client
         self.agent = PhiAgent()
 
+    async def _store_thread_messages(self, thread_node, thread_uri: str):
+        """Recursively extract and store all messages from a thread."""
+        if not thread_node or not hasattr(thread_node, "post"):
+            return
+
+        post = thread_node.post
+
+        # Store this message
+        thread_db.add_message(
+            thread_uri=thread_uri,
+            author_handle=post.author.handle,
+            author_did=post.author.did,
+            message_text=post.record.text,
+            post_uri=post.uri,
+        )
+
+        # Recursively store replies
+        if hasattr(thread_node, "replies") and thread_node.replies:
+            for reply in thread_node.replies:
+                await self._store_thread_messages(reply, thread_uri)
+
+        # Also check for parent if this is a reply
+        if hasattr(thread_node, "parent") and thread_node.parent:
+            await self._store_thread_messages(thread_node.parent, thread_uri)
+
     async def handle_mention(self, notification):
         """Process a mention or reply notification."""
         try:
@@ -52,7 +77,19 @@ class MessageHandler:
                 root_ref = parent_ref
                 thread_uri = post_uri
 
-            # Store the message in thread history
+            # Discover thread context if we haven't participated yet
+            existing_messages = thread_db.get_thread_messages(thread_uri)
+            if not existing_messages:
+                # Phi is being tagged into an existing thread - fetch full context
+                logger.debug(f"🔍 Discovering thread context for {thread_uri}")
+                try:
+                    thread_data = await self.client.get_thread(thread_uri, depth=100)
+                    # Extract and store all messages from the thread
+                    await self._store_thread_messages(thread_data.thread, thread_uri)
+                except Exception as e:
+                    logger.warning(f"Failed to fetch thread context: {e}")
+
+            # Store the current mention in thread history
             thread_db.add_message(
                 thread_uri=thread_uri,
                 author_handle=author_handle,
