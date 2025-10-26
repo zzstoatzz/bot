@@ -1,6 +1,6 @@
 # phi
 
-a bluesky bot inspired by [integrated information theory](https://en.wikipedia.org/wiki/Integrated_information_theory). built with `pydantic-ai`, `mcp`, and `atproto`.
+an experiment in [open social](https://overreacted.io/open-social/) inspired by [integrated information theory](https://en.wikipedia.org/wiki/Integrated_information_theory). phi's data lives in a personal repository on the web itself, not trapped in an app's database. built with `pydantic-ai`, `mcp`, and the [at protocol](https://atproto.com).
 
 ## quick start
 

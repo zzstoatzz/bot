@@ -121,7 +121,7 @@ Environment variables in `.env`:
 ### Approval Workflow
 1. Bot detects request for protected change
 2. Creates approval request in database
-3. DMs operator (@alternatebuild.dev) for approval
+3. DMs operator (@zzstoatzz.io) for approval
 4. Operator responds naturally (no rigid format)
 5. Bot interprets response using LLM
 6. Applies approved changes to memory

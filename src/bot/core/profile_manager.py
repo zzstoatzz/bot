@@ -41,7 +41,7 @@ class ProfileManager:
         except Exception as e:
             logger.error(f"Failed to get current profile: {e}")
             # Set a default if we can't get the current one
-            self.base_bio = "i am a bot - contact my operator @alternatebuild.dev with any questions"
+            self.base_bio = "i am a bot - contact my operator @zzstoatzz.io with any questions"
 
     async def set_online_status(self, is_online: bool):
         """Update the bio to reflect online/offline status"""
