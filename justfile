@@ -30,13 +30,6 @@ typecheck:
 
 check: lint typecheck test
 
-# view phi's activity
-view-posts:
-    uv run --with rich --with httpx python scripts/view_phi_posts.py
-
-view-thread URI:
-    uv run --with rich --with httpx python scripts/view_thread.py {{URI}}
-
 # setup reference projects
 setup:
     @mkdir -p .eggs

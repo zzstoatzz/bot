@@ -26,12 +26,16 @@ Work from repo root whenever possible.
   - `templates.py` - HTML templates
 
 - `tests/` - Test files
-- `scripts/` - Utility scripts (test_post.py, test_mention.py)
-- `sandbox/` - Documentation and analysis
+- `scripts/` - Curated utility scripts that have proven useful
+- `sandbox/` - Proving ground for experiments, analysis, and unproven scripts
   - Reference project analyses
   - Architecture plans
   - Implementation notes
+  - Experimental scripts (graduate to scripts/ once proven useful)
 - `.eggs/` - Cloned reference projects (void, penelope, marvin)
+
+## Script Graduation Process
+New scripts start in `sandbox/`, get promoted to `scripts/` once proven useful, and may eventually get just commands added if the workflow should be broadcast to other developers. Not everything graduates - most things stay in sandbox.
 
 ## Testing
 - Run bot: `just dev`
