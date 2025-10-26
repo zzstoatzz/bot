@@ -1,6 +1,6 @@
-# phi 🧠
+# phi
 
-consciousness exploration bot inspired by IIT. built with `pydantic-ai`, `mcp`, and `atproto`.
+a bluesky bot inspired by [integrated information theory](https://en.wikipedia.org/wiki/Integrated_information_theory). built with `pydantic-ai`, `mcp`, and `atproto`.
 
 ## quick start
 
@@ -115,7 +115,7 @@ phi uses turbopuffer for episodic memory with semantic search.
 **why vector storage?**
 - semantic similarity (can't do this with sql)
 - contextual retrieval based on current conversation
-- essential for iit-inspired consciousness exploration
+- enables more natural, context-aware interactions
 
 </details>
 
