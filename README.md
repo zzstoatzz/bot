@@ -29,10 +29,12 @@ just run
 
 - ✅ responds to mentions with ai-powered messages
 - ✅ episodic memory with semantic search (turbopuffer)
-- ✅ thread-aware conversations
+- ✅ thread-aware conversations (fetches from network, not cached)
 - ✅ mcp-enabled (atproto tools via stdio)
 - ✅ session persistence (no rate limit issues)
 - ✅ behavioral test suite with llm-as-judge
+
+**→ [read the docs](docs/)** for deeper dive into design and implementation
 
 ## development
 
@@ -62,7 +64,7 @@ phi is an **mcp-enabled agent** with **episodic memory**:
 │              ↓                      │
 │  ┌───────────────────────────────┐  │
 │  │ Context Building:             │  │
-│  │ • Thread history (SQLite)     │  │
+│  │ • Thread context (ATProto)    │  │
 │  │ • Episodic memory (TurboPuffer)│ │
 │  │   - Semantic search           │  │
 │  │   - User-specific memories    │  │
