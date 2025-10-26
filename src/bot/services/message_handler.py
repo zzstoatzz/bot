@@ -7,9 +7,8 @@ from atproto_client import models
 from bot.agent import PhiAgent
 from bot.config import settings
 from bot.core.atproto_client import BotClient
-from bot.database import thread_db
 from bot.status import bot_status
-from bot.utils.thread import traverse_thread
+from bot.utils.thread import build_thread_context
 
 logger = logging.getLogger("bot.handler")
 
@@ -20,26 +19,6 @@ class MessageHandler:
     def __init__(self, client: BotClient):
         self.client = client
         self.agent = PhiAgent()
-
-    async def _store_thread_messages(self, thread_node, thread_uri: str):
-        """Extract and store all messages from a thread."""
-
-        def store_post(node):
-            """Store a single post from the thread."""
-            if not hasattr(node, "post"):
-                return
-
-            post = node.post
-            thread_db.add_message(
-                thread_uri=thread_uri,
-                author_handle=post.author.handle,
-                author_did=post.author.did,
-                message_text=post.record.text,
-                post_uri=post.uri,
-            )
-
-        # Use utility to traverse and store all posts
-        traverse_thread(thread_node, store_post)
 
     async def handle_mention(self, notification):
         """Process a mention or reply notification."""
@@ -73,29 +52,14 @@ class MessageHandler:
                 root_ref = parent_ref
                 thread_uri = post_uri
 
-            # Discover thread context if we haven't participated yet
-            existing_messages = thread_db.get_thread_messages(thread_uri)
-            if not existing_messages:
-                # Phi is being tagged into an existing thread - fetch full context
-                logger.debug(f"🔍 Discovering thread context for {thread_uri}")
-                try:
-                    thread_data = await self.client.get_thread(thread_uri, depth=100)
-                    # Extract and store all messages from the thread
-                    await self._store_thread_messages(thread_data.thread, thread_uri)
-                except Exception as e:
-                    logger.warning(f"Failed to fetch thread context: {e}")
-
-            # Store the current mention in thread history
-            thread_db.add_message(
-                thread_uri=thread_uri,
-                author_handle=author_handle,
-                author_did=author_did,
-                message_text=mention_text,
-                post_uri=post_uri,
-            )
-
-            # Get thread context
-            thread_context = thread_db.get_thread_context(thread_uri)
+            # Fetch thread context directly from network
+            thread_context = "No previous messages in this thread."
+            try:
+                logger.debug(f"🔍 Fetching thread context for {thread_uri}")
+                thread_data = await self.client.get_thread(thread_uri, depth=100)
+                thread_context = build_thread_context(thread_data.thread)
+            except Exception as e:
+                logger.warning(f"Failed to fetch thread context: {e}")
 
             # Process with agent (has episodic memory + MCP tools)
             response = await self.agent.process_mention(
@@ -129,19 +93,7 @@ class MessageHandler:
                 reply_ref = models.AppBskyFeedPost.ReplyRef(
                     parent=parent_ref, root=root_ref
                 )
-                reply_response = await self.client.create_post(
-                    response.text, reply_to=reply_ref
-                )
-
-                # Store bot's response in thread history
-                if reply_response and hasattr(reply_response, "uri"):
-                    thread_db.add_message(
-                        thread_uri=thread_uri,
-                        author_handle=settings.bluesky_handle,
-                        author_did=self.client.me.did if self.client.me else "bot",
-                        message_text=response.text,
-                        post_uri=reply_response.uri,
-                    )
+                await self.client.create_post(response.text, reply_to=reply_ref)
 
                 bot_status.record_response()
                 logger.info(f"✅ Replied to @{author_handle}: {response.text[:50]}...")

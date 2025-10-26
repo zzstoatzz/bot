@@ -58,3 +58,36 @@ def extract_posts_chronological(thread_node) -> list[any]:
     # Sort by indexed timestamp
     posts.sort(key=lambda p: p.indexed_at if hasattr(p, "indexed_at") else "")
     return posts
+
+
+def build_thread_context(thread_node) -> str:
+    """Build conversational context string from ATProto thread structure.
+
+    Args:
+        thread_node: ATProto thread node
+
+    Returns:
+        Formatted string of messages like:
+        @alice: I love birds
+        @phi: me too! what's your favorite?
+        @alice: especially crows
+
+    Example:
+        thread_data = await client.get_thread(uri, depth=100)
+        context = build_thread_context(thread_data.thread)
+    """
+    if not thread_node:
+        return "No previous messages in this thread."
+
+    posts = extract_posts_chronological(thread_node)
+
+    if not posts:
+        return "No previous messages in this thread."
+
+    messages = []
+    for post in posts:
+        handle = post.author.handle
+        text = post.record.text if hasattr(post.record, "text") else "[no text]"
+        messages.append(f"@{handle}: {text}")
+
+    return "\n".join(messages)
