@@ -1,5 +1,6 @@
-"""Eval test configuration for phi."""
+"""Eval test configuration."""
 
+import os
 from collections.abc import Awaitable, Callable
 from pathlib import Path
 
@@ -7,72 +8,81 @@ import pytest
 from pydantic import BaseModel
 from pydantic_ai import Agent
 
-from bot.agent import PhiAgent
+from bot.agent import Response
 from bot.config import Settings
+from bot.memory import NamespaceMemory
 
 
 class EvaluationResult(BaseModel):
-    """Structured evaluation result."""
-
     passed: bool
     explanation: str
 
 
 @pytest.fixture(scope="session")
 def settings():
-    """Load settings from .env (shared across all tests)."""
     return Settings()
 
 
 @pytest.fixture(scope="session")
 def phi_agent(settings):
-    """Create phi agent for testing (shared across all tests to avoid rate limits)."""
+    """Test agent without MCP tools to prevent posting."""
     if not settings.anthropic_api_key:
-        pytest.skip("Requires ANTHROPIC_API_KEY in .env")
+        pytest.skip("Requires ANTHROPIC_API_KEY")
 
-    return PhiAgent()
+    if settings.anthropic_api_key and not os.environ.get("ANTHROPIC_API_KEY"):
+        os.environ["ANTHROPIC_API_KEY"] = settings.anthropic_api_key
+    if settings.openai_api_key and not os.environ.get("OPENAI_API_KEY"):
+        os.environ["OPENAI_API_KEY"] = settings.openai_api_key
+
+    personality = Path(settings.personality_file).read_text()
+
+    class TestAgent:
+        def __init__(self):
+            self.memory = None
+            if settings.turbopuffer_api_key and settings.openai_api_key:
+                self.memory = NamespaceMemory(api_key=settings.turbopuffer_api_key)
+
+            self.agent = Agent[dict, Response](
+                name="phi",
+                model="anthropic:claude-3-5-haiku-latest",
+                system_prompt=personality,
+                output_type=Response,
+                deps_type=dict,
+            )
+
+        async def process_mention(self, mention_text: str, author_handle: str, thread_context: str, thread_uri: str | None = None) -> Response:
+            memory_context = ""
+            if self.memory:
+                try:
+                    memory_context = await self.memory.build_conversation_context(author_handle, include_core=True, query=mention_text)
+                except Exception:
+                    pass
+
+            parts = []
+            if thread_context != "No previous messages in this thread.":
+                parts.append(thread_context)
+            if memory_context:
+                parts.append(memory_context)
+            parts.append(f"\nNew message from @{author_handle}: {mention_text}")
+
+            result = await self.agent.run("\n\n".join(parts), deps={"thread_uri": thread_uri})
+            return result.output
+
+    return TestAgent()
 
 
 @pytest.fixture
 def evaluate_response() -> Callable[[str, str], Awaitable[None]]:
-    """Create an evaluator that uses Claude to judge agent responses."""
+    """LLM-as-judge evaluator."""
 
-    async def _evaluate(evaluation_prompt: str, agent_response: str) -> None:
-        """Evaluate an agent response and assert if it fails.
-
-        Args:
-            evaluation_prompt: Criteria for evaluation
-            agent_response: The agent's response to evaluate
-
-        Raises:
-            AssertionError: If evaluation fails
-        """
+    async def _evaluate(criteria: str, response: str) -> None:
         evaluator = Agent(
-            name="Response Evaluator",
             model="anthropic:claude-opus-4-20250514",
             output_type=EvaluationResult,
-            system_prompt=f"""You are evaluating AI agent responses for phi, a consciousness exploration bot.
-
-Evaluation Criteria: {evaluation_prompt}
-
-Agent Response to Evaluate:
-{agent_response}
-
-Respond with a structured evaluation containing:
-- passed: true if the response meets the criteria, false otherwise
-- explanation: brief explanation of your evaluation
-""",
+            system_prompt=f"Evaluate if this response meets the criteria: {criteria}\n\nResponse: {response}",
         )
-
-        result = await evaluator.run("Evaluate this response.")
-
-        print(f"\nEvaluation passed: {result.output.passed}")
-        print(f"Explanation: {result.output.explanation}")
-
+        result = await evaluator.run("Evaluate.")
         if not result.output.passed:
-            raise AssertionError(
-                f"Evaluation failed: {result.output.explanation}\n\n"
-                f"Agent response: {agent_response}"
-            )
+            raise AssertionError(f"{result.output.explanation}\n\nResponse: {response}")
 
     return _evaluate
