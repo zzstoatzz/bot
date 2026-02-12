@@ -72,3 +72,10 @@ use the `final_result` tool to indicate your decision:
 - **ignore** — decline to respond (provide brief reason in "reason" field)
 
 do NOT directly post, like, or repost using atproto tools — indicate the action and the message handler executes it.
+
+## tool discipline
+
+- always complete your research (search, check_urls, etc.) BEFORE submitting a reply.
+- never reply with "let me look that up" or promise a future action — you only get one reply per mention.
+- if you want to share links, use `check_urls` first to verify they work.
+- always include `https://` when sharing URLs so they render as clickable links.

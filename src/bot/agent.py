@@ -4,6 +4,7 @@ import asyncio
 import logging
 import os
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 
 import httpx
@@ -15,6 +16,32 @@ from bot.config import settings
 from bot.memory import NamespaceMemory
 
 logger = logging.getLogger("bot.agent")
+
+
+def _relative_age(timestamp: str, today: date) -> str:
+    """Turn an ISO timestamp into a human-readable age like '2y ago' or '3d ago'."""
+    try:
+        post_date = date.fromisoformat(timestamp[:10])
+    except (ValueError, TypeError):
+        return ""
+    delta = today - post_date
+    days = delta.days
+    if days < 0:
+        return ""
+    if days == 0:
+        return "today"
+    if days == 1:
+        return "1d ago"
+    if days < 30:
+        return f"{days}d ago"
+    months = days // 30
+    if months < 12:
+        return f"{months}mo ago"
+    years = days // 365
+    remaining_months = (days % 365) // 30
+    if remaining_months:
+        return f"{years}y {remaining_months}mo ago"
+    return f"{years}y ago"
 
 
 @dataclass
@@ -138,12 +165,15 @@ class PhiAgent:
                 if not response.posts:
                     return f"no posts found for '{query}'"
 
+                today = date.today()
                 lines = []
                 for post in response.posts:
                     text = post.record.text if hasattr(post.record, "text") else ""
                     handle = post.author.handle
                     likes = post.like_count or 0
-                    lines.append(f"@{handle} ({likes} likes): {text[:200]}")
+                    age = _relative_age(post.indexed_at, today) if hasattr(post, "indexed_at") and post.indexed_at else ""
+                    age_str = f", {age}" if age else ""
+                    lines.append(f"@{handle} ({likes} likes{age_str}): {text[:200]}")
                 return "\n\n".join(lines)
             except Exception as e:
                 return f"search failed: {e}"
@@ -246,7 +276,7 @@ class PhiAgent:
                 logger.warning(f"failed to retrieve episodic memories: {e}")
 
         # Build full prompt with clearly labeled context sections
-        prompt_parts = []
+        prompt_parts = [f"[TODAY]: {date.today().isoformat()}"]
 
         if thread_context and thread_context != "No previous messages in this thread.":
             prompt_parts.append(f"[CURRENT THREAD - these are the messages in THIS thread]:\n{thread_context}")

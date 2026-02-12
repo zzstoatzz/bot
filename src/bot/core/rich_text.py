@@ -7,6 +7,7 @@ from atproto import Client
 
 MENTION_REGEX = rb"(?:^|[$|\W])(@([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)"
 URL_REGEX = rb"(?:^|[$|\W])(https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*[-a-zA-Z0-9@%_\+~#//=])?)"
+BARE_URL_REGEX = rb"(?:^|[$|\W])((?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}(?:/[-a-zA-Z0-9@:%_\+.~#?&//=]*)?)"
 
 
 def parse_mentions(text: str, client: Client) -> list[dict[str, Any]]:
@@ -45,14 +46,17 @@ def parse_mentions(text: str, client: Client) -> list[dict[str, Any]]:
 
 
 def parse_urls(text: str) -> list[dict[str, Any]]:
-    """Parse URLs and create link facets"""
+    """Parse URLs and create link facets (full https?:// URLs and bare domain URLs)"""
     facets = []
     text_bytes = text.encode("UTF-8")
+    covered: set[tuple[int, int]] = set()
 
+    # full URLs first (https://...)
     for match in re.finditer(URL_REGEX, text_bytes):
         url = match.group(1).decode("UTF-8")
         url_start = match.start(1)
         url_end = match.end(1)
+        covered.add((url_start, url_end))
 
         facets.append(
             {
@@ -61,6 +65,28 @@ def parse_urls(text: str) -> list[dict[str, Any]]:
                     "byteEnd": url_end,
                 },
                 "features": [{"$type": "app.bsky.richtext.facet#link", "uri": url}],
+            }
+        )
+
+    # bare domain URLs (e.g. cnbc.com/path) — skip if overlapping a full URL
+    for match in re.finditer(BARE_URL_REGEX, text_bytes):
+        bare_start = match.start(1)
+        bare_end = match.end(1)
+        if any(not (bare_end <= cs or bare_start >= ce) for cs, ce in covered):
+            continue
+        bare = match.group(1).decode("UTF-8")
+        facets.append(
+            {
+                "index": {
+                    "byteStart": bare_start,
+                    "byteEnd": bare_end,
+                },
+                "features": [
+                    {
+                        "$type": "app.bsky.richtext.facet#link",
+                        "uri": f"https://{bare}",
+                    }
+                ],
             }
         )
 
