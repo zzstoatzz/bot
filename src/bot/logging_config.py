@@ -26,6 +26,10 @@ def setup_logging(debug: bool = False) -> None:
     for name in ["anthropic._base_client", "openai._base_client", "turbopuffer._base_client"]:
         logging.getLogger(name).setLevel(logging.WARNING)
 
+    # MCP protocol chatter (session init, tool listings, SSE messages)
+    for name in ["mcp", "mcp.client", "mcp.client.session", "mcp.client.streamable_http", "pydantic_ai.mcp"]:
+        logging.getLogger(name).setLevel(logging.WARNING)
+
 
 def _clear_uvicorn_handlers() -> None:
     """Strip uvicorn's handlers so its logs flow through the root logger."""

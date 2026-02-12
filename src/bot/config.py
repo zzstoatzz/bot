@@ -67,7 +67,7 @@ class Settings(BaseSettings):
 
     # Extraction model for observation extraction
     extraction_model: str = Field(
-        default="claude-4-5-haiku-latest",
+        default="claude-haiku-4-5-20251001",
         description="Model for extracting observations from conversations",
     )
 

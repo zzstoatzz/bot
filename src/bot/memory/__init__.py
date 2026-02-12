@@ -1,8 +1,9 @@
 """Memory system for the bot"""
 
-from .namespace_memory import MemoryType, NamespaceMemory
+from .namespace_memory import ExtractionResult, NamespaceMemory, Observation
 
 __all__ = [
-    "MemoryType",
+    "ExtractionResult",
     "NamespaceMemory",
+    "Observation",
 ]

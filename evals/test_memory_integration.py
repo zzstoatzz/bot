@@ -3,7 +3,7 @@
 import pytest
 
 from bot.config import Settings
-from bot.memory import MemoryType, NamespaceMemory
+from bot.memory import NamespaceMemory
 
 
 @pytest.fixture
@@ -19,11 +19,11 @@ async def test_memory_integration(memory_settings, phi_agent, evaluate_response)
     """Proof of concept: agent uses stored memory in response."""
     memory = NamespaceMemory(api_key=memory_settings.turbopuffer_api_key)
 
-    # Store a memory
+    # Store a core memory guideline
     await memory.store_core_memory(
         label="test_guideline",
         content="When users mention birds, acknowledge murmuration patterns",
-        memory_type=MemoryType.GUIDELINE,
+        memory_type="guideline",
     )
 
     phi_agent.memory = memory

@@ -1,31 +1,26 @@
-"""Manage bot profile status updates"""
+"""Manage bot profile status updates."""
 
 import logging
-from enum import Enum
 
 from atproto import Client
 
 logger = logging.getLogger("bot.profile_manager")
 
-
-class OnlineStatus(str, Enum):
-    """Online status indicators for bot profile"""
-    ONLINE = "🟢 online"
-    OFFLINE = "🔴 offline"
+_ONLINE_SUFFIX = "\n\n🟢 memory, thread context, atproto records, publication search, trending"
+_OFFLINE_SUFFIX = " • 🔴 offline"
+_ALL_SUFFIXES = [_ONLINE_SUFFIX, _OFFLINE_SUFFIX]
 
 
 class ProfileManager:
-    """Manages bot profile updates"""
+    """Manages bot profile updates."""
 
     def __init__(self, client: Client):
         self.client = client
         self.base_bio: str | None = None
-        self.current_record: dict | None = None
 
     async def initialize(self):
-        """Get the current profile and store base bio"""
+        """Get the current profile and store base bio."""
         try:
-            # Get current profile record
             response = self.client.com.atproto.repo.get_record(
                 {
                     "repo": self.client.me.did,
@@ -33,46 +28,29 @@ class ProfileManager:
                     "rkey": "self",
                 }
             )
-
-            self.current_record = response
             self.base_bio = response.value.description or ""
             logger.info(f"initialized with base bio: {self.base_bio}")
-
         except Exception as e:
             logger.error(f"failed to get current profile: {e}")
-            # Set a default if we can't get the current one
             self.base_bio = "i am a bot - contact my operator @zzstoatzz.io with any questions"
 
     async def set_online_status(self, is_online: bool):
-        """Update the bio to reflect online/offline status"""
+        """Update the bio to reflect online/offline status and capabilities."""
         try:
             if not self.base_bio:
                 await self.initialize()
 
-            # Create status suffix
-            status = OnlineStatus.ONLINE if is_online else OnlineStatus.OFFLINE
+            # Strip any existing suffix to get clean base bio
+            clean = self.base_bio
+            for suffix in _ALL_SUFFIXES:
+                clean = clean.replace(suffix, "")
+            clean = clean.rstrip()
 
-            # Get the actual base bio by removing any existing status
-            bio_without_status = self.base_bio
-            # Remove both correct status values and any enum string representations
-            for old_status in OnlineStatus:
-                bio_without_status = bio_without_status.replace(
-                    f" • {old_status.value}", ""
-                ).strip()
-                # Also clean up any enum string representations that got in there
-                bio_without_status = bio_without_status.replace(
-                    f" • {old_status.name}", ""
-                ).strip()
-                bio_without_status = bio_without_status.replace(
-                    f" • OnlineStatus.{old_status.name}", ""
-                ).strip()
+            # Store cleaned base for next time
+            self.base_bio = clean
 
-            # Store cleaned base bio for next time
-            if bio_without_status != self.base_bio:
-                self.base_bio = bio_without_status
-
-            # Add new status
-            new_bio = f"{bio_without_status} • {status.value}"
+            suffix = _ONLINE_SUFFIX if is_online else _OFFLINE_SUFFIX
+            new_bio = f"{clean}{suffix}"
 
             # Get current record to preserve other fields
             current = self.client.com.atproto.repo.get_record(

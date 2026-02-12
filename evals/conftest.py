@@ -54,7 +54,7 @@ def phi_agent(settings):
             memory_context = ""
             if self.memory:
                 try:
-                    memory_context = await self.memory.build_conversation_context(author_handle, include_core=True, query=mention_text)
+                    memory_context = await self.memory.build_user_context(author_handle, query_text=mention_text, include_core=True)
                 except Exception:
                     pass
 

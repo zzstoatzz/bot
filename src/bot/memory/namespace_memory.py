@@ -1,44 +1,70 @@
-"""Namespace-based memory implementation using TurboPuffer"""
+"""Namespace-based memory with structured observation extraction."""
 
 import hashlib
+import logging
 from datetime import datetime
-from enum import Enum
 from typing import ClassVar
 
 from openai import AsyncOpenAI
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
+from pydantic_ai import Agent
 from turbopuffer import Turbopuffer
 
 from bot.config import settings
 
-
-class MemoryType(str, Enum):
-    """Types of memories for categorization"""
-
-    PERSONALITY = "personality"
-    GUIDELINE = "guideline"
-    CAPABILITY = "capability"
-    USER_FACT = "user_fact"
-    CONVERSATION = "conversation"
-    OBSERVATION = "observation"
-    SYSTEM = "system"
+logger = logging.getLogger("bot.memory")
 
 
-class MemoryEntry(BaseModel):
-    """A single memory entry"""
+class Observation(BaseModel):
+    """A single extracted fact about a user or conversation."""
 
-    id: str
-    content: str
-    metadata: dict = Field(default_factory=dict)
-    created_at: datetime
+    content: str  # "interested in rust programming"
+    tags: list[str]  # ["interest", "programming"]
+
+
+class ExtractionResult(BaseModel):
+    """Result of extracting observations from a conversation."""
+
+    observations: list[Observation] = []
+
+
+EXTRACTION_SYSTEM_PROMPT = """\
+extract factual observations from this conversation exchange.
+focus on: interests, preferences, facts about the user, topics discussed, opinions expressed.
+skip: greetings, filler, things that are only meaningful in the moment.
+each observation should be a standalone fact that would be useful context in a future conversation.
+use short, lowercase tags to categorize each observation.
+if there's nothing worth extracting, return an empty list.
+deduplicate against the existing observations provided."""
+
+_extraction_agent: Agent[None, ExtractionResult] | None = None
+
+
+def get_extraction_agent() -> Agent[None, ExtractionResult]:
+    global _extraction_agent
+    if _extraction_agent is None:
+        _extraction_agent = Agent(
+            name="observation-extractor",
+            model=f"anthropic:{settings.extraction_model}",
+            output_type=ExtractionResult,
+            system_prompt=EXTRACTION_SYSTEM_PROMPT,
+        )
+    return _extraction_agent
+
+USER_NAMESPACE_SCHEMA = {
+    "kind": {"type": "string", "filterable": True},
+    "content": {"type": "string", "full_text_search": True},
+    "tags": {"type": "[]string", "filterable": True},
+    "created_at": {"type": "string"},
+}
 
 
 class NamespaceMemory:
-    """Simple namespace-based memory using TurboPuffer
+    """Namespace-based memory using TurboPuffer with structured observation extraction.
 
-    We use separate namespaces for different types of memories:
-    - core: Bot personality, guidelines, capabilities
-    - users: Per-user conversation history and facts
+    Each user gets their own namespace with two kinds of rows:
+    - kind: "interaction" - raw log of what happened
+    - kind: "observation" - extracted facts (one per observation)
     """
 
     NAMESPACES: ClassVar[dict[str, str]] = {
@@ -50,40 +76,37 @@ class NamespaceMemory:
         self.client = Turbopuffer(api_key=api_key, region=settings.turbopuffer_region)
         self.openai_client = AsyncOpenAI(api_key=settings.openai_api_key)
 
-        # Initialize namespace clients
         self.namespaces = {}
         for key, ns_name in self.NAMESPACES.items():
             self.namespaces[key] = self.client.namespace(ns_name)
 
+    async def close(self):
+        """Close the async OpenAI client."""
+        await self.openai_client.close()
+
     def get_user_namespace(self, handle: str):
-        """Get or create user-specific namespace"""
+        """Get or create user-specific namespace."""
         clean_handle = handle.replace(".", "_").replace("@", "").replace("-", "_")
         ns_name = f"{self.NAMESPACES['users']}-{clean_handle}"
         return self.client.namespace(ns_name)
 
     def _generate_id(self, namespace: str, label: str, content: str = "") -> str:
-        """Generate unique ID for memory entry"""
-        # Use timestamp for uniqueness, not just date
+        """Generate unique ID for a memory row."""
         timestamp = datetime.now().isoformat()
         data = f"{namespace}-{label}-{timestamp}-{content}"
         return hashlib.sha256(data.encode()).hexdigest()[:16]
 
     async def _get_embedding(self, text: str) -> list[float]:
-        """Get embedding for text using OpenAI"""
+        """Get embedding for text using OpenAI."""
         response = await self.openai_client.embeddings.create(
             model="text-embedding-3-small", input=text
         )
         return response.data[0].embedding
 
-    async def store_core_memory(
-        self,
-        label: str,
-        content: str,
-        memory_type: MemoryType = MemoryType.SYSTEM,
-        char_limit: int = 10_000,
-    ):
-        """Store or update core memory block"""
-        # Enforce character limit
+    # --- core memory (unchanged) ---
+
+    async def store_core_memory(self, label: str, content: str, memory_type: str = "system", char_limit: int = 10_000):
+        """Store or update core memory block."""
         if len(content) > char_limit:
             content = content[: char_limit - 3] + "..."
 
@@ -95,9 +118,9 @@ class NamespaceMemory:
                     "id": block_id,
                     "vector": await self._get_embedding(content),
                     "label": label,
-                    "type": memory_type.value,
+                    "type": memory_type,
                     "content": content,
-                    "importance": 1.0,  # Core memories are always important
+                    "importance": 1.0,
                     "created_at": datetime.now().isoformat(),
                     "updated_at": datetime.now().isoformat(),
                 }
@@ -113,8 +136,8 @@ class NamespaceMemory:
             },
         )
 
-    async def get_core_memories(self) -> list[MemoryEntry]:
-        """Get all core memories"""
+    async def get_core_memories(self) -> list[dict]:
+        """Get all core memories."""
         response = self.namespaces["core"].query(
             rank_by=("vector", "ANN", [0.5] * 1536),
             top_k=100,
@@ -124,122 +147,203 @@ class NamespaceMemory:
         entries = []
         if response.rows:
             for row in response.rows:
-                entries.append(
-                    MemoryEntry(
-                        id=row.id,
-                        content=row.content,
-                        metadata={
-                            "label": row.label,
-                            "type": row.type,
-                            "importance": getattr(row, "importance", 1.0),
-                        },
-                        created_at=datetime.fromisoformat(row.created_at),
-                    )
-                )
-
+                entries.append({
+                    "id": row.id,
+                    "content": row.content,
+                    "label": getattr(row, "label", "unknown"),
+                    "type": getattr(row, "type", "system"),
+                    "importance": getattr(row, "importance", 1.0),
+                    "created_at": row.created_at,
+                })
         return entries
 
-    # User memory operations
-    async def store_user_memory(
-        self,
-        handle: str,
-        content: str,
-        memory_type: MemoryType = MemoryType.CONVERSATION,
-    ):
-        """Store memory for a specific user"""
+    # --- user memory ---
+
+    async def store_interaction(self, handle: str, user_text: str, bot_text: str):
+        """Store a raw interaction log (user message + bot reply)."""
         user_ns = self.get_user_namespace(handle)
-        entry_id = self._generate_id(f"user-{handle}", memory_type.value, content)
+        content = f"user: {user_text}\nbot: {bot_text}"
+        entry_id = self._generate_id(f"user-{handle}", "interaction", content)
 
         user_ns.write(
             upsert_rows=[
                 {
                     "id": entry_id,
                     "vector": await self._get_embedding(content),
-                    "type": memory_type.value,
+                    "kind": "interaction",
                     "content": content,
-                    "handle": handle,
+                    "tags": [],
                     "created_at": datetime.now().isoformat(),
                 }
             ],
             distance_metric="cosine_distance",
-            schema={
-                "type": {"type": "string"},
-                "content": {"type": "string", "full_text_search": True},
-                "handle": {"type": "string"},
-                "created_at": {"type": "string"},
-            },
+            schema=USER_NAMESPACE_SCHEMA,
         )
 
-    async def get_user_memories(
-        self, user_handle: str, limit: int = 50, query: str | None = None
-    ) -> list[MemoryEntry]:
-        """Get memories for a specific user, optionally filtered by semantic search"""
-        user_ns = self.get_user_namespace(user_handle)
+    async def store_observations(self, handle: str, observations: list[Observation]):
+        """Store extracted observations as individual rows."""
+        if not observations:
+            return
 
+        user_ns = self.get_user_namespace(handle)
+        rows = []
+        for obs in observations:
+            entry_id = self._generate_id(f"user-{handle}", "observation", obs.content)
+            rows.append({
+                "id": entry_id,
+                "vector": await self._get_embedding(obs.content),
+                "kind": "observation",
+                "content": obs.content,
+                "tags": obs.tags,
+                "created_at": datetime.now().isoformat(),
+            })
+
+        user_ns.write(
+            upsert_rows=rows,
+            distance_metric="cosine_distance",
+            schema=USER_NAMESPACE_SCHEMA,
+        )
+
+    async def extract_and_store(self, handle: str, user_text: str, bot_text: str):
+        """Extract observations from an exchange and store them. Meant to be fire-and-forget."""
         try:
-            # Use semantic search if query provided, otherwise chronological
-            if query:
-                query_embedding = await self._get_embedding(query)
-                response = user_ns.query(
-                    rank_by=("vector", "ANN", query_embedding),
-                    top_k=limit,
-                    include_attributes=["type", "content", "created_at"],
-                )
+            # fetch existing observations for dedup context
+            existing = await self._get_observations(handle, top_k=20)
+            existing_text = "\n".join(f"- {o}" for o in existing) if existing else "none yet"
+
+            prompt = (
+                f"existing observations about this user:\n{existing_text}\n\n"
+                f"new exchange:\nuser: {user_text}\nbot: {bot_text}"
+            )
+            result = await get_extraction_agent().run(prompt)
+            if result.output.observations:
+                await self.store_observations(handle, result.output.observations)
+                obs_summary = ", ".join(o.content[:60] for o in result.output.observations)
+                logger.info(f"extracted {len(result.output.observations)} observations for @{handle}: {obs_summary}")
             else:
-                response = user_ns.query(
-                    rank_by=None,  # No ranking, we'll sort by date
-                    top_k=limit * 2,  # Get more, then sort
-                    include_attributes=["type", "content", "created_at"],
-                )
-
-            entries = []
-            if response.rows:
-                for row in response.rows:
-                    entries.append(
-                        MemoryEntry(
-                            id=row.id,
-                            content=row.content,
-                            metadata={"user_handle": user_handle, "type": row.type},
-                            created_at=datetime.fromisoformat(row.created_at),
-                        )
-                    )
-
-            return sorted(entries, key=lambda x: x.created_at, reverse=True)
-
+                logger.debug(f"no new observations for @{handle}")
         except Exception as e:
-            # If namespace doesn't exist, return empty list
-            if "was not found" in str(e):
-                return []
-            raise
+            logger.warning(f"observation extraction failed for @{handle}: {e}")
 
-    # Main method used by the bot
-    async def build_conversation_context(
-        self, user_handle: str, include_core: bool = True, query: str | None = None
-    ) -> str:
-        """Build complete context for a conversation"""
+    async def _get_observations(self, handle: str, top_k: int = 20) -> list[str]:
+        """Get existing observation content strings for a user."""
+        user_ns = self.get_user_namespace(handle)
+        try:
+            response = user_ns.query(
+                rank_by=("vector", "ANN", [0.5] * 1536),
+                top_k=top_k,
+                filters={"kind": ["Eq", "observation"]},
+                include_attributes=["content"],
+            )
+            if response.rows:
+                return [row.content for row in response.rows]
+        except Exception as e:
+            if "attribute not found" in str(e):
+                return []  # old namespace without kind column - no observations yet
+            if "was not found" not in str(e):
+                raise
+        return []
+
+    async def build_user_context(self, handle: str, query_text: str, include_core: bool = True) -> str:
+        """Build context for a conversation from observations and recent interactions."""
         parts = []
 
-        # Core memories (personality, guidelines, etc.)
         if include_core:
             core_memories = await self.get_core_memories()
             if core_memories:
                 parts.append("[CORE IDENTITY AND GUIDELINES]")
-                for mem in sorted(
-                    core_memories,
-                    key=lambda x: x.metadata.get("importance", 0),
-                    reverse=True,
-                ):
-                    label = mem.metadata.get("label", "unknown")
-                    parts.append(f"[{label}] {mem.content}")
+                for mem in sorted(core_memories, key=lambda x: x.get("importance", 0), reverse=True):
+                    label = mem.get("label", "unknown")
+                    parts.append(f"[{label}] {mem['content']}")
 
-        # User-specific memories
-        user_memories = await self.get_user_memories(user_handle, query=query)
-        if user_memories:
-            parts.append(f"\n[USER CONTEXT - @{user_handle}]")
-            for mem in user_memories[:10]:  # Most recent 10
-                parts.append(f"- {mem.content}")
-        elif include_core:
-            parts.append(f"\n[USER CONTEXT - @{user_handle}]")
-            parts.append("No previous interactions with this user.")
+        user_ns = self.get_user_namespace(handle)
+        try:
+            query_embedding = await self._get_embedding(query_text)
+
+            observations: list[str] = []
+            interactions: list[str] = []
+
+            try:
+                # semantic search for relevant observations
+                obs_response = user_ns.query(
+                    rank_by=("vector", "ANN", query_embedding),
+                    top_k=10,
+                    filters={"kind": ["Eq", "observation"]},
+                    include_attributes=["content", "tags"],
+                )
+                if obs_response.rows:
+                    observations = [row.content for row in obs_response.rows]
+
+                # recent interactions for conversational context
+                interaction_response = user_ns.query(
+                    rank_by=("vector", "ANN", query_embedding),
+                    top_k=5,
+                    filters={"kind": ["Eq", "interaction"]},
+                    include_attributes=["content", "created_at"],
+                )
+                if interaction_response.rows:
+                    interactions = [row.content for row in interaction_response.rows]
+            except Exception as e:
+                if "attribute not found" not in str(e):
+                    raise
+                # old namespace without kind column - fall back to unfiltered search
+                logger.debug(f"kind attribute not found for @{handle}, falling back to unfiltered search")
+                response = user_ns.query(
+                    rank_by=("vector", "ANN", query_embedding),
+                    top_k=10,
+                    include_attributes=["content"],
+                )
+                if response.rows:
+                    interactions = [row.content for row in response.rows]
+
+            if observations:
+                parts.append(f"\n[KNOWN FACTS ABOUT @{handle}]")
+                for obs in observations:
+                    parts.append(f"- {obs}")
+
+            if interactions:
+                parts.append(f"\n[RECENT INTERACTIONS WITH @{handle}]")
+                for interaction in interactions:
+                    parts.append(f"- {interaction}")
+
+            if not observations and not interactions:
+                parts.append(f"\n[USER CONTEXT - @{handle}]")
+                parts.append("no previous interactions with this user.")
+
+        except Exception as e:
+            if "was not found" not in str(e):
+                logger.warning(f"failed to retrieve user context for @{handle}: {e}")
+            parts.append(f"\n[USER CONTEXT - @{handle}]")
+            parts.append("no previous interactions with this user.")
 
         return "\n".join(parts)
+
+    async def search(self, handle: str, query: str, top_k: int = 10) -> list[dict]:
+        """Unfiltered semantic search across all memory kinds for a user."""
+        user_ns = self.get_user_namespace(handle)
+        try:
+            query_embedding = await self._get_embedding(query)
+            response = user_ns.query(
+                rank_by=("vector", "ANN", query_embedding),
+                top_k=top_k,
+                include_attributes=["content", "created_at"],
+            )
+            results = []
+            if response.rows:
+                for row in response.rows:
+                    results.append({
+                        "kind": getattr(row, "kind", "unknown"),
+                        "content": row.content,
+                        "tags": getattr(row, "tags", []),
+                        "created_at": getattr(row, "created_at", ""),
+                    })
+            return results
+        except Exception as e:
+            if "was not found" in str(e):
+                return []
+            raise
+
+    async def after_interaction(self, handle: str, user_text: str, bot_text: str):
+        """Post-interaction hook: store interaction then extract observations."""
+        await self.store_interaction(handle, user_text, bot_text)
+        await self.extract_and_store(handle, user_text, bot_text)
