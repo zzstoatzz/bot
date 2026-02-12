@@ -95,6 +95,28 @@ class PhiAgent:
             return "\n".join(parts)
 
         @self.agent.tool
+        async def search_posts(ctx: RunContext[dict], query: str, limit: int = 10) -> str:
+            """Search Bluesky posts by keyword. Use this to find what people are saying about a topic."""
+            from bot.core.atproto_client import bot_client
+
+            try:
+                response = bot_client.client.app.bsky.feed.search_posts(
+                    params={"q": query, "limit": min(limit, 25), "sort": "top"}
+                )
+                if not response.posts:
+                    return f"no posts found for '{query}'"
+
+                lines = []
+                for post in response.posts:
+                    text = post.record.text if hasattr(post.record, "text") else ""
+                    handle = post.author.handle
+                    likes = post.like_count or 0
+                    lines.append(f"@{handle} ({likes} likes): {text[:200]}")
+                return "\n\n".join(lines)
+            except Exception as e:
+                return f"search failed: {e}"
+
+        @self.agent.tool
         async def get_trending(ctx: RunContext[dict]) -> str:
             """Get what's currently trending on Bluesky. Returns entity-level trends from the firehose (via coral) and official Bluesky trending topics. Use this when someone asks about current events, what people are talking about, or when you want timely context."""
             parts: list[str] = []

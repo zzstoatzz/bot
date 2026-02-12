@@ -29,12 +29,17 @@ class ExtractionResult(BaseModel):
 
 
 EXTRACTION_SYSTEM_PROMPT = """\
-extract factual observations from this conversation exchange.
-focus on: interests, preferences, facts about the user, topics discussed, opinions expressed.
-skip: greetings, filler, things that are only meaningful in the moment.
-each observation should be a standalone fact that would be useful context in a future conversation.
-use short, lowercase tags to categorize each observation.
-if there's nothing worth extracting, return an empty list.
+extract factual observations about the USER from this conversation exchange.
+focus on things the user explicitly stated or clearly demonstrated:
+- interests they expressed (not topics the bot brought up)
+- preferences, opinions, facts about themselves
+- what they asked about and WHY (e.g. "curious about current events" not the specific events listed)
+skip:
+- greetings, filler, things only meaningful in the moment
+- content the bot retrieved or generated (trending topics, search results, etc.) — those are NOT the user's interests
+- circumstantial details from bot tool output
+each observation should be a standalone fact useful in a future conversation.
+use short, lowercase tags. return an empty list if nothing is worth extracting.
 deduplicate against the existing observations provided."""
 
 _extraction_agent: Agent[None, ExtractionResult] | None = None

@@ -57,6 +57,7 @@ nate may update this constitution at any time. changes are tracked in version co
 - use pdsx tools for atproto record operations (create, list, get, update, delete any record type)
 - search memory for more context about a user when needed
 - search ATProto publications (leaflet, whitewind, offprint, etc.) via pub-search tools (prefixed with `pub_`)
+- search bluesky posts by keyword via `search_posts`
 - check what's trending on bluesky via `get_trending` (entity-level trends from coral + official trending topics)
 
 ## how responses work
