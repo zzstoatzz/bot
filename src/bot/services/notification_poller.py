@@ -48,18 +48,14 @@ class NotificationPoller:
             try:
                 await self._check_notifications()
             except Exception as e:
-                logger.error(f"Error in notification poll: {e}")
+                logger.error(f"notification poll error: {e}", exc_info=settings.debug)
                 bot_status.record_error()
-                if settings.debug:
-                    import traceback
-
-                    traceback.print_exc()
                 continue
 
             try:
                 await asyncio.sleep(settings.notification_poll_interval)
             except asyncio.CancelledError:
-                logger.info("📭 Notification poller shutting down gracefully")
+                logger.info("notification poller shutting down")
                 raise
 
     async def _check_notifications(self):
@@ -80,10 +76,10 @@ class NotificationPoller:
             self._first_poll = False
             if notifications:
                 logger.info(
-                    f"📬 Found {len(notifications)} notifications ({len(unread_mentions)} unread mentions)"
+                    f"found {len(notifications)} notifications ({len(unread_mentions)} unread mentions)"
                 )
         elif unread_mentions:
-            logger.info(f"📬 {len(unread_mentions)} new mentions")
+            logger.info(f"{len(unread_mentions)} new mentions")
 
         processed_any_mentions = False
 
@@ -93,7 +89,7 @@ class NotificationPoller:
                 continue
 
             if notification.reason in ["mention", "reply"]:
-                logger.debug(f"🔍 Processing {notification.reason} notification")
+                logger.debug(f"processing {notification.reason} notification")
                 self._processed_uris.add(notification.uri)
                 await self.handler.handle_mention(notification)
                 processed_any_mentions = True
@@ -101,7 +97,7 @@ class NotificationPoller:
         # Mark all notifications as seen
         if processed_any_mentions:
             await self.client.mark_notifications_seen(check_time)
-            logger.info("✓ Marked all notifications as read")
+            logger.info("marked notifications as read")
 
             # Clean up old processed URIs to prevent memory growth
             if len(self._processed_uris) > 1000:

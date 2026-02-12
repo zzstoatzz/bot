@@ -1,9 +1,17 @@
-from typing import Self
+from typing import Literal, Self
 
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from bot.logging_config import setup_logging
+
+
+class LogfireSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="LOGFIRE_", extra="ignore", env_file=".env")
+
+    token: str | None = None
+    environment: str | None = None
+    send_to_logfire: Literal["if-token-present"] | None = "if-token-present"
 
 
 class Settings(BaseSettings):
@@ -57,6 +65,12 @@ class Settings(BaseSettings):
         default="gcp-us-central1", description="The region for the TurboPuffer API"
     )
 
+    # Extraction model for observation extraction
+    extraction_model: str = Field(
+        default="claude-4-5-haiku-latest",
+        description="Model for extracting observations from conversations",
+    )
+
     # Server configuration
     host: str = Field(default="0.0.0.0", description="The host for the server")
     port: int = Field(default=8000, description="The port for the server")
@@ -69,9 +83,12 @@ class Settings(BaseSettings):
     # Debug mode
     debug: bool = Field(default=True, description="Whether to run in debug mode")
 
+    # Logfire
+    logfire: LogfireSettings = Field(default_factory=LogfireSettings)
+
     @model_validator(mode="after")
     def configure_logging(self) -> Self:
-        """Configure beautiful logging"""
+        """Configure stdlib logging."""
         setup_logging(debug=self.debug)
         return self
 

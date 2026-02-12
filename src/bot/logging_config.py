@@ -1,50 +1,35 @@
-"""Logging configuration for the bot"""
+"""Logging configuration for the bot."""
 
 import logging
 
-from rich.console import Console
-from rich.logging import RichHandler
-from rich.theme import Theme
-
-custom_theme = Theme(
-    {
-        "info": "cyan",
-        "warning": "yellow",
-        "error": "bold red",
-        "critical": "bold red on white",
-        "debug": "dim white",
-        "http": "dim blue",
-        "bot": "green",
-        "mention": "bold magenta",
-    }
-)
-
-console = Console(theme=custom_theme)
+from logfire.integrations.logging import LogfireLoggingHandler
 
 
 def setup_logging(debug: bool = False) -> None:
-    """Set up logging with Rich"""
+    """Bridge stdlib logging into logfire's OTel pipeline."""
+    level = logging.DEBUG if debug else logging.INFO
+
     root_logger = logging.getLogger()
     root_logger.handlers.clear()
+    root_logger.setLevel(level)
+    root_logger.addHandler(LogfireLoggingHandler(level=level))
 
-    handler = RichHandler(
-        console=console,
-        show_time=False,
-        show_path=False,
-        markup=True,
-        rich_tracebacks=True,
-        tracebacks_show_locals=debug,
-    )
+    # uvicorn installs its own handlers — clear them so logs propagate to root.
+    # called again in lifespan since uvicorn re-installs handlers on startup.
+    _clear_uvicorn_handlers()
 
-    if debug:
-        handler.setLevel(logging.DEBUG)
-        format_str = "[dim]{asctime}[/dim] {message}"
-    else:
-        handler.setLevel(logging.INFO)
-        format_str = "{message}"
+    # httpx/httpcore log full request tuples — logfire traces HTTP as spans already
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
 
-    formatter = logging.Formatter(format_str, style="{", datefmt="%H:%M:%S")
-    handler.setFormatter(formatter)
+    # SDK debug loggers dump full request bodies (embeddings, prompts)
+    for name in ["anthropic._base_client", "openai._base_client", "turbopuffer._base_client"]:
+        logging.getLogger(name).setLevel(logging.WARNING)
 
-    root_logger.addHandler(handler)
-    root_logger.setLevel(logging.DEBUG if debug else logging.INFO)
+
+def _clear_uvicorn_handlers() -> None:
+    """Strip uvicorn's handlers so its logs flow through the root logger."""
+    for name in ["uvicorn", "uvicorn.error", "uvicorn.access"]:
+        uv_logger = logging.getLogger(name)
+        uv_logger.handlers.clear()
+        uv_logger.propagate = True

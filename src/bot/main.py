@@ -4,22 +4,34 @@ import logging
 from contextlib import asynccontextmanager
 from datetime import datetime
 
+import logfire
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 
 from bot.config import settings
 from bot.core.atproto_client import bot_client
 from bot.core.profile_manager import ProfileManager
+from bot.logging_config import _clear_uvicorn_handlers
 from bot.services.notification_poller import NotificationPoller
 from bot.status import bot_status
 
 logger = logging.getLogger("bot.main")
 
+logfire.configure(
+    send_to_logfire=settings.logfire.send_to_logfire,
+    environment=settings.logfire.environment,
+    token=settings.logfire.token,
+    console=logfire.ConsoleOptions(
+        min_log_level="debug" if settings.debug else "info",
+    ),
+)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan handler."""
-    logger.info(f"🤖 Starting phi as @{settings.bluesky_handle}")
+    _clear_uvicorn_handlers()  # uvicorn re-installs handlers on startup
+    logger.info(f"starting phi as @{settings.bluesky_handle}")
 
     await bot_client.authenticate()
 
@@ -31,17 +43,17 @@ async def lifespan(app: FastAPI):
     poller = NotificationPoller(bot_client)
     await poller.start()
 
-    logger.info("✅ phi is online! Listening for mentions...")
+    logger.info("phi is online, listening for mentions")
 
     yield
 
-    logger.info("🛑 Shutting down phi...")
+    logger.info("shutting down phi")
     await poller.stop()
 
     # Set offline status
     await profile_manager.set_online_status(False)
 
-    logger.info("👋 phi shutdown complete")
+    logger.info("phi shutdown complete")
 
 
 app = FastAPI(
@@ -49,6 +61,8 @@ app = FastAPI(
     description="consciousness exploration bot with episodic memory",
     lifespan=lifespan,
 )
+
+logfire.instrument_fastapi(app)
 
 
 @app.get("/")

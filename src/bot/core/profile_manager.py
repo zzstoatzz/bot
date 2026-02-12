@@ -36,10 +36,10 @@ class ProfileManager:
 
             self.current_record = response
             self.base_bio = response.value.description or ""
-            logger.info(f"Initialized with base bio: {self.base_bio}")
+            logger.info(f"initialized with base bio: {self.base_bio}")
 
         except Exception as e:
-            logger.error(f"Failed to get current profile: {e}")
+            logger.error(f"failed to get current profile: {e}")
             # Set a default if we can't get the current one
             self.base_bio = "i am a bot - contact my operator @zzstoatzz.io with any questions"
 
@@ -114,8 +114,8 @@ class ProfileManager:
                 }
             )
 
-            logger.info(f"Updated profile bio: {new_bio}")
+            logger.info(f"updated profile bio: {new_bio}")
 
         except Exception as e:
-            logger.error(f"Failed to update profile status: {e}")
+            logger.error(f"failed to update profile status: {e}")
             # Don't fail the whole app if profile update fails

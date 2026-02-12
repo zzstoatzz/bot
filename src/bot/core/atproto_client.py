@@ -17,7 +17,7 @@ def _get_session_string() -> str | None:
         if SESSION_FILE.exists():
             return SESSION_FILE.read_text(encoding="utf-8")
     except Exception as e:
-        logger.warning(f"Failed to load session: {e}")
+        logger.warning(f"failed to load session: {e}")
     return None
 
 
@@ -25,15 +25,15 @@ def _save_session_string(session_string: str) -> None:
     """Save session to disk."""
     try:
         SESSION_FILE.write_text(session_string, encoding="utf-8")
-        logger.debug("Session saved to disk")
+        logger.debug("session saved to disk")
     except Exception as e:
-        logger.warning(f"Failed to save session: {e}")
+        logger.warning(f"failed to save session: {e}")
 
 
 def _on_session_change(event: SessionEvent, session: Session) -> None:
     """Handle session changes (creation and refresh)."""
     if event in (SessionEvent.CREATE, SessionEvent.REFRESH):
-        logger.debug(f"Session {event.value}, saving to disk")
+        logger.debug(f"session {event.value}, saving to disk")
         _save_session_string(session.export())
 
 
@@ -52,22 +52,22 @@ class BotClient:
         session_string = _get_session_string()
         if session_string:
             try:
-                logger.info("🔄 Reusing saved session")
+                logger.info("reusing saved session")
                 self.client.login(session_string=session_string)
                 self._authenticated = True
-                logger.info("✅ Session restored successfully")
+                logger.info("session restored")
                 return
             except Exception as e:
-                logger.warning(f"Failed to reuse session: {e}, creating new one")
+                logger.warning(f"failed to reuse session: {e}, creating new one")
                 # Delete invalid session file
                 if SESSION_FILE.exists():
                     SESSION_FILE.unlink()
 
         # Create new session if no valid session exists
-        logger.info("🔐 Creating new session")
+        logger.info("creating new session")
         self.client.login(settings.bluesky_handle, settings.bluesky_password)
         self._authenticated = True
-        logger.info("✅ New session created")
+        logger.info("new session created")
 
     @property
     def is_authenticated(self) -> bool:
@@ -97,7 +97,7 @@ class BotClient:
 
         # Create facets for mentions and URLs
         facets = create_facets(text, self.client)
-        
+
         # Use send_post with facets
         if reply_to:
             return self.client.send_post(text=text, reply_to=reply_to, facets=facets)
