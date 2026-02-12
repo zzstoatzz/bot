@@ -27,6 +27,11 @@ extend-select = ["I", "UP"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
+filterwarnings = [
+    "ignore::logfire._internal.config.LogfireNotConfiguredWarning",
+    "ignore::DeprecationWarning:abc",
+    "ignore::DeprecationWarning:opentelemetry",
+]
 
 [dependency-groups]
 dev = [

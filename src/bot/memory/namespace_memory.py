@@ -56,6 +56,13 @@ def get_extraction_agent() -> Agent[None, ExtractionResult]:
         )
     return _extraction_agent
 
+EPISODIC_SCHEMA = {
+    "content": {"type": "string", "full_text_search": True},
+    "tags": {"type": "[]string", "filterable": True},
+    "source": {"type": "string", "filterable": True},  # "tool", "conversation"
+    "created_at": {"type": "string"},
+}
+
 USER_NAMESPACE_SCHEMA = {
     "kind": {"type": "string", "filterable": True},
     "content": {"type": "string", "full_text_search": True},
@@ -75,6 +82,7 @@ class NamespaceMemory:
     NAMESPACES: ClassVar[dict[str, str]] = {
         "core": "phi-core",
         "users": "phi-users",
+        "episodic": "phi-episodic",
     }
 
     def __init__(self, api_key: str | None = None):
@@ -347,6 +355,62 @@ class NamespaceMemory:
             if "was not found" in str(e):
                 return []
             raise
+
+    # --- episodic memory (phi's own world knowledge) ---
+
+    async def store_episodic_memory(self, content: str, tags: list[str], source: str = "tool"):
+        """Store an episodic memory — something phi learned about the world."""
+        entry_id = self._generate_id("episodic", source, content)
+        self.namespaces["episodic"].write(
+            upsert_rows=[
+                {
+                    "id": entry_id,
+                    "vector": await self._get_embedding(content),
+                    "content": content,
+                    "tags": tags,
+                    "source": source,
+                    "created_at": datetime.now().isoformat(),
+                }
+            ],
+            distance_metric="cosine_distance",
+            schema=EPISODIC_SCHEMA,
+        )
+        logger.info(f"stored episodic memory [{source}]: {content[:80]}")
+
+    async def search_episodic(self, query: str, top_k: int = 10) -> list[dict]:
+        """Semantic search over phi's episodic memories."""
+        try:
+            query_embedding = await self._get_embedding(query)
+            response = self.namespaces["episodic"].query(
+                rank_by=("vector", "ANN", query_embedding),
+                top_k=top_k,
+                include_attributes=["content", "tags", "source", "created_at"],
+            )
+            results = []
+            if response.rows:
+                for row in response.rows:
+                    results.append({
+                        "content": row.content,
+                        "tags": getattr(row, "tags", []),
+                        "source": getattr(row, "source", "unknown"),
+                        "created_at": getattr(row, "created_at", ""),
+                    })
+            return results
+        except Exception as e:
+            if "was not found" in str(e):
+                return []
+            raise
+
+    async def get_episodic_context(self, query_text: str, top_k: int = 5) -> str:
+        """Get formatted episodic context for injection into conversation prompt."""
+        results = await self.search_episodic(query_text, top_k=top_k)
+        if not results:
+            return ""
+        lines = ["[PHI'S RELEVANT MEMORIES]"]
+        for r in results:
+            tags = f" [{', '.join(r['tags'])}]" if r.get("tags") else ""
+            lines.append(f"- {r['content']}{tags}")
+        return "\n".join(lines)
 
     async def after_interaction(self, handle: str, user_text: str, bot_text: str):
         """Post-interaction hook: store interaction then extract observations."""

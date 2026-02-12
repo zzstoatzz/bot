@@ -5,6 +5,7 @@ Usage:
     uv run scripts/memory_inspect.py USER_HANDLE              # dump observations + interactions for a user
     uv run scripts/memory_inspect.py USER_HANDLE --delete ID  # delete a specific row by ID
     uv run scripts/memory_inspect.py USER_HANDLE --purge-observations  # delete ALL observations for a user
+    uv run scripts/memory_inspect.py --episodic               # dump phi's episodic memories
 """
 
 import argparse
@@ -141,14 +142,51 @@ def purge_observations(client: Turbopuffer, handle: str):
     print(f"\ndeleted {len(ids)} observations")
 
 
+def dump_episodic(client: Turbopuffer):
+    """Dump phi's episodic memories."""
+    ns = client.namespace("phi-episodic")
+
+    try:
+        response = ns.query(
+            rank_by=("vector", "ANN", [0.5] * 1536),
+            top_k=200,
+            include_attributes=["content", "tags", "source", "created_at"],
+        )
+    except Exception as e:
+        if "was not found" in str(e):
+            print("no episodic memories found (namespace doesn't exist yet)")
+            return
+        raise
+
+    if not response.rows:
+        print("no episodic memories found")
+        return
+
+    print(f"=== episodic memories ({len(response.rows)}) ===\n")
+    for row in response.rows:
+        tags = getattr(row, "tags", [])
+        source = getattr(row, "source", "unknown")
+        tag_str = f" [{', '.join(tags)}]" if tags else ""
+        print(f"  [{row.id}] {row.content}{tag_str}")
+        print(f"    source: {source}  created: {getattr(row, 'created_at', '')}")
+        print()
+
+    print(f"total: {len(response.rows)} episodic memories")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Inspect and prune phi memories")
     parser.add_argument("handle", nargs="?", help="User handle to inspect")
     parser.add_argument("--delete", metavar="ID", help="Delete a specific row by ID")
     parser.add_argument("--purge-observations", action="store_true", help="Delete all observations for a user")
+    parser.add_argument("--episodic", action="store_true", help="Dump phi's episodic (world) memories")
     args = parser.parse_args()
 
     client = get_client()
+
+    if args.episodic:
+        dump_episodic(client)
+        return
 
     if not args.handle:
         list_namespaces(client)

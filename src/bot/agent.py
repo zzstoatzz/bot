@@ -1,7 +1,9 @@
 """MCP-enabled agent for phi with structured memory."""
 
+import asyncio
 import logging
 import os
+from dataclasses import dataclass
 from pathlib import Path
 
 import httpx
@@ -13,6 +15,15 @@ from bot.config import settings
 from bot.memory import NamespaceMemory
 
 logger = logging.getLogger("bot.agent")
+
+
+@dataclass
+class PhiDeps:
+    """Typed dependencies passed to every tool via RunContext."""
+
+    author_handle: str
+    memory: NamespaceMemory | None = None
+    thread_uri: str | None = None
 
 
 class Response(BaseModel):
@@ -63,25 +74,23 @@ class PhiAgent:
         )
 
         # Create PydanticAI agent with MCP tools
-        self.agent = Agent[dict, Response](
+        self.agent = Agent[PhiDeps, Response](
             name="phi",
             model="anthropic:claude-3-5-haiku-latest",
             system_prompt=self.base_personality,
             output_type=Response,
-            deps_type=dict,
+            deps_type=PhiDeps,
             toolsets=[pdsx_mcp, pub_search_mcp],
         )
 
         # Register search_memory tool on the agent
         @self.agent.tool
-        async def search_memory(ctx: RunContext[dict], query: str) -> str:
+        async def search_memory(ctx: RunContext[PhiDeps], query: str) -> str:
             """Search your memory for information about the current user. Use this when you want more context about past interactions or facts you know about them."""
-            handle = ctx.deps.get("author_handle")
-            memory = ctx.deps.get("memory")
-            if not handle or not memory:
+            if not ctx.deps.memory:
                 return "memory not available"
 
-            results = await memory.search(handle, query, top_k=10)
+            results = await ctx.deps.memory.search(ctx.deps.author_handle, query, top_k=10)
             if not results:
                 return "no relevant memories found"
 
@@ -95,7 +104,30 @@ class PhiAgent:
             return "\n".join(parts)
 
         @self.agent.tool
-        async def search_posts(ctx: RunContext[dict], query: str, limit: int = 10) -> str:
+        async def remember(ctx: RunContext[PhiDeps], content: str, tags: list[str]) -> str:
+            """Store something you learned or found interesting in your memory.
+            Use sparingly — only for facts worth recalling in future conversations."""
+            if not ctx.deps.memory:
+                return "memory not available"
+            await ctx.deps.memory.store_episodic_memory(content, tags, source="tool")
+            return f"remembered: {content[:100]}"
+
+        @self.agent.tool
+        async def search_my_memory(ctx: RunContext[PhiDeps], query: str) -> str:
+            """Search your own memory for things you've previously learned about the world."""
+            if not ctx.deps.memory:
+                return "memory not available"
+            results = await ctx.deps.memory.search_episodic(query, top_k=10)
+            if not results:
+                return "no relevant memories found"
+            parts = []
+            for r in results:
+                tags = f" [{', '.join(r['tags'])}]" if r.get("tags") else ""
+                parts.append(f"{r['content']}{tags}")
+            return "\n".join(parts)
+
+        @self.agent.tool
+        async def search_posts(ctx: RunContext[PhiDeps], query: str, limit: int = 10) -> str:
             """Search Bluesky posts by keyword. Use this to find what people are saying about a topic."""
             from bot.core.atproto_client import bot_client
 
@@ -117,7 +149,7 @@ class PhiAgent:
                 return f"search failed: {e}"
 
         @self.agent.tool
-        async def get_trending(ctx: RunContext[dict]) -> str:
+        async def get_trending(ctx: RunContext[PhiDeps]) -> str:
             """Get what's currently trending on Bluesky. Returns entity-level trends from the firehose (via coral) and official Bluesky trending topics. Use this when someone asks about current events, what people are talking about, or when you want timely context."""
             parts: list[str] = []
 
@@ -165,6 +197,25 @@ class PhiAgent:
 
             return "\n\n".join(parts) if parts else "no trending data available"
 
+        @self.agent.tool
+        async def check_urls(ctx: RunContext[PhiDeps], urls: list[str]) -> str:
+            """Check whether URLs are reachable. Use this before sharing links to verify they actually work. Accepts full URLs (https://...) or bare domains (example.com/path)."""
+
+            async def _check(client: httpx.AsyncClient, url: str) -> str:
+                if not url.startswith(("http://", "https://")):
+                    url = f"https://{url}"
+                try:
+                    r = await client.head(url, follow_redirects=True)
+                    return f"{url} → {r.status_code}"
+                except httpx.TimeoutException:
+                    return f"{url} → timeout"
+                except Exception as e:
+                    return f"{url} → error: {type(e).__name__}"
+
+            async with httpx.AsyncClient(timeout=10) as client:
+                results = await asyncio.gather(*[_check(client, u) for u in urls])
+            return "\n".join(results)
+
         logger.info("phi agent initialized with pdsx + pub-search mcp tools")
 
     async def process_mention(
@@ -177,6 +228,7 @@ class PhiAgent:
         """Process a mention with structured memory context."""
         # Build context from memory if available
         memory_context = ""
+        episodic_context = ""
         if self.memory:
             try:
                 memory_context = await self.memory.build_user_context(
@@ -185,6 +237,13 @@ class PhiAgent:
                 logger.info(f"memory context for @{author_handle}: {len(memory_context)} chars")
             except Exception as e:
                 logger.warning(f"failed to retrieve memories: {e}")
+
+            try:
+                episodic_context = await self.memory.get_episodic_context(mention_text)
+                if episodic_context:
+                    logger.info(f"episodic context: {len(episodic_context)} chars")
+            except Exception as e:
+                logger.warning(f"failed to retrieve episodic memories: {e}")
 
         # Build full prompt with clearly labeled context sections
         prompt_parts = []
@@ -195,16 +254,19 @@ class PhiAgent:
         if memory_context:
             prompt_parts.append(f"[PAST CONTEXT WITH @{author_handle}]:\n{memory_context}")
 
+        if episodic_context:
+            prompt_parts.append(episodic_context)
+
         prompt_parts.append(f"\n[NEW MESSAGE]:\n@{author_handle}: {mention_text}")
         prompt = "\n\n".join(prompt_parts)
 
         # Run agent with MCP tools + search_memory available
         logger.info(f"processing mention from @{author_handle}: {mention_text[:80]}")
-        deps = {
-            "thread_uri": thread_uri,
-            "author_handle": author_handle,
-            "memory": self.memory,
-        }
+        deps = PhiDeps(
+            author_handle=author_handle,
+            memory=self.memory,
+            thread_uri=thread_uri,
+        )
         result = await self.agent.run(prompt, deps=deps)
         logger.info(f"agent decided: {result.output.action}" + (f" - {result.output.text[:80]}" if result.output.text else "") + (f" ({result.output.reason})" if result.output.reason else ""))
 
