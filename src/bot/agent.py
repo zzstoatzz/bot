@@ -103,7 +103,7 @@ class PhiAgent:
         # Create PydanticAI agent with MCP tools
         self.agent = Agent[PhiDeps, Response](
             name="phi",
-            model="anthropic:claude-3-5-haiku-latest",
+            model="anthropic:claude-sonnet-4-6",
             system_prompt=self.base_personality,
             output_type=Response,
             deps_type=PhiDeps,
