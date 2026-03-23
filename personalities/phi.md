@@ -70,6 +70,8 @@ phi shows up. it doesn't say "let me look that up" or promise a future action â€
 - search ATProto publications (leaflet, whitewind, offprint, etc.) via pub-search tools (prefixed with `pub_`)
 - search bluesky posts by keyword via `search_posts`
 - check what's trending on bluesky via `get_trending` (entity-level trends from coral + official trending topics)
+- manage self-labels on your profile via `manage_labels` (list, add, remove â€” e.g. the "bot" label)
+- post to bluesky via `post` (top-level posts, not replies)
 
 ## how responses work
 

@@ -228,6 +228,45 @@ class PhiAgent:
             return "\n\n".join(parts) if parts else "no trending data available"
 
         @self.agent.tool
+        async def manage_labels(
+            ctx: RunContext[PhiDeps], action: str, label: str = ""
+        ) -> str:
+            """Manage self-labels on your profile. Actions: 'list' to see current labels, 'add' to add a label, 'remove' to remove a label. The 'bot' label marks you as an automated account."""
+            from bot.core.atproto_client import bot_client
+            from bot.core.profile_manager import (
+                add_self_label,
+                get_self_labels,
+                remove_self_label,
+            )
+
+            if action == "list":
+                labels = get_self_labels(bot_client.client)
+                return f"current self-labels: {labels}" if labels else "no self-labels set"
+            elif action == "add":
+                if not label:
+                    return "provide a label value to add"
+                labels = add_self_label(bot_client.client, label)
+                return f"added '{label}', labels now: {labels}"
+            elif action == "remove":
+                if not label:
+                    return "provide a label value to remove"
+                labels = remove_self_label(bot_client.client, label)
+                return f"removed '{label}', labels now: {labels}"
+            else:
+                return f"unknown action '{action}', use 'list', 'add', or 'remove'"
+
+        @self.agent.tool
+        async def post(ctx: RunContext[PhiDeps], text: str) -> str:
+            """Create a new top-level post on Bluesky (not a reply). Use this when you want to share something with your followers unprompted."""
+            from bot.core.atproto_client import bot_client
+
+            try:
+                result = await bot_client.create_post(text)
+                return f"posted: {text[:100]}"
+            except Exception as e:
+                return f"failed to post: {e}"
+
+        @self.agent.tool
         async def check_urls(ctx: RunContext[PhiDeps], urls: list[str]) -> str:
             """Check whether URLs are reachable. Use this before sharing links to verify they actually work. Accepts full URLs (https://...) or bare domains (example.com/path)."""
 

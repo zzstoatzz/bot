@@ -11,6 +11,121 @@ _OFFLINE_SUFFIX = " • 🔴 offline"
 _ALL_SUFFIXES = [_ONLINE_SUFFIX, _OFFLINE_SUFFIX]
 
 
+def _read_profile(client: Client) -> dict:
+    """Read the current profile record, returning the raw value."""
+    response = client.com.atproto.repo.get_record(
+        {
+            "repo": client.me.did,
+            "collection": "app.bsky.actor.profile",
+            "rkey": "self",
+        }
+    )
+    return response.value
+
+
+def _build_profile_data(current) -> dict:
+    """Build a profile_data dict from the current profile, preserving all fields."""
+    profile_data: dict = {"$type": "app.bsky.actor.profile"}
+
+    if current.description:
+        profile_data["description"] = current.description
+    if current.display_name:
+        profile_data["displayName"] = current.display_name
+    if current.avatar:
+        profile_data["avatar"] = {
+            "$type": "blob",
+            "ref": {"$link": current.avatar.ref.link},
+            "mimeType": current.avatar.mime_type,
+            "size": current.avatar.size,
+        }
+    if current.banner:
+        profile_data["banner"] = {
+            "$type": "blob",
+            "ref": {"$link": current.banner.ref.link},
+            "mimeType": current.banner.mime_type,
+            "size": current.banner.size,
+        }
+
+    # Preserve existing self-labels
+    if current.labels:
+        try:
+            values = [{"val": lbl.val} for lbl in current.labels.values]
+            if values:
+                profile_data["labels"] = {
+                    "$type": "com.atproto.label.defs#selfLabels",
+                    "values": values,
+                }
+        except (AttributeError, TypeError):
+            pass  # no parseable labels on profile
+
+    return profile_data
+
+
+def _write_profile(client: Client, profile_data: dict) -> None:
+    """Write the profile record."""
+    client.com.atproto.repo.put_record(
+        {
+            "repo": client.me.did,
+            "collection": "app.bsky.actor.profile",
+            "rkey": "self",
+            "record": profile_data,
+        }
+    )
+
+
+def get_self_labels(client: Client) -> list[str]:
+    """Return the current list of self-label values on the profile."""
+    current = _read_profile(client)
+    if not current.labels:
+        return []
+    try:
+        return [lbl.val for lbl in current.labels.values]
+    except (AttributeError, TypeError):
+        return []
+
+
+def add_self_label(client: Client, label: str) -> list[str]:
+    """Add a self-label to the profile. Returns the updated label list."""
+    current = _read_profile(client)
+    profile_data = _build_profile_data(current)
+
+    # Get existing label values or start fresh
+    existing = set()
+    if "labels" in profile_data:
+        existing = {v["val"] for v in profile_data["labels"]["values"]}
+
+    existing.add(label)
+    profile_data["labels"] = {
+        "$type": "com.atproto.label.defs#selfLabels",
+        "values": [{"val": v} for v in sorted(existing)],
+    }
+
+    _write_profile(client, profile_data)
+    return sorted(existing)
+
+
+def remove_self_label(client: Client, label: str) -> list[str]:
+    """Remove a self-label from the profile. Returns the updated label list."""
+    current = _read_profile(client)
+    profile_data = _build_profile_data(current)
+
+    existing = set()
+    if "labels" in profile_data:
+        existing = {v["val"] for v in profile_data["labels"]["values"]}
+
+    existing.discard(label)
+    if existing:
+        profile_data["labels"] = {
+            "$type": "com.atproto.label.defs#selfLabels",
+            "values": [{"val": v} for v in sorted(existing)],
+        }
+    else:
+        profile_data.pop("labels", None)
+
+    _write_profile(client, profile_data)
+    return sorted(existing)
+
+
 class ProfileManager:
     """Manages bot profile updates."""
 
@@ -19,17 +134,17 @@ class ProfileManager:
         self.base_bio: str | None = None
 
     async def initialize(self):
-        """Get the current profile and store base bio."""
+        """Get the current profile, store base bio, and ensure bot label is set."""
         try:
-            response = self.client.com.atproto.repo.get_record(
-                {
-                    "repo": self.client.me.did,
-                    "collection": "app.bsky.actor.profile",
-                    "rkey": "self",
-                }
-            )
-            self.base_bio = response.value.description or ""
+            current = _read_profile(self.client)
+            self.base_bio = current.description or ""
             logger.info(f"initialized with base bio: {self.base_bio}")
+
+            # Ensure the bot label is present
+            labels = get_self_labels(self.client)
+            if "bot" not in labels:
+                labels = add_self_label(self.client, "bot")
+                logger.info(f"set bot label, labels now: {labels}")
         except Exception as e:
             logger.error(f"failed to get current profile: {e}")
             self.base_bio = "i am a bot - contact my operator @zzstoatzz.io with any questions"
@@ -52,53 +167,12 @@ class ProfileManager:
             suffix = _ONLINE_SUFFIX if is_online else _OFFLINE_SUFFIX
             new_bio = f"{clean}{suffix}"
 
-            # Get current record to preserve other fields
-            current = self.client.com.atproto.repo.get_record(
-                {
-                    "repo": self.client.me.did,
-                    "collection": "app.bsky.actor.profile",
-                    "rkey": "self",
-                }
-            )
+            # Read current profile and preserve everything
+            current = _read_profile(self.client)
+            profile_data = _build_profile_data(current)
+            profile_data["description"] = new_bio
 
-            # Create updated profile record with bot label
-            profile_data = {
-                "description": new_bio,
-                "$type": "app.bsky.actor.profile",
-                "labels": {
-                    "$type": "com.atproto.label.defs#selfLabels",
-                    "values": [{"val": "bot"}],
-                },
-            }
-
-            # Preserve other fields if they exist
-            if current.value.display_name:
-                profile_data["displayName"] = current.value.display_name
-            if current.value.avatar:
-                profile_data["avatar"] = {
-                    "$type": "blob",
-                    "ref": {"$link": current.value.avatar.ref.link},
-                    "mimeType": current.value.avatar.mime_type,
-                    "size": current.value.avatar.size,
-                }
-            if current.value.banner:
-                profile_data["banner"] = {
-                    "$type": "blob",
-                    "ref": {"$link": current.value.banner.ref.link},
-                    "mimeType": current.value.banner.mime_type,
-                    "size": current.value.banner.size,
-                }
-
-            # Update the profile
-            self.client.com.atproto.repo.put_record(
-                {
-                    "repo": self.client.me.did,
-                    "collection": "app.bsky.actor.profile",
-                    "rkey": "self",
-                    "record": profile_data,
-                }
-            )
-
+            _write_profile(self.client, profile_data)
             logger.info(f"updated profile bio: {new_bio}")
 
         except Exception as e:
