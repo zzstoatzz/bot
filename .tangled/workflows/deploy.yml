@@ -1,0 +1,16 @@
+when:
+  - event: ["push"]
+    branch: main
+
+engine: nixery
+
+dependencies:
+  nixpkgs:
+    - flyctl
+    - curl
+
+steps:
+  - name: deploy to fly.io
+    command: |
+      test -n "$FLY_API_TOKEN"
+      flyctl deploy --remote-only

@@ -18,6 +18,10 @@ evals-basic:
 evals-memory:
     uv run pytest evals/test_memory_integration.py -v
 
+# deployment
+deploy:
+    flyctl deploy
+
 # code quality
 fmt:
     uv run ruff format src/ evals/ tests/

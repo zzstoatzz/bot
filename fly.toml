@@ -1,0 +1,39 @@
+app = "zzstoatzz-phi"
+primary_region = "ord"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[deploy]
+  strategy = "rolling"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+
+[env]
+  PORT = "8080"
+  DEBUG = "false"
+  BOT_NAME = "phi"
+  PERSONALITY_FILE = "personalities/phi.md"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = false
+  min_machines_running = 1
+  max_machines_running = 1
+
+  [http_service.concurrency]
+    type = "requests"
+    hard_limit = 25
+    soft_limit = 10
+
+  [[http_service.checks]]
+    interval = "30s"
+    grace_period = "15s"
+    method = "GET"
+    path = "/health"
+    protocol = "http"
+    timeout = "10s"
