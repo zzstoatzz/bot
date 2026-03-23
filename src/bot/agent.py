@@ -9,7 +9,7 @@ from pathlib import Path
 
 import httpx
 from pydantic import BaseModel
-from pydantic_ai import Agent, RunContext
+from pydantic_ai import Agent, ImageUrl, RunContext
 from pydantic_ai.mcp import MCPServerStreamableHTTP
 
 from bot.config import settings
@@ -293,6 +293,7 @@ class PhiAgent:
         author_handle: str,
         thread_context: str,
         thread_uri: str | None = None,
+        image_urls: list[str] | None = None,
     ) -> Response:
         """Process a mention with structured memory context."""
         # Build context from memory if available
@@ -329,6 +330,13 @@ class PhiAgent:
         prompt_parts.append(f"\n[NEW MESSAGE]:\n@{author_handle}: {mention_text}")
         prompt = "\n\n".join(prompt_parts)
 
+        # Build multimodal prompt if images are present
+        if image_urls:
+            user_prompt: str | list = [prompt] + [ImageUrl(url=url) for url in image_urls]
+            logger.info(f"including {len(image_urls)} images in prompt")
+        else:
+            user_prompt = prompt
+
         # Run agent with MCP tools + search_memory available
         logger.info(f"processing mention from @{author_handle}: {mention_text[:80]}")
         deps = PhiDeps(
@@ -336,7 +344,7 @@ class PhiAgent:
             memory=self.memory,
             thread_uri=thread_uri,
         )
-        result = await self.agent.run(prompt, deps=deps)
+        result = await self.agent.run(user_prompt, deps=deps)
         logger.info(f"agent decided: {result.output.action}" + (f" - {result.output.text[:80]}" if result.output.text else "") + (f" ({result.output.reason})" if result.output.reason else ""))
 
         # Store interaction and extract observations

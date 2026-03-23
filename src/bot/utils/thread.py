@@ -3,6 +3,127 @@
 from collections.abc import Callable
 
 
+def describe_embed(embed) -> str | None:
+    """Extract a human-readable description from a post embed.
+
+    Handles images (with alt text), external links, quote posts,
+    and record-with-media (quote + images).
+    """
+    if embed is None:
+        return None
+
+    parts: list[str] = []
+    py_type = getattr(embed, "py_type", "")
+
+    # images
+    if "images" in py_type:
+        for img in getattr(embed, "images", []):
+            alt = getattr(img, "alt", "").strip()
+            if alt:
+                parts.append(f"[image: {alt}]")
+            else:
+                parts.append("[image: no alt text]")
+
+    # external link card
+    elif "external" in py_type:
+        ext = getattr(embed, "external", None)
+        if ext:
+            title = getattr(ext, "title", "")
+            desc = getattr(ext, "description", "")
+            uri = getattr(ext, "uri", "")
+            link_parts = []
+            if title:
+                link_parts.append(title)
+            if desc:
+                link_parts.append(desc)
+            if uri:
+                link_parts.append(uri)
+            parts.append(f"[link: {' — '.join(link_parts)}]")
+
+    # quote post
+    elif py_type == "app.bsky.embed.record#view":
+        rec = getattr(embed, "record", None)
+        if rec and hasattr(rec, "value"):
+            author = getattr(rec, "author", None)
+            handle = getattr(author, "handle", "?") if author else "?"
+            text = getattr(rec.value, "text", "")
+            # Recursively describe embeds on the quoted post
+            quoted_embeds = getattr(rec, "embeds", None)
+            inner = ""
+            if quoted_embeds:
+                inner_parts = [describe_embed(e) for e in quoted_embeds]
+                inner = " ".join(p for p in inner_parts if p)
+            quote_content = text
+            if inner:
+                quote_content = f"{text} {inner}" if text else inner
+            parts.append(f"[quoting @{handle}: {quote_content}]")
+
+    # record with media (quote post + images/video)
+    elif "record_with_media" in py_type:
+        media = getattr(embed, "media", None)
+        if media:
+            media_desc = describe_embed(media)
+            if media_desc:
+                parts.append(media_desc)
+        rec = getattr(embed, "record", None)
+        if rec:
+            rec_desc = describe_embed(rec)
+            if rec_desc:
+                parts.append(rec_desc)
+
+    # video
+    elif "video" in py_type:
+        alt = getattr(embed, "alt", "")
+        if alt:
+            parts.append(f"[video: {alt}]")
+        else:
+            parts.append("[video]")
+
+    return " ".join(parts) if parts else None
+
+
+def extract_image_urls(embed) -> list[str]:
+    """Extract fullsize image URLs from a post embed.
+
+    Returns URLs that can be passed as ImageUrl to a multimodal model.
+    """
+    if embed is None:
+        return []
+
+    urls: list[str] = []
+    py_type = getattr(embed, "py_type", "")
+
+    if "images" in py_type:
+        for img in getattr(embed, "images", []):
+            fullsize = getattr(img, "fullsize", None)
+            if fullsize:
+                urls.append(fullsize)
+
+    elif "record_with_media" in py_type:
+        media = getattr(embed, "media", None)
+        if media:
+            urls.extend(extract_image_urls(media))
+
+    return urls
+
+
+def describe_post(post) -> str:
+    """Build a full text representation of a post including embeds."""
+    handle = post.author.handle
+    text = post.record.text if hasattr(post.record, "text") else ""
+
+    # Check for embeds on the post view (post.embed) or record (post.record.embed)
+    embed_desc = None
+    if hasattr(post, "embed") and post.embed:
+        embed_desc = describe_embed(post.embed)
+    elif hasattr(post.record, "embed") and post.record.embed:
+        embed_desc = describe_embed(post.record.embed)
+
+    if embed_desc:
+        return f"@{handle}: {text}\n  {embed_desc}" if text else f"@{handle}: {embed_desc}"
+    return f"@{handle}: {text}" if text else f"@{handle}: [no text]"
+
+
 def traverse_thread(
     thread_node,
     visit: Callable[[any], None],
@@ -84,10 +205,5 @@ def build_thread_context(thread_node) -> str:
     if not posts:
         return "No previous messages in this thread."
 
-    messages = []
-    for post in posts:
-        handle = post.author.handle
-        text = post.record.text if hasattr(post.record, "text") else "[no text]"
-        messages.append(f"@{handle}: {text}")
-
+    messages = [describe_post(post) for post in posts]
     return "\n".join(messages)

@@ -7,7 +7,7 @@ from atproto_client import models
 from bot.agent import PhiAgent
 from bot.core.atproto_client import BotClient
 from bot.status import bot_status
-from bot.utils.thread import build_thread_context
+from bot.utils.thread import build_thread_context, describe_embed, extract_image_urls
 
 logger = logging.getLogger("bot.handler")
 
@@ -37,6 +37,18 @@ class MessageHandler:
             mention_text = post.record.text
             author_handle = post.author.handle
 
+            # Include embed content (images, links, quote posts) in the mention
+            embed = post.embed if hasattr(post, "embed") and post.embed else None
+            if not embed and hasattr(post.record, "embed") and post.record.embed:
+                embed = post.record.embed
+
+            embed_desc = describe_embed(embed) if embed else None
+            if embed_desc:
+                mention_text = f"{mention_text}\n{embed_desc}"
+
+            # Extract image URLs for multimodal vision
+            image_urls = extract_image_urls(embed) if embed else []
+
             bot_status.record_mention()
 
             # Build reply reference
@@ -65,6 +77,7 @@ class MessageHandler:
                 author_handle=author_handle,
                 thread_context=thread_context,
                 thread_uri=thread_uri,
+                image_urls=image_urls,
             )
 
             # Handle response actions
