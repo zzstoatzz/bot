@@ -61,8 +61,15 @@ class ProfileManager:
                 }
             )
 
-            # Create updated profile record
-            profile_data = {"description": new_bio, "$type": "app.bsky.actor.profile"}
+            # Create updated profile record with bot label
+            profile_data = {
+                "description": new_bio,
+                "$type": "app.bsky.actor.profile",
+                "labels": {
+                    "$type": "com.atproto.label.defs#selfLabels",
+                    "values": [{"val": "bot"}],
+                },
+            }
 
             # Preserve other fields if they exist
             if current.value.display_name:
