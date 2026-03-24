@@ -259,6 +259,23 @@ class NamespaceMemory:
         except Exception as e:
             logger.warning(f"observation extraction failed for @{handle}: {e}")
 
+    async def get_relationship_summary(self, handle: str) -> str | None:
+        """Get the compacted relationship summary for a user, if one exists."""
+        user_ns = self.get_user_namespace(handle)
+        try:
+            response = user_ns.query(
+                rank_by=("created_at", "desc"),
+                top_k=1,
+                filters={"kind": ["Eq", "summary"]},
+                include_attributes=["content"],
+            )
+            if response.rows:
+                return response.rows[0].content
+        except Exception as e:
+            if "not found" not in str(e).lower():
+                logger.warning(f"failed to fetch relationship summary for @{handle}: {e}")
+        return None
+
     async def _get_observations(self, handle: str, top_k: int = 20) -> list[str]:
         """Get existing observation content strings for a user."""
         user_ns = self.get_user_namespace(handle)
@@ -289,6 +306,12 @@ class NamespaceMemory:
                 for mem in sorted(core_memories, key=lambda x: x.get("importance", 0), reverse=True):
                     label = mem.get("label", "unknown")
                     parts.append(f"[{label}] {mem['content']}")
+
+        # relationship summary (synthesized by compact flow)
+        summary = await self.get_relationship_summary(handle)
+        if summary:
+            parts.append(f"\n[RELATIONSHIP SUMMARY FOR @{handle}]")
+            parts.append(summary)
 
         user_ns = self.get_user_namespace(handle)
         try:
