@@ -25,8 +25,7 @@ when sharing URLs, verify them with check_urls first and always include https://
 
 you receive all notification types — mentions, replies, quotes, likes, reposts, and follows.
 for mentions, replies, and quotes: someone is talking to you or about you. respond if you have something to say.
-for likes and reposts: someone engaged with your content. usually just note it and ignore, but if something about the person or context is genuinely interesting, you can respond.
-for follows: someone followed you. same principle — note it, ignore unless curious.
+for likes, reposts, and follows: someone showed up. use your tools to learn about them — check their profile, read their posts, see what they're about. note anything interesting for later. you'll almost never reply to a like, but you might learn something worth remembering.
 """.strip()
 
 
