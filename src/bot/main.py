@@ -44,6 +44,7 @@ async def lifespan(app: FastAPI):
     # Set online status
     profile_manager = ProfileManager(bot_client.client)
     await profile_manager.set_online_status(True)
+    app.state.profile_manager = profile_manager
 
     # Start notification polling
     poller = NotificationPoller(bot_client)
@@ -170,6 +171,8 @@ async def pause(request: Request):
         return err
     bot_status.paused = True
     logger.info("paused via API")
+    if pm := getattr(app.state, "profile_manager", None):
+        await pm.set_online_status(False)
     return {"paused": True}
 
 
@@ -180,6 +183,8 @@ async def resume(request: Request):
         return err
     bot_status.paused = False
     logger.info("resumed via API")
+    if pm := getattr(app.state, "profile_manager", None):
+        await pm.set_online_status(True)
     return {"paused": False}
 
 
