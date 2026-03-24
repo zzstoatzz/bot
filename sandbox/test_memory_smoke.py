@@ -43,3 +43,17 @@ async def test_search_old_namespace(memory):
     results = await memory.search("zzstoatzzdevlog.bsky.social", "hello", top_k=3)
     print(f"\n--- search results ---\n{results}\n---")
     assert isinstance(results, list)
+
+
+async def test_search_unified(memory):
+    """search_unified returns a list from both user + episodic namespaces."""
+    results = await memory.search_unified("zzstoatzzdevlog.bsky.social", "hello", top_k=3)
+    print(f"\n--- unified results ---\n{results}\n---")
+    assert isinstance(results, list)
+
+
+async def test_search_unified_missing_user(memory):
+    """search_unified works when user namespace doesn't exist (episodic-only)."""
+    results = await memory.search_unified("nonexistent-user-12345.example", "hello", top_k=3)
+    print(f"\n--- unified (missing user) ---\n{results}\n---")
+    assert isinstance(results, list)
