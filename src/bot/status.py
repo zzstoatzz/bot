@@ -1,12 +1,19 @@
-"""Bot status tracking"""
+"""Bot status tracking with persistence."""
 
+import json
+import logging
 from dataclasses import dataclass, field
 from datetime import datetime
+from pathlib import Path
+
+logger = logging.getLogger("bot.status")
+
+STATUS_FILE = Path("/data/status.json")
 
 
 @dataclass
 class BotStatus:
-    """Tracks bot status and activity"""
+    """Tracks bot status and activity, persisted to disk."""
 
     start_time: datetime = field(default_factory=datetime.now)
     mentions_received: int = 0
@@ -19,12 +26,10 @@ class BotStatus:
 
     @property
     def uptime_seconds(self) -> float:
-        """Get uptime in seconds"""
         return (datetime.now() - self.start_time).total_seconds()
 
     @property
     def uptime_str(self) -> str:
-        """Get human-readable uptime"""
         seconds = int(self.uptime_seconds)
         days = seconds // 86400
         hours = (seconds % 86400) // 3600
@@ -43,19 +48,53 @@ class BotStatus:
         return " ".join(parts)
 
     def record_mention(self):
-        """Record a mention received"""
         self.mentions_received += 1
         self.last_mention_time = datetime.now()
+        self._save()
 
     def record_response(self):
-        """Record a response sent"""
         self.responses_sent += 1
         self.last_response_time = datetime.now()
+        self._save()
 
     def record_error(self):
-        """Record an error"""
         self.errors += 1
+        self._save()
+
+    def _save(self):
+        """Persist counters to disk."""
+        if not STATUS_FILE.parent.exists():
+            return
+        try:
+            data = {
+                "mentions_received": self.mentions_received,
+                "responses_sent": self.responses_sent,
+                "errors": self.errors,
+                "last_mention_time": self.last_mention_time.isoformat() if self.last_mention_time else None,
+                "last_response_time": self.last_response_time.isoformat() if self.last_response_time else None,
+            }
+            STATUS_FILE.write_text(json.dumps(data))
+        except Exception as e:
+            logger.warning(f"failed to save status: {e}")
+
+    def _load(self):
+        """Restore counters from disk."""
+        if not STATUS_FILE.exists():
+            return
+        try:
+            data = json.loads(STATUS_FILE.read_text())
+            self.mentions_received = data.get("mentions_received", 0)
+            self.responses_sent = data.get("responses_sent", 0)
+            self.errors = data.get("errors", 0)
+            if data.get("last_mention_time"):
+                self.last_mention_time = datetime.fromisoformat(data["last_mention_time"])
+            if data.get("last_response_time"):
+                self.last_response_time = datetime.fromisoformat(data["last_response_time"])
+            logger.info(f"restored status: {self.mentions_received} mentions, {self.responses_sent} responses")
+        except Exception as e:
+            logger.warning(f"failed to load status: {e}")
 
 
 # Global status instance
 bot_status = BotStatus()
+bot_status._load()

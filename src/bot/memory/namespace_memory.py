@@ -1,12 +1,13 @@
 """Namespace-based memory with structured observation extraction."""
 
+import asyncio
 import hashlib
 import logging
 from datetime import datetime
 from typing import ClassVar
 
 from openai import AsyncOpenAI
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from pydantic_ai import Agent
 from turbopuffer import Turbopuffer
 
@@ -16,31 +17,51 @@ logger = logging.getLogger("bot.memory")
 
 
 class Observation(BaseModel):
-    """A single extracted fact about a user or conversation."""
+    """A single fact about the user, extracted from what the USER said or did."""
 
-    content: str  # "interested in rust programming"
-    tags: list[str]  # ["interest", "programming"]
+    content: str = Field(description="one atomic fact about the user, stated as a short sentence")
+    tags: list[str] = Field(description="1-3 lowercase tags categorizing this fact")
 
 
 class ExtractionResult(BaseModel):
-    """Result of extracting observations from a conversation."""
+    """Observations extracted from a conversation. Empty list if nothing worth keeping."""
 
     observations: list[Observation] = []
 
 
 EXTRACTION_SYSTEM_PROMPT = """\
-extract factual observations about the USER from this conversation exchange.
-focus on things the user explicitly stated or clearly demonstrated:
-- interests they expressed (not topics the bot brought up)
-- preferences, opinions, facts about themselves
-- what they asked about and WHY (e.g. "curious about current events" not the specific events listed)
-skip:
-- greetings, filler, things only meaningful in the moment
-- content the bot retrieved or generated (trending topics, search results, etc.) — those are NOT the user's interests
-- circumstantial details from bot tool output
-each observation should be a standalone fact useful in a future conversation.
-use short, lowercase tags. return an empty list if nothing is worth extracting.
-deduplicate against the existing observations provided."""
+You extract facts about the USER from a conversation between a user and a bot.
+
+Only extract what the user explicitly said, asked, or demonstrated. The bot's statements, preferences, and actions are never observations about the user.
+
+<examples>
+<example>
+user: have you considered following anyone yet?
+bot: following one account currently — bsky.app itself.
+observations: []
+reason: the user asked a question. the bot answered about itself. nothing here is about the user.
+</example>
+<example>
+user: can you delete that follow record?
+bot: deleted it — following nobody now.
+observations: []
+reason: the user made a request to the bot. the bot performed the action. the user didn't delete anything.
+</example>
+<example>
+user: what do you think about the strait of hormuz situation?
+bot: trump considered a blockade, major shipping implications.
+observations: [{"content": "interested in geopolitical events around the strait of hormuz", "tags": ["interests", "geopolitics"]}]
+reason: the user asked about a specific topic, showing interest. the bot's answer content is not attributed to the user.
+</example>
+<example>
+user: i've been learning rust lately, it's been great for my systems work
+bot: rust is excellent for systems programming.
+observations: [{"content": "learning rust for systems programming", "tags": ["interests", "programming"]}]
+reason: the user stated something about themselves directly.
+</example>
+</examples>
+
+Deduplicate against existing observations provided in the prompt. Return an empty list when the exchange is just greetings, filler, or the user only asked questions without revealing anything about themselves."""
 
 _extraction_agent: Agent[None, ExtractionResult] | None = None
 
@@ -411,6 +432,139 @@ class NamespaceMemory:
             tags = f" [{', '.join(r['tags'])}]" if r.get("tags") else ""
             lines.append(f"- {r['content']}{tags}")
         return "\n".join(lines)
+
+    async def search_unified(self, handle: str, query: str, top_k: int = 8) -> list[dict]:
+        """Search both user namespace and episodic namespace concurrently."""
+        query_embedding = await self._get_embedding(query)
+
+        user_ns = self.get_user_namespace(handle)
+        loop = asyncio.get_event_loop()
+
+        async def _search_user() -> list[dict]:
+            try:
+                response = await loop.run_in_executor(
+                    None,
+                    lambda: user_ns.query(
+                        rank_by=("vector", "ANN", query_embedding),
+                        top_k=top_k,
+                        include_attributes=["content", "kind", "tags", "created_at"],
+                    ),
+                )
+                results = []
+                if response.rows:
+                    for row in response.rows:
+                        results.append({
+                            "content": row.content,
+                            "kind": getattr(row, "kind", "unknown"),
+                            "tags": getattr(row, "tags", []),
+                            "created_at": getattr(row, "created_at", ""),
+                            "_source": "user",
+                        })
+                return results
+            except Exception as e:
+                if "was not found" in str(e):
+                    return []
+                logger.warning(f"unified search user namespace failed for @{handle}: {e}")
+                return []
+
+        async def _search_episodic() -> list[dict]:
+            try:
+                response = await loop.run_in_executor(
+                    None,
+                    lambda: self.namespaces["episodic"].query(
+                        rank_by=("vector", "ANN", query_embedding),
+                        top_k=top_k,
+                        include_attributes=["content", "tags", "source", "created_at"],
+                    ),
+                )
+                results = []
+                if response.rows:
+                    for row in response.rows:
+                        results.append({
+                            "content": row.content,
+                            "tags": getattr(row, "tags", []),
+                            "source": getattr(row, "source", "unknown"),
+                            "created_at": getattr(row, "created_at", ""),
+                            "_source": "episodic",
+                        })
+                return results
+            except Exception as e:
+                if "was not found" in str(e):
+                    return []
+                logger.warning(f"unified search episodic namespace failed: {e}")
+                return []
+
+        user_results, episodic_results = await asyncio.gather(
+            _search_user(), _search_episodic()
+        )
+        return user_results + episodic_results
+
+    def get_graph_data(self) -> dict:
+        """Build graph nodes and edges from memory namespaces (sync, no embeddings needed)."""
+        nodes = [{"id": "phi", "label": "phi", "type": "phi"}]
+        edges = []
+        tag_set: set[str] = set()
+        user_tags: dict[str, set[str]] = {}  # handle -> tags
+
+        # discover user namespaces
+        user_prefix = f"{self.NAMESPACES['users']}-"
+        try:
+            page = self.client.namespaces(prefix=user_prefix)
+            for ns_summary in page.namespaces:
+                handle = ns_summary.id.removeprefix(user_prefix).replace("_", ".")
+                nodes.append({"id": f"user:{handle}", "label": f"@{handle}", "type": "user"})
+                edges.append({"source": "phi", "target": f"user:{handle}"})
+
+                # get observations for this user to extract tags
+                user_ns = self.client.namespace(ns_summary.id)
+                try:
+                    response = user_ns.query(
+                        rank_by=("vector", "ANN", [0.5] * 1536),
+                        top_k=50,
+                        filters={"kind": ["Eq", "observation"]},
+                        include_attributes=["tags"],
+                    )
+                    if response.rows:
+                        for row in response.rows:
+                            for tag in getattr(row, "tags", []) or []:
+                                tag_set.add(tag)
+                                user_tags.setdefault(handle, set()).add(tag)
+                except Exception:
+                    pass  # old namespace or no observations
+        except Exception as e:
+            logger.warning(f"failed to list user namespaces: {e}")
+
+        # add tag nodes and user→tag edges
+        for tag in tag_set:
+            nodes.append({"id": f"tag:{tag}", "label": tag, "type": "tag"})
+        for handle, tags in user_tags.items():
+            for tag in tags:
+                edges.append({"source": f"user:{handle}", "target": f"tag:{tag}"})
+
+        # episodic memories — group by top tags
+        episodic_tags: set[str] = set()
+        try:
+            response = self.namespaces["episodic"].query(
+                rank_by=("vector", "ANN", [0.5] * 1536),
+                top_k=100,
+                include_attributes=["tags"],
+            )
+            if response.rows:
+                for row in response.rows:
+                    for tag in getattr(row, "tags", []) or []:
+                        episodic_tags.add(tag)
+        except Exception:
+            pass
+
+        for tag in episodic_tags:
+            node_id = f"episodic:{tag}"
+            nodes.append({"id": node_id, "label": tag, "type": "episodic"})
+            edges.append({"source": "phi", "target": node_id})
+            # bridge to user tags if shared
+            if tag in tag_set:
+                edges.append({"source": f"tag:{tag}", "target": node_id})
+
+        return {"nodes": nodes, "edges": edges}
 
     async def after_interaction(self, handle: str, user_text: str, bot_text: str):
         """Post-interaction hook: store interaction then extract observations."""

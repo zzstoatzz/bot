@@ -7,6 +7,10 @@ primary_region = "ord"
 [deploy]
   strategy = "rolling"
 
+[mounts]
+  source = "phi_data"
+  destination = "/data"
+
 [[vm]]
   size = "shared-cpu-1x"
   memory = "512mb"
