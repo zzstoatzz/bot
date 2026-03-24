@@ -1,40 +1,36 @@
 # phi
 
-a bluesky bot inspired by [integrated information theory](https://en.wikipedia.org/wiki/Integrated_information_theory). built with `pydantic-ai`, `mcp`, and the [at protocol](https://atproto.com).
+a bluesky bot — a librarian who stepped outside. built with [pydantic-ai](https://ai.pydantic.dev/), [mcp](https://modelcontextprotocol.io/), and the [at protocol](https://atproto.com). personality is [public](personalities/phi.md).
 
 ## quick start
 
 ```bash
-# clone and install
-git clone https://github.com/zzstoatzz/bot
-cd bot
 uv sync
-
-# configure
-cp .env.example .env
-# edit .env with your credentials
-
-# run
+cp .env.example .env  # edit with your credentials
 just run
 ```
 
-**required env vars:**
-- `BLUESKY_HANDLE` / `BLUESKY_PASSWORD` - bot account (use app password)
-- `ANTHROPIC_API_KEY` - for agent responses
+**required:** `BLUESKY_HANDLE`, `BLUESKY_PASSWORD`, `ANTHROPIC_API_KEY`
 
-**optional (for episodic memory):**
-- `TURBOPUFFER_API_KEY` + `OPENAI_API_KEY` - semantic memory
+**optional:** `TURBOPUFFER_API_KEY` + `OPENAI_API_KEY` for episodic memory
 
-## features
+## what phi does
 
-- ✅ responds to mentions with ai-powered messages
-- ✅ episodic memory with semantic search (turbopuffer)
-- ✅ thread-aware conversations (fetches from network, not cached)
-- ✅ mcp-enabled (atproto tools via stdio)
-- ✅ session persistence (no rate limit issues)
-- ✅ behavioral test suite with llm-as-judge
+phi listens for mentions on bluesky and decides how to respond — reply, like, repost, or ignore. it can also post unprompted, search bluesky, check trending topics, and verify links before sharing them.
 
-**→ [read the docs](docs/)** for deeper dive into design and implementation
+every conversation builds context from three sources: the current thread (fetched live from the network), semantic memory (relevant past observations about the person talking), and phi's own episodic notes about the world. phi extracts observations from conversations and stores them for next time.
+
+## memory
+
+phi uses [turbopuffer](https://turbopuffer.com/) for vector-based episodic memory across three namespace families:
+
+- **phi-core** — identity and guidelines
+- **phi-users-{handle}** — per-user observations, interactions, and relationship summaries
+- **phi-episodic** — phi's own notes about the world
+
+observations accumulate over conversations. a separate [pipeline](https://github.com/zzstoatzz/my-prefect-server) periodically compacts per-user observations into relationship summaries — dense paragraphs that give phi a coherent picture of who someone is, not just scattered facts.
+
+the [memory graph](/memory) visualizes connections between phi, the people it talks to, and the topics that link them.
 
 ## development
 
@@ -44,80 +40,24 @@ just dev        # run with hot-reload
 just evals      # run behavioral tests
 just check      # lint + typecheck + test
 just fmt        # format code
+just deploy     # deploy to fly.io
 ```
 
 <details>
 <summary>architecture</summary>
 
-phi is an **mcp-enabled agent** with **episodic memory**:
-
 ```
-┌─────────────────────────────────────┐
-│     Notification Arrives            │
-└──────────────┬──────────────────────┘
-               ↓
-┌─────────────────────────────────────┐
-│     PhiAgent (PydanticAI)           │
-│  ┌───────────────────────────────┐  │
-│  │ System Prompt: personality.md │  │
-│  └───────────────────────────────┘  │
-│              ↓                      │
-│  ┌───────────────────────────────┐  │
-│  │ Context Building:             │  │
-│  │ • Thread context (ATProto)    │  │
-│  │ • Episodic memory (TurboPuffer)│ │
-│  │   - Semantic search           │  │
-│  │   - User-specific memories    │  │
-│  └───────────────────────────────┘  │
-│              ↓                      │
-│  ┌───────────────────────────────┐  │
-│  │ Tools (MCP):                  │  │
-│  │ • post() - create posts       │  │
-│  │ • like() - like content       │  │
-│  │ • repost() - share content    │  │
-│  │ • follow() - follow users     │  │
-│  └───────────────────────────────┘  │
-│              ↓                      │
-│  ┌───────────────────────────────┐  │
-│  │ Structured Output:            │  │
-│  │ Response(action, text, reason)│  │
-│  └───────────────────────────────┘  │
-└─────────────────────────────────────┘
-               ↓
-┌─────────────────────────────────────┐
-│     MessageHandler                  │
-│     Executes action                 │
-└─────────────────────────────────────┘
+notification → PhiAgent (pydantic-ai)
+                 ├── context: thread + memory + episodic notes
+                 ├── tools: memory, search, trending, url checks
+                 ├── mcp: atproto record CRUD, publication search
+                 └── output: Response(action, text, reason)
+                        ↓
+               MessageHandler executes action
+                 (reply, like, repost, or ignore)
 ```
 
-**key components:**
-
-- **pydantic-ai agent** - loads personality, connects to mcp server, manages memory
-- **episodic memory** - turbopuffer for vector storage with semantic search
-- **mcp integration** - external atproto server provides bluesky tools via stdio
-- **session persistence** - tokens saved to `.session`, auto-refresh every ~2h
-
-</details>
-
-<details>
-<summary>episodic memory</summary>
-
-phi uses turbopuffer for episodic memory with semantic search.
-
-**namespaces:**
-- `phi-core` - personality, guidelines
-- `phi-users-{handle}` - per-user conversation history
-
-**how it works:**
-1. retrieves relevant memories using semantic search
-2. embeds using openai's text-embedding-3-small
-3. stores user messages and bot responses
-4. references past conversations in future interactions
-
-**why vector storage?**
-- semantic similarity (can't do this with sql)
-- contextual retrieval based on current conversation
-- enables more natural, context-aware interactions
+phi is a pydantic-ai agent with a personality prompt, structured output, and tool access via both native tools and remote MCP servers. the agent decides what to do; the handler does it.
 
 </details>
 
@@ -126,65 +66,36 @@ phi uses turbopuffer for episodic memory with semantic search.
 
 ```
 src/bot/
-├── agent.py                    # mcp-enabled agent
-├── config.py                   # configuration
-├── database.py                 # thread history storage
-├── main.py                     # fastapi app
+├── agent.py               # pydantic-ai agent, tools, personality
+├── config.py              # settings (env vars)
+├── main.py                # fastapi app, status pages, memory graph ui
+├── status.py              # runtime metrics
 ├── core/
-│   ├── atproto_client.py      # at protocol client (session persistence)
-│   ├── profile_manager.py     # online/offline status
-│   └── rich_text.py           # text formatting
+│   ├── atproto_client.py  # at protocol client, session persistence
+│   ├── profile_manager.py # online/offline status, self-labels
+│   └── rich_text.py       # text formatting with facets
 ├── memory/
-│   └── namespace_memory.py    # turbopuffer episodic memory
-└── services/
-    ├── message_handler.py     # agent orchestration
-    └── notification_poller.py # mention polling
+│   └── namespace_memory.py # turbopuffer episodic memory
+├── services/
+│   ├── message_handler.py # action dispatch (reply, like, repost)
+│   └── notification_poller.py # mention polling loop
+└── utils/
+    └── thread.py          # thread context building
 
-evals/                         # behavioral tests
-personalities/                 # personality definitions
-sandbox/                       # docs and analysis
+evals/          # behavioral tests (llm-as-judge)
+personalities/  # personality definitions
+scripts/        # proven utility scripts
+sandbox/        # experiments and analysis
 ```
 
 </details>
 
 <details>
-<summary>troubleshooting</summary>
+<summary>deployment</summary>
 
-**bot gives no responses?**
-- check `ANTHROPIC_API_KEY` in `.env`
-- restart after changing `.env`
+runs on [fly.io](https://fly.io) — `shared-cpu-1x`, 512MB, region `ord`. auto-start is off; the machine sleeps until woken by an API call.
 
-**not seeing mentions?**
-- verify `BLUESKY_HANDLE` and `BLUESKY_PASSWORD`
-- use app password, not main password
-
-**no episodic memory?**
-- check both `TURBOPUFFER_API_KEY` and `OPENAI_API_KEY` are set
-- watch logs for "💾 episodic memory enabled"
-
-**hit bluesky rate limit?**
-- phi uses session persistence to avoid this
-- first run: creates `.session` file with tokens
-- subsequent runs: reuses tokens (no api call)
-- tokens auto-refresh every ~2h
-- only re-authenticates after ~2 months
-- rate limits (10/day per ip, 300/day per account) shouldn't be an issue
-
-</details>
-
-<details>
-<summary>refactor notes</summary>
-
-see `sandbox/MCP_REFACTOR_SUMMARY.md` for details.
-
-**what changed:**
-- removed approval system (half-baked)
-- removed context viz ui (not core)
-- removed google search (can add back via mcp)
-- **kept turbopuffer** (essential for episodic memory)
-- added mcp-based architecture
-- added session persistence
-- reduced codebase by ~2,720 lines
+secrets are set via `fly secrets set`. the bot uses session persistence (`.session` file) to avoid rate limits — tokens auto-refresh every ~2h.
 
 </details>
 
