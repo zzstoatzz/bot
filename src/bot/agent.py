@@ -131,31 +131,15 @@ class PhiAgent:
             self.memory = None
             logger.warning("no memory - missing turbopuffer or openai key")
 
-        # Generic atproto record CRUD via hosted pdsx MCP
-        pdsx_mcp = MCPServerStreamableHTTP(
-            url="https://pdsx-by-zzstoatzz.fastmcp.app/mcp",
-            timeout=30,
-            headers={
-                "x-atproto-handle": settings.bluesky_handle,
-                "x-atproto-password": settings.bluesky_password,
-            },
-        )
-
-        # ATProto publication search via hosted pub-search MCP
-        pub_search_mcp = MCPServerStreamableHTTP(
-            url="https://pub-search-by-zzstoatzz.fastmcp.app/mcp",
-            timeout=30,
-            tool_prefix="pub",
-        )
-
-        # Create PydanticAI agent with MCP tools
+        # Create PydanticAI agent without MCP toolsets — they're created
+        # fresh per agent.run() call to avoid the cancel scope bug:
+        # https://github.com/pydantic/pydantic-ai/issues/2818
         self.agent = Agent[PhiDeps, Response](
             name="phi",
             model="anthropic:claude-sonnet-4-6",
             system_prompt=f"{self.base_personality}\n\n{OPERATIONAL_INSTRUCTIONS}",
             output_type=Response,
             deps_type=PhiDeps,
-            toolsets=[pdsx_mcp, pub_search_mcp],
         )
 
         # --- memory tools ---
@@ -349,6 +333,24 @@ class PhiAgent:
 
         logger.info("phi agent initialized with pdsx + pub-search mcp tools")
 
+    def _mcp_toolsets(self) -> list[MCPServerStreamableHTTP]:
+        """Create fresh MCP server instances for a single agent run."""
+        return [
+            MCPServerStreamableHTTP(
+                url="https://pdsx-by-zzstoatzz.fastmcp.app/mcp",
+                timeout=30,
+                headers={
+                    "x-atproto-handle": settings.bluesky_handle,
+                    "x-atproto-password": settings.bluesky_password,
+                },
+            ),
+            MCPServerStreamableHTTP(
+                url="https://pub-search-by-zzstoatzz.fastmcp.app/mcp",
+                timeout=30,
+                tool_prefix="pub",
+            ),
+        ]
+
     async def process_mention(
         self,
         mention_text: str,
@@ -406,7 +408,7 @@ class PhiAgent:
             memory=self.memory,
             thread_uri=thread_uri,
         )
-        result = await self.agent.run(user_prompt, deps=deps)
+        result = await self.agent.run(user_prompt, deps=deps, toolsets=self._mcp_toolsets())
         logger.info(f"agent decided: {result.output.action}" + (f" - {result.output.text[:80]}" if result.output.text else "") + (f" ({result.output.reason})" if result.output.reason else ""))
 
         # Store interaction and extract observations
