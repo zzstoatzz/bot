@@ -18,9 +18,14 @@ evals-basic:
 evals-memory:
     uv run pytest evals/test_memory_integration.py -v
 
-# deployment
+# deployment — CI deploys on v* tags, `just deploy` for manual
 deploy:
     flyctl deploy
+
+# tag and push a release (triggers CI deploy)
+release version:
+    git tag "v{{version}}"
+    git push origin "v{{version}}"
 
 # code quality
 fmt:

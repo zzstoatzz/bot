@@ -36,7 +36,7 @@ sandbox/                   # experiments (graduate to scripts/ once proven)
 
 ## deployment
 
-fly.io app `zzstoatzz-phi`. every push to main triggers `.tangled/workflows/deploy.yml` — this means even doc-only changes cause a deploy. consider switching to tag-based triggers (like zat uses `tag: "v*"`) or adding a separate CI workflow for tests.
+fly.io app `zzstoatzz-phi`. deploys are triggered by `v*` tags, not pushes to main. to deploy: `just release <version>` (e.g. `just release 0.2.0`) or `just deploy` for manual fly.io deploy without tagging.
 
 ## key architecture
 
