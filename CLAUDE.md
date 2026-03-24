@@ -1,45 +1,47 @@
-This is the repository for a bluesky virtual person powered by LLMs and exposed to the web.
+phi — a bluesky bot with episodic memory. python + pydantic-ai + fastapi + turbopuffer.
 
-This is a python project that uses `uv` as python package manager, `fastapi` and is inspired by `https://tangled.sh/@cameron.pfiffer.org/void`, `https://github.com/haileyok/penelope`, and `https://github.com/PrefectHQ/marvin/tree/main/examples/slackbot` (tangled is github on atproto, you can git clone tangled.sh repos). These projects should be cloned to the `.eggs` directory, along with any other resources that are useful but not worth checking into the repo. We should simply common commands and communicate dev workflows by using a `justfile`.
+## development
 
-Work from repo root whenever possible.
+- `just run` / `just dev` (hot-reload) / `just deploy` (fly.io)
+- `just evals` — behavioral tests (llm-as-judge)
+- `just check` — lint + typecheck + test
+- work from repo root
 
-## Python style
-- 3.10+ and complete typing (T | None preferred over Optional[T] and list[T] over typing.List[T])
-- use prefer functional over OOP
-- keep implementation details private and functions pure
-- never use `pytest.mark.asyncio`, its unnecessary
+## python style
 
-## Project Structure
+- 3.10+ typing (`T | None`, `list[T]`)
+- prefer functional over OOP
+- imports at the top — no deferred imports unless circular
+- never use `pytest.mark.asyncio`
 
-- `src/bot/` - Main bot application code
-  - `agents/` - Agents for the LLM
-  - `core/` - Core functionality (AT Protocol client functionality)
-  - `services/` - Services (notification polling, message handling)
-  - `tools/` - Tools for the LLM
-  - `config.py` - Configuration
-  - `database.py` - Database functionality
-  - `main.py` - FastAPI application entry point
-  - `personality.py` - Personality definition
-  - `response_generator.py` - Response generation
-  - `status.py` - One page status tracker
-  - `templates.py` - HTML templates
+## project structure
 
-- `tests/` - Test files
-- `scripts/` - Curated utility scripts that have proven useful
-- `sandbox/` - Proving ground for experiments, analysis, and unproven scripts
-  - Reference project analyses
-  - Architecture plans
-  - Implementation notes
-  - Experimental scripts (graduate to scripts/ once proven useful)
-- `.eggs/` - Cloned reference projects (void, penelope, marvin)
+```
+src/bot/
+├── agent.py               # pydantic-ai agent, tools, personality
+├── config.py              # settings (env vars)
+├── main.py                # fastapi app, status pages, memory graph
+├── status.py              # runtime metrics
+├── core/                  # atproto client, profile management
+├── memory/                # turbopuffer episodic memory
+├── services/              # notification polling, message handling
+└── utils/                 # thread context, text formatting
 
-## Script Graduation Process
-New scripts start in `sandbox/`, get promoted to `scripts/` once proven useful, and may eventually get just commands added if the workflow should be broadcast to other developers. Not everything graduates - most things stay in sandbox.
+personalities/             # personality definitions (public)
+evals/                     # behavioral tests
+scripts/                   # proven utility scripts
+sandbox/                   # experiments (graduate to scripts/ once proven)
+.eggs/                     # cloned reference projects
+```
 
-## Testing
-- Run bot: `just dev`
-- Test posting: `just test-post`
+## deployment
 
-## Important Development Guidelines
-- STOP DEFERRING IMPORTS. Put all imports at the top of the file unless there's a legitimate circular dependency issue. Deferred imports make code harder to understand and debug.
+fly.io app `zzstoatzz-phi`. every push to main triggers `.tangled/workflows/deploy.yml` — this means even doc-only changes cause a deploy. consider switching to tag-based triggers (like zat uses `tag: "v*"`) or adding a separate CI workflow for tests.
+
+## key architecture
+
+- all notification types (mentions, replies, quotes, likes, reposts, follows) run through the full agent loop — phi decides what's worth responding to
+- personality is separate from operational instructions (agent.py `OPERATIONAL_INSTRUCTIONS`)
+- memory: turbopuffer namespaces (`phi-core`, `phi-users-{handle}`, `phi-episodic`)
+- relationship summaries are compacted by a separate pipeline in my-prefect-server
+- MCP servers: pdsx (atproto record CRUD), pub-search (publication search)
