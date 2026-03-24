@@ -1,6 +1,7 @@
 """MCP-enabled agent for phi with structured memory."""
 
 import asyncio
+import contextlib
 import ipaddress
 import logging
 import os
@@ -408,7 +409,15 @@ class PhiAgent:
             memory=self.memory,
             thread_uri=thread_uri,
         )
-        result = await self.agent.run(user_prompt, deps=deps, toolsets=self._mcp_toolsets())
+        # Enter MCP servers before agent.run() so the connection is opened
+        # in this task. Parallel tool calls inside agent.run() then just bump
+        # the reference count instead of opening/closing across tasks.
+        # https://github.com/pydantic/pydantic-ai/issues/2818
+        toolsets = self._mcp_toolsets()
+        async with contextlib.AsyncExitStack() as stack:
+            for ts in toolsets:
+                await stack.enter_async_context(ts)
+            result = await self.agent.run(user_prompt, deps=deps, toolsets=toolsets)
         logger.info(f"agent decided: {result.output.action}" + (f" - {result.output.text[:80]}" if result.output.text else "") + (f" ({result.output.reason})" if result.output.reason else ""))
 
         # Store interaction and extract observations
