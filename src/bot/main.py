@@ -2,12 +2,16 @@
 
 import asyncio
 import logging
+import time
 from contextlib import asynccontextmanager
 from datetime import datetime
 
 import logfire
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
+from slowapi import Limiter
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 
 from bot.config import settings
 from bot.core.atproto_client import bot_client
@@ -58,10 +62,20 @@ async def lifespan(app: FastAPI):
     logger.info("phi shutdown complete")
 
 
+limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
+
 app = FastAPI(
     title=settings.bot_name,
     description="consciousness exploration bot with episodic memory",
     lifespan=lifespan,
+)
+app.state.limiter = limiter
+app.add_exception_handler(
+    RateLimitExceeded,
+    lambda request, exc: JSONResponse(
+        status_code=429,
+        content={"error": "rate limit exceeded", "detail": str(exc)},
+    ),
 )
 
 logfire.instrument_fastapi(app)
@@ -186,13 +200,24 @@ async def status_page():
 </body></html>"""
 
 
+_graph_cache: dict[str, object] = {"data": None, "expires": 0.0}
+_GRAPH_CACHE_TTL = 60  # seconds
+
+
 @app.get("/api/memory/graph")
-async def memory_graph_data():
+@limiter.limit("10/minute")
+async def memory_graph_data(request: Request):
     """Return graph nodes and edges as JSON."""
+    now = time.monotonic()
+    if _graph_cache["data"] is not None and now < _graph_cache["expires"]:
+        return JSONResponse(_graph_cache["data"])
+
     try:
         memory = NamespaceMemory(api_key=settings.turbopuffer_api_key)
         loop = asyncio.get_event_loop()
         data = await loop.run_in_executor(None, memory.get_graph_data)
+        _graph_cache["data"] = data
+        _graph_cache["expires"] = now + _GRAPH_CACHE_TTL
         return JSONResponse(data)
     except Exception as e:
         logger.warning(f"memory graph failed: {e}")

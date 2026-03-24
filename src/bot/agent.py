@@ -1,11 +1,14 @@
 """MCP-enabled agent for phi with structured memory."""
 
 import asyncio
+import ipaddress
 import logging
 import os
+import socket
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
+from urllib.parse import urlparse
 
 import httpx
 from pydantic import BaseModel, Field
@@ -318,6 +321,21 @@ class PhiAgent:
                 if not url.startswith(("http://", "https://")):
                     url = f"https://{url}"
                 try:
+                    hostname = urlparse(url).hostname
+                    if not hostname:
+                        return f"{url} → blocked: no hostname"
+                    # resolve and check for private/loopback IPs (SSRF protection)
+                    try:
+                        addrs = await asyncio.get_event_loop().run_in_executor(
+                            None, lambda: socket.getaddrinfo(hostname, None)
+                        )
+                    except socket.gaierror:
+                        return f"{url} → blocked: DNS resolution failed"
+                    for addr_info in addrs:
+                        ip = ipaddress.ip_address(addr_info[4][0])
+                        if ip.is_private or ip.is_loopback or ip.is_link_local:
+                            return f"{url} → blocked: private IP"
+
                     r = await client.head(url, follow_redirects=True)
                     return f"{url} → {r.status_code}"
                 except httpx.TimeoutException:

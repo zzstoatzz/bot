@@ -14,6 +14,7 @@ dependencies = [
     "openai",
     "pydantic-ai",
     "pydantic-settings",
+    "slowapi>=0.1.9",
     "turbopuffer",
     "uvicorn",
 ]

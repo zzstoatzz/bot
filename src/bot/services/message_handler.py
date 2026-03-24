@@ -3,6 +3,9 @@
 import logging
 
 from atproto_client import models
+from limits import parse as parse_limit
+from limits.storage import MemoryStorage
+from limits.strategies import MovingWindowRateLimiter
 
 from bot.agent import PhiAgent
 from bot.core.atproto_client import BotClient
@@ -10,6 +13,10 @@ from bot.status import bot_status
 from bot.utils.thread import build_thread_context, describe_embed, extract_image_urls
 
 logger = logging.getLogger("bot.handler")
+
+_storage = MemoryStorage()
+_limiter = MovingWindowRateLimiter(_storage)
+_user_limit = parse_limit("30/hour")
 
 
 class MessageHandler:
@@ -23,6 +30,10 @@ class MessageHandler:
         """Process any notification through the agent."""
         reason = notification.reason
         author_handle = notification.author.handle
+
+        if not _limiter.hit(_user_limit, author_handle):
+            logger.warning(f"rate limited @{author_handle}")
+            return
 
         try:
             if reason in ("mention", "reply", "quote"):

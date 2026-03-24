@@ -31,7 +31,7 @@ class TestToolUsage:
 
         # Create agent
         agent = Agent(
-            "anthropic:claude-3-5-haiku-latest",
+            "anthropic:claude-haiku-4-5",
             system_prompt="You are a helpful assistant. Use tools when asked.",
             output_type=Response,
         )
@@ -64,7 +64,7 @@ class TestToolUsage:
         tool_calls: list[dict] = []
 
         agent = Agent(
-            "anthropic:claude-3-5-haiku-latest",
+            "anthropic:claude-haiku-4-5",
             system_prompt="You help answer questions. Use search for current events.",
             output_type=Response,
         )
@@ -97,7 +97,7 @@ class TestToolUsage:
         calls: list[str] = []
 
         agent = Agent(
-            "anthropic:claude-3-5-haiku-latest",
+            "anthropic:claude-haiku-4-5",
             system_prompt="You are a helpful assistant.",
             output_type=Response,
         )
