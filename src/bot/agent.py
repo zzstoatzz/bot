@@ -8,7 +8,7 @@ from datetime import date
 from pathlib import Path
 
 import httpx
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from pydantic_ai import Agent, ImageUrl, RunContext
 from pydantic_ai.mcp import MCPServerStreamableHTTP
 
@@ -16,6 +16,13 @@ from bot.config import settings
 from bot.memory import NamespaceMemory
 
 logger = logging.getLogger("bot.agent")
+
+# Operational instructions kept separate from personality — these are
+# system-level guardrails that change when tools/architecture change.
+OPERATIONAL_INSTRUCTIONS = """
+indicate your response action via the structured output — do not use atproto tools to post, like, or repost directly.
+when sharing URLs, verify them with check_urls first and always include https://.
+""".strip()
 
 
 def _relative_age(timestamp: str, today: date) -> str:
@@ -56,9 +63,43 @@ class PhiDeps:
 class Response(BaseModel):
     """Agent response indicating what action to take."""
 
-    action: str  # "reply", "like", "ignore", "repost"
-    text: str | None = None
-    reason: str | None = None
+    action: str = Field(description="reply, like, repost, or ignore")
+    text: str | None = Field(default=None, description="response text when action is reply")
+    reason: str | None = Field(default=None, description="brief reason when action is ignore")
+
+
+def _format_user_results(results: list[dict], handle: str) -> list[str]:
+    parts = []
+    for r in results:
+        kind = r.get("kind", "unknown")
+        content = r.get("content", "")
+        tags = r.get("tags", [])
+        tag_str = f"[{', '.join(tags)}]" if tags else ""
+        parts.append(f"[{kind}]{tag_str} {content}")
+    return parts
+
+
+def _format_episodic_results(results: list[dict]) -> list[str]:
+    parts = []
+    for r in results:
+        tags = f" [{', '.join(r['tags'])}]" if r.get("tags") else ""
+        parts.append(f"{r['content']}{tags}")
+    return parts
+
+
+def _format_unified_results(results: list[dict], handle: str) -> list[str]:
+    parts = []
+    for r in results:
+        source = r.get("_source", "")
+        content = r.get("content", "")
+        tags = r.get("tags", [])
+        tag_str = f" [{', '.join(tags)}]" if tags else ""
+        if source == "user":
+            kind = r.get("kind", "unknown")
+            parts.append(f"[@{handle} {kind}]{tag_str} {content}")
+        else:
+            parts.append(f"[note]{tag_str} {content}")
+    return parts
 
 
 class PhiAgent:
@@ -104,54 +145,53 @@ class PhiAgent:
         self.agent = Agent[PhiDeps, Response](
             name="phi",
             model="anthropic:claude-sonnet-4-6",
-            system_prompt=self.base_personality,
+            system_prompt=f"{self.base_personality}\n\n{OPERATIONAL_INSTRUCTIONS}",
             output_type=Response,
             deps_type=PhiDeps,
             toolsets=[pdsx_mcp, pub_search_mcp],
         )
 
-        # Register search_memory tool on the agent
+        # --- memory tools ---
+
         @self.agent.tool
-        async def search_memory(ctx: RunContext[PhiDeps], query: str) -> str:
-            """Search your memory for information about the current user. Use this when you want more context about past interactions or facts you know about them."""
+        async def recall(ctx: RunContext[PhiDeps], query: str, about: str = "") -> str:
+            """Search memory. By default searches both your notes and what you know about the current user.
+            Pass about="@handle" to search a specific user, or about="self" for only your own notes."""
             if not ctx.deps.memory:
                 return "memory not available"
 
-            results = await ctx.deps.memory.search(ctx.deps.author_handle, query, top_k=10)
-            if not results:
-                return "no relevant memories found"
+            if about == "self":
+                results = await ctx.deps.memory.search_episodic(query, top_k=10)
+                if not results:
+                    return "no relevant memories found"
+                return "\n".join(_format_episodic_results(results))
 
-            parts = []
-            for r in results:
-                kind = r.get("kind", "unknown")
-                content = r.get("content", "")
-                tags = r.get("tags", [])
-                tag_str = f" [{', '.join(tags)}]" if tags else ""
-                parts.append(f"[{kind}]{tag_str} {content}")
-            return "\n".join(parts)
+            if about.startswith("@"):
+                handle = about.lstrip("@")
+                results = await ctx.deps.memory.search(handle, query, top_k=10)
+                if not results:
+                    return f"no memories found about @{handle}"
+                return "\n".join(_format_user_results(results, handle))
+
+            if about == "":
+                results = await ctx.deps.memory.search_unified(ctx.deps.author_handle, query, top_k=8)
+                if not results:
+                    return "no relevant memories found"
+                return "\n".join(_format_unified_results(results, ctx.deps.author_handle))
+
+            # bare handle without @
+            results = await ctx.deps.memory.search(about, query, top_k=10)
+            if not results:
+                return f"no memories found about @{about}"
+            return "\n".join(_format_user_results(results, about))
 
         @self.agent.tool
-        async def remember(ctx: RunContext[PhiDeps], content: str, tags: list[str]) -> str:
-            """Store something you learned or found interesting in your memory.
-            Use sparingly — only for facts worth recalling in future conversations."""
+        async def note(ctx: RunContext[PhiDeps], content: str, tags: list[str]) -> str:
+            """Leave a note for your future self. Use for facts, patterns, or corrections worth recalling later."""
             if not ctx.deps.memory:
                 return "memory not available"
             await ctx.deps.memory.store_episodic_memory(content, tags, source="tool")
-            return f"remembered: {content[:100]}"
-
-        @self.agent.tool
-        async def search_my_memory(ctx: RunContext[PhiDeps], query: str) -> str:
-            """Search your own memory for things you've previously learned about the world."""
-            if not ctx.deps.memory:
-                return "memory not available"
-            results = await ctx.deps.memory.search_episodic(query, top_k=10)
-            if not results:
-                return "no relevant memories found"
-            parts = []
-            for r in results:
-                tags = f" [{', '.join(r['tags'])}]" if r.get("tags") else ""
-                parts.append(f"{r['content']}{tags}")
-            return "\n".join(parts)
+            return f"noted: {content[:100]}"
 
         @self.agent.tool
         async def search_posts(ctx: RunContext[PhiDeps], query: str, limit: int = 10) -> str:
