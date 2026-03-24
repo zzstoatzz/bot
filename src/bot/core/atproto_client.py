@@ -2,6 +2,7 @@ import logging
 from pathlib import Path
 
 from atproto import Client, Session, SessionEvent
+from atproto_client import models
 
 from bot.config import settings
 from bot.core.rich_text import create_facets
@@ -35,6 +36,53 @@ def _on_session_change(event: SessionEvent, session: Session) -> None:
     if event in (SessionEvent.CREATE, SessionEvent.REFRESH):
         logger.debug(f"session {event.value}, saving to disk")
         _save_session_string(session.export())
+
+
+MAX_GRAPHEMES = 300
+
+
+def _split_text(text: str, max_len: int = MAX_GRAPHEMES) -> list[str]:
+    """Split text into chunks that fit within bluesky's grapheme limit.
+
+    Prefers splitting at paragraph breaks, then sentence boundaries, then word boundaries.
+    """
+    if len(text) <= max_len:
+        return [text]
+
+    chunks = []
+    remaining = text
+
+    while remaining:
+        if len(remaining) <= max_len:
+            chunks.append(remaining)
+            break
+
+        # scan backwards from limit for best break point
+        split_at = -1
+
+        # prefer paragraph break (newline)
+        for i in range(max_len - 1, max_len // 2, -1):
+            if remaining[i] == "\n":
+                split_at = i + 1
+                break
+
+        # then sentence boundary (.!?) followed by space or end
+        if split_at < 0:
+            for i in range(max_len - 1, max_len // 2, -1):
+                if remaining[i] in ".!?" and (i + 1 >= len(remaining) or remaining[i + 1] in " \n"):
+                    split_at = i + 1
+                    break
+
+        # then word boundary
+        if split_at < 0:
+            split_at = remaining.rfind(" ", 0, max_len)
+            if split_at < max_len // 2:
+                split_at = max_len  # hard break as last resort
+
+        chunks.append(remaining[:split_at].rstrip())
+        remaining = remaining[split_at:].lstrip()
+
+    return chunks
 
 
 class BotClient:
@@ -92,17 +140,38 @@ class BotClient:
         self.client.app.bsky.notification.update_seen({"seenAt": seen_at})
 
     async def create_post(self, text: str, reply_to=None):
-        """Create a new post or reply with rich text support"""
+        """Create a new post or reply. Splits long text into a self-reply thread."""
         await self.authenticate()
 
-        # Create facets for mentions and URLs
-        facets = create_facets(text, self.client)
-
-        # Use send_post with facets
-        if reply_to:
-            return self.client.send_post(text=text, reply_to=reply_to, facets=facets)
-        else:
+        if len(text) <= 300:
+            facets = create_facets(text, self.client)
+            if reply_to:
+                return self.client.send_post(text=text, reply_to=reply_to, facets=facets)
             return self.client.send_post(text=text, facets=facets)
+
+        chunks = _split_text(text)
+        root_ref = reply_to.root if reply_to else None
+        last_result = None
+
+        for i, chunk in enumerate(chunks):
+            facets = create_facets(chunk, self.client)
+
+            if i == 0:
+                last_result = self.client.send_post(text=chunk, reply_to=reply_to, facets=facets)
+                if root_ref is None:
+                    root_ref = models.ComAtprotoRepoStrongRef.Main(
+                        uri=last_result.uri, cid=last_result.cid
+                    )
+            else:
+                parent_ref = models.ComAtprotoRepoStrongRef.Main(
+                    uri=last_result.uri, cid=last_result.cid
+                )
+                thread_ref = models.AppBskyFeedPost.ReplyRef(
+                    parent=parent_ref, root=root_ref
+                )
+                last_result = self.client.send_post(text=chunk, reply_to=thread_ref, facets=facets)
+
+        return last_result
 
     async def get_thread(self, uri: str, depth: int = 10):
         """Get a thread by URI"""
