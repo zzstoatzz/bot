@@ -80,6 +80,11 @@ class Settings(BaseSettings):
         default=10, description="The interval for polling for notifications"
     )
 
+    # Control API
+    control_token: str | None = Field(
+        default=None, description="Bearer token for /api/control endpoints"
+    )
+
     # Debug mode
     debug: bool = Field(default=True, description="Whether to run in debug mode")
 

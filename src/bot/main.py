@@ -150,7 +150,37 @@ async def root():
 @app.get("/health")
 async def health():
     """Health check endpoint."""
-    return {"status": "healthy", "polling_active": bot_status.polling_active}
+    return {"status": "healthy", "polling_active": bot_status.polling_active, "paused": bot_status.paused}
+
+
+def _check_control_token(request: Request):
+    """Validate bearer token for control endpoints."""
+    if not settings.control_token:
+        return JSONResponse({"error": "control token not configured"}, status_code=503)
+    auth = request.headers.get("authorization", "")
+    if auth != f"Bearer {settings.control_token}":
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+    return None
+
+
+@app.post("/api/control/pause")
+async def pause(request: Request):
+    """Pause notification processing. Unread notifications accumulate until resumed."""
+    if err := _check_control_token(request):
+        return err
+    bot_status.paused = True
+    logger.info("paused via API")
+    return {"paused": True}
+
+
+@app.post("/api/control/resume")
+async def resume(request: Request):
+    """Resume notification processing. Queued notifications will be processed on next poll."""
+    if err := _check_control_token(request):
+        return err
+    bot_status.paused = False
+    logger.info("resumed via API")
+    return {"paused": False}
 
 
 @app.get("/status", response_class=HTMLResponse)

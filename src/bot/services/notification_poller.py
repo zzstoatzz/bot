@@ -77,6 +77,12 @@ class NotificationPoller:
         elif unread:
             logger.info(f"{len(unread)} new notifications")
 
+        # When paused, don't process or mark as read — notifications accumulate
+        if bot_status.paused:
+            if unread:
+                logger.debug(f"paused, skipping {len(unread)} unread notifications")
+            return
+
         processed_any = False
 
         # Process notifications from oldest to newest

@@ -23,6 +23,7 @@ class BotStatus:
     last_response_time: datetime | None = None
     ai_enabled: bool = False
     polling_active: bool = False
+    paused: bool = False
 
     @property
     def uptime_seconds(self) -> float:
