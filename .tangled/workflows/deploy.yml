@@ -8,9 +8,16 @@ dependencies:
   nixpkgs:
     - flyctl
     - curl
+    - jq
 
 steps:
   - name: deploy to fly.io
     command: |
       test -n "$FLY_API_TOKEN"
-      flyctl deploy --remote-only
+      STATE=$(flyctl machines list --json | jq -r '.[0].state')
+      if [ "$STATE" = "stopped" ]; then
+        echo "machine is stopped, deploying with immediate strategy (skip health checks)"
+        flyctl deploy --remote-only --strategy=immediate
+      else
+        flyctl deploy --remote-only
+      fi
