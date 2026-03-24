@@ -20,7 +20,7 @@ class MessageHandler:
         self.agent = PhiAgent()
 
     async def handle_notification(self, notification):
-        """Process any notification type."""
+        """Process any notification through the agent."""
         reason = notification.reason
         author_handle = notification.author.handle
 
@@ -28,17 +28,80 @@ class MessageHandler:
             if reason in ("mention", "reply", "quote"):
                 await self._handle_post(notification)
             elif reason in ("like", "repost"):
-                # someone engaged with phi's content — log for awareness
-                logger.info(f"{reason} from @{author_handle}")
-                bot_status.record_mention()
+                await self._handle_engagement(notification)
             elif reason == "follow":
-                logger.info(f"followed by @{author_handle}")
-                bot_status.record_mention()
+                await self._handle_follow(notification)
             else:
                 logger.debug(f"notification type '{reason}' from @{author_handle}")
         except Exception as e:
             logger.exception(f"notification handling error: {e}")
             bot_status.record_error()
+
+    async def _handle_engagement(self, notification):
+        """Process a like or repost — someone engaged with phi's content."""
+        reason = notification.reason
+        author_handle = notification.author.handle
+        post_uri = notification.uri
+
+        # Fetch phi's post that was liked/reposted
+        posts = await self.client.get_posts([post_uri])
+        if not posts.posts:
+            logger.warning(f"could not find post {post_uri}")
+            return
+
+        post = posts.posts[0]
+        post_text = post.record.text if hasattr(post.record, "text") else ""
+
+        bot_status.record_mention()
+
+        mention_text = f"[notification: @{author_handle} {reason}d your post]\nyour post: {post_text}"
+
+        response = await self.agent.process_mention(
+            mention_text=mention_text,
+            author_handle=author_handle,
+            thread_context="",
+        )
+
+        if response.action == "ignore":
+            logger.info(f"ignoring {reason} from @{author_handle}: {response.reason}")
+        elif response.action == "reply" and response.text:
+            # reply to phi's own post as a follow-up
+            parent_ref = models.ComAtprotoRepoStrongRef.Main(uri=post_uri, cid=post.cid)
+            if hasattr(post.record, "reply") and post.record.reply:
+                root_ref = post.record.reply.root
+            else:
+                root_ref = parent_ref
+            reply_ref = models.AppBskyFeedPost.ReplyRef(parent=parent_ref, root=root_ref)
+            await self.client.create_post(response.text, reply_to=reply_ref)
+            bot_status.record_response()
+            logger.info(f"replied on {reason} from @{author_handle}: {response.text[:80]}")
+        else:
+            logger.info(f"{response.action} on {reason} from @{author_handle}")
+            bot_status.record_response()
+
+    async def _handle_follow(self, notification):
+        """Process a follow notification."""
+        author_handle = notification.author.handle
+
+        bot_status.record_mention()
+
+        mention_text = f"[notification: @{author_handle} followed you]"
+
+        response = await self.agent.process_mention(
+            mention_text=mention_text,
+            author_handle=author_handle,
+            thread_context="",
+        )
+
+        if response.action == "ignore":
+            logger.info(f"ignoring follow from @{author_handle}: {response.reason}")
+        elif response.action == "reply" and response.text:
+            # post as a top-level post since there's no thread to reply to
+            await self.client.create_post(response.text)
+            bot_status.record_response()
+            logger.info(f"posted on follow from @{author_handle}: {response.text[:80]}")
+        else:
+            logger.info(f"{response.action} on follow from @{author_handle}")
 
     async def _handle_post(self, notification):
         """Process a mention, reply, or quote notification."""
@@ -115,7 +178,6 @@ class MessageHandler:
             return
 
         elif response.action == "reply" and response.text:
-            # Post reply
             reply_ref = models.AppBskyFeedPost.ReplyRef(
                 parent=parent_ref, root=root_ref
             )

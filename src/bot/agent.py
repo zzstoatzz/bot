@@ -22,6 +22,11 @@ logger = logging.getLogger("bot.agent")
 OPERATIONAL_INSTRUCTIONS = """
 indicate your response action via the structured output — do not use atproto tools to post, like, or repost directly.
 when sharing URLs, verify them with check_urls first and always include https://.
+
+you receive all notification types — mentions, replies, quotes, likes, reposts, and follows.
+for mentions, replies, and quotes: someone is talking to you or about you. respond if you have something to say.
+for likes and reposts: someone engaged with your content. usually just note it and ignore, but if something about the person or context is genuinely interesting, you can respond.
+for follows: someone followed you. same principle — note it, ignore unless curious.
 """.strip()
 
 
