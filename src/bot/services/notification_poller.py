@@ -65,37 +65,31 @@ class NotificationPoller:
         response = await self.client.get_notifications()
         notifications = response.notifications
 
-        unread_mentions = [
-            n
-            for n in notifications
-            if not n.is_read and n.reason in ["mention", "reply"]
-        ]
+        unread = [n for n in notifications if not n.is_read]
 
         # First poll: show initial state
         if self._first_poll:
             self._first_poll = False
             if notifications:
                 logger.info(
-                    f"found {len(notifications)} notifications ({len(unread_mentions)} unread mentions)"
+                    f"found {len(notifications)} notifications ({len(unread)} unread)"
                 )
-        elif unread_mentions:
-            logger.info(f"{len(unread_mentions)} new mentions")
+        elif unread:
+            logger.info(f"{len(unread)} new notifications")
 
-        processed_any_mentions = False
+        processed_any = False
 
         # Process notifications from oldest to newest
         for notification in reversed(notifications):
             if notification.is_read or notification.uri in self._processed_uris:
                 continue
 
-            if notification.reason in ["mention", "reply"]:
-                logger.debug(f"processing {notification.reason} notification")
-                self._processed_uris.add(notification.uri)
-                await self.handler.handle_mention(notification)
-                processed_any_mentions = True
+            self._processed_uris.add(notification.uri)
+            await self.handler.handle_notification(notification)
+            processed_any = True
 
         # Mark all notifications as seen
-        if processed_any_mentions:
+        if processed_any:
             await self.client.mark_notifications_seen(check_time)
             logger.info("marked notifications as read")
 
