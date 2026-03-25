@@ -297,17 +297,20 @@ class PhiAgent:
                         params={"query": query, "limit": 10},
                     )
                     r.raise_for_status()
-                    results = r.json()
+                    data = r.json()
 
-                if not results:
+                # response is {urls: [...], pagination: {...}}
+                items = data.get("urls") if isinstance(data, dict) else data
+                if not items:
                     return f"no network results for '{query}'"
 
                 lines = []
-                for item in results:
-                    title = item.get("title") or item.get("text") or "untitled"
+                for item in items:
+                    meta = item.get("metadata", {})
+                    title = meta.get("title") or item.get("title") or "untitled"
                     url = item.get("url", "")
-                    saves = item.get("saveCount") or item.get("saves") or 0
-                    desc = item.get("description") or ""
+                    saves = item.get("urlLibraryCount") or 0
+                    desc = meta.get("description") or ""
                     line = f"{title}"
                     if url:
                         line += f" — {url}"
