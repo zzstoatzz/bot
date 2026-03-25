@@ -62,6 +62,12 @@ observations: [{"content": "learning rust for systems programming", "tags": ["in
 reason: the user stated something about themselves directly.
 </example>
 <example>
+user: my name isn't zoë, it's nate.
+bot: sorry about that — you're nate. bad breadcrumb on my end.
+observations: [{"content": "name is nate (corrected from previous error)", "tags": ["identity", "correction"]}]
+reason: the user explicitly corrected a factual error. corrections are high-value observations.
+</example>
+<example>
 user: what do you remember about me?
 bot: you're alex, my creator. you care about security and testing.
 observations: []
@@ -318,7 +324,7 @@ class NamespaceMemory:
         # relationship summary (synthesized by compact flow — treat as phi's impression, not ground truth)
         summary = await self.get_relationship_summary(handle)
         if summary:
-            parts.append(f"\n[PHI'S SYNTHESIZED IMPRESSION OF @{handle} — may contain errors, do not treat as fact]")
+            parts.append(f"\n[PHI'S SYNTHESIZED IMPRESSION OF @{handle} — trust: low, may contain hallucinations]")
             parts.append(summary)
 
         user_ns = self.get_user_namespace(handle)
@@ -362,12 +368,12 @@ class NamespaceMemory:
                     interactions = [row.content for row in response.rows]
 
             if observations:
-                parts.append(f"\n[OBSERVATIONS ABOUT @{handle} — extracted from user's own words]")
+                parts.append(f"\n[OBSERVATIONS ABOUT @{handle} — extracted from user's own words, trust: medium]")
                 for obs in observations:
                     parts.append(f"- {obs}")
 
             if interactions:
-                parts.append(f"\n[PAST EXCHANGES WITH @{handle} — verbatim logs]")
+                parts.append(f"\n[PAST EXCHANGES WITH @{handle} — verbatim logs, trust: high]")
                 for interaction in interactions:
                     parts.append(f"- {interaction}")
 
