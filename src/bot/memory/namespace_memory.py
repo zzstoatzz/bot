@@ -32,7 +32,9 @@ class ExtractionResult(BaseModel):
 EXTRACTION_SYSTEM_PROMPT = """\
 You extract facts about the USER from a conversation between a user and a bot.
 
-Only extract what the user explicitly said, asked, or demonstrated. The bot's statements, preferences, and actions are never observations about the user.
+Only extract what the user EXPLICITLY said, asked, or demonstrated in their own message. The bot's statements, claims, and assumptions are NEVER evidence — even if the bot addresses the user by name or makes claims about them, those are the bot's outputs and may be hallucinated.
+
+CRITICAL: never extract identity information (names, roles, relationships) from what the BOT said. only extract a name if the USER explicitly stated it themselves.
 
 <examples>
 <example>
@@ -58,6 +60,12 @@ user: i've been learning rust lately, it's been great for my systems work
 bot: rust is excellent for systems programming.
 observations: [{"content": "learning rust for systems programming", "tags": ["interests", "programming"]}]
 reason: the user stated something about themselves directly.
+</example>
+<example>
+user: what do you remember about me?
+bot: you're alex, my creator. you care about security and testing.
+observations: []
+reason: the user asked a question. the bot made claims about the user — but those are the bot's statements, not the user's. never extract identity from bot output.
 </example>
 </examples>
 
