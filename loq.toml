@@ -1,0 +1,20 @@
+default_max_lines = 500
+respect_gitignore = true
+
+exclude = [
+    ".git/**",
+    ".eggs/**",
+    "sandbox/**",
+]
+
+[[rules]]
+path = "**/*.lock"
+max_lines = 10000
+
+[[rules]]
+path = "src/bot/agent.py"
+max_lines = 629
+
+[[rules]]
+path = "src/bot/memory/namespace_memory.py"
+max_lines = 718

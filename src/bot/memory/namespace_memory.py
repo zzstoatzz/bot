@@ -7,143 +7,18 @@ from datetime import datetime
 from typing import ClassVar
 
 from openai import AsyncOpenAI
-from pydantic import BaseModel, Field
-from pydantic_ai import Agent
 from turbopuffer import Turbopuffer
 
 from bot.config import settings
+from bot.memory.extraction import (
+    EPISODIC_SCHEMA,
+    USER_NAMESPACE_SCHEMA,
+    Observation,
+    get_extraction_agent,
+    get_reconciliation_agent,
+)
 
 logger = logging.getLogger("bot.memory")
-
-
-class Observation(BaseModel):
-    """A single fact about the user, extracted from what the USER said or did."""
-
-    content: str = Field(description="one atomic fact about the user, stated as a short sentence")
-    tags: list[str] = Field(description="1-3 lowercase tags categorizing this fact")
-
-
-class ExtractionResult(BaseModel):
-    """Observations extracted from a conversation. Empty list if nothing worth keeping."""
-
-    observations: list[Observation] = []
-
-
-class ReconciliationAction(BaseModel):
-    """Decision for how a new observation relates to an existing one."""
-
-    action: str = Field(description="one of: ADD, UPDATE, DELETE, NOOP")
-    new_content: str | None = Field(default=None, description="merged content when action is UPDATE")
-    new_tags: list[str] | None = Field(default=None, description="merged tags when action is UPDATE")
-    reason: str = Field(description="brief explanation of the decision")
-
-
-class ReconciliationResult(BaseModel):
-    """Result of reconciling a new observation against a similar existing one."""
-
-    decision: ReconciliationAction
-
-
-EXTRACTION_SYSTEM_PROMPT = """\
-You extract facts about the USER from a conversation between a user and a bot.
-
-Only extract what the user EXPLICITLY said, asked, or demonstrated in their own message. The bot's statements, claims, and assumptions are NEVER evidence — even if the bot addresses the user by name or makes claims about them, those are the bot's outputs and may be hallucinated.
-
-CRITICAL: never extract identity information (names, roles, relationships) from what the BOT said. only extract a name if the USER explicitly stated it themselves.
-
-<examples>
-<example>
-user: have you considered following anyone yet?
-bot: following one account currently — bsky.app itself.
-observations: []
-reason: the user asked a question. the bot answered about itself. nothing here is about the user.
-</example>
-<example>
-user: can you delete that follow record?
-bot: deleted it — following nobody now.
-observations: []
-reason: the user made a request to the bot. the bot performed the action. the user didn't delete anything.
-</example>
-<example>
-user: what do you think about the strait of hormuz situation?
-bot: trump considered a blockade, major shipping implications.
-observations: [{"content": "interested in geopolitical events around the strait of hormuz", "tags": ["interests", "geopolitics"]}]
-reason: the user asked about a specific topic, showing interest. the bot's answer content is not attributed to the user.
-</example>
-<example>
-user: i've been learning rust lately, it's been great for my systems work
-bot: rust is excellent for systems programming.
-observations: [{"content": "learning rust for systems programming", "tags": ["interests", "programming"]}]
-reason: the user stated something about themselves directly.
-</example>
-<example>
-user: my name isn't zoë, it's nate.
-bot: sorry about that — you're nate. bad breadcrumb on my end.
-observations: [{"content": "name is nate (corrected from previous error)", "tags": ["identity", "correction"]}]
-reason: the user explicitly corrected a factual error. corrections are high-value observations.
-</example>
-<example>
-user: what do you remember about me?
-bot: you're alex, my creator. you care about security and testing.
-observations: []
-reason: the user asked a question. the bot made claims about the user — but those are the bot's statements, not the user's. never extract identity from bot output.
-</example>
-</examples>
-
-Deduplicate against existing observations provided in the prompt. Return an empty list when the exchange is just greetings, filler, or the user only asked questions without revealing anything about themselves."""
-
-RECONCILIATION_SYSTEM_PROMPT = """\
-You reconcile a NEW observation against an EXISTING observation from memory.
-
-Decide one action:
-- ADD: the new observation contains genuinely different information. keep both.
-- UPDATE: the new observation refines, corrects, or supersedes the existing one. return merged content and tags.
-- DELETE: the existing observation is wrong, outdated, or fully redundant given the new one. the new one will be stored separately.
-- NOOP: the new observation adds nothing beyond what already exists. discard it.
-
-Corrections (e.g., "name is nate, corrected from previous error") always win over the entry they correct — use UPDATE or DELETE.
-When in doubt between ADD and NOOP, prefer NOOP. memory should be lean."""
-
-_extraction_agent: Agent[None, ExtractionResult] | None = None
-_reconciliation_agent: Agent[None, ReconciliationResult] | None = None
-
-
-def get_extraction_agent() -> Agent[None, ExtractionResult]:
-    global _extraction_agent
-    if _extraction_agent is None:
-        _extraction_agent = Agent(
-            name="observation-extractor",
-            model=f"anthropic:{settings.extraction_model}",
-            output_type=ExtractionResult,
-            system_prompt=EXTRACTION_SYSTEM_PROMPT,
-        )
-    return _extraction_agent
-
-
-def get_reconciliation_agent() -> Agent[None, ReconciliationResult]:
-    global _reconciliation_agent
-    if _reconciliation_agent is None:
-        _reconciliation_agent = Agent(
-            name="observation-reconciler",
-            model=f"anthropic:{settings.extraction_model}",
-            output_type=ReconciliationResult,
-            system_prompt=RECONCILIATION_SYSTEM_PROMPT,
-        )
-    return _reconciliation_agent
-
-EPISODIC_SCHEMA = {
-    "content": {"type": "string", "full_text_search": True},
-    "tags": {"type": "[]string", "filterable": True},
-    "source": {"type": "string", "filterable": True},  # "tool", "conversation"
-    "created_at": {"type": "string"},
-}
-
-USER_NAMESPACE_SCHEMA = {
-    "kind": {"type": "string", "filterable": True},
-    "content": {"type": "string", "full_text_search": True},
-    "tags": {"type": "[]string", "filterable": True},
-    "created_at": {"type": "string"},
-}
 
 
 class NamespaceMemory:
@@ -193,7 +68,13 @@ class NamespaceMemory:
 
     # --- core memory (unchanged) ---
 
-    async def store_core_memory(self, label: str, content: str, memory_type: str = "system", char_limit: int = 10_000):
+    async def store_core_memory(
+        self,
+        label: str,
+        content: str,
+        memory_type: str = "system",
+        char_limit: int = 10_000,
+    ):
         """Store or update core memory block."""
         if len(content) > char_limit:
             content = content[: char_limit - 3] + "..."
@@ -235,14 +116,16 @@ class NamespaceMemory:
         entries = []
         if response.rows:
             for row in response.rows:
-                entries.append({
-                    "id": row.id,
-                    "content": row.content,
-                    "label": getattr(row, "label", "unknown"),
-                    "type": getattr(row, "type", "system"),
-                    "importance": getattr(row, "importance", 1.0),
-                    "created_at": row.created_at,
-                })
+                entries.append(
+                    {
+                        "id": row.id,
+                        "content": row.content,
+                        "label": getattr(row, "label", "unknown"),
+                        "type": getattr(row, "type", "system"),
+                        "importance": getattr(row, "importance", 1.0),
+                        "created_at": row.created_at,
+                    }
+                )
         return entries
 
     # --- user memory ---
@@ -277,14 +160,16 @@ class NamespaceMemory:
         rows = []
         for obs in observations:
             entry_id = self._generate_id(f"user-{handle}", "observation", obs.content)
-            rows.append({
-                "id": entry_id,
-                "vector": await self._get_embedding(obs.content),
-                "kind": "observation",
-                "content": obs.content,
-                "tags": obs.tags,
-                "created_at": datetime.now().isoformat(),
-            })
+            rows.append(
+                {
+                    "id": entry_id,
+                    "vector": await self._get_embedding(obs.content),
+                    "kind": "observation",
+                    "content": obs.content,
+                    "tags": obs.tags,
+                    "created_at": datetime.now().isoformat(),
+                }
+            )
 
         user_ns.write(
             upsert_rows=rows,
@@ -292,7 +177,9 @@ class NamespaceMemory:
             schema=USER_NAMESPACE_SCHEMA,
         )
 
-    async def _find_similar_observations(self, handle: str, embedding: list[float], top_k: int = 3) -> list[dict]:
+    async def _find_similar_observations(
+        self, handle: str, embedding: list[float], top_k: int = 3
+    ) -> list[dict]:
         """Find existing observations similar to the given embedding."""
         user_ns = self.get_user_namespace(handle)
         try:
@@ -304,7 +191,12 @@ class NamespaceMemory:
             )
             if response.rows:
                 return [
-                    {"id": row.id, "content": row.content, "tags": getattr(row, "tags", []), "created_at": getattr(row, "created_at", "")}
+                    {
+                        "id": row.id,
+                        "content": row.content,
+                        "tags": getattr(row, "tags", []),
+                        "created_at": getattr(row, "created_at", ""),
+                    }
                     for row in response.rows
                 ]
         except Exception as e:
@@ -351,35 +243,47 @@ class NamespaceMemory:
             )
             merged_embedding = await self._get_embedding(merged.content)
             await self._write_observation(handle, merged, merged_embedding)
-            logger.info(f"UPDATE for @{handle}: '{best_match['content'][:40]}' -> '{merged.content[:40]}' ({decision.reason})")
+            logger.info(
+                f"UPDATE for @{handle}: '{best_match['content'][:40]}' -> '{merged.content[:40]}' ({decision.reason})"
+            )
 
         elif action == "DELETE":
             # delete the existing one, store the new one
             user_ns.write(deletes=[best_match["id"]])
             await self._write_observation(handle, obs, embedding)
-            logger.info(f"DELETE+ADD for @{handle}: removed '{best_match['content'][:40]}', added '{obs.content[:40]}' ({decision.reason})")
+            logger.info(
+                f"DELETE+ADD for @{handle}: removed '{best_match['content'][:40]}', added '{obs.content[:40]}' ({decision.reason})"
+            )
 
         elif action == "NOOP":
-            logger.debug(f"NOOP for @{handle}: '{obs.content[:60]}' ({decision.reason})")
+            logger.debug(
+                f"NOOP for @{handle}: '{obs.content[:60]}' ({decision.reason})"
+            )
 
         else:
             # unknown action — fall back to ADD
             await self._write_observation(handle, obs, embedding)
-            logger.warning(f"unknown reconciliation action '{action}' for @{handle}, falling back to ADD")
+            logger.warning(
+                f"unknown reconciliation action '{action}' for @{handle}, falling back to ADD"
+            )
 
-    async def _write_observation(self, handle: str, obs: Observation, embedding: list[float]) -> None:
+    async def _write_observation(
+        self, handle: str, obs: Observation, embedding: list[float]
+    ) -> None:
         """Write a single observation to turbopuffer."""
         user_ns = self.get_user_namespace(handle)
         entry_id = self._generate_id(f"user-{handle}", "observation", obs.content)
         user_ns.write(
-            upsert_rows=[{
-                "id": entry_id,
-                "vector": embedding,
-                "kind": "observation",
-                "content": obs.content,
-                "tags": obs.tags,
-                "created_at": datetime.now().isoformat(),
-            }],
+            upsert_rows=[
+                {
+                    "id": entry_id,
+                    "vector": embedding,
+                    "kind": "observation",
+                    "content": obs.content,
+                    "tags": obs.tags,
+                    "created_at": datetime.now().isoformat(),
+                }
+            ],
             distance_metric="cosine_distance",
             schema=USER_NAMESPACE_SCHEMA,
         )
@@ -389,7 +293,9 @@ class NamespaceMemory:
         try:
             # fetch existing observations for extraction context
             existing = await self._get_observations(handle, top_k=20)
-            existing_text = "\n".join(f"- {o}" for o in existing) if existing else "none yet"
+            existing_text = (
+                "\n".join(f"- {o}" for o in existing) if existing else "none yet"
+            )
 
             prompt = (
                 f"existing observations about this user:\n{existing_text}\n\n"
@@ -402,7 +308,9 @@ class NamespaceMemory:
                     try:
                         await self._reconcile_observation(handle, obs)
                     except Exception as e:
-                        logger.warning(f"reconciliation failed for observation '{obs.content[:40]}': {e}")
+                        logger.warning(
+                            f"reconciliation failed for observation '{obs.content[:40]}': {e}"
+                        )
                         # fall back to direct store on reconciliation failure
                         await self.store_observations(handle, [obs])
             else:
@@ -424,7 +332,9 @@ class NamespaceMemory:
                 return response.rows[0].content
         except Exception as e:
             if "not found" not in str(e).lower():
-                logger.warning(f"failed to fetch relationship summary for @{handle}: {e}")
+                logger.warning(
+                    f"failed to fetch relationship summary for @{handle}: {e}"
+                )
         return None
 
     async def _get_observations(self, handle: str, top_k: int = 20) -> list[str]:
@@ -446,7 +356,9 @@ class NamespaceMemory:
                 raise
         return []
 
-    async def build_user_context(self, handle: str, query_text: str, include_core: bool = True) -> str:
+    async def build_user_context(
+        self, handle: str, query_text: str, include_core: bool = True
+    ) -> str:
         """Build context for a conversation from observations and recent interactions."""
         parts = []
 
@@ -454,14 +366,18 @@ class NamespaceMemory:
             core_memories = await self.get_core_memories()
             if core_memories:
                 parts.append("[CORE IDENTITY AND GUIDELINES]")
-                for mem in sorted(core_memories, key=lambda x: x.get("importance", 0), reverse=True):
+                for mem in sorted(
+                    core_memories, key=lambda x: x.get("importance", 0), reverse=True
+                ):
                     label = mem.get("label", "unknown")
                     parts.append(f"[{label}] {mem['content']}")
 
         # relationship summary (synthesized by compact flow — treat as phi's impression, not ground truth)
         summary = await self.get_relationship_summary(handle)
         if summary:
-            parts.append(f"\n[PHI'S SYNTHESIZED IMPRESSION OF @{handle} — trust: low, may contain hallucinations]")
+            parts.append(
+                f"\n[PHI'S SYNTHESIZED IMPRESSION OF @{handle} — trust: low, may contain hallucinations]"
+            )
             parts.append(summary)
 
         user_ns = self.get_user_namespace(handle)
@@ -495,7 +411,9 @@ class NamespaceMemory:
                 if "attribute not found" not in str(e):
                     raise
                 # old namespace without kind column - fall back to unfiltered search
-                logger.debug(f"kind attribute not found for @{handle}, falling back to unfiltered search")
+                logger.debug(
+                    f"kind attribute not found for @{handle}, falling back to unfiltered search"
+                )
                 response = user_ns.query(
                     rank_by=("vector", "ANN", query_embedding),
                     top_k=10,
@@ -505,12 +423,16 @@ class NamespaceMemory:
                     interactions = [row.content for row in response.rows]
 
             if observations:
-                parts.append(f"\n[OBSERVATIONS ABOUT @{handle} — extracted from user's own words, trust: medium]")
+                parts.append(
+                    f"\n[OBSERVATIONS ABOUT @{handle} — extracted from user's own words, trust: medium]"
+                )
                 for obs in observations:
                     parts.append(f"- {obs}")
 
             if interactions:
-                parts.append(f"\n[PAST EXCHANGES WITH @{handle} — verbatim logs, trust: high]")
+                parts.append(
+                    f"\n[PAST EXCHANGES WITH @{handle} — verbatim logs, trust: high]"
+                )
                 for interaction in interactions:
                     parts.append(f"- {interaction}")
 
@@ -539,12 +461,14 @@ class NamespaceMemory:
             results = []
             if response.rows:
                 for row in response.rows:
-                    results.append({
-                        "kind": getattr(row, "kind", "unknown"),
-                        "content": row.content,
-                        "tags": getattr(row, "tags", []),
-                        "created_at": getattr(row, "created_at", ""),
-                    })
+                    results.append(
+                        {
+                            "kind": getattr(row, "kind", "unknown"),
+                            "content": row.content,
+                            "tags": getattr(row, "tags", []),
+                            "created_at": getattr(row, "created_at", ""),
+                        }
+                    )
             return results
         except Exception as e:
             if "was not found" in str(e):
@@ -553,7 +477,9 @@ class NamespaceMemory:
 
     # --- episodic memory (phi's own world knowledge) ---
 
-    async def store_episodic_memory(self, content: str, tags: list[str], source: str = "tool"):
+    async def store_episodic_memory(
+        self, content: str, tags: list[str], source: str = "tool"
+    ):
         """Store an episodic memory — something phi learned about the world."""
         entry_id = self._generate_id("episodic", source, content)
         self.namespaces["episodic"].write(
@@ -584,12 +510,14 @@ class NamespaceMemory:
             results = []
             if response.rows:
                 for row in response.rows:
-                    results.append({
-                        "content": row.content,
-                        "tags": getattr(row, "tags", []),
-                        "source": getattr(row, "source", "unknown"),
-                        "created_at": getattr(row, "created_at", ""),
-                    })
+                    results.append(
+                        {
+                            "content": row.content,
+                            "tags": getattr(row, "tags", []),
+                            "source": getattr(row, "source", "unknown"),
+                            "created_at": getattr(row, "created_at", ""),
+                        }
+                    )
             return results
         except Exception as e:
             if "was not found" in str(e):
@@ -607,7 +535,9 @@ class NamespaceMemory:
             lines.append(f"- {r['content']}{tags}")
         return "\n".join(lines)
 
-    async def search_unified(self, handle: str, query: str, top_k: int = 8) -> list[dict]:
+    async def search_unified(
+        self, handle: str, query: str, top_k: int = 8
+    ) -> list[dict]:
         """Search both user namespace and episodic namespace concurrently."""
         query_embedding = await self._get_embedding(query)
 
@@ -627,18 +557,22 @@ class NamespaceMemory:
                 results = []
                 if response.rows:
                     for row in response.rows:
-                        results.append({
-                            "content": row.content,
-                            "kind": getattr(row, "kind", "unknown"),
-                            "tags": getattr(row, "tags", []),
-                            "created_at": getattr(row, "created_at", ""),
-                            "_source": "user",
-                        })
+                        results.append(
+                            {
+                                "content": row.content,
+                                "kind": getattr(row, "kind", "unknown"),
+                                "tags": getattr(row, "tags", []),
+                                "created_at": getattr(row, "created_at", ""),
+                                "_source": "user",
+                            }
+                        )
                 return results
             except Exception as e:
                 if "was not found" in str(e):
                     return []
-                logger.warning(f"unified search user namespace failed for @{handle}: {e}")
+                logger.warning(
+                    f"unified search user namespace failed for @{handle}: {e}"
+                )
                 return []
 
         async def _search_episodic() -> list[dict]:
@@ -654,13 +588,15 @@ class NamespaceMemory:
                 results = []
                 if response.rows:
                     for row in response.rows:
-                        results.append({
-                            "content": row.content,
-                            "tags": getattr(row, "tags", []),
-                            "source": getattr(row, "source", "unknown"),
-                            "created_at": getattr(row, "created_at", ""),
-                            "_source": "episodic",
-                        })
+                        results.append(
+                            {
+                                "content": row.content,
+                                "tags": getattr(row, "tags", []),
+                                "source": getattr(row, "source", "unknown"),
+                                "created_at": getattr(row, "created_at", ""),
+                                "_source": "episodic",
+                            }
+                        )
                 return results
             except Exception as e:
                 if "was not found" in str(e):
@@ -686,7 +622,9 @@ class NamespaceMemory:
             page = self.client.namespaces(prefix=user_prefix)
             for ns_summary in page.namespaces:
                 handle = ns_summary.id.removeprefix(user_prefix).replace("_", ".")
-                nodes.append({"id": f"user:{handle}", "label": f"@{handle}", "type": "user"})
+                nodes.append(
+                    {"id": f"user:{handle}", "label": f"@{handle}", "type": "user"}
+                )
                 edges.append({"source": "phi", "target": f"user:{handle}"})
 
                 # get observations for this user to extract tags
@@ -758,11 +696,13 @@ class NamespaceMemory:
                     )
                     if response.rows:
                         for row in response.rows:
-                            results.append({
-                                "handle": handle,
-                                "content": row.content,
-                                "created_at": getattr(row, "created_at", ""),
-                            })
+                            results.append(
+                                {
+                                    "handle": handle,
+                                    "content": row.content,
+                                    "created_at": getattr(row, "created_at", ""),
+                                }
+                            )
                 except Exception:
                     pass  # old namespace or no interactions
         except Exception as e:

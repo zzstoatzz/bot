@@ -1,0 +1,14 @@
+fail_fast: false
+
+repos:
+  - repo: https://github.com/jakekaplan/loq
+    rev: v0.1.0-alpha.7
+    hooks:
+      - id: loq
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.12.1
+    hooks:
+      - id: ruff-check
+        args: [--fix, --exit-non-zero-on-fix]
+      - id: ruff-format

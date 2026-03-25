@@ -1,11 +1,11 @@
 # architecture
 
-phi is a notification-driven agent that responds to mentions on bluesky.
+phi is a notification-driven agent that responds to activity on bluesky.
 
 ## data flow
 
 ```
-notification arrives
+notification arrives (mention, reply, quote, like, repost, follow)
   ↓
 fetch thread context from network (ATProto)
   ↓
@@ -13,15 +13,15 @@ retrieve relevant memories (TurboPuffer)
   ↓
 agent decides action (PydanticAI + Claude)
   ↓
-execute via MCP tools (post/like/repost)
+execute action + store observations
 ```
 
 ## key components
 
 ### notification poller
-- checks for mentions every 10s
+- checks for all notification types every 10s
 - tracks processed URIs to avoid duplicates
-- runs in background thread
+- triggers daily reflection at a configured hour
 
 ### message handler
 - orchestrates the response flow
@@ -31,9 +31,9 @@ execute via MCP tools (post/like/repost)
 
 ### phi agent
 - loads personality from `personalities/phi.md`
-- builds context from thread + episodic memory
+- builds context from thread + private memory + network knowledge
 - returns structured response: `Response(action, text, reason)`
-- has access to MCP tools via stdio
+- native tools defined in `agent.py`, MCP tools from remote servers
 
 ### atproto client
 - session persistence (saves to `.session`)
@@ -42,10 +42,10 @@ execute via MCP tools (post/like/repost)
 
 ## why this design
 
-**network-first thread context**: fetch threads from ATProto instead of caching in sqlite. network is source of truth, no staleness issues.
+**network-first thread context**: fetch threads from ATProto instead of caching locally. network is source of truth, no staleness issues.
 
-**episodic memory for semantics**: turbopuffer stores embeddings for semantic search across all conversations. different purpose than thread chronology.
+**private + public memory**: turbopuffer stores private embeddings for semantic recall across conversations. cosmik records on PDS provide public knowledge that's indexed by semble for network-wide discovery. dual-write means phi gets both fast private recall and public visibility.
 
-**mcp for extensibility**: tools provided by external server via stdio. easy to add new capabilities without changing agent code.
+**mcp for extensibility**: tools provided by remote MCP servers (pdsx for atproto CRUD, pub-search for publications). easy to add new capabilities without changing agent code.
 
 **structured outputs**: agent returns typed `Response` objects, not free text. clear contract between agent and handler.

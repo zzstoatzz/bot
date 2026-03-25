@@ -37,6 +37,10 @@ lint:
 typecheck:
     uv run ty check src/ evals/ tests/
 
+# loq — relax line limits for files that legitimately grew
+loq-relax +files:
+    uvx loq relax {{files}}
+
 check: lint typecheck test
 
 # setup reference projects
