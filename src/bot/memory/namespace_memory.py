@@ -29,6 +29,21 @@ class ExtractionResult(BaseModel):
     observations: list[Observation] = []
 
 
+class ReconciliationAction(BaseModel):
+    """Decision for how a new observation relates to an existing one."""
+
+    action: str = Field(description="one of: ADD, UPDATE, DELETE, NOOP")
+    new_content: str | None = Field(default=None, description="merged content when action is UPDATE")
+    new_tags: list[str] | None = Field(default=None, description="merged tags when action is UPDATE")
+    reason: str = Field(description="brief explanation of the decision")
+
+
+class ReconciliationResult(BaseModel):
+    """Result of reconciling a new observation against a similar existing one."""
+
+    decision: ReconciliationAction
+
+
 EXTRACTION_SYSTEM_PROMPT = """\
 You extract facts about the USER from a conversation between a user and a bot.
 
@@ -77,7 +92,20 @@ reason: the user asked a question. the bot made claims about the user — but th
 
 Deduplicate against existing observations provided in the prompt. Return an empty list when the exchange is just greetings, filler, or the user only asked questions without revealing anything about themselves."""
 
+RECONCILIATION_SYSTEM_PROMPT = """\
+You reconcile a NEW observation against an EXISTING observation from memory.
+
+Decide one action:
+- ADD: the new observation contains genuinely different information. keep both.
+- UPDATE: the new observation refines, corrects, or supersedes the existing one. return merged content and tags.
+- DELETE: the existing observation is wrong, outdated, or fully redundant given the new one. the new one will be stored separately.
+- NOOP: the new observation adds nothing beyond what already exists. discard it.
+
+Corrections (e.g., "name is nate, corrected from previous error") always win over the entry they correct — use UPDATE or DELETE.
+When in doubt between ADD and NOOP, prefer NOOP. memory should be lean."""
+
 _extraction_agent: Agent[None, ExtractionResult] | None = None
+_reconciliation_agent: Agent[None, ReconciliationResult] | None = None
 
 
 def get_extraction_agent() -> Agent[None, ExtractionResult]:
@@ -90,6 +118,18 @@ def get_extraction_agent() -> Agent[None, ExtractionResult]:
             system_prompt=EXTRACTION_SYSTEM_PROMPT,
         )
     return _extraction_agent
+
+
+def get_reconciliation_agent() -> Agent[None, ReconciliationResult]:
+    global _reconciliation_agent
+    if _reconciliation_agent is None:
+        _reconciliation_agent = Agent(
+            name="observation-reconciler",
+            model=f"anthropic:{settings.extraction_model}",
+            output_type=ReconciliationResult,
+            system_prompt=RECONCILIATION_SYSTEM_PROMPT,
+        )
+    return _reconciliation_agent
 
 EPISODIC_SCHEMA = {
     "content": {"type": "string", "full_text_search": True},
@@ -252,10 +292,102 @@ class NamespaceMemory:
             schema=USER_NAMESPACE_SCHEMA,
         )
 
-    async def extract_and_store(self, handle: str, user_text: str, bot_text: str):
-        """Extract observations from an exchange and store them. Meant to be fire-and-forget."""
+    async def _find_similar_observations(self, handle: str, embedding: list[float], top_k: int = 3) -> list[dict]:
+        """Find existing observations similar to the given embedding."""
+        user_ns = self.get_user_namespace(handle)
         try:
-            # fetch existing observations for dedup context
+            response = user_ns.query(
+                rank_by=("vector", "ANN", embedding),
+                top_k=top_k,
+                filters={"kind": ["Eq", "observation"]},
+                include_attributes=["content", "tags", "created_at"],
+            )
+            if response.rows:
+                return [
+                    {"id": row.id, "content": row.content, "tags": getattr(row, "tags", []), "created_at": getattr(row, "created_at", "")}
+                    for row in response.rows
+                ]
+        except Exception as e:
+            if "attribute not found" in str(e) or "was not found" in str(e):
+                return []
+            raise
+        return []
+
+    async def _reconcile_observation(self, handle: str, obs: Observation) -> None:
+        """Reconcile a single new observation against existing similar ones in turbopuffer."""
+        embedding = await self._get_embedding(obs.content)
+        similar = await self._find_similar_observations(handle, embedding, top_k=3)
+
+        if not similar:
+            # nothing similar — just add
+            await self._write_observation(handle, obs, embedding)
+            logger.info(f"ADD (no similar) for @{handle}: {obs.content[:60]}")
+            return
+
+        # ask the LLM to reconcile against the most similar existing observation
+        best_match = similar[0]
+        prompt = (
+            f"EXISTING observation: {best_match['content']}\n"
+            f"EXISTING tags: {best_match['tags']}\n\n"
+            f"NEW observation: {obs.content}\n"
+            f"NEW tags: {obs.tags}"
+        )
+        result = await get_reconciliation_agent().run(prompt)
+        decision = result.output.decision
+        action = decision.action.upper()
+
+        user_ns = self.get_user_namespace(handle)
+
+        if action == "ADD":
+            await self._write_observation(handle, obs, embedding)
+            logger.info(f"ADD for @{handle}: {obs.content[:60]} ({decision.reason})")
+
+        elif action == "UPDATE":
+            # delete the old one, write the merged version
+            user_ns.write(delete_rows=[best_match["id"]])
+            merged = Observation(
+                content=decision.new_content or obs.content,
+                tags=decision.new_tags or obs.tags,
+            )
+            merged_embedding = await self._get_embedding(merged.content)
+            await self._write_observation(handle, merged, merged_embedding)
+            logger.info(f"UPDATE for @{handle}: '{best_match['content'][:40]}' -> '{merged.content[:40]}' ({decision.reason})")
+
+        elif action == "DELETE":
+            # delete the existing one, store the new one
+            user_ns.write(delete_rows=[best_match["id"]])
+            await self._write_observation(handle, obs, embedding)
+            logger.info(f"DELETE+ADD for @{handle}: removed '{best_match['content'][:40]}', added '{obs.content[:40]}' ({decision.reason})")
+
+        elif action == "NOOP":
+            logger.debug(f"NOOP for @{handle}: '{obs.content[:60]}' ({decision.reason})")
+
+        else:
+            # unknown action — fall back to ADD
+            await self._write_observation(handle, obs, embedding)
+            logger.warning(f"unknown reconciliation action '{action}' for @{handle}, falling back to ADD")
+
+    async def _write_observation(self, handle: str, obs: Observation, embedding: list[float]) -> None:
+        """Write a single observation to turbopuffer."""
+        user_ns = self.get_user_namespace(handle)
+        entry_id = self._generate_id(f"user-{handle}", "observation", obs.content)
+        user_ns.write(
+            upsert_rows=[{
+                "id": entry_id,
+                "vector": embedding,
+                "kind": "observation",
+                "content": obs.content,
+                "tags": obs.tags,
+                "created_at": datetime.now().isoformat(),
+            }],
+            distance_metric="cosine_distance",
+            schema=USER_NAMESPACE_SCHEMA,
+        )
+
+    async def extract_and_store(self, handle: str, user_text: str, bot_text: str):
+        """Extract observations from an exchange and reconcile against existing memory."""
+        try:
+            # fetch existing observations for extraction context
             existing = await self._get_observations(handle, top_k=20)
             existing_text = "\n".join(f"- {o}" for o in existing) if existing else "none yet"
 
@@ -265,9 +397,14 @@ class NamespaceMemory:
             )
             result = await get_extraction_agent().run(prompt)
             if result.output.observations:
-                await self.store_observations(handle, result.output.observations)
-                obs_summary = ", ".join(o.content[:60] for o in result.output.observations)
-                logger.info(f"extracted {len(result.output.observations)} observations for @{handle}: {obs_summary}")
+                # reconcile each candidate against existing memory
+                for obs in result.output.observations:
+                    try:
+                        await self._reconcile_observation(handle, obs)
+                    except Exception as e:
+                        logger.warning(f"reconciliation failed for observation '{obs.content[:40]}': {e}")
+                        # fall back to direct store on reconciliation failure
+                        await self.store_observations(handle, [obs])
             else:
                 logger.debug(f"no new observations for @{handle}")
         except Exception as e:
