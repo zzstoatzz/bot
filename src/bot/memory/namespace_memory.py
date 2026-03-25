@@ -740,6 +740,38 @@ class NamespaceMemory:
 
         return {"nodes": nodes, "edges": edges}
 
+    async def get_recent_interactions(self, top_k: int = 10) -> list[dict]:
+        """Get recent interactions across all user namespaces for reflection."""
+        user_prefix = f"{self.NAMESPACES['users']}-"
+        results: list[dict] = []
+        try:
+            page = self.client.namespaces(prefix=user_prefix)
+            for ns_summary in page.namespaces:
+                handle = ns_summary.id.removeprefix(user_prefix).replace("_", ".")
+                user_ns = self.client.namespace(ns_summary.id)
+                try:
+                    response = user_ns.query(
+                        rank_by=("created_at", "desc"),
+                        top_k=3,
+                        filters={"kind": ["Eq", "interaction"]},
+                        include_attributes=["content", "created_at"],
+                    )
+                    if response.rows:
+                        for row in response.rows:
+                            results.append({
+                                "handle": handle,
+                                "content": row.content,
+                                "created_at": getattr(row, "created_at", ""),
+                            })
+                except Exception:
+                    pass  # old namespace or no interactions
+        except Exception as e:
+            logger.warning(f"failed to list user namespaces for reflection: {e}")
+
+        # sort by created_at descending, take top_k
+        results.sort(key=lambda r: r.get("created_at", ""), reverse=True)
+        return results[:top_k]
+
     async def after_interaction(self, handle: str, user_text: str, bot_text: str):
         """Post-interaction hook: store interaction then extract observations."""
         await self.store_interaction(handle, user_text, bot_text)

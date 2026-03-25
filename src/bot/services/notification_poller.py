@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+from datetime import datetime, timezone
 
 from bot.config import settings
 from bot.core.atproto_client import BotClient
@@ -21,6 +22,7 @@ class NotificationPoller:
         self._task: asyncio.Task | None = None
         self._processed_uris: set[str] = set()
         self._first_poll = True
+        self._last_daily_post: datetime | None = None
 
     async def start(self) -> asyncio.Task:
         """Start polling for notifications."""
@@ -51,6 +53,11 @@ class NotificationPoller:
                 logger.error(f"notification poll error: {e}", exc_info=settings.debug)
                 bot_status.record_error()
                 continue
+
+            try:
+                await self._maybe_daily_post()
+            except Exception as e:
+                logger.error(f"daily reflection error: {e}", exc_info=settings.debug)
 
             try:
                 await asyncio.sleep(settings.notification_poll_interval)
@@ -102,3 +109,17 @@ class NotificationPoller:
             # Clean up old processed URIs to prevent memory growth
             if len(self._processed_uris) > 1000:
                 self._processed_uris = set(list(self._processed_uris)[-500:])
+
+    async def _maybe_daily_post(self):
+        """Post a daily reflection if it's past the target hour and we haven't posted today."""
+        now = datetime.now(timezone.utc)
+        if now.hour < settings.daily_reflection_hour:
+            return
+        if bot_status.paused:
+            return
+        if self._last_daily_post and self._last_daily_post.date() == now.date():
+            return
+
+        logger.info("triggering daily reflection")
+        self._last_daily_post = now
+        await self.handler.daily_reflection()

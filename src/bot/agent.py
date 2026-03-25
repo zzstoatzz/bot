@@ -17,7 +17,9 @@ from pydantic_ai import Agent, ImageUrl, RunContext
 from pydantic_ai.mcp import MCPServerStreamableHTTP
 
 from bot.config import settings
+from bot.core.atproto_client import bot_client
 from bot.memory import NamespaceMemory
+from bot.types import CosmikConnection, CosmikNoteCard, CosmikUrlCard, NoteContent, UrlContent
 
 logger = logging.getLogger("bot.agent")
 
@@ -43,6 +45,15 @@ when recalling facts about a user:
 - if the user's current message contradicts your notes, trust their current words.
 - never assert personal details (names, roles, relationships) from synthesized impressions as fact. say "my notes suggest..." or verify with the user.
 - if you're uncertain whether something is real or a bad breadcrumb, say so.
+
+your tools for finding information:
+- recall: your private memory — what you know about people you've talked to, past conversations. use about="@handle" for a specific person.
+- search_network: the cosmik/semble network — cards, bookmarks, and connections that people across the atmosphere have collected. public knowledge.
+- search_posts: live bluesky — what people are posting right now.
+- get_trending: what's happening right now on the network.
+- pub-search (MCP): long-form writing — leaflet, whitewind, etc.
+
+you can also create public records — notes (cosmik cards), bookmarks (URL cards), and connections. these are visible to anyone and indexed by semble.
 """.strip()
 
 
@@ -123,6 +134,19 @@ def _format_unified_results(results: list[dict], handle: str) -> list[str]:
     return parts
 
 
+async def _create_cosmik_record(collection: str, record: dict) -> str:
+    """Write a cosmik record to phi's PDS. Returns the AT URI."""
+    await bot_client.authenticate()
+    result = bot_client.client.com.atproto.repo.create_record(
+        data={
+            "repo": bot_client.client.me.did,
+            "collection": collection,
+            "record": record,
+        }
+    )
+    return result.uri
+
+
 class PhiAgent:
     """phi - bluesky bot with structured memory and MCP tools."""
 
@@ -160,16 +184,11 @@ class PhiAgent:
 
         @self.agent.tool
         async def recall(ctx: RunContext[PhiDeps], query: str, about: str = "") -> str:
-            """Search memory. By default searches both your notes and what you know about the current user.
-            Pass about="@handle" to search a specific user, or about="self" for only your own notes."""
+            """Search your private memory. Use to remember past conversations and what you know about specific people.
+            Pass about="@handle" to search a specific user, or leave empty for general private recall.
+            For public network knowledge, use search_network instead."""
             if not ctx.deps.memory:
                 return "memory not available"
-
-            if about == "self":
-                results = await ctx.deps.memory.search_episodic(query, top_k=10)
-                if not results:
-                    return "no relevant memories found"
-                return "\n".join(_format_episodic_results(results))
 
             if about.startswith("@"):
                 handle = about.lstrip("@")
@@ -192,17 +211,60 @@ class PhiAgent:
 
         @self.agent.tool
         async def note(ctx: RunContext[PhiDeps], content: str, tags: list[str]) -> str:
-            """Leave a note for your future self. Use for facts, patterns, or corrections worth recalling later."""
-            if not ctx.deps.memory:
-                return "memory not available"
-            await ctx.deps.memory.store_episodic_memory(content, tags, source="tool")
-            return f"noted: {content[:100]}"
+            """Leave a note for your future self. Stored privately (fast recall) and publicly as a cosmik card (visible on the network)."""
+            parts: list[str] = []
+
+            # private: turbopuffer for fast vector recall
+            if ctx.deps.memory:
+                await ctx.deps.memory.store_episodic_memory(content, tags, source="tool")
+                parts.append("noted privately")
+            else:
+                parts.append("private memory not available")
+
+            # public: cosmik NOTE card on PDS
+            try:
+                card = CosmikNoteCard(content=NoteContent(text=content))
+                uri = await _create_cosmik_record("network.cosmik.card", card.to_record())
+                parts.append(f"card created: {uri}")
+            except Exception as e:
+                logger.warning(f"failed to create cosmik note card: {e}")
+                parts.append("public card failed")
+
+            return f"{' + '.join(parts)} — {content[:100]}"
+
+        @self.agent.tool
+        async def save_url(
+            ctx: RunContext[PhiDeps],
+            url: str,
+            title: str | None = None,
+            description: str | None = None,
+        ) -> str:
+            """Save a URL as a cosmik card on your PDS. Use when you find something worth bookmarking publicly."""
+            try:
+                card = CosmikUrlCard(content=UrlContent(url=url, title=title, description=description))
+            except Exception as e:
+                return f"validation failed: {e}"
+
+            parts: list[str] = []
+
+            # public: cosmik URL card on PDS
+            try:
+                uri = await _create_cosmik_record("network.cosmik.card", card.to_record())
+                parts.append(f"card created: {uri}")
+            except Exception as e:
+                return f"failed to create card: {e}"
+
+            # private: also store in turbopuffer for recall
+            if ctx.deps.memory:
+                desc = f"bookmarked {url}" + (f" — {title}" if title else "")
+                await ctx.deps.memory.store_episodic_memory(desc, ["bookmark", "url"], source="tool")
+                parts.append("noted privately")
+
+            return " + ".join(parts)
 
         @self.agent.tool
         async def search_posts(ctx: RunContext[PhiDeps], query: str, limit: int = 10) -> str:
             """Search Bluesky posts by keyword. Use this to find what people are saying about a topic."""
-            from bot.core.atproto_client import bot_client
-
             try:
                 response = bot_client.client.app.bsky.feed.search_posts(
                     params={"q": query, "limit": min(limit, 25), "sort": "top"}
@@ -222,6 +284,41 @@ class PhiAgent:
                 return "\n\n".join(lines)
             except Exception as e:
                 return f"search failed: {e}"
+
+        @self.agent.tool
+        async def search_network(ctx: RunContext[PhiDeps], query: str) -> str:
+            """Search the cosmik network for cards and bookmarks collected by people across the atmosphere.
+            Use this to find what the network knows about a topic — links, notes, and resources that others have saved.
+            Different from recall (your private memory) and search_posts (live bluesky posts)."""
+            try:
+                async with httpx.AsyncClient(timeout=15) as client:
+                    r = await client.get(
+                        "https://api.semble.so/api/search/semantic",
+                        params={"query": query, "limit": 10},
+                    )
+                    r.raise_for_status()
+                    results = r.json()
+
+                if not results:
+                    return f"no network results for '{query}'"
+
+                lines = []
+                for item in results:
+                    title = item.get("title") or item.get("text") or "untitled"
+                    url = item.get("url", "")
+                    saves = item.get("saveCount") or item.get("saves") or 0
+                    desc = item.get("description") or ""
+                    line = f"{title}"
+                    if url:
+                        line += f" — {url}"
+                    if saves:
+                        line += f" ({saves} saves)"
+                    if desc:
+                        line += f"\n  {desc[:200]}"
+                    lines.append(line)
+                return "\n\n".join(lines)
+            except Exception as e:
+                return f"network search failed: {e}"
 
         @self.agent.tool
         async def get_trending(ctx: RunContext[PhiDeps]) -> str:
@@ -277,7 +374,6 @@ class PhiAgent:
             ctx: RunContext[PhiDeps], action: str, label: str = ""
         ) -> str:
             """Manage self-labels on your profile. Actions: 'list' to see current labels, 'add' to add a label, 'remove' to remove a label. The 'bot' label marks you as an automated account."""
-            from bot.core.atproto_client import bot_client
             from bot.core.profile_manager import (
                 add_self_label,
                 get_self_labels,
@@ -301,10 +397,34 @@ class PhiAgent:
                 return f"unknown action '{action}', use 'list', 'add', or 'remove'"
 
         @self.agent.tool
+        async def create_connection(
+            ctx: RunContext[PhiDeps],
+            source: str,
+            target: str,
+            connection_type: str | None = None,
+            note: str | None = None,
+        ) -> str:
+            """Create a network.cosmik.connection record — a semantic link between two entities.
+            Source and target must be URLs or at:// URIs. Connection types: related, supports, opposes, addresses, helpful, explainer, leads_to, supplements."""
+            try:
+                conn = CosmikConnection(
+                    source=source,
+                    target=target,
+                    connectionType=connection_type,
+                    note=note,
+                )
+            except Exception as e:
+                return f"validation failed: {e}"
+
+            try:
+                uri = await _create_cosmik_record("network.cosmik.connection", conn.to_record())
+                return f"connection created: {uri}"
+            except Exception as e:
+                return f"failed to create connection: {e}"
+
+        @self.agent.tool
         async def post(ctx: RunContext[PhiDeps], text: str) -> str:
             """Create a new top-level post on Bluesky (not a reply). Use this when you want to share something with your followers unprompted."""
-            from bot.core.atproto_client import bot_client
-
             try:
                 result = await bot_client.create_post(text)
                 return f"posted: {text[:100]}"
@@ -442,4 +562,65 @@ class PhiAgent:
             except Exception as e:
                 logger.warning(f"failed to store interaction: {e}")
 
+        return result.output
+
+    async def process_reflection(self) -> Response:
+        """Generate a daily reflection post from recent memory."""
+        # Gather context from memory
+        recent_interactions: list[dict] = []
+        episodic_context = ""
+        if self.memory:
+            try:
+                recent_interactions = await self.memory.get_recent_interactions(top_k=10)
+                logger.info(f"reflection: {len(recent_interactions)} recent interactions")
+            except Exception as e:
+                logger.warning(f"failed to get recent interactions for reflection: {e}")
+            try:
+                episodic_context = await self.memory.get_episodic_context("daily reflection recent events")
+                if episodic_context:
+                    logger.info(f"reflection episodic context: {len(episodic_context)} chars")
+            except Exception as e:
+                logger.warning(f"failed to get episodic context for reflection: {e}")
+
+        # Build the reflection prompt
+        prompt_parts = [f"[TODAY]: {date.today().isoformat()}"]
+
+        if recent_interactions:
+            unique_handles = {i["handle"] for i in recent_interactions}
+            prompt_parts.append(f"[RECENT ACTIVITY]: {len(recent_interactions)} interactions with {len(unique_handles)} people in the last day")
+            samples = recent_interactions[:5]
+            exchange_lines = []
+            for i in samples:
+                exchange_lines.append(f"- with @{i['handle']}: {i['content'][:150]}")
+            prompt_parts.append("[SAMPLE EXCHANGES]:\n" + "\n".join(exchange_lines))
+        else:
+            prompt_parts.append("[RECENT ACTIVITY]: no interactions in the last day")
+
+        if episodic_context:
+            prompt_parts.append(episodic_context)
+
+        prompt_parts.append(
+            "[REFLECTION TASK]: you're posting a short top-level reflection on your day. "
+            "not a thread, not a reply — just something you want to put out there. "
+            "use what you know: recent exchanges, things you noticed, or just the fact that you're here. "
+            "if nothing feels worth saying, action='ignore' is fine. "
+            "if you do post, keep it brief and genuine — your voice, not a performance."
+        )
+
+        prompt = "\n\n".join(prompt_parts)
+
+        logger.info("processing daily reflection")
+        deps = PhiDeps(author_handle="", memory=self.memory)
+
+        toolsets = self._mcp_toolsets()
+        async with contextlib.AsyncExitStack() as stack:
+            for ts in toolsets:
+                await stack.enter_async_context(ts)
+            result = await self.agent.run(prompt, deps=deps, toolsets=toolsets)
+
+        logger.info(
+            f"reflection decided: {result.output.action}"
+            + (f" - {result.output.text[:80]}" if result.output.text else "")
+            + (f" ({result.output.reason})" if result.output.reason else "")
+        )
         return result.output

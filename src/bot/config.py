@@ -80,6 +80,11 @@ class Settings(BaseSettings):
         default=10, description="The interval for polling for notifications"
     )
 
+    # Daily reflection
+    daily_reflection_hour: int = Field(
+        default=14, description="UTC hour to post daily reflection (14 = ~9am CT)"
+    )
+
     # Control API
     control_token: str | None = Field(
         default=None, description="Bearer token for /api/control endpoints"

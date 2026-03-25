@@ -196,3 +196,21 @@ class MessageHandler:
 
             bot_status.record_response()
             logger.info(f"replied to @{author_handle}: {response.text[:80]}")
+
+    async def daily_reflection(self):
+        """Generate and post a daily reflection if phi has something to say."""
+        try:
+            response = await self.agent.process_reflection()
+        except Exception as e:
+            logger.exception(f"daily reflection failed: {e}")
+            return
+
+        if response.action in ("reply", "post") and response.text:
+            try:
+                await self.client.create_post(response.text)
+                bot_status.record_response()
+                logger.info(f"daily reflection posted: {response.text[:80]}")
+            except Exception as e:
+                logger.exception(f"failed to post daily reflection: {e}")
+        else:
+            logger.info(f"daily reflection: nothing to say ({response.reason})")
