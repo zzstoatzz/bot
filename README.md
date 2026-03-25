@@ -16,21 +16,20 @@ just run
 
 ## what phi does
 
-phi listens for mentions on bluesky and decides how to respond — reply, like, repost, or ignore. it can also post unprompted, search bluesky, check trending topics, and verify links before sharing them.
+phi listens for all notification types on bluesky — mentions, replies, quotes, likes, reposts, follows — and decides how to respond. it can search live posts, check trending topics, query the [cosmik](https://cosmik.network)/[semble](https://semble.so) network for public knowledge, create public records (notes, bookmarks, connections), and post unprompted via daily reflections.
 
-every conversation builds context from three sources: the current thread (fetched live from the network), semantic memory (relevant past observations about the person talking), and phi's own episodic notes about the world. phi extracts observations from conversations and stores them for next time.
+every conversation builds context from: the current thread (fetched live from ATProto), private memory (past observations about the person talking), and public network knowledge (cards and links indexed by semble). phi extracts observations from conversations and stores them for next time.
 
 ## memory
 
-phi uses [turbopuffer](https://turbopuffer.com/) for vector-based episodic memory across three namespace families:
+phi has two memory systems with different visibility:
 
-- **phi-core** — identity and guidelines
-- **phi-users-{handle}** — per-user observations, interactions, and relationship summaries
-- **phi-episodic** — phi's own notes about the world
+- **private** — [turbopuffer](https://turbopuffer.com/) vector memory for per-user observations, interactions, and relationship summaries. this is what phi uses to remember people across conversations.
+- **public** — [cosmik](https://cosmik.network) records on phi's PDS (notes, bookmarks, connections), indexed by [semble](https://semble.so) for semantic search. anything phi finds worth preserving publicly becomes a card on the network.
 
-observations accumulate over conversations. a separate [pipeline](https://github.com/zzstoatzz/my-prefect-server) periodically compacts per-user observations into relationship summaries — dense paragraphs that give phi a coherent picture of who someone is, not just scattered facts.
+notes and bookmarks are dual-written: private for fast recall, public for network discovery.
 
-the [memory graph](/memory) visualizes connections between phi, the people it talks to, and the topics that link them.
+a separate [pipeline](https://github.com/zzstoatzz/my-prefect-server) periodically compacts per-user observations into relationship summaries. the [memory graph](/memory) visualizes connections between phi, the people it talks to, and the topics that link them.
 
 ## development
 
@@ -48,16 +47,15 @@ just deploy     # deploy to fly.io
 
 ```
 notification → PhiAgent (pydantic-ai)
-                 ├── context: thread + memory + episodic notes
-                 ├── tools: memory, search, trending, url checks
-                 ├── mcp: atproto record CRUD, publication search
+                 ├── context: thread (ATProto) + private memory (tpuf) + network (semble)
+                 ├── native tools: memory, search, cosmik records, etc (see agent.py)
+                 ├── mcp servers: pdsx (atproto CRUD), pub-search (publications)
                  └── output: Response(action, text, reason)
                         ↓
                MessageHandler executes action
-                 (reply, like, repost, or ignore)
 ```
 
-phi is a pydantic-ai agent with a personality prompt, structured output, and tool access via both native tools and remote MCP servers. the agent decides what to do; the handler does it.
+phi is a pydantic-ai agent with a personality prompt, structured output, and tool access via both native tools and remote MCP servers. the agent decides what to do; the handler does it. tools are defined in `agent.py`.
 
 </details>
 
@@ -67,6 +65,7 @@ phi is a pydantic-ai agent with a personality prompt, structured output, and too
 ```
 src/bot/
 ├── agent.py               # pydantic-ai agent, tools, personality
+├── types.py               # cosmik record models (cards, connections)
 ├── config.py              # settings (env vars)
 ├── main.py                # fastapi app, status pages, memory graph ui
 ├── status.py              # runtime metrics

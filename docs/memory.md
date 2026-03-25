@@ -1,6 +1,6 @@
 # memory
 
-phi has two distinct memory systems with different purposes.
+phi has two memory systems with different visibility and purpose.
 
 ## thread context (chronological)
 
@@ -23,51 +23,56 @@ fetched on-demand from the network when processing mentions. provides chronologi
 - fetching is fast (~200ms)
 - network is always current (handles edits/deletions)
 
-## episodic memory (semantic)
+## private memory (semantic)
 
 **source**: TurboPuffer
-**access**: `memory.get_user_memories(handle, query="birds")`
-**purpose**: what do i remember about this person across all conversations
+**purpose**: what phi remembers about people across all conversations
 
 uses vector embeddings (OpenAI text-embedding-3-small) for semantic search.
 
-```python
-# example episodic memories
-- "alice mentioned she loves birds"
-- "discussed crow intelligence with alice"
-- "alice prefers corvids over other species"
-```
+### namespaces
 
-**why vector storage?**
-- semantic similarity (can't do with chronological data)
-- cross-conversation patterns
-- contextual retrieval based on current topic
-- enables relationship building over time
+- **phi-core** — identity and guidelines
+- **phi-users-{handle}** — per-user observations, interactions, and relationship summaries
+- **phi-episodic** — phi's own notes about the world
 
-## namespaces
+each user gets their own namespace for isolated memory retrieval. observations accumulate over conversations; a separate pipeline periodically compacts them into relationship summaries.
 
-```
-phi-users-{handle}  - per-user conversation history
-```
+## public memory (network)
 
-each user gets their own namespace for isolated memory retrieval.
+**source**: cosmik records on phi's PDS, indexed by semble
+**purpose**: knowledge worth preserving publicly — links, notes, connections between ideas
 
-## key distinction
+phi writes public records via the cosmik lexicon:
+- `network.cosmik.card` (NOTE type) — text notes
+- `network.cosmik.card` (URL type) — bookmarks
+- `network.cosmik.connection` — semantic links between entities
 
-| | thread context | episodic memory |
-|---|---|---|
-| **what** | messages in current thread | patterns across all conversations |
-| **when** | this conversation | all time |
-| **how** | chronological order | semantic similarity |
-| **storage** | network (ATProto) | vector DB (TurboPuffer) |
-| **query** | by thread URI | by semantic search |
+these are automatically indexed by [semble](https://semble.so) and searchable by anyone on the network. phi can also search the network for cards other people have saved.
+
+### dual-write
+
+notes and bookmarks are written to both systems: TurboPuffer for fast private recall, PDS for public discovery. this means phi can find its own notes via either system, and other agents/people can find them via semble.
 
 ## in practice
 
 when processing a mention from `@alice`:
 
 1. fetch current thread: "what was said in THIS conversation?"
-2. search episodic memory: "what do i know about alice from PAST conversations?"
+2. search private memory: "what do i know about alice from PAST conversations?"
 3. combine both into context for agent
 
-this gives phi both immediate conversational awareness and long-term relationship memory.
+when phi encounters something worth preserving:
+
+4. write to private memory (tpuf) for fast recall
+5. write to public record (PDS/cosmik) for network discovery
+
+## key distinction
+
+| | thread context | private memory | public memory |
+|---|---|---|---|
+| **what** | messages in current thread | patterns across conversations | knowledge worth sharing |
+| **when** | this conversation | all time | all time |
+| **how** | chronological | semantic similarity | semantic search (semble) |
+| **storage** | network (ATProto) | vector DB (TurboPuffer) | PDS (cosmik) + semble index |
+| **visibility** | public (it's posts) | private to phi | public to everyone |
