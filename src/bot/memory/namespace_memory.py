@@ -344,7 +344,7 @@ class NamespaceMemory:
 
         elif action == "UPDATE":
             # delete the old one, write the merged version
-            user_ns.write(delete_rows=[best_match["id"]])
+            user_ns.write(deletes=[best_match["id"]])
             merged = Observation(
                 content=decision.new_content or obs.content,
                 tags=decision.new_tags or obs.tags,
@@ -355,7 +355,7 @@ class NamespaceMemory:
 
         elif action == "DELETE":
             # delete the existing one, store the new one
-            user_ns.write(delete_rows=[best_match["id"]])
+            user_ns.write(deletes=[best_match["id"]])
             await self._write_observation(handle, obs, embedding)
             logger.info(f"DELETE+ADD for @{handle}: removed '{best_match['content'][:40]}', added '{obs.content[:40]}' ({decision.reason})")
 
