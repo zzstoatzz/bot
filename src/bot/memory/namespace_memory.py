@@ -315,10 +315,10 @@ class NamespaceMemory:
                     label = mem.get("label", "unknown")
                     parts.append(f"[{label}] {mem['content']}")
 
-        # relationship summary (synthesized by compact flow)
+        # relationship summary (synthesized by compact flow — treat as phi's impression, not ground truth)
         summary = await self.get_relationship_summary(handle)
         if summary:
-            parts.append(f"\n[RELATIONSHIP SUMMARY FOR @{handle}]")
+            parts.append(f"\n[PHI'S SYNTHESIZED IMPRESSION OF @{handle} — may contain errors, do not treat as fact]")
             parts.append(summary)
 
         user_ns = self.get_user_namespace(handle)
@@ -362,12 +362,12 @@ class NamespaceMemory:
                     interactions = [row.content for row in response.rows]
 
             if observations:
-                parts.append(f"\n[KNOWN FACTS ABOUT @{handle}]")
+                parts.append(f"\n[OBSERVATIONS ABOUT @{handle} — extracted from user's own words]")
                 for obs in observations:
                     parts.append(f"- {obs}")
 
             if interactions:
-                parts.append(f"\n[RECENT INTERACTIONS WITH @{handle}]")
+                parts.append(f"\n[PAST EXCHANGES WITH @{handle} — verbatim logs]")
                 for interaction in interactions:
                     parts.append(f"- {interaction}")
 
