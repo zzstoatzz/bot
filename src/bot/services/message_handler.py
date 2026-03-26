@@ -2,6 +2,7 @@
 
 import logging
 
+import logfire
 from atproto_client import models
 from limits import parse as parse_limit
 from limits.storage import MemoryStorage
@@ -35,18 +36,23 @@ class MessageHandler:
             logger.warning(f"rate limited @{author_handle}")
             return
 
-        try:
-            if reason in ("mention", "reply", "quote"):
-                await self._handle_post(notification)
-            elif reason in ("like", "repost"):
-                await self._handle_engagement(notification)
-            elif reason == "follow":
-                await self._handle_follow(notification)
-            else:
-                logger.debug(f"notification type '{reason}' from @{author_handle}")
-        except Exception as e:
-            logger.exception(f"notification handling error: {e}")
-            bot_status.record_error()
+        with logfire.span(
+            "handle notification",
+            reason=reason,
+            author=author_handle,
+        ):
+            try:
+                if reason in ("mention", "reply", "quote"):
+                    await self._handle_post(notification)
+                elif reason in ("like", "repost"):
+                    await self._handle_engagement(notification)
+                elif reason == "follow":
+                    await self._handle_follow(notification)
+                else:
+                    logger.debug(f"notification type '{reason}' from @{author_handle}")
+            except Exception as e:
+                logger.exception(f"notification handling error: {e}")
+                bot_status.record_error()
 
     async def _handle_engagement(self, notification):
         """Process a like or repost — someone engaged with phi's content."""
@@ -82,10 +88,14 @@ class MessageHandler:
                 root_ref = post.record.reply.root
             else:
                 root_ref = parent_ref
-            reply_ref = models.AppBskyFeedPost.ReplyRef(parent=parent_ref, root=root_ref)
+            reply_ref = models.AppBskyFeedPost.ReplyRef(
+                parent=parent_ref, root=root_ref
+            )
             await self.client.create_post(response.text, reply_to=reply_ref)
             bot_status.record_response()
-            logger.info(f"replied on {reason} from @{author_handle}: {response.text[:80]}")
+            logger.info(
+                f"replied on {reason} from @{author_handle}: {response.text[:80]}"
+            )
         else:
             logger.info(f"{response.action} on {reason} from @{author_handle}")
             bot_status.record_response()
@@ -199,18 +209,19 @@ class MessageHandler:
 
     async def daily_reflection(self):
         """Generate and post a daily reflection if phi has something to say."""
-        try:
-            response = await self.agent.process_reflection()
-        except Exception as e:
-            logger.exception(f"daily reflection failed: {e}")
-            return
-
-        if response.action in ("reply", "post") and response.text:
+        with logfire.span("daily reflection"):
             try:
-                await self.client.create_post(response.text)
-                bot_status.record_response()
-                logger.info(f"daily reflection posted: {response.text[:80]}")
+                response = await self.agent.process_reflection()
             except Exception as e:
-                logger.exception(f"failed to post daily reflection: {e}")
-        else:
-            logger.info(f"daily reflection: nothing to say ({response.reason})")
+                logger.exception(f"daily reflection failed: {e}")
+                return
+
+            if response.action in ("reply", "post") and response.text:
+                try:
+                    await self.client.create_post(response.text)
+                    bot_status.record_response()
+                    logger.info(f"daily reflection posted: {response.text[:80]}")
+                except Exception as e:
+                    logger.exception(f"failed to post daily reflection: {e}")
+            else:
+                logger.info(f"daily reflection: nothing to say ({response.reason})")

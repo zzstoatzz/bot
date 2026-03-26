@@ -10,7 +10,7 @@ dependencies = [
     "atproto@git+https://github.com/MarshalX/atproto.git@refs/pull/605/head",
     "fastapi",
     "fastmcp>=0.8.0",
-    "logfire[fastapi]",
+    "logfire[anthropic,fastapi,openai,pydantic-ai]",
     "openai",
     "pydantic-ai",
     "pydantic-settings",

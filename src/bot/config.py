@@ -7,9 +7,11 @@ from bot.logging_config import setup_logging
 
 
 class LogfireSettings(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix="LOGFIRE_", extra="ignore", env_file=".env")
+    model_config = SettingsConfigDict(
+        env_prefix="LOGFIRE_", extra="ignore", env_file=".env"
+    )
 
-    token: str | None = None
+    write_token: str | None = None
     environment: str | None = None
     send_to_logfire: Literal["if-token-present"] | None = "if-token-present"
 

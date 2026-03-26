@@ -213,7 +213,7 @@ requires-dist = [
     { name = "atproto", git = "https://github.com/MarshalX/atproto.git?rev=refs%2Fpull%2F605%2Fhead" },
     { name = "fastapi" },
     { name = "fastmcp", specifier = ">=0.8.0" },
-    { name = "logfire", extras = ["fastapi"] },
+    { name = "logfire", extras = ["anthropic", "fastapi", "openai", "pydantic-ai"] },
     { name = "openai" },
     { name = "pydantic-ai" },
     { name = "pydantic-settings" },

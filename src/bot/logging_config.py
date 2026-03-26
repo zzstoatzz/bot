@@ -23,12 +23,28 @@ def setup_logging(debug: bool = False) -> None:
     logging.getLogger("httpcore").setLevel(logging.WARNING)
 
     # SDK debug loggers dump full request bodies (embeddings, prompts)
-    for name in ["anthropic._base_client", "openai._base_client", "turbopuffer._base_client"]:
+    for name in [
+        "anthropic._base_client",
+        "openai._base_client",
+        "turbopuffer._base_client",
+    ]:
         logging.getLogger(name).setLevel(logging.WARNING)
 
     # MCP protocol chatter (session init, tool listings, SSE messages)
-    for name in ["mcp", "mcp.client", "mcp.client.session", "mcp.client.streamable_http", "pydantic_ai.mcp"]:
+    for name in [
+        "mcp",
+        "mcp.client",
+        "mcp.client.session",
+        "mcp.client.streamable_http",
+        "pydantic_ai.mcp",
+    ]:
         logging.getLogger(name).setLevel(logging.WARNING)
+
+    # uvicorn access logs are redundant with fastapi spans
+    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+
+    # asyncio selector noise (KqueueSelector, EpollSelector)
+    logging.getLogger("asyncio").setLevel(logging.WARNING)
 
 
 def _clear_uvicorn_handlers() -> None:

@@ -26,11 +26,24 @@ logger = logging.getLogger("bot.main")
 logfire.configure(
     send_to_logfire=settings.logfire.send_to_logfire,
     environment=settings.logfire.environment,
-    token=settings.logfire.token,
+    token=settings.logfire.write_token,
     console=logfire.ConsoleOptions(
         min_log_level="debug" if settings.debug else "info",
     ),
 )
+
+# instrument the interesting stuff — skip httpx (poll noise) since
+# anthropic/openai integrations already trace their own HTTP calls.
+# each call is wrapped individually so a missing dep degrades to a no-op.
+for _instrument in (
+    logfire.instrument_pydantic_ai,
+    logfire.instrument_anthropic,
+    logfire.instrument_openai,
+):
+    try:
+        _instrument()
+    except Exception as _e:
+        logger.warning(f"logfire instrumentation failed ({_instrument.__name__}): {_e}")
 
 
 @asynccontextmanager
@@ -79,7 +92,10 @@ app.add_exception_handler(
     ),
 )
 
-logfire.instrument_fastapi(app)
+try:
+    logfire.instrument_fastapi(app, excluded_urls="/health")
+except Exception as _e:
+    logger.warning(f"logfire fastapi instrumentation failed: {_e}")
 
 
 NAV_HTML = '<nav><a href="/">phi</a><a href="/status">status</a><a href="/memory">memory</a></nav>'
@@ -151,7 +167,11 @@ async def root():
 @app.get("/health")
 async def health():
     """Health check endpoint."""
-    return {"status": "healthy", "polling_active": bot_status.polling_active, "paused": bot_status.paused}
+    return {
+        "status": "healthy",
+        "polling_active": bot_status.polling_active,
+        "paused": bot_status.paused,
+    }
 
 
 def _check_control_token(request: Request):
@@ -256,7 +276,9 @@ async def memory_graph_data(request: Request):
         return JSONResponse(data)
     except Exception as e:
         logger.warning(f"memory graph failed: {e}")
-        return JSONResponse({"nodes": [], "edges": [], "error": str(e)}, status_code=500)
+        return JSONResponse(
+            {"nodes": [], "edges": [], "error": str(e)}, status_code=500
+        )
 
 
 @app.get("/memory", response_class=HTMLResponse)
