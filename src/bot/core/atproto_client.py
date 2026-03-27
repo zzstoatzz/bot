@@ -69,7 +69,9 @@ def _split_text(text: str, max_len: int = MAX_GRAPHEMES) -> list[str]:
         # then sentence boundary (.!?) followed by space or end
         if split_at < 0:
             for i in range(max_len - 1, max_len // 2, -1):
-                if remaining[i] in ".!?" and (i + 1 >= len(remaining) or remaining[i + 1] in " \n"):
+                if remaining[i] in ".!?" and (
+                    i + 1 >= len(remaining) or remaining[i + 1] in " \n"
+                ):
                     split_at = i + 1
                     break
 
@@ -146,7 +148,9 @@ class BotClient:
         if len(text) <= 300:
             facets = create_facets(text, self.client)
             if reply_to:
-                return self.client.send_post(text=text, reply_to=reply_to, facets=facets)
+                return self.client.send_post(
+                    text=text, reply_to=reply_to, facets=facets
+                )
             return self.client.send_post(text=text, facets=facets)
 
         chunks = _split_text(text)
@@ -157,7 +161,9 @@ class BotClient:
             facets = create_facets(chunk, self.client)
 
             if i == 0:
-                last_result = self.client.send_post(text=chunk, reply_to=reply_to, facets=facets)
+                last_result = self.client.send_post(
+                    text=chunk, reply_to=reply_to, facets=facets
+                )
                 if root_ref is None:
                     root_ref = models.ComAtprotoRepoStrongRef.Main(
                         uri=last_result.uri, cid=last_result.cid
@@ -169,7 +175,9 @@ class BotClient:
                 thread_ref = models.AppBskyFeedPost.ReplyRef(
                     parent=parent_ref, root=root_ref
                 )
-                last_result = self.client.send_post(text=chunk, reply_to=thread_ref, facets=facets)
+                last_result = self.client.send_post(
+                    text=chunk, reply_to=thread_ref, facets=facets
+                )
 
         return last_result
 
@@ -201,6 +209,18 @@ class BotClient:
         """Repost a post"""
         await self.authenticate()
         return self.client.repost(uri=uri, cid=cid)
+
+    async def get_own_posts(self, limit: int = 10):
+        """Fetch the bot's own recent posts (top-level only, no replies)."""
+        await self.authenticate()
+        response = self.client.app.bsky.feed.get_author_feed(
+            params={
+                "actor": self.client.me.did,
+                "limit": limit,
+                "filter": "posts_no_replies",
+            }
+        )
+        return response.feed
 
 
 bot_client: BotClient = BotClient()

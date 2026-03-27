@@ -210,8 +210,19 @@ class MessageHandler:
     async def daily_reflection(self):
         """Generate and post a daily reflection if phi has something to say."""
         with logfire.span("daily reflection"):
+            # Fetch last top-level post so the agent knows what it said recently
+            last_post_text = None
             try:
-                response = await self.agent.process_reflection()
+                feed = await self.client.get_own_posts(limit=1)
+                if feed:
+                    last_post_text = feed[0].post.record.text
+            except Exception as e:
+                logger.warning(f"failed to fetch last post for reflection: {e}")
+
+            try:
+                response = await self.agent.process_reflection(
+                    last_post_text=last_post_text
+                )
             except Exception as e:
                 logger.exception(f"daily reflection failed: {e}")
                 return

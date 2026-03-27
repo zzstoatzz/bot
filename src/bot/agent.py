@@ -19,7 +19,13 @@ from pydantic_ai.mcp import MCPServerStreamableHTTP
 from bot.config import settings
 from bot.core.atproto_client import bot_client
 from bot.memory import NamespaceMemory
-from bot.types import CosmikConnection, CosmikNoteCard, CosmikUrlCard, NoteContent, UrlContent
+from bot.types import (
+    CosmikConnection,
+    CosmikNoteCard,
+    CosmikUrlCard,
+    NoteContent,
+    UrlContent,
+)
 
 logger = logging.getLogger("bot.agent")
 
@@ -96,8 +102,12 @@ class Response(BaseModel):
     """Agent response indicating what action to take."""
 
     action: str = Field(description="reply, like, repost, or ignore")
-    text: str | None = Field(default=None, description="response text when action is reply")
-    reason: str | None = Field(default=None, description="brief reason when action is ignore")
+    text: str | None = Field(
+        default=None, description="response text when action is reply"
+    )
+    reason: str | None = Field(
+        default=None, description="brief reason when action is ignore"
+    )
 
 
 def _format_user_results(results: list[dict], handle: str) -> list[str]:
@@ -198,10 +208,14 @@ class PhiAgent:
                 return "\n".join(_format_user_results(results, handle))
 
             if about == "":
-                results = await ctx.deps.memory.search_unified(ctx.deps.author_handle, query, top_k=8)
+                results = await ctx.deps.memory.search_unified(
+                    ctx.deps.author_handle, query, top_k=8
+                )
                 if not results:
                     return "no relevant memories found"
-                return "\n".join(_format_unified_results(results, ctx.deps.author_handle))
+                return "\n".join(
+                    _format_unified_results(results, ctx.deps.author_handle)
+                )
 
             # bare handle without @
             results = await ctx.deps.memory.search(about, query, top_k=10)
@@ -216,7 +230,9 @@ class PhiAgent:
 
             # private: turbopuffer for fast vector recall
             if ctx.deps.memory:
-                await ctx.deps.memory.store_episodic_memory(content, tags, source="tool")
+                await ctx.deps.memory.store_episodic_memory(
+                    content, tags, source="tool"
+                )
                 parts.append("noted privately")
             else:
                 parts.append("private memory not available")
@@ -224,7 +240,9 @@ class PhiAgent:
             # public: cosmik NOTE card on PDS
             try:
                 card = CosmikNoteCard(content=NoteContent(text=content))
-                uri = await _create_cosmik_record("network.cosmik.card", card.to_record())
+                uri = await _create_cosmik_record(
+                    "network.cosmik.card", card.to_record()
+                )
                 parts.append(f"card created: {uri}")
             except Exception as e:
                 logger.warning(f"failed to create cosmik note card: {e}")
@@ -241,7 +259,9 @@ class PhiAgent:
         ) -> str:
             """Save a URL as a cosmik card on your PDS. Use when you find something worth bookmarking publicly."""
             try:
-                card = CosmikUrlCard(content=UrlContent(url=url, title=title, description=description))
+                card = CosmikUrlCard(
+                    content=UrlContent(url=url, title=title, description=description)
+                )
             except Exception as e:
                 return f"validation failed: {e}"
 
@@ -249,7 +269,9 @@ class PhiAgent:
 
             # public: cosmik URL card on PDS
             try:
-                uri = await _create_cosmik_record("network.cosmik.card", card.to_record())
+                uri = await _create_cosmik_record(
+                    "network.cosmik.card", card.to_record()
+                )
                 parts.append(f"card created: {uri}")
             except Exception as e:
                 return f"failed to create card: {e}"
@@ -257,13 +279,17 @@ class PhiAgent:
             # private: also store in turbopuffer for recall
             if ctx.deps.memory:
                 desc = f"bookmarked {url}" + (f" — {title}" if title else "")
-                await ctx.deps.memory.store_episodic_memory(desc, ["bookmark", "url"], source="tool")
+                await ctx.deps.memory.store_episodic_memory(
+                    desc, ["bookmark", "url"], source="tool"
+                )
                 parts.append("noted privately")
 
             return " + ".join(parts)
 
         @self.agent.tool
-        async def search_posts(ctx: RunContext[PhiDeps], query: str, limit: int = 10) -> str:
+        async def search_posts(
+            ctx: RunContext[PhiDeps], query: str, limit: int = 10
+        ) -> str:
             """Search Bluesky posts by keyword. Use this to find what people are saying about a topic."""
             try:
                 response = bot_client.client.app.bsky.feed.search_posts(
@@ -278,7 +304,11 @@ class PhiAgent:
                     text = post.record.text if hasattr(post.record, "text") else ""
                     handle = post.author.handle
                     likes = post.like_count or 0
-                    age = _relative_age(post.indexed_at, today) if hasattr(post, "indexed_at") and post.indexed_at else ""
+                    age = (
+                        _relative_age(post.indexed_at, today)
+                        if hasattr(post, "indexed_at") and post.indexed_at
+                        else ""
+                    )
                     age_str = f", {age}" if age else ""
                     lines.append(f"@{handle} ({likes} likes{age_str}): {text[:200]}")
                 return "\n\n".join(lines)
@@ -365,7 +395,9 @@ class PhiAgent:
                     if topics:
                         lines = ["bluesky trending:"]
                         for t in topics[:15]:
-                            lines.append(f"  {t.get('displayName', t.get('topic', ''))}")
+                            lines.append(
+                                f"  {t.get('displayName', t.get('topic', ''))}"
+                            )
                         parts.append("\n".join(lines))
                 except Exception as e:
                     parts.append(f"bluesky trending unavailable: {e}")
@@ -385,7 +417,9 @@ class PhiAgent:
 
             if action == "list":
                 labels = get_self_labels(bot_client.client)
-                return f"current self-labels: {labels}" if labels else "no self-labels set"
+                return (
+                    f"current self-labels: {labels}" if labels else "no self-labels set"
+                )
             elif action == "add":
                 if not label:
                     return "provide a label value to add"
@@ -420,7 +454,9 @@ class PhiAgent:
                 return f"validation failed: {e}"
 
             try:
-                uri = await _create_cosmik_record("network.cosmik.connection", conn.to_record())
+                uri = await _create_cosmik_record(
+                    "network.cosmik.connection", conn.to_record()
+                )
                 return f"connection created: {uri}"
             except Exception as e:
                 return f"failed to create connection: {e}"
@@ -429,7 +465,7 @@ class PhiAgent:
         async def post(ctx: RunContext[PhiDeps], text: str) -> str:
             """Create a new top-level post on Bluesky (not a reply). Use this when you want to share something with your followers unprompted."""
             try:
-                result = await bot_client.create_post(text)
+                await bot_client.create_post(text)
                 return f"posted: {text[:100]}"
             except Exception as e:
                 return f"failed to post: {e}"
@@ -505,7 +541,9 @@ class PhiAgent:
                 memory_context = await self.memory.build_user_context(
                     author_handle, query_text=mention_text, include_core=True
                 )
-                logger.info(f"memory context for @{author_handle}: {len(memory_context)} chars")
+                logger.info(
+                    f"memory context for @{author_handle}: {len(memory_context)} chars"
+                )
             except Exception as e:
                 logger.warning(f"failed to retrieve memories: {e}")
 
@@ -520,10 +558,14 @@ class PhiAgent:
         prompt_parts = [f"[TODAY]: {date.today().isoformat()}"]
 
         if thread_context and thread_context != "No previous messages in this thread.":
-            prompt_parts.append(f"[CURRENT THREAD - these are the messages in THIS thread]:\n{thread_context}")
+            prompt_parts.append(
+                f"[CURRENT THREAD - these are the messages in THIS thread]:\n{thread_context}"
+            )
 
         if memory_context:
-            prompt_parts.append(f"[PAST CONTEXT WITH @{author_handle}]:\n{memory_context}")
+            prompt_parts.append(
+                f"[PAST CONTEXT WITH @{author_handle}]:\n{memory_context}"
+            )
 
         if episodic_context:
             prompt_parts.append(episodic_context)
@@ -533,7 +575,9 @@ class PhiAgent:
 
         # Build multimodal prompt if images are present
         if image_urls:
-            user_prompt: str | list = [prompt] + [ImageUrl(url=url) for url in image_urls]
+            user_prompt: str | list = [prompt] + [
+                ImageUrl(url=url) for url in image_urls
+            ]
             logger.info(f"including {len(image_urls)} images in prompt")
         else:
             user_prompt = prompt
@@ -554,7 +598,11 @@ class PhiAgent:
             for ts in toolsets:
                 await stack.enter_async_context(ts)
             result = await self.agent.run(user_prompt, deps=deps, toolsets=toolsets)
-        logger.info(f"agent decided: {result.output.action}" + (f" - {result.output.text[:80]}" if result.output.text else "") + (f" ({result.output.reason})" if result.output.reason else ""))
+        logger.info(
+            f"agent decided: {result.output.action}"
+            + (f" - {result.output.text[:80]}" if result.output.text else "")
+            + (f" ({result.output.reason})" if result.output.reason else "")
+        )
 
         # Store interaction and extract observations
         if self.memory and result.output.action == "reply" and result.output.text:
@@ -567,30 +615,43 @@ class PhiAgent:
 
         return result.output
 
-    async def process_reflection(self) -> Response:
+    async def process_reflection(self, last_post_text: str | None = None) -> Response:
         """Generate a daily reflection post from recent memory."""
         # Gather context from memory
         recent_interactions: list[dict] = []
         episodic_context = ""
         if self.memory:
             try:
-                recent_interactions = await self.memory.get_recent_interactions(top_k=10)
-                logger.info(f"reflection: {len(recent_interactions)} recent interactions")
+                recent_interactions = await self.memory.get_recent_interactions(
+                    top_k=10
+                )
+                logger.info(
+                    f"reflection: {len(recent_interactions)} recent interactions"
+                )
             except Exception as e:
                 logger.warning(f"failed to get recent interactions for reflection: {e}")
             try:
-                episodic_context = await self.memory.get_episodic_context("daily reflection recent events")
+                episodic_context = await self.memory.get_episodic_context(
+                    "daily reflection recent events"
+                )
                 if episodic_context:
-                    logger.info(f"reflection episodic context: {len(episodic_context)} chars")
+                    logger.info(
+                        f"reflection episodic context: {len(episodic_context)} chars"
+                    )
             except Exception as e:
                 logger.warning(f"failed to get episodic context for reflection: {e}")
 
         # Build the reflection prompt
         prompt_parts = [f"[TODAY]: {date.today().isoformat()}"]
 
+        if last_post_text:
+            prompt_parts.append(f"[YOUR LAST POST]: {last_post_text}")
+
         if recent_interactions:
             unique_handles = {i["handle"] for i in recent_interactions}
-            prompt_parts.append(f"[RECENT ACTIVITY]: {len(recent_interactions)} interactions with {len(unique_handles)} people in the last day")
+            prompt_parts.append(
+                f"[RECENT ACTIVITY]: {len(recent_interactions)} interactions with {len(unique_handles)} people in the last day"
+            )
             samples = recent_interactions[:5]
             exchange_lines = []
             for i in samples:
@@ -606,7 +667,8 @@ class PhiAgent:
             "[REFLECTION TASK]: you're posting a short top-level reflection on your day. "
             "not a thread, not a reply — just something you want to put out there. "
             "use what you know: recent exchanges, things you noticed, or just the fact that you're here. "
-            "if nothing feels worth saying, action='ignore' is fine. "
+            "if your last post already covers this ground, or you'd just be rehashing the same themes, "
+            "action='ignore' is the right call — don't post for the sake of posting. "
             "if you do post, keep it brief and genuine — your voice, not a performance."
         )
 
