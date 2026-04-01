@@ -144,6 +144,7 @@ class TestPhiAgentToolRegistration:
             assert "read_timeline" in tool_names, f"read_timeline not in {tool_names}"
             assert "read_feed" in tool_names, f"read_feed not in {tool_names}"
             assert "follow_user" in tool_names, f"follow_user not in {tool_names}"
+            assert "get_own_posts" in tool_names, f"get_own_posts not in {tool_names}"
 
     def test_graze_client_instantiated(self):
         if not os.environ.get("ANTHROPIC_API_KEY"):

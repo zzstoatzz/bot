@@ -69,6 +69,11 @@ feeds — you can create and read bluesky feeds:
 - create_feed: build a custom feed from keyword patterns and hashtag filters. OWNER-ONLY (restricted to @{settings.owner_handle}).
 - list_feeds: see your existing graze-powered feeds.
 - follow_user: follow a user on bluesky. OWNER-ONLY (restricted to @{settings.owner_handle}).
+
+your own posts:
+- get_own_posts: read your own recent top-level posts. use this when you need to review what you've posted — do NOT use list_records for your own posts.
+
+IMPORTANT: never paginate through list_records repeatedly. if you need more data than one call returns, work with what you have. endless pagination wastes your request budget and produces no response.
 """.strip()
 
 
@@ -638,6 +643,29 @@ class PhiAgent:
                 return f"now following @{handle} ({uri})"
             except Exception as e:
                 return f"failed to follow @{handle}: {e}"
+
+        @self.agent.tool
+        async def get_own_posts(ctx: RunContext[PhiDeps], limit: int = 10) -> str:
+            """Read your own recent top-level posts (no replies). Use this instead of list_records when you need to review what you've posted."""
+            try:
+                posts = await bot_client.get_own_posts(limit=limit)
+                if not posts:
+                    return "no posts found"
+                today = date.today()
+                lines = []
+                for item in posts:
+                    post = item.post
+                    text = post.record.text if hasattr(post.record, "text") else ""
+                    age = (
+                        _relative_age(post.indexed_at, today)
+                        if hasattr(post, "indexed_at") and post.indexed_at
+                        else ""
+                    )
+                    age_str = f" ({age})" if age else ""
+                    lines.append(f"[{post.uri}]{age_str}: {text[:200]}")
+                return "\n\n".join(lines)
+            except Exception as e:
+                return f"failed to get own posts: {e}"
 
         logger.info("phi agent initialized with pdsx + pub-search mcp tools")
 
