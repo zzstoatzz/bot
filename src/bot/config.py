@@ -92,6 +92,12 @@ class Settings(BaseSettings):
         default=None, description="Bearer token for /api/control endpoints"
     )
 
+    # Owner identity (for permission-gated tools)
+    owner_handle: str = Field(
+        default="zzstoatzz.io",
+        description="Handle of the bot's owner (for permission-gated tools)",
+    )
+
     # Debug mode
     debug: bool = Field(default=True, description="Whether to run in debug mode")
 

@@ -30,8 +30,8 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 filterwarnings = [
     "ignore::logfire._internal.config.LogfireNotConfiguredWarning",
-    "ignore::DeprecationWarning:abc",
-    "ignore::DeprecationWarning:opentelemetry",
+    # upstream otel 1.39 renamed EventLogger → Logger; pydantic-ai + otel internals still use old names
+    "ignore:.*Deprecated since version 1\\.39\\.0:DeprecationWarning",
 ]
 
 [dependency-groups]

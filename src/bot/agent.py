@@ -18,6 +18,7 @@ from pydantic_ai.mcp import MCPServerStreamableHTTP
 
 from bot.config import settings
 from bot.core.atproto_client import bot_client
+from bot.core.graze_client import GrazeClient
 from bot.memory import NamespaceMemory
 from bot.types import (
     CosmikConnection,
@@ -29,9 +30,10 @@ from bot.types import (
 
 logger = logging.getLogger("bot.agent")
 
-# Operational instructions kept separate from personality — these are
-# system-level guardrails that change when tools/architecture change.
-OPERATIONAL_INSTRUCTIONS = """
+
+def _build_operational_instructions() -> str:
+    """Build operational instructions with the current owner handle interpolated."""
+    return f"""
 indicate your response action via the structured output — do not use atproto tools to post, like, or repost directly.
 when sharing URLs, verify them with check_urls first and always include https://.
 
@@ -60,6 +62,13 @@ your tools for finding information:
 - pub-search (MCP): long-form writing — leaflet, whitewind, etc.
 
 you can also create public records — notes (cosmik cards), bookmarks (URL cards), and connections. these are visible to anyone and indexed by semble.
+
+feeds — you can create and read bluesky feeds:
+- read_timeline: your "following" feed — what people you follow are posting. anyone can ask you to check this.
+- read_feed: read posts from a specific custom feed by URI. use list_feeds to get URIs.
+- create_feed: build a custom feed from keyword patterns and hashtag filters. OWNER-ONLY (restricted to @{settings.owner_handle}).
+- list_feeds: see your existing graze-powered feeds.
+- follow_user: follow a user on bluesky. OWNER-ONLY (restricted to @{settings.owner_handle}).
 """.strip()
 
 
@@ -96,6 +105,30 @@ class PhiDeps:
     author_handle: str
     memory: NamespaceMemory | None = None
     thread_uri: str | None = None
+
+
+def _is_owner(ctx: RunContext[PhiDeps]) -> bool:
+    """Check if the current message author is the bot's owner."""
+    return ctx.deps.author_handle == settings.owner_handle
+
+
+def _format_feed_posts(feed_posts, limit: int = 20) -> str:
+    """Format feed posts into a readable summary."""
+    today = date.today()
+    lines = []
+    for item in feed_posts[:limit]:
+        post = item.post
+        text = post.record.text if hasattr(post.record, "text") else ""
+        handle = post.author.handle
+        likes = post.like_count or 0
+        age = (
+            _relative_age(post.indexed_at, today)
+            if hasattr(post, "indexed_at") and post.indexed_at
+            else ""
+        )
+        age_str = f", {age}" if age else ""
+        lines.append(f"@{handle} ({likes} likes{age_str}): {text[:200]}")
+    return "\n\n".join(lines)
 
 
 class Response(BaseModel):
@@ -185,7 +218,7 @@ class PhiAgent:
         self.agent = Agent[PhiDeps, Response](
             name="phi",
             model="anthropic:claude-sonnet-4-6",
-            system_prompt=f"{self.base_personality}\n\n{OPERATIONAL_INSTRUCTIONS}",
+            system_prompt=f"{self.base_personality}\n\n{_build_operational_instructions()}",
             output_type=Response,
             deps_type=PhiDeps,
         )
@@ -503,6 +536,108 @@ class PhiAgent:
             async with httpx.AsyncClient(timeout=10) as client:
                 results = await asyncio.gather(*[_check(client, u) for u in urls])
             return "\n".join(results)
+
+        # --- graze feed tools ---
+
+        self.graze_client = GrazeClient(
+            handle=settings.bluesky_handle, password=settings.bluesky_password
+        )
+
+        @self.agent.tool
+        async def create_feed(
+            ctx: RunContext[PhiDeps],
+            name: str,
+            display_name: str,
+            description: str,
+            filter_manifest: dict,
+        ) -> str:
+            """Create a new bluesky feed powered by graze. Only the bot's owner can use this tool.
+
+            name: url-safe slug (e.g. "electronic-music"). becomes the feed rkey.
+            display_name: human-readable feed title.
+            description: what the feed shows.
+            filter_manifest: graze filter DSL. operators:
+              - regex_any: ["text", ["pattern1", "pattern2"], case_insensitive: bool, whole_word: bool]
+              - has_any_tag: [["#tag1", "#tag2"]]
+              - and: [...filters], or: [...filters]
+            example: {"filter": {"and": [{"regex_any": ["text", ["jazz", "bebop"], true, false]}, {"has_any_tag": [["#jazz"]]}]}}
+            """
+            if not _is_owner(ctx):
+                return f"only @{settings.owner_handle} can create feeds"
+            try:
+                result = await self.graze_client.create_feed(
+                    rkey=name,
+                    display_name=display_name,
+                    description=description,
+                    filter_manifest=filter_manifest,
+                )
+                return f"feed created: {result['uri']} (algo_id={result['algo_id']})"
+            except Exception as e:
+                logger.warning(f"create_feed failed: {e}")
+                return f"failed to create feed: {e}"
+
+        @self.agent.tool
+        async def list_feeds(ctx: RunContext[PhiDeps]) -> str:
+            """List your existing graze-powered feeds."""
+            try:
+                feeds = await self.graze_client.list_feeds()
+                if not feeds:
+                    return "no graze feeds found"
+                lines = []
+                for f in feeds:
+                    name = f.get("display_name") or f.get("name") or "unnamed"
+                    algo_id = f.get("id") or f.get("algo_id") or "?"
+                    uri = f.get("feed_uri") or f.get("uri") or ""
+                    lines.append(f"- {name} (id={algo_id}) {uri}")
+                return "\n".join(lines)
+            except Exception as e:
+                logger.warning(f"list_feeds failed: {e}")
+                return f"failed to list feeds: {e}"
+
+        # --- feed consumption + following tools ---
+
+        @self.agent.tool
+        async def read_timeline(ctx: RunContext[PhiDeps], limit: int = 20) -> str:
+            """Read your 'following' timeline — posts from accounts you follow. Use this when someone asks what's on your feed or what people you follow are talking about."""
+            try:
+                response = await bot_client.get_timeline(limit=limit)
+                if not response.feed:
+                    return (
+                        "your timeline is empty — you're not following anyone yet. "
+                        f"ask @{settings.owner_handle} to have me follow some accounts!"
+                    )
+                return _format_feed_posts(response.feed, limit=limit)
+            except Exception as e:
+                return f"failed to read timeline: {e}"
+
+        @self.agent.tool
+        async def read_feed(
+            ctx: RunContext[PhiDeps], feed_uri: str, limit: int = 20
+        ) -> str:
+            """Read posts from a specific custom feed by AT-URI. Use list_feeds to find feed URIs first."""
+            try:
+                response = await bot_client.get_feed(feed_uri, limit=limit)
+                if not response.feed:
+                    return "no posts in this feed yet"
+                return _format_feed_posts(response.feed, limit=limit)
+            except Exception as e:
+                return f"failed to read feed: {e}"
+
+        @self.agent.tool
+        async def follow_user(ctx: RunContext[PhiDeps], handle: str) -> str:
+            """Follow a user on bluesky. Only the bot's owner can use this tool."""
+            if not _is_owner(ctx):
+                return f"only @{settings.owner_handle} can ask me to follow people"
+            try:
+                # check if already following
+                following = await bot_client.get_following()
+                for f in following.follows:
+                    if f.handle == handle:
+                        return f"already following @{handle}"
+                uri = await bot_client.follow_user(handle)
+                return f"now following @{handle} ({uri})"
+            except Exception as e:
+                return f"failed to follow @{handle}: {e}"
 
         logger.info("phi agent initialized with pdsx + pub-search mcp tools")
 

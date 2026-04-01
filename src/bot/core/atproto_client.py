@@ -222,5 +222,31 @@ class BotClient:
         )
         return response.feed
 
+    async def get_timeline(self, limit: int = 25):
+        """Fetch the 'following' timeline feed."""
+        await self.authenticate()
+        return self.client.app.bsky.feed.get_timeline(params={"limit": limit})
+
+    async def get_feed(self, feed_uri: str, limit: int = 25):
+        """Fetch posts from a custom feed by AT-URI."""
+        await self.authenticate()
+        return self.client.app.bsky.feed.get_feed(
+            params={"feed": feed_uri, "limit": limit}
+        )
+
+    async def follow_user(self, handle: str) -> str:
+        """Resolve handle to DID and create a follow record. Returns the record URI."""
+        await self.authenticate()
+        resolved = self.client.resolve_handle(handle)
+        response = self.client.follow(resolved.did)
+        return response.uri
+
+    async def get_following(self, limit: int = 100):
+        """Get accounts the bot is following."""
+        await self.authenticate()
+        return self.client.app.bsky.graph.get_follows(
+            params={"actor": self.client.me.did, "limit": limit}
+        )
+
 
 bot_client: BotClient = BotClient()

@@ -8,7 +8,7 @@ from bot.config import settings
 def test_config_loads():
     """Test that config loads without errors"""
     assert settings.bluesky_service == "https://bsky.social"
-    assert settings.bot_name == "phi"
+    assert settings.bot_name  # default "Bot" or overridden via env/dotfile
     assert settings.notification_poll_interval == 10
 
 

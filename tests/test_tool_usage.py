@@ -1,6 +1,7 @@
 """Test that proves tools are actually being used by the agent"""
 
 import os
+from unittest.mock import patch
 
 import pytest
 from pydantic import BaseModel, Field
@@ -61,6 +62,9 @@ class TestToolUsage:
     async def test_search_tool_usage(self):
         """Test that search tool is called for appropriate queries"""
 
+        if not settings.anthropic_api_key:
+            pytest.skip("No Anthropic API key configured")
+
         tool_calls: list[dict] = []
 
         agent = Agent(
@@ -94,6 +98,9 @@ class TestToolUsage:
     async def test_multiple_tool_calls(self):
         """Test that agent can call tools multiple times in one request"""
 
+        if not settings.anthropic_api_key:
+            pytest.skip("No Anthropic API key configured")
+
         calls: list[str] = []
 
         agent = Agent(
@@ -114,3 +121,37 @@ class TestToolUsage:
         assert len(calls) >= 2, f"Expected multiple searches, got {len(calls)}: {calls}"
         assert any("Python" in call for call in calls), f"No Python search in: {calls}"
         assert any("Rust" in call for call in calls), f"No Rust search in: {calls}"
+
+
+class TestPhiAgentToolRegistration:
+    """Verify that PhiAgent registers all expected tools (no LLM calls needed)."""
+
+    def setup_method(self):
+        if settings.anthropic_api_key:
+            os.environ["ANTHROPIC_API_KEY"] = settings.anthropic_api_key
+
+    def test_graze_tools_registered(self):
+        if not os.environ.get("ANTHROPIC_API_KEY"):
+            pytest.skip("No Anthropic API key configured")
+
+        with patch("bot.agent.bot_client"):
+            from bot.agent import PhiAgent
+
+            agent = PhiAgent()
+            tool_names = {t.name for t in agent.agent._function_toolset.tools.values()}
+            assert "create_feed" in tool_names, f"create_feed not in {tool_names}"
+            assert "list_feeds" in tool_names, f"list_feeds not in {tool_names}"
+            assert "read_timeline" in tool_names, f"read_timeline not in {tool_names}"
+            assert "read_feed" in tool_names, f"read_feed not in {tool_names}"
+            assert "follow_user" in tool_names, f"follow_user not in {tool_names}"
+
+    def test_graze_client_instantiated(self):
+        if not os.environ.get("ANTHROPIC_API_KEY"):
+            pytest.skip("No Anthropic API key configured")
+
+        with patch("bot.agent.bot_client"):
+            from bot.agent import PhiAgent
+
+            agent = PhiAgent()
+            assert agent.graze_client is not None
+            assert agent.graze_client._handle == settings.bluesky_handle

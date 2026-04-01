@@ -8,9 +8,11 @@ Inspired by [prefect-mcp-server evals](https://github.com/PrefectHQ/prefect-mcp-
 
 ```
 evals/
-├── conftest.py              # Test fixtures and evaluator
-├── test_basic_responses.py  # Basic response behavior
-└── test_memory_integration.py  # Episodic memory tests
+├── conftest.py                # Test fixtures, evaluator, and ToolCallSpy
+├── test_basic_responses.py    # Basic response behavior
+├── test_feed_creation.py      # Graze feed tool usage
+├── test_feed_consumption.py   # Feed reading, following, and owner-gating
+└── test_memory_integration.py # Episodic memory tests
 ```
 
 ## Running Evals
@@ -27,6 +29,9 @@ uv run pytest evals/test_basic_responses.py -v
 
 # Run only memory tests
 uv run pytest evals/test_memory_integration.py -v
+
+# Run only feed creation tests
+uv run pytest evals/test_feed_creation.py -v
 ```
 
 ## Environment Variables
@@ -91,6 +96,21 @@ async def test_phi_responds_to_philosophical_question(evaluate_response):
 - ✅ Conversation storage
 - ✅ User-specific context
 
+### Feed Creation (graze)
+- ✅ Creates feed from natural language description
+- ✅ Manifest uses valid graze DSL operators
+- ✅ Handles complex/ambiguous descriptions (e.g. "rust programming, not the game")
+- ✅ Lists feeds when asked (calls `list_feeds`, not `create_feed`)
+- ✅ No tool calls for informational questions about feeds
+
+### Feed Consumption & Following
+- ✅ Reads timeline when asked
+- ✅ Reads specific custom feed by name (via list_feeds → read_feed)
+- ✅ Owner can ask phi to follow users
+- ✅ Non-owner follow requests are denied
+- ✅ Non-owner feed creation requests are denied
+- ✅ Empty timeline suggests following accounts
+
 ## Adding New Evals
 
 1. Create test file: `evals/test_<category>.py`
@@ -118,6 +138,8 @@ these evals are designed to run in ci with graceful degradation:
 - tests skip automatically when required api keys are missing
 - basic response tests require only `ANTHROPIC_API_KEY` and bluesky credentials
 - memory tests require `TURBOPUFFER_API_KEY` and `OPENAI_API_KEY`
-- no mocking required - tests work with real mcp server and episodic memory
+- feed creation tests require only `ANTHROPIC_API_KEY` (tools are mocked via `ToolCallSpy`)
+- feed consumption tests require only `ANTHROPIC_API_KEY` (tools are mocked via `ToolCallSpy`)
+- no mocking required for basic/memory tests - they work with real mcp server and episodic memory
 
 this ensures phi's behavior can be validated in various environments.
