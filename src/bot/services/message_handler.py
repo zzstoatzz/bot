@@ -11,7 +11,12 @@ from limits.strategies import MovingWindowRateLimiter
 from bot.agent import PhiAgent
 from bot.core.atproto_client import BotClient
 from bot.status import bot_status
-from bot.utils.thread import build_thread_context, describe_embed, extract_image_urls
+from bot.utils.thread import (
+    build_thread_context,
+    describe_embed,
+    extract_image_urls,
+    resolve_facet_links,
+)
 
 logger = logging.getLogger("bot.handler")
 
@@ -135,7 +140,7 @@ class MessageHandler:
             return
 
         post = posts.posts[0]
-        mention_text = post.record.text
+        mention_text = resolve_facet_links(post.record)
         author_handle = post.author.handle
 
         # Include embed content (images, links, quote posts) in the mention

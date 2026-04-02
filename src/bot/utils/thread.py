@@ -3,6 +3,51 @@
 from collections.abc import Callable
 
 
+def resolve_facet_links(record) -> str:
+    """Return post text with truncated link display text replaced by actual URIs from facets.
+
+    Bluesky truncates long URLs in the display text (e.g. "example.com/long-path..."
+    but stores the full URI in the facet. This walks facets right-to-left and splices
+    the real URI back into the text so downstream consumers see the full link.
+    """
+    text = getattr(record, "text", "") or ""
+    facets = getattr(record, "facets", None)
+    if not facets:
+        return text
+
+    # collect link facets with byte ranges
+    link_facets = []
+    for facet in facets:
+        index = getattr(facet, "index", None)
+        features = getattr(facet, "features", None) or []
+        if not index:
+            continue
+        for feature in features:
+            py_type = getattr(feature, "py_type", "")
+            if "link" in py_type:
+                uri = getattr(feature, "uri", "")
+                if uri:
+                    link_facets.append(
+                        (
+                            getattr(index, "byte_start", 0),
+                            getattr(index, "byte_end", 0),
+                            uri,
+                        )
+                    )
+
+    if not link_facets:
+        return text
+
+    # sort by byte_start descending so replacements don't shift earlier offsets
+    link_facets.sort(key=lambda x: x[0], reverse=True)
+
+    encoded = text.encode("utf-8")
+    for start, end, uri in link_facets:
+        encoded = encoded[:start] + uri.encode("utf-8") + encoded[end:]
+
+    return encoded.decode("utf-8")
+
+
 def describe_embed(embed) -> str | None:
     """Extract a human-readable description from a post embed.
 
@@ -110,7 +155,7 @@ def extract_image_urls(embed) -> list[str]:
 def describe_post(post) -> str:
     """Build a full text representation of a post including embeds."""
     handle = post.author.handle
-    text = post.record.text if hasattr(post.record, "text") else ""
+    text = resolve_facet_links(post.record) if hasattr(post.record, "text") else ""
 
     # Check for embeds on the post view (post.embed) or record (post.record.embed)
     embed_desc = None
@@ -120,7 +165,9 @@ def describe_post(post) -> str:
         embed_desc = describe_embed(post.record.embed)
 
     if embed_desc:
-        return f"@{handle}: {text}\n  {embed_desc}" if text else f"@{handle}: {embed_desc}"
+        return (
+            f"@{handle}: {text}\n  {embed_desc}" if text else f"@{handle}: {embed_desc}"
+        )
     return f"@{handle}: {text}" if text else f"@{handle}: [no text]"
 
 
@@ -151,7 +198,9 @@ def traverse_thread(
 
     # Traverse parent chain (moving up the thread)
     if include_parent and hasattr(thread_node, "parent") and thread_node.parent:
-        traverse_thread(thread_node.parent, visit, include_parent=True, include_replies=False)
+        traverse_thread(
+            thread_node.parent, visit, include_parent=True, include_replies=False
+        )
 
     # Traverse replies (moving down the thread)
     if include_replies and hasattr(thread_node, "replies") and thread_node.replies:

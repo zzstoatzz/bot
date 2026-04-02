@@ -97,7 +97,7 @@ def _build_operational_instructions() -> str:
     """Build operational instructions with the current owner handle interpolated."""
     return f"""
 indicate your response action via the structured output — do not use atproto tools to post, like, or repost directly.
-when sharing URLs you found yourself (not ones the user gave you), you can verify them with check_urls. always include https://. never call check_urls more than once per URL — accept the result.
+when sharing URLs, verify them with check_urls first and always include https://.
 
 you receive all notification types — mentions, replies, quotes, likes, reposts, and follows.
 for mentions, replies, and quotes: someone is talking to you or about you. respond if you have something to say.
@@ -142,7 +142,7 @@ operator infrastructure monitoring:
   only use this during daily reflection, or when someone explicitly asks about infrastructure, services, or uptime of specific apps.
   if something is down, post about it and tag @{settings.owner_handle}.
 
-IMPORTANT: you have a limited tool call budget per message. do not call the same tool repeatedly with the same or similar arguments — accept the result you get. never paginate through list_records repeatedly. if you need more data than one call returns, work with what you have. if you cannot fulfill a request with the tools you have (e.g. reading a web page), say so instead of looping.
+IMPORTANT: never paginate through list_records repeatedly. if you need more data than one call returns, work with what you have. endless pagination wastes your request budget and produces no response.
 """.strip()
 
 
@@ -638,27 +638,13 @@ class PhiAgent:
             except Exception as e:
                 return f"failed to post: {e}"
 
-        self._checked_urls: set[str] = set()
-
         @self.agent.tool
         async def check_urls(ctx: RunContext[PhiDeps], urls: list[str]) -> str:
-            """Check whether URLs are reachable (HEAD request only — cannot read page content). If a URL 404s, do not guess alternative slugs — tell the user you can't find it."""
-
-            # if we've already checked many URLs, the model is probably guessing slugs
-            new_urls = [u for u in urls if u not in self._checked_urls]
-            if not new_urls and self._checked_urls:
-                return "already checked these URLs. stop guessing and respond with what you know."
-            if len(self._checked_urls) > 10:
-                return (
-                    f"you've already checked {len(self._checked_urls)} URLs in this conversation. "
-                    "stop guessing slugs — you cannot browse the web. tell the user you "
-                    "couldn't find the exact page and share what you found instead."
-                )
+            """Check whether URLs are reachable. Use this before sharing links to verify they actually work. Accepts full URLs (https://...) or bare domains (example.com/path)."""
 
             async def _check(client: httpx.AsyncClient, url: str) -> str:
                 if not url.startswith(("http://", "https://")):
                     url = f"https://{url}"
-                self._checked_urls.add(url)
                 try:
                     hostname = urlparse(url).hostname
                     if not hostname:
@@ -848,7 +834,6 @@ class PhiAgent:
     ) -> Response:
         """Process a mention with structured memory context."""
         logger.info(f"processing mention from @{author_handle}: {mention_text[:80]}")
-        self._checked_urls.clear()
 
         deps = PhiDeps(
             author_handle=author_handle,
@@ -892,7 +877,6 @@ class PhiAgent:
     async def process_reflection(self, last_post_text: str | None = None) -> Response:
         """Generate a daily reflection post from recent memory."""
         logger.info("processing daily reflection")
-        self._checked_urls.clear()
 
         # Pre-fetch context that doesn't benefit from semantic search against the prompt
         recent_activity = ""
