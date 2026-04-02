@@ -3,6 +3,8 @@
 import asyncio
 import hashlib
 import logging
+import math
+import random
 from datetime import datetime
 from typing import ClassVar
 
@@ -609,12 +611,51 @@ class NamespaceMemory:
         )
         return user_results + episodic_results
 
+    @staticmethod
+    def _project_2d(
+        centroids: dict[str, list[float]],
+    ) -> dict[str, tuple[float, float]]:
+        """Project high-dimensional centroids to 2D via fixed random projection."""
+        if not centroids:
+            return {}
+        dim = len(next(iter(centroids.values())))
+        rng = random.Random(42)
+        axis_a = [rng.gauss(0, 1) for _ in range(dim)]
+        axis_b = [rng.gauss(0, 1) for _ in range(dim)]
+        # normalize axes
+        norm_a = math.sqrt(sum(v * v for v in axis_a))
+        norm_b = math.sqrt(sum(v * v for v in axis_b))
+        axis_a = [v / norm_a for v in axis_a]
+        axis_b = [v / norm_b for v in axis_b]
+
+        raw: dict[str, tuple[float, float]] = {}
+        for nid, vec in centroids.items():
+            x = sum(a * b for a, b in zip(axis_a, vec))
+            y = sum(a * b for a, b in zip(axis_b, vec))
+            raw[nid] = (x, y)
+
+        if not raw:
+            return {}
+        xs = [p[0] for p in raw.values()]
+        ys = [p[1] for p in raw.values()]
+        x_min, x_max = min(xs), max(xs)
+        y_min, y_max = min(ys), max(ys)
+        x_span = x_max - x_min or 1.0
+        y_span = y_max - y_min or 1.0
+        return {
+            nid: (2 * (p[0] - x_min) / x_span - 1, 2 * (p[1] - y_min) / y_span - 1)
+            for nid, p in raw.items()
+        }
+
     def get_graph_data(self) -> dict:
-        """Build graph nodes and edges from memory namespaces (sync, no embeddings needed)."""
+        """Build graph nodes and edges from memory namespaces with semantic coordinates."""
         nodes = [{"id": "phi", "label": "phi", "type": "phi"}]
         edges = []
         tag_set: set[str] = set()
         user_tags: dict[str, set[str]] = {}  # handle -> tags
+        # vectors for computing semantic positions
+        tag_vectors: dict[str, list[list[float]]] = {}
+        user_vectors: dict[str, list[list[float]]] = {}
 
         # discover user namespaces
         user_prefix = f"{self.NAMESPACES['users']}-"
@@ -627,20 +668,25 @@ class NamespaceMemory:
                 )
                 edges.append({"source": "phi", "target": f"user:{handle}"})
 
-                # get observations for this user to extract tags
+                # get observations for this user to extract tags + vectors
                 user_ns = self.client.namespace(ns_summary.id)
                 try:
                     response = user_ns.query(
                         rank_by=("vector", "ANN", [0.5] * 1536),
                         top_k=50,
                         filters={"kind": ["Eq", "observation"]},
-                        include_attributes=["tags"],
+                        include_attributes=["tags", "vector"],
                     )
                     if response.rows:
                         for row in response.rows:
+                            vec = getattr(row, "vector", None)
                             for tag in getattr(row, "tags", []) or []:
                                 tag_set.add(tag)
                                 user_tags.setdefault(handle, set()).add(tag)
+                                if vec:
+                                    tag_vectors.setdefault(tag, []).append(vec)
+                            if vec:
+                                user_vectors.setdefault(handle, []).append(vec)
                 except Exception:
                     pass  # old namespace or no observations
         except Exception as e:
@@ -655,16 +701,20 @@ class NamespaceMemory:
 
         # episodic memories — group by top tags
         episodic_tags: set[str] = set()
+        episodic_vectors: dict[str, list[list[float]]] = {}
         try:
             response = self.namespaces["episodic"].query(
                 rank_by=("vector", "ANN", [0.5] * 1536),
                 top_k=100,
-                include_attributes=["tags"],
+                include_attributes=["tags", "vector"],
             )
             if response.rows:
                 for row in response.rows:
+                    vec = getattr(row, "vector", None)
                     for tag in getattr(row, "tags", []) or []:
                         episodic_tags.add(tag)
+                        if vec:
+                            episodic_vectors.setdefault(tag, []).append(vec)
         except Exception:
             pass
 
@@ -675,6 +725,74 @@ class NamespaceMemory:
             # bridge to user tags if shared
             if tag in tag_set:
                 edges.append({"source": f"tag:{tag}", "target": node_id})
+
+        # read tag-to-tag relationships from phi-tag-relationships
+        node_ids = {n["id"] for n in nodes}
+        try:
+            rel_ns = self.client.namespace("phi-tag-relationships")
+            rel_response = rel_ns.query(
+                rank_by=("vector", "ANN", [0.5] * 1536),
+                top_k=200,
+                include_attributes=[
+                    "tag_a",
+                    "tag_b",
+                    "relationship_type",
+                    "confidence",
+                ],
+            )
+            if rel_response.rows:
+                for row in rel_response.rows:
+                    tag_a = getattr(row, "tag_a", "")
+                    tag_b = getattr(row, "tag_b", "")
+                    if not tag_a or not tag_b:
+                        continue
+                    # resolve to existing node IDs (prefer tag: over episodic:)
+                    source = (
+                        f"tag:{tag_a}"
+                        if f"tag:{tag_a}" in node_ids
+                        else f"episodic:{tag_a}"
+                        if f"episodic:{tag_a}" in node_ids
+                        else None
+                    )
+                    target = (
+                        f"tag:{tag_b}"
+                        if f"tag:{tag_b}" in node_ids
+                        else f"episodic:{tag_b}"
+                        if f"episodic:{tag_b}" in node_ids
+                        else None
+                    )
+                    if source and target and source != target:
+                        edges.append({"source": source, "target": target})
+        except Exception:
+            pass  # namespace may not exist yet
+
+        # compute per-node embedding centroids
+        def _centroid(vecs: list[list[float]]) -> list[float]:
+            n = len(vecs)
+            dim = len(vecs[0])
+            return [sum(v[i] for v in vecs) / n for i in range(dim)]
+
+        centroids: dict[str, list[float]] = {}
+        for tag, vecs in tag_vectors.items():
+            centroids[f"tag:{tag}"] = _centroid(vecs)
+        for handle, vecs in user_vectors.items():
+            centroids[f"user:{handle}"] = _centroid(vecs)
+        for tag, vecs in episodic_vectors.items():
+            centroids[f"episodic:{tag}"] = _centroid(vecs)
+
+        coords = self._project_2d(centroids)
+
+        for node in nodes:
+            nid = node["id"]
+            if nid == "phi":
+                node["x"] = 0.0
+                node["y"] = 0.0
+            elif nid in coords:
+                node["x"] = round(coords[nid][0], 4)
+                node["y"] = round(coords[nid][1], 4)
+            else:
+                node["x"] = None
+                node["y"] = None
 
         return {"nodes": nodes, "edges": edges}
 

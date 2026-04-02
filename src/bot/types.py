@@ -4,7 +4,6 @@ from typing import Annotated, Literal
 
 from pydantic import AfterValidator, BaseModel, Field
 
-
 # --- validators ---
 
 
@@ -109,3 +108,47 @@ class CosmikUrlCard(BaseModel):
         if self.content.description:
             record["content"]["description"] = self.content.description
         return record
+
+
+class StrongRef(BaseModel):
+    """AT Protocol strong reference — uri + cid pair."""
+
+    uri: EntityRef
+    cid: str
+
+
+class CosmikCollection(BaseModel):
+    """network.cosmik.collection record — a named grouping of cards.
+
+    Schema: at://cosmik.network/com.atproto.lexicon.schema/network.cosmik.collection
+    """
+
+    name: str = Field(max_length=100)
+    access_type: Literal["OPEN", "CLOSED"] = "OPEN"
+    description: str | None = Field(default=None, max_length=500)
+
+    def to_record(self) -> dict:
+        record: dict = {"name": self.name, "accessType": self.access_type}
+        if self.description:
+            record["description"] = self.description
+        return record
+
+
+class CosmikCollectionLink(BaseModel):
+    """network.cosmik.collectionLink record — joins a card to a collection.
+
+    Requires strongRefs (uri + cid) for both collection and card.
+    """
+
+    collection: StrongRef
+    card: StrongRef
+    added_by: str
+    added_at: str
+
+    def to_record(self) -> dict:
+        return {
+            "collection": {"uri": self.collection.uri, "cid": self.collection.cid},
+            "card": {"uri": self.card.uri, "cid": self.card.cid},
+            "addedBy": self.added_by,
+            "addedAt": self.added_at,
+        }
