@@ -23,9 +23,7 @@ from bot.core.graze_client import GrazeClient
 from bot.memory import NamespaceMemory
 from bot.types import (
     CosmikConnection,
-    CosmikNoteCard,
     CosmikUrlCard,
-    NoteContent,
     UrlContent,
 )
 
@@ -412,30 +410,13 @@ class PhiAgent:
 
         @self.agent.tool
         async def note(ctx: RunContext[PhiDeps], content: str, tags: list[str]) -> str:
-            """Leave a note for your future self. Stored privately (fast recall) and publicly as a cosmik card (visible on the network)."""
-            parts: list[str] = []
-
-            # private: turbopuffer for fast vector recall
+            """Leave a note for your future self. Stored privately for fast vector recall."""
             if ctx.deps.memory:
                 await ctx.deps.memory.store_episodic_memory(
                     content, tags, source="tool"
                 )
-                parts.append("noted privately")
-            else:
-                parts.append("private memory not available")
-
-            # public: cosmik NOTE card on PDS
-            try:
-                card = CosmikNoteCard(content=NoteContent(text=content))
-                uri = await _create_cosmik_record(
-                    "network.cosmik.card", card.to_record()
-                )
-                parts.append(f"card created: {uri}")
-            except Exception as e:
-                logger.warning(f"failed to create cosmik note card: {e}")
-                parts.append("public card failed")
-
-            return f"{' + '.join(parts)} — {content[:100]}"
+                return f"noted — {content[:100]}"
+            return "private memory not available"
 
         @self.agent.tool
         async def save_url(

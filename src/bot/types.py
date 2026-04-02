@@ -1,5 +1,6 @@
 """Validated types for atproto records phi creates."""
 
+from datetime import UTC, datetime
 from typing import Annotated, Literal
 
 from pydantic import AfterValidator, BaseModel, Field
@@ -37,12 +38,29 @@ class NoteContent(BaseModel):
     text: str = Field(max_length=10000)
 
 
+class UrlMetadata(BaseModel):
+    """Metadata about a URL (nested under content.metadata per semble lexicon)."""
+
+    title: str | None = None
+    description: str | None = None
+
+
 class UrlContent(BaseModel):
     """Content for a URL-type cosmik card."""
 
     url: EntityRef
     title: str | None = None
     description: str | None = None
+
+
+# --- shared ---
+
+
+class StrongRef(BaseModel):
+    """AT Protocol strong reference — uri + cid pair."""
+
+    uri: EntityRef
+    cid: str
 
 
 # --- records ---
@@ -82,39 +100,61 @@ class CosmikConnection(BaseModel):
 class CosmikNoteCard(BaseModel):
     """network.cosmik.card record — NOTE type.
 
-    A text note stored on-protocol as a cosmik card. Indexed by semble.
+    Semble requires a parentCard (strongRef to an existing URL card) for NOTE
+    records. Standalone notes are dropped by the firehose handler.
     """
 
     type: Literal["NOTE"] = "NOTE"
     content: NoteContent
+    parent_card: StrongRef | None = None
 
     def to_record(self) -> dict:
-        return {"type": self.type, "content": {"text": self.content.text}}
+        record: dict = {
+            "type": self.type,
+            "content": {
+                "$type": "network.cosmik.card#noteContent",
+                "text": self.content.text,
+            },
+            "createdAt": datetime.now(UTC).isoformat(),
+        }
+        if self.parent_card:
+            record["parentCard"] = {
+                "uri": self.parent_card.uri,
+                "cid": self.parent_card.cid,
+            }
+        return record
 
 
 class CosmikUrlCard(BaseModel):
     """network.cosmik.card record — URL type.
 
     A bookmarked URL stored on-protocol as a cosmik card. Indexed by semble.
+    Metadata (title, description) goes under content.metadata per semble lexicon.
     """
 
     type: Literal["URL"] = "URL"
     content: UrlContent
 
     def to_record(self) -> dict:
-        record: dict = {"type": self.type, "content": {"url": self.content.url}}
+        record: dict = {
+            "type": self.type,
+            "content": {
+                "$type": "network.cosmik.card#urlContent",
+                "url": self.content.url,
+            },
+            "createdAt": datetime.now(UTC).isoformat(),
+        }
+        metadata: dict = {}
         if self.content.title:
-            record["content"]["title"] = self.content.title
+            metadata["title"] = self.content.title
         if self.content.description:
-            record["content"]["description"] = self.content.description
+            metadata["description"] = self.content.description
+        if metadata:
+            record["content"]["metadata"] = {
+                "$type": "network.cosmik.card#urlMetadata",
+                **metadata,
+            }
         return record
-
-
-class StrongRef(BaseModel):
-    """AT Protocol strong reference — uri + cid pair."""
-
-    uri: EntityRef
-    cid: str
 
 
 class CosmikCollection(BaseModel):
