@@ -6,6 +6,7 @@ import ipaddress
 import logging
 import os
 import socket
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -177,6 +178,10 @@ class PhiDeps:
     author_handle: str
     memory: NamespaceMemory | None = None
     thread_uri: str | None = None
+    thread_context: str | None = None
+    last_post_text: str | None = None
+    recent_activity: str | None = None
+    service_health: str | None = None
 
 
 def _is_owner(ctx: RunContext[PhiDeps]) -> bool:
@@ -262,6 +267,15 @@ async def _create_cosmik_record(collection: str, record: dict) -> str:
     return result.uri
 
 
+def _extract_query_text(prompt: str | Sequence[str | ImageUrl] | None) -> str:
+    """Extract plain text from a pydantic-ai prompt for use as a search query."""
+    if prompt is None:
+        return ""
+    if isinstance(prompt, str):
+        return prompt
+    return " ".join(part for part in prompt if isinstance(part, str))
+
+
 class PhiAgent:
     """phi - bluesky bot with structured memory and MCP tools."""
 
@@ -294,6 +308,71 @@ class PhiAgent:
             output_type=Response,
             deps_type=PhiDeps,
         )
+
+        # --- dynamic system prompts ---
+
+        @self.agent.system_prompt(dynamic=True)
+        def inject_today() -> str:
+            return f"[TODAY]: {date.today().isoformat()}"
+
+        @self.agent.system_prompt(dynamic=True)
+        def inject_thread(ctx: RunContext[PhiDeps]) -> str:
+            tc = ctx.deps.thread_context
+            if tc and tc != "No previous messages in this thread.":
+                return (
+                    f"[CURRENT THREAD - these are the messages in THIS thread]:\n{tc}"
+                )
+            return ""
+
+        @self.agent.system_prompt(dynamic=True)
+        async def inject_user_memory(ctx: RunContext[PhiDeps]) -> str:
+            if not ctx.deps.memory or not ctx.deps.author_handle:
+                return ""
+            query = _extract_query_text(ctx.prompt)
+            if not query:
+                return ""
+            try:
+                memory_context = await ctx.deps.memory.build_user_context(
+                    ctx.deps.author_handle, query_text=query, include_core=True
+                )
+                if memory_context:
+                    return f"[PAST CONTEXT WITH @{ctx.deps.author_handle}]:\n{memory_context}"
+            except Exception as e:
+                logger.warning(f"failed to retrieve memories: {e}")
+            return ""
+
+        @self.agent.system_prompt(dynamic=True)
+        async def inject_episodic(ctx: RunContext[PhiDeps]) -> str:
+            if not ctx.deps.memory:
+                return ""
+            query = _extract_query_text(ctx.prompt)
+            if not query:
+                return ""
+            try:
+                episodic_context = await ctx.deps.memory.get_episodic_context(query)
+                if episodic_context:
+                    return episodic_context
+            except Exception as e:
+                logger.warning(f"failed to retrieve episodic memories: {e}")
+            return ""
+
+        @self.agent.system_prompt(dynamic=True)
+        def inject_last_post(ctx: RunContext[PhiDeps]) -> str:
+            if ctx.deps.last_post_text:
+                return f"[YOUR LAST POST]: {ctx.deps.last_post_text}"
+            return ""
+
+        @self.agent.system_prompt(dynamic=True)
+        def inject_recent_activity(ctx: RunContext[PhiDeps]) -> str:
+            if ctx.deps.recent_activity:
+                return ctx.deps.recent_activity
+            return ""
+
+        @self.agent.system_prompt(dynamic=True)
+        def inject_service_health(ctx: RunContext[PhiDeps]) -> str:
+            if ctx.deps.service_health:
+                return f"[SERVICE HEALTH]:\n{ctx.deps.service_health}"
+            return ""
 
         # --- memory tools ---
 
@@ -770,62 +849,21 @@ class PhiAgent:
         image_urls: list[str] | None = None,
     ) -> Response:
         """Process a mention with structured memory context."""
-        # Build context from memory if available
-        memory_context = ""
-        episodic_context = ""
-        if self.memory:
-            try:
-                memory_context = await self.memory.build_user_context(
-                    author_handle, query_text=mention_text, include_core=True
-                )
-                logger.info(
-                    f"memory context for @{author_handle}: {len(memory_context)} chars"
-                )
-            except Exception as e:
-                logger.warning(f"failed to retrieve memories: {e}")
-
-            try:
-                episodic_context = await self.memory.get_episodic_context(mention_text)
-                if episodic_context:
-                    logger.info(f"episodic context: {len(episodic_context)} chars")
-            except Exception as e:
-                logger.warning(f"failed to retrieve episodic memories: {e}")
-
-        # Build full prompt with clearly labeled context sections
-        prompt_parts = [f"[TODAY]: {date.today().isoformat()}"]
-
-        if thread_context and thread_context != "No previous messages in this thread.":
-            prompt_parts.append(
-                f"[CURRENT THREAD - these are the messages in THIS thread]:\n{thread_context}"
-            )
-
-        if memory_context:
-            prompt_parts.append(
-                f"[PAST CONTEXT WITH @{author_handle}]:\n{memory_context}"
-            )
-
-        if episodic_context:
-            prompt_parts.append(episodic_context)
-
-        prompt_parts.append(f"\n[NEW MESSAGE]:\n@{author_handle}: {mention_text}")
-        prompt = "\n\n".join(prompt_parts)
-
-        # Build multimodal prompt if images are present
-        if image_urls:
-            user_prompt: str | list = [prompt] + [
-                ImageUrl(url=url) for url in image_urls
-            ]
-            logger.info(f"including {len(image_urls)} images in prompt")
-        else:
-            user_prompt = prompt
-
-        # Run agent with MCP tools + search_memory available
         logger.info(f"processing mention from @{author_handle}: {mention_text[:80]}")
+
         deps = PhiDeps(
             author_handle=author_handle,
             memory=self.memory,
             thread_uri=thread_uri,
+            thread_context=thread_context,
         )
+
+        # User prompt is just the message — context is injected via dynamic system prompts
+        user_prompt: str | list = f"@{author_handle}: {mention_text}"
+        if image_urls:
+            user_prompt = [user_prompt] + [ImageUrl(url=url) for url in image_urls]
+            logger.info(f"including {len(image_urls)} images in prompt")
+
         # Enter MCP servers before agent.run() so the connection is opened
         # in this task. Parallel tool calls inside agent.run() then just bump
         # the reference count instead of opening/closing across tasks.
@@ -854,9 +892,10 @@ class PhiAgent:
 
     async def process_reflection(self, last_post_text: str | None = None) -> Response:
         """Generate a daily reflection post from recent memory."""
-        # Gather context from memory
-        recent_interactions: list[dict] = []
-        episodic_context = ""
+        logger.info("processing daily reflection")
+
+        # Pre-fetch context that doesn't benefit from semantic search against the prompt
+        recent_activity = ""
         if self.memory:
             try:
                 recent_interactions = await self.memory.get_recent_interactions(
@@ -865,53 +904,42 @@ class PhiAgent:
                 logger.info(
                     f"reflection: {len(recent_interactions)} recent interactions"
                 )
-            except Exception as e:
-                logger.warning(f"failed to get recent interactions for reflection: {e}")
-            try:
-                episodic_context = await self.memory.get_episodic_context(
-                    "daily reflection recent events"
-                )
-                if episodic_context:
-                    logger.info(
-                        f"reflection episodic context: {len(episodic_context)} chars"
+                if recent_interactions:
+                    unique_handles = {i["handle"] for i in recent_interactions}
+                    lines = [
+                        f"[RECENT ACTIVITY]: {len(recent_interactions)} interactions "
+                        f"with {len(unique_handles)} people in the last day"
+                    ]
+                    exchange_lines = []
+                    for i in recent_interactions[:5]:
+                        exchange_lines.append(
+                            f"- with @{i['handle']}: {i['content'][:150]}"
+                        )
+                    lines.append("[SAMPLE EXCHANGES]:\n" + "\n".join(exchange_lines))
+                    recent_activity = "\n\n".join(lines)
+                else:
+                    recent_activity = (
+                        "[RECENT ACTIVITY]: no interactions in the last day"
                     )
             except Exception as e:
-                logger.warning(f"failed to get episodic context for reflection: {e}")
+                logger.warning(f"failed to get recent interactions for reflection: {e}")
 
-        # Check service health for reflection context
-        service_status = ""
+        service_health = ""
         try:
-            service_status = await _check_services_impl()
+            service_health = await _check_services_impl()
         except Exception:
             pass
 
-        # Build the reflection prompt
-        prompt_parts = [f"[TODAY]: {date.today().isoformat()}"]
+        deps = PhiDeps(
+            author_handle="",
+            memory=self.memory,
+            last_post_text=last_post_text,
+            recent_activity=recent_activity,
+            service_health=service_health,
+        )
 
-        if last_post_text:
-            prompt_parts.append(f"[YOUR LAST POST]: {last_post_text}")
-
-        if recent_interactions:
-            unique_handles = {i["handle"] for i in recent_interactions}
-            prompt_parts.append(
-                f"[RECENT ACTIVITY]: {len(recent_interactions)} interactions with {len(unique_handles)} people in the last day"
-            )
-            samples = recent_interactions[:5]
-            exchange_lines = []
-            for i in samples:
-                exchange_lines.append(f"- with @{i['handle']}: {i['content'][:150]}")
-            prompt_parts.append("[SAMPLE EXCHANGES]:\n" + "\n".join(exchange_lines))
-        else:
-            prompt_parts.append("[RECENT ACTIVITY]: no interactions in the last day")
-
-        if episodic_context:
-            prompt_parts.append(episodic_context)
-
-        if service_status:
-            prompt_parts.append(f"[SERVICE HEALTH]:\n{service_status}")
-
-        prompt_parts.append(
-            "[REFLECTION TASK]: you're posting a short top-level reflection on your day. "
+        reflection_task = (
+            "you're posting a short top-level reflection on your day. "
             "not a thread, not a reply — just something you want to put out there. "
             "use what you know: recent exchanges, things you noticed, or just the fact that you're here. "
             "if your last post already covers this ground, or you'd just be rehashing the same themes, "
@@ -919,16 +947,11 @@ class PhiAgent:
             "if you do post, keep it brief and genuine — your voice, not a performance."
         )
 
-        prompt = "\n\n".join(prompt_parts)
-
-        logger.info("processing daily reflection")
-        deps = PhiDeps(author_handle="", memory=self.memory)
-
         toolsets = self._mcp_toolsets()
         async with contextlib.AsyncExitStack() as stack:
             for ts in toolsets:
                 await stack.enter_async_context(ts)
-            result = await self.agent.run(prompt, deps=deps, toolsets=toolsets)
+            result = await self.agent.run(reflection_task, deps=deps, toolsets=toolsets)
 
         logger.info(
             f"reflection decided: {result.output.action}"
