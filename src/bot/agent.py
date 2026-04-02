@@ -138,8 +138,10 @@ your own posts:
 - get_own_posts: read your own recent top-level posts. use this when you need to review what you've posted — do NOT use list_records for your own posts.
 
 service health:
-- check_services: check health of nate's services (plyr, PDS, prefect, relays, etc).
-  use during daily reflection. if something is down, post about it and tag @{settings.owner_handle}.
+- check_services: check health of your operator's infrastructure (plyr, PDS, prefect, relays, etc).
+  these are nate's services, not yours — their status has nothing to do with whether you're online.
+  use during daily reflection or when someone specifically asks about service/infrastructure status.
+  if something is down, post about it and tag @{settings.owner_handle}.
 
 IMPORTANT: never paginate through list_records repeatedly. if you need more data than one call returns, work with what you have. endless pagination wastes your request budget and produces no response.
 """.strip()
@@ -815,9 +817,9 @@ class PhiAgent:
 
         @self.agent.tool
         async def check_services(ctx: RunContext[PhiDeps]) -> str:
-            """Check health of nate's services via the evergreen status proxy.
-            Returns status, response time, and any failures. Use during daily
-            reflection or when asked about service health."""
+            """Check health of your operator's infrastructure services (not your own status).
+            Returns status, response time, and any failures for plyr, PDS, prefect, relays, etc.
+            Use during daily reflection or when someone specifically asks about service/infrastructure health."""
             return await _check_services_impl()
 
         logger.info("phi agent initialized with pdsx + pub-search mcp tools")
