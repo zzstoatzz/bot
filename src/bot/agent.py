@@ -30,6 +30,69 @@ from bot.types import (
 
 logger = logging.getLogger("bot.agent")
 
+EVERGREEN_PROXY = "https://evergreen-proxy.nate-8fe.workers.dev"
+SERVICE_CHECKS = [
+    {"url": "https://api.plyr.fm/health", "name": "plyr api"},
+    {"url": "https://plyr.fm", "name": "plyr frontend"},
+    {"url": "https://pds.zzstoatzz.io/xrpc/_health", "name": "PDS"},
+    {"url": "https://prefect-server.waow.tech/api/health", "name": "prefect"},
+    {"url": "https://prefect-metrics.waow.tech/api/health", "name": "grafana"},
+    {"url": "https://relay.waow.tech/xrpc/_health", "name": "indigo relay"},
+    {"url": "https://zlay.waow.tech/_health", "name": "zlay"},
+    {"url": "https://coral.fly.dev/health", "name": "trending"},
+    {
+        "url": "https://leaflet-search-backend.fly.dev/health",
+        "name": "standard.site backend",
+    },
+    {"url": "https://pub-search.waow.tech", "name": "pub-search"},
+    {"url": "https://typeahead.waow.tech/stats", "name": "typeahead"},
+    {"url": "https://zig-bsky-feed.fly.dev/health", "name": "music-feed"},
+    {"url": "https://pollz-backend.fly.dev/health", "name": "pollz"},
+]
+
+
+async def _check_services_impl() -> str:
+    """Hit the evergreen proxy with all service checks. Returns formatted status."""
+    async with httpx.AsyncClient(timeout=30) as client:
+        try:
+            r = await client.post(
+                EVERGREEN_PROXY,
+                json={"checks": SERVICE_CHECKS},
+            )
+            r.raise_for_status()
+            results = r.json()
+        except Exception as e:
+            return f"evergreen proxy unreachable: {e}"
+
+    failures: list[str] = []
+    healthy: list[str] = []
+
+    checks = results if isinstance(results, list) else results.get("results", [])
+    # build name lookup from our request
+    name_by_url = {c["url"]: c["name"] for c in SERVICE_CHECKS}
+
+    for check in checks:
+        url = check.get("url", "")
+        name = name_by_url.get(url, url)
+        status = check.get("status")
+        ms = check.get("ms", "?")
+        ok = check.get("ok", False)
+
+        if ok:
+            healthy.append(f"{name}: ok ({ms}ms)")
+        else:
+            error = check.get("error", f"status {status}")
+            failures.append(f"{name}: DOWN ({error})")
+
+    parts: list[str] = []
+    if failures:
+        parts.append("FAILURES:\n" + "\n".join(failures))
+    parts.append(f"{len(healthy)}/{len(healthy) + len(failures)} services healthy")
+    if not failures:
+        parts.append("\n".join(healthy))
+
+    return "\n".join(parts)
+
 
 def _build_operational_instructions() -> str:
     """Build operational instructions with the current owner handle interpolated."""
@@ -72,6 +135,10 @@ feeds — you can create and read bluesky feeds:
 
 your own posts:
 - get_own_posts: read your own recent top-level posts. use this when you need to review what you've posted — do NOT use list_records for your own posts.
+
+service health:
+- check_services: check health of nate's services (plyr, PDS, prefect, relays, etc).
+  use during daily reflection. if something is down, post about it and tag @{settings.owner_handle}.
 
 IMPORTANT: never paginate through list_records repeatedly. if you need more data than one call returns, work with what you have. endless pagination wastes your request budget and produces no response.
 """.strip()
@@ -667,6 +734,13 @@ class PhiAgent:
             except Exception as e:
                 return f"failed to get own posts: {e}"
 
+        @self.agent.tool
+        async def check_services(ctx: RunContext[PhiDeps]) -> str:
+            """Check health of nate's services via the evergreen status proxy.
+            Returns status, response time, and any failures. Use during daily
+            reflection or when asked about service health."""
+            return await _check_services_impl()
+
         logger.info("phi agent initialized with pdsx + pub-search mcp tools")
 
     def _mcp_toolsets(self) -> list[MCPServerStreamableHTTP]:
@@ -804,6 +878,13 @@ class PhiAgent:
             except Exception as e:
                 logger.warning(f"failed to get episodic context for reflection: {e}")
 
+        # Check service health for reflection context
+        service_status = ""
+        try:
+            service_status = await _check_services_impl()
+        except Exception:
+            pass
+
         # Build the reflection prompt
         prompt_parts = [f"[TODAY]: {date.today().isoformat()}"]
 
@@ -825,6 +906,9 @@ class PhiAgent:
 
         if episodic_context:
             prompt_parts.append(episodic_context)
+
+        if service_status:
+            prompt_parts.append(f"[SERVICE HEALTH]:\n{service_status}")
 
         prompt_parts.append(
             "[REFLECTION TASK]: you're posting a short top-level reflection on your day. "
