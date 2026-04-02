@@ -1,10 +1,8 @@
 """Tests for rate limiting and SSRF protection."""
 
 import ipaddress
-import socket
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, Mock
 
-import pytest
 from limits import parse as parse_limit
 from limits.storage import MemoryStorage
 from limits.strategies import MovingWindowRateLimiter
@@ -64,13 +62,17 @@ class TestMessageHandlerRateLimiting:
 
         try:
             # first call succeeds (hits the limiter, then dispatches)
-            await message_handler.MessageHandler.handle_notification(handler, notification)
+            await message_handler.MessageHandler.handle_notification(
+                handler, notification
+            )
             handler._handle_post.assert_called_once()
 
             handler._handle_post.reset_mock()
 
             # second call is rate limited — _handle_post not called
-            await message_handler.MessageHandler.handle_notification(handler, notification)
+            await message_handler.MessageHandler.handle_notification(
+                handler, notification
+            )
             handler._handle_post.assert_not_called()
         finally:
             message_handler._limiter = original_limiter
@@ -84,10 +86,14 @@ class TestSSRFProtection:
         private_ips = ["127.0.0.1", "10.0.0.1", "192.168.1.1", "172.16.0.1", "::1"]
         for ip_str in private_ips:
             ip = ipaddress.ip_address(ip_str)
-            assert ip.is_private or ip.is_loopback or ip.is_link_local, f"{ip_str} should be blocked"
+            assert ip.is_private or ip.is_loopback or ip.is_link_local, (
+                f"{ip_str} should be blocked"
+            )
 
     def test_public_ips_allowed(self):
         public_ips = ["8.8.8.8", "1.1.1.1", "140.82.121.4"]
         for ip_str in public_ips:
             ip = ipaddress.ip_address(ip_str)
-            assert not (ip.is_private or ip.is_loopback or ip.is_link_local), f"{ip_str} should be allowed"
+            assert not (ip.is_private or ip.is_loopback or ip.is_link_local), (
+                f"{ip_str} should be allowed"
+            )

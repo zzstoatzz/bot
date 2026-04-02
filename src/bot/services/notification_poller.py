@@ -2,7 +2,7 @@
 
 import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from bot.config import settings
 from bot.core.atproto_client import BotClient
@@ -112,7 +112,7 @@ class NotificationPoller:
 
     async def _maybe_daily_post(self):
         """Post a daily reflection if it's past the target hour and we haven't posted today."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         if now.hour < settings.daily_reflection_hour:
             return
         if bot_status.paused:

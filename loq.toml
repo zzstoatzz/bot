@@ -21,4 +21,4 @@ max_lines = 836
 
 [[rules]]
 path = "src/bot/main.py"
-max_lines = 679
+max_lines = 726

@@ -4,13 +4,15 @@ import pytest
 from pydantic import ValidationError
 
 from bot.types import (
+    CosmikCollection,
+    CosmikCollectionLink,
     CosmikConnection,
     CosmikNoteCard,
     CosmikUrlCard,
     NoteContent,
+    StrongRef,
     UrlContent,
 )
-
 
 # --- CosmikConnection ---
 
@@ -73,7 +75,12 @@ def test_note_card_valid():
 
 def test_note_card_to_record():
     card = CosmikNoteCard(content=NoteContent(text="a thought"))
-    assert card.to_record() == {"type": "NOTE", "content": {"text": "a thought"}}
+    record = card.to_record()
+    assert record["type"] == "NOTE"
+    assert record["content"]["$type"] == "network.cosmik.card#noteContent"
+    assert record["content"]["text"] == "a thought"
+    assert "createdAt" in record
+    assert "parentCard" not in record
 
 
 def test_note_card_rejects_empty():
@@ -92,7 +99,9 @@ def test_note_card_rejects_too_long():
 
 def test_url_card_valid():
     card = CosmikUrlCard(
-        content=UrlContent(url="https://example.com", title="Example", description="A site")
+        content=UrlContent(
+            url="https://example.com", title="Example", description="A site"
+        )
     )
     assert card.type == "URL"
     assert card.content.url == "https://example.com"
@@ -102,15 +111,24 @@ def test_url_card_to_record_full():
     card = CosmikUrlCard(
         content=UrlContent(url="https://example.com", title="Ex", description="desc")
     )
-    assert card.to_record() == {
-        "type": "URL",
-        "content": {"url": "https://example.com", "title": "Ex", "description": "desc"},
-    }
+    record = card.to_record()
+    assert record["type"] == "URL"
+    assert record["content"]["$type"] == "network.cosmik.card#urlContent"
+    assert record["content"]["url"] == "https://example.com"
+    assert record["content"]["metadata"]["$type"] == "network.cosmik.card#urlMetadata"
+    assert record["content"]["metadata"]["title"] == "Ex"
+    assert record["content"]["metadata"]["description"] == "desc"
+    assert "createdAt" in record
 
 
 def test_url_card_to_record_minimal():
     card = CosmikUrlCard(content=UrlContent(url="https://example.com"))
-    assert card.to_record() == {"type": "URL", "content": {"url": "https://example.com"}}
+    record = card.to_record()
+    assert record["type"] == "URL"
+    assert record["content"]["$type"] == "network.cosmik.card#urlContent"
+    assert record["content"]["url"] == "https://example.com"
+    assert "metadata" not in record["content"]
+    assert "createdAt" in record
 
 
 def test_url_card_rejects_bare_string():
@@ -121,3 +139,58 @@ def test_url_card_rejects_bare_string():
 def test_url_card_accepts_at_uri():
     card = CosmikUrlCard(content=UrlContent(url="at://did:plc:abc/collection/rkey"))
     assert card.content.url == "at://did:plc:abc/collection/rkey"
+
+
+# --- CosmikNoteCard with parentCard ---
+
+
+def test_note_card_with_parent():
+    parent = StrongRef(uri="at://did:plc:abc/network.cosmik.card/xyz", cid="bafyabc")
+    card = CosmikNoteCard(content=NoteContent(text="child note"), parent_card=parent)
+    record = card.to_record()
+    assert record["parentCard"] == {"uri": parent.uri, "cid": parent.cid}
+
+
+# --- CosmikCollection ---
+
+
+def test_collection_to_record():
+    coll = CosmikCollection(name="epistemology", description="memory and knowledge")
+    record = coll.to_record()
+    assert record == {
+        "name": "epistemology",
+        "accessType": "OPEN",
+        "description": "memory and knowledge",
+    }
+
+
+def test_collection_minimal():
+    coll = CosmikCollection(name="misc")
+    record = coll.to_record()
+    assert record == {"name": "misc", "accessType": "OPEN"}
+
+
+def test_collection_rejects_long_name():
+    with pytest.raises(ValidationError):
+        CosmikCollection(name="x" * 101)
+
+
+# --- CosmikCollectionLink ---
+
+
+def test_collection_link_to_record():
+    link = CosmikCollectionLink(
+        collection=StrongRef(
+            uri="at://did:plc:abc/network.cosmik.collection/c1", cid="bafycol"
+        ),
+        card=StrongRef(uri="at://did:plc:abc/network.cosmik.card/k1", cid="bafycard"),
+        added_by="did:plc:abc",
+        added_at="2026-04-01T00:00:00Z",
+    )
+    record = link.to_record()
+    assert (
+        record["collection"]["uri"] == "at://did:plc:abc/network.cosmik.collection/c1"
+    )
+    assert record["card"]["cid"] == "bafycard"
+    assert record["addedBy"] == "did:plc:abc"
+    assert record["addedAt"] == "2026-04-01T00:00:00Z"
