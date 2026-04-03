@@ -203,14 +203,29 @@ async def root():
     .card-post {{ border-left-color: #58a6ff; }}
     .card-note {{ border-left-color: #a371f7; }}
     .card-url {{ border-left-color: #2ea043; }}
+    .card-header {{
+        display: flex; align-items: center; gap: 6px;
+        margin-bottom: 6px;
+    }}
+    .card-icon {{ flex-shrink: 0; }}
+    .card-icon svg {{ display: block; }}
     .card-type {{
         font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;
-        margin-bottom: 6px; font-weight: 500;
+        font-weight: 500;
     }}
     .type-post {{ color: #58a6ff; }}
     .type-note {{ color: #a371f7; }}
     .type-url {{ color: #2ea043; }}
+    .card-title {{ font-size: 14px; font-weight: 500; color: #c9d1d9; margin-bottom: 4px; }}
     .card-text {{ font-size: 14px; line-height: 1.5; margin-bottom: 8px; word-break: break-word; }}
+    .card-text a {{ color: #58a6ff; text-decoration: none; }}
+    .card-text a:hover {{ text-decoration: underline; }}
+    .card-domain {{
+        font-size: 12px; color: #8b949e; margin-bottom: 6px;
+        display: flex; align-items: center; gap: 4px;
+    }}
+    .card-domain a {{ color: #8b949e; }}
+    .card-domain a:hover {{ color: #c9d1d9; }}
     .card-meta {{ font-size: 12px; color: #484f58; }}
     .card-meta a {{ color: #484f58; }}
     .card-meta a:hover {{ color: #8b949e; }}
@@ -251,22 +266,63 @@ async def root():
         return Math.floor(s / 86400) + 'd ago';
     }}
     function truncate(s, n) {{ return s.length > n ? s.slice(0, n) + '...' : s; }}
+    function linkify(text) {{
+        return text.replace(/(https?:\/\/[^\s<>"{{}}|\\^`\[\]]+)/g,
+            '<a href="$1" target="_blank" rel="noopener">$1</a>');
+    }}
+    function getDomain(url) {{
+        try {{ return new URL(url).hostname.replace(/^www\./, ''); }}
+        catch {{ return ''; }}
+    }}
+    const icons = {{
+        post: `<svg width="14" height="14" viewBox="0 0 600 530" fill="#58a6ff">
+            <path d="M135.72 44.03C202.22 93.87 284.5 149.63 300 163.14c15.5-13.51 97.78-69.27 164.28-119.11C528.23-2.96 600-21.03 600 66.94c0 17.58-10.06 147.67-15.96 168.71-20.48 73.22-95.26 91.94-163.03 80.59 118.4 20.18 148.52 86.98 83.52 153.79C395 580.88 300 538.04 300 538.04s-95-42.84-204.53 67.97C30.47 418.22 60.59 351.42 178.99 331.24c-67.77 11.35-142.55-7.37-163.03-80.59C10.06 229.61 0 99.52 0 81.94c0-87.97 71.77-69.9 135.72-37.91z"/>
+        </svg>`,
+        note: `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#a371f7" stroke-width="1.5">
+            <path d="M8 1l2.12 4.3 4.74.69-3.43 3.34.81 4.72L8 11.77l-4.24 2.23.81-4.72L1.14 5.94l4.74-.69L8 1z"/>
+        </svg>`,
+        url: `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#2ea043" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6.75 9.25a3.5 3.5 0 005-.5M9.25 6.75a3.5 3.5 0 00-5 .5M10 3.5l1-1a2.12 2.12 0 013 3l-1 1M6 12.5l-1 1a2.12 2.12 0 01-3-3l1-1"/>
+        </svg>`
+    }};
+    const labels = {{
+        post: 'bluesky',
+        note: 'semble note',
+        url: 'semble bookmark'
+    }};
+    function viewUrl(item) {{
+        if (item.url) return item.url;
+        if (item.uri && item.uri.startsWith('at://')) return 'https://pds.ls/' + item.uri;
+        return '';
+    }}
     fetch('/api/activity')
         .then(r => r.json())
         .then(items => {{
             const el = document.getElementById('feed');
             document.getElementById('feed-loading').remove();
             if (!items.length) {{ el.textContent = 'no recent activity'; return; }}
-            el.innerHTML = items.map(i => `
+            el.innerHTML = items.map(i => {{
+                const domain = i.url ? getDomain(i.url) : '';
+                const domainHtml = (i.type === 'url' && domain)
+                    ? `<div class="card-domain"><a href="${{i.url}}" target="_blank" rel="noopener">${{domain}}</a></div>`
+                    : '';
+                const titleHtml = i.title ? `<div class="card-title">${{i.title}}</div>` : '';
+                const link = viewUrl(i);
+                return `
                 <div class="card card-${{i.type}}">
-                    <div class="card-type type-${{i.type}}">${{i.type}}</div>
-                    <div class="card-text">${{truncate(i.text || '', 200)}}</div>
+                    <div class="card-header">
+                        <span class="card-icon">${{icons[i.type] || ''}}</span>
+                        <div class="card-type type-${{i.type}}">${{labels[i.type] || i.type}}</div>
+                    </div>
+                    ${{domainHtml}}
+                    ${{titleHtml}}
+                    <div class="card-text">${{linkify(truncate(i.text || '', 300))}}</div>
                     <div class="card-meta">
                         ${{timeAgo(i.time)}}
-                        ${{i.url ? ` &middot; <a href="${{i.url}}" target="_blank" rel="noopener">view</a>` : ''}}
+                        ${{link ? ` &middot; <a href="${{link}}" target="_blank" rel="noopener">view</a>` : ''}}
                     </div>
-                </div>
-            `).join('');
+                </div>`;
+            }}).join('');
         }})
         .catch(() => {{
             document.getElementById('feed-loading').textContent = 'failed to load activity';
@@ -450,13 +506,20 @@ async def activity_feed():
             card_type = value.get("type", "NOTE")
             item_type = "url" if card_type == "URL" else "note"
             content = value.get("content", {})
+            # metadata may be nested under content.metadata (semble lexicon)
+            meta = content.get("metadata", {}) if isinstance(content, dict) else {}
             if item_type == "url":
-                text = (
-                    content.get("title", "")
-                    or content.get("description", "")
-                    or content.get("url", "")
-                )
+                card_title = content.get("title", "") or meta.get("title", "")
+                desc = content.get("description", "") or meta.get("description", "")
+                # skip semble tag metadata ("discussed in context of: ...")
+                if desc and desc.startswith("discussed in context of:"):
+                    desc = ""
+                # text is the description (or URL fallback), title is separate
+                text = desc or (content.get("url", "") if not card_title else "")
             else:
+                card_title = (
+                    content.get("title", "") if isinstance(content, dict) else ""
+                )
                 text = (
                     content.get("text", "")
                     if isinstance(content, dict)
@@ -469,6 +532,7 @@ async def activity_feed():
                 {
                     "type": item_type,
                     "text": text,
+                    "title": card_title or None,
                     "time": card_time,
                     "uri": rec.get("uri", ""),
                     "url": content.get("url") if item_type == "url" else None,
@@ -556,7 +620,6 @@ async def memory_page():
     const radii = {{ phi: 14, user: 9, tag: 5, episodic: 7 }};
 
     async function fetchAvatars(nodes) {{
-        // collect identity handles for phi + user nodes
         const identities = nodes
             .filter(d => d.type === 'phi' || d.type === 'user')
             .map(d => {{
@@ -565,17 +628,21 @@ async def memory_page():
             }})
             .filter(h => h && !h.includes('example'));
         if (!identities.length) return {{}};
-        const params = identities.map(h => 'actors=' + encodeURIComponent(h)).join('&');
-        try {{
-            const res = await fetch('https://typeahead.waow.tech/xrpc/app.bsky.actor.getProfiles?' + params);
-            if (!res.ok) return {{}};
-            const data = await res.json();
-            const map = {{}};
-            for (const p of data.profiles || []) {{
-                if (p.avatar) map[p.handle] = p.avatar;
-            }}
-            return map;
-        }} catch {{ return {{}}; }}
+        const map = {{}};
+        // batch into chunks of 25 (getProfiles limit)
+        for (let i = 0; i < identities.length; i += 25) {{
+            const chunk = identities.slice(i, i + 25);
+            const params = chunk.map(h => 'actors=' + encodeURIComponent(h)).join('&');
+            try {{
+                const res = await fetch('https://typeahead.waow.tech/xrpc/app.bsky.actor.getProfiles?' + params);
+                if (!res.ok) continue;
+                const data = await res.json();
+                for (const p of data.profiles || []) {{
+                    if (p.avatar) map[p.handle] = p.avatar;
+                }}
+            }} catch {{ /* skip failed batch */ }}
+        }}
+        return map;
     }}
 
     fetch('/api/memory/graph')

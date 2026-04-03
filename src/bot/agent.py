@@ -425,10 +425,11 @@ class PhiAgent:
         async def save_url(
             ctx: RunContext[PhiDeps],
             url: str,
-            title: str | None = None,
+            title: str,
             description: str | None = None,
         ) -> str:
-            """Save a URL as a cosmik card on your PDS. Use when you find something worth bookmarking publicly."""
+            """Save a URL as a cosmik card on your PDS. Use when you find something worth bookmarking publicly.
+            Always provide a concise, descriptive title — this is what appears in the activity feed."""
             try:
                 card = CosmikUrlCard(
                     content=UrlContent(url=url, title=title, description=description)

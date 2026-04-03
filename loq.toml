@@ -17,8 +17,8 @@ max_lines = 964
 
 [[rules]]
 path = "src/bot/memory/namespace_memory.py"
-max_lines = 836
+max_lines = 872
 
 [[rules]]
 path = "src/bot/main.py"
-max_lines = 726
+max_lines = 793

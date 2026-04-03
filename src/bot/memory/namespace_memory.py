@@ -3,8 +3,6 @@
 import asyncio
 import hashlib
 import logging
-import math
-import random
 from datetime import datetime
 from typing import ClassVar
 
@@ -615,36 +613,28 @@ class NamespaceMemory:
     def _project_2d(
         centroids: dict[str, list[float]],
     ) -> dict[str, tuple[float, float]]:
-        """Project high-dimensional centroids to 2D via fixed random projection."""
-        if not centroids:
-            return {}
-        dim = len(next(iter(centroids.values())))
-        rng = random.Random(42)
-        axis_a = [rng.gauss(0, 1) for _ in range(dim)]
-        axis_b = [rng.gauss(0, 1) for _ in range(dim)]
-        # normalize axes
-        norm_a = math.sqrt(sum(v * v for v in axis_a))
-        norm_b = math.sqrt(sum(v * v for v in axis_b))
-        axis_a = [v / norm_a for v in axis_a]
-        axis_b = [v / norm_b for v in axis_b]
+        """Project high-dimensional centroids to 2D via PCA (top 2 principal components)."""
+        import numpy as np
 
-        raw: dict[str, tuple[float, float]] = {}
-        for nid, vec in centroids.items():
-            x = sum(a * b for a, b in zip(axis_a, vec))
-            y = sum(a * b for a, b in zip(axis_b, vec))
-            raw[nid] = (x, y)
+        if len(centroids) < 2:
+            return {nid: (0.0, 0.0) for nid in centroids}
 
-        if not raw:
-            return {}
-        xs = [p[0] for p in raw.values()]
-        ys = [p[1] for p in raw.values()]
-        x_min, x_max = min(xs), max(xs)
-        y_min, y_max = min(ys), max(ys)
-        x_span = x_max - x_min or 1.0
-        y_span = y_max - y_min or 1.0
+        ids = list(centroids.keys())
+        X = np.array([centroids[nid] for nid in ids])
+        X -= X.mean(axis=0)
+
+        # SVD on centered data — U[:, :2] * S[:2] gives the top-2 PC projections
+        U, S, _ = np.linalg.svd(X, full_matrices=False)
+        proj = U[:, :2] * S[:2]
+
+        # normalize to [-1, 1]
+        for col in range(2):
+            lo, hi = proj[:, col].min(), proj[:, col].max()
+            span = hi - lo or 1.0
+            proj[:, col] = 2 * (proj[:, col] - lo) / span - 1
+
         return {
-            nid: (2 * (p[0] - x_min) / x_span - 1, 2 * (p[1] - y_min) / y_span - 1)
-            for nid, p in raw.items()
+            nid: (float(proj[i, 0]), float(proj[i, 1])) for i, nid in enumerate(ids)
         }
 
     def get_graph_data(self) -> dict:

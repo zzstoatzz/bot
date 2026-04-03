@@ -12,6 +12,9 @@ from bot.status import bot_status
 logger = logging.getLogger("bot.poller")
 
 
+MAX_CONCURRENT = 3
+
+
 class NotificationPoller:
     """Polls for and processes Bluesky notifications."""
 
@@ -23,6 +26,8 @@ class NotificationPoller:
         self._processed_uris: set[str] = set()
         self._first_poll = True
         self._last_daily_post: datetime | None = None
+        self._semaphore = asyncio.Semaphore(MAX_CONCURRENT)
+        self._background_tasks: set[asyncio.Task] = set()
 
     async def start(self) -> asyncio.Task:
         """Start polling for notifications."""
@@ -32,7 +37,7 @@ class NotificationPoller:
         return self._task
 
     async def stop(self):
-        """Stop polling."""
+        """Stop polling and wait for in-flight handlers to finish."""
         self._running = False
         bot_status.polling_active = False
         if self._task and not self._task.done():
@@ -41,6 +46,9 @@ class NotificationPoller:
                 await self._task
             except asyncio.CancelledError:
                 pass
+        # wait for any in-flight notification handlers
+        if self._background_tasks:
+            await asyncio.gather(*self._background_tasks, return_exceptions=True)
 
     async def _poll_loop(self):
         """Main polling loop."""
@@ -55,7 +63,10 @@ class NotificationPoller:
                 continue
 
             try:
-                await self._maybe_daily_post()
+                if self._should_do_daily_post():
+                    task = asyncio.create_task(self._maybe_daily_post())
+                    self._background_tasks.add(task)
+                    task.add_done_callback(self._background_tasks.discard)
             except Exception as e:
                 logger.error(f"daily reflection error: {e}", exc_info=settings.debug)
 
@@ -90,36 +101,54 @@ class NotificationPoller:
                 logger.debug(f"paused, skipping {len(unread)} unread notifications")
             return
 
-        processed_any = False
+        dispatched = 0
 
-        # Process notifications from oldest to newest
+        # Dispatch notifications as concurrent background tasks
         for notification in reversed(notifications):
             if notification.is_read or notification.uri in self._processed_uris:
                 continue
 
             self._processed_uris.add(notification.uri)
-            await self.handler.handle_notification(notification)
-            processed_any = True
+            task = asyncio.create_task(self._handle_with_semaphore(notification))
+            self._background_tasks.add(task)
+            task.add_done_callback(self._background_tasks.discard)
+            dispatched += 1
 
-        # Mark all notifications as seen
-        if processed_any:
+        # Mark as read immediately — don't wait for processing
+        if dispatched:
             await self.client.mark_notifications_seen(check_time)
-            logger.info("marked notifications as read")
+            logger.info(f"dispatched {dispatched} notifications, marked as read")
 
-            # Clean up old processed URIs to prevent memory growth
             if len(self._processed_uris) > 1000:
                 self._processed_uris = set(list(self._processed_uris)[-500:])
 
-    async def _maybe_daily_post(self):
-        """Post a daily reflection if it's past the target hour and we haven't posted today."""
+    async def _handle_with_semaphore(self, notification):
+        """Handle a single notification with concurrency limiting."""
+        async with self._semaphore:
+            try:
+                await self.handler.handle_notification(notification)
+            except Exception as e:
+                logger.error(
+                    f"notification handler error: {e}", exc_info=settings.debug
+                )
+                bot_status.record_error()
+
+    def _should_do_daily_post(self) -> bool:
+        """Check if it's time for a daily reflection."""
         now = datetime.now(UTC)
         if now.hour < settings.daily_reflection_hour:
-            return
+            return False
         if bot_status.paused:
-            return
+            return False
         if self._last_daily_post and self._last_daily_post.date() == now.date():
-            return
+            return False
+        return True
 
+    async def _maybe_daily_post(self):
+        """Post a daily reflection."""
+        self._last_daily_post = datetime.now(UTC)
         logger.info("triggering daily reflection")
-        self._last_daily_post = now
-        await self.handler.daily_reflection()
+        try:
+            await self.handler.daily_reflection()
+        except Exception as e:
+            logger.error(f"daily reflection error: {e}", exc_info=settings.debug)
