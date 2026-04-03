@@ -89,6 +89,7 @@ class GrazeClient:
         """
         # 1. create the feed generator record on phi's PDS
         await bot_client.authenticate()
+        assert bot_client.client.me is not None
         did = bot_client.client.me.did
         feed_uri = f"at://{did}/app.bsky.feed.generator/{rkey}"
 

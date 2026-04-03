@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 
 import httpx
 import logfire
-from fastapi import FastAPI, Request
+from fastapi import BackgroundTasks, FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from slowapi import Limiter
 from slowapi.errors import RateLimitExceeded
@@ -62,6 +62,7 @@ async def lifespan(app: FastAPI):
 
     # Start notification polling
     poller = NotificationPoller(bot_client)
+    app.state.poller = poller
     await poller.start()
 
     logger.info("phi is online, listening for mentions")
@@ -375,6 +376,19 @@ async def resume(request: Request):
     return {"paused": False}
 
 
+@app.post("/api/control/post")
+async def trigger_post(request: Request, background_tasks: BackgroundTasks):
+    """Trigger an original thought post immediately."""
+    if err := _check_control_token(request):
+        return err
+    poller: NotificationPoller | None = getattr(app.state, "poller", None)
+    if not poller:
+        return JSONResponse({"error": "poller not available"}, status_code=503)
+    background_tasks.add_task(poller.handler.original_thought)
+    logger.info("original thought triggered via API")
+    return {"triggered": True}
+
+
 @app.get("/status", response_class=HTMLResponse)
 async def status_page():
     """Status page."""
@@ -450,19 +464,22 @@ def _tid_to_iso(tid: str) -> str:
         return ""
 
 
-_activity_cache: dict[str, object] = {"data": None, "expires": 0.0}
+_activity_cache_data: list[dict] | None = None
+_activity_cache_expires: float = 0.0
 _ACTIVITY_CACHE_TTL = 60  # seconds
 
-_graph_cache: dict[str, object] = {"data": None, "expires": 0.0}
+_graph_cache_data: dict | None = None
+_graph_cache_expires: float = 0.0
 _GRAPH_CACHE_TTL = 60  # seconds
 
 
 @app.get("/api/activity")
 async def activity_feed():
     """Recent posts and cosmik cards, merged by time."""
+    global _activity_cache_data, _activity_cache_expires
     now = time.monotonic()
-    if _activity_cache["data"] is not None and now < _activity_cache["expires"]:
-        return JSONResponse(_activity_cache["data"])
+    if _activity_cache_data is not None and now < _activity_cache_expires:
+        return JSONResponse(_activity_cache_data)
 
     items: list[dict] = []
     async with httpx.AsyncClient(timeout=10) as client:
@@ -540,8 +557,8 @@ async def activity_feed():
             )
 
     items.sort(key=lambda x: x.get("time", ""), reverse=True)
-    _activity_cache["data"] = items
-    _activity_cache["expires"] = now + _ACTIVITY_CACHE_TTL
+    _activity_cache_data = items
+    _activity_cache_expires = now + _ACTIVITY_CACHE_TTL
     return JSONResponse(items)
 
 
@@ -549,16 +566,17 @@ async def activity_feed():
 @limiter.limit("10/minute")
 async def memory_graph_data(request: Request):
     """Return graph nodes and edges as JSON."""
+    global _graph_cache_data, _graph_cache_expires
     now = time.monotonic()
-    if _graph_cache["data"] is not None and now < _graph_cache["expires"]:
-        return JSONResponse(_graph_cache["data"])
+    if _graph_cache_data is not None and now < _graph_cache_expires:
+        return JSONResponse(_graph_cache_data)
 
     try:
         memory = NamespaceMemory(api_key=settings.turbopuffer_api_key)
         loop = asyncio.get_event_loop()
         data = await loop.run_in_executor(None, memory.get_graph_data)
-        _graph_cache["data"] = data
-        _graph_cache["expires"] = now + _GRAPH_CACHE_TTL
+        _graph_cache_data = data
+        _graph_cache_expires = now + _GRAPH_CACHE_TTL
         return JSONResponse(data)
     except Exception as e:
         logger.warning(f"memory graph failed: {e}")

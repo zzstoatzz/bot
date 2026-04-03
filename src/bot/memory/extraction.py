@@ -111,25 +111,29 @@ _reconciliation_agent: Agent[None, ReconciliationResult] | None = None
 def get_extraction_agent() -> Agent[None, ExtractionResult]:
     global _extraction_agent
     if _extraction_agent is None:
-        _extraction_agent = Agent(
+        _extraction_agent = Agent[None, ExtractionResult](
             name="observation-extractor",
             model=f"anthropic:{settings.extraction_model}",
             output_type=ExtractionResult,
             system_prompt=EXTRACTION_SYSTEM_PROMPT,
         )
-    return _extraction_agent
+    agent = _extraction_agent
+    assert agent is not None
+    return agent
 
 
 def get_reconciliation_agent() -> Agent[None, ReconciliationResult]:
     global _reconciliation_agent
     if _reconciliation_agent is None:
-        _reconciliation_agent = Agent(
+        _reconciliation_agent = Agent[None, ReconciliationResult](
             name="observation-reconciler",
             model=f"anthropic:{settings.extraction_model}",
             output_type=ReconciliationResult,
             system_prompt=RECONCILIATION_SYSTEM_PROMPT,
         )
-    return _reconciliation_agent
+    agent = _reconciliation_agent
+    assert agent is not None
+    return agent
 
 
 EPISODIC_SCHEMA = {

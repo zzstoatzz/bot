@@ -1,6 +1,7 @@
 """Manage bot profile status updates."""
 
 import logging
+from typing import Any
 
 from atproto import Client
 
@@ -11,8 +12,9 @@ _OFFLINE_SUFFIX = " • 🔴 offline"
 _ALL_SUFFIXES = [_ONLINE_SUFFIX, _OFFLINE_SUFFIX]
 
 
-def _read_profile(client: Client) -> dict:
+def _read_profile(client: Client) -> Any:
     """Read the current profile record, returning the raw value."""
+    assert client.me is not None
     response = client.com.atproto.repo.get_record(
         {
             "repo": client.me.did,
@@ -63,6 +65,7 @@ def _build_profile_data(current) -> dict:
 
 def _write_profile(client: Client, profile_data: dict) -> None:
     """Write the profile record."""
+    assert client.me is not None
     client.com.atproto.repo.put_record(
         {
             "repo": client.me.did,
@@ -147,7 +150,9 @@ class ProfileManager:
                 logger.info(f"set bot label, labels now: {labels}")
         except Exception as e:
             logger.error(f"failed to get current profile: {e}")
-            self.base_bio = "i am a bot - contact my operator @zzstoatzz.io with any questions"
+            self.base_bio = (
+                "i am a bot - contact my operator @zzstoatzz.io with any questions"
+            )
 
     async def set_online_status(self, is_online: bool):
         """Update the bio to reflect online/offline status and capabilities."""

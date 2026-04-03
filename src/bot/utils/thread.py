@@ -1,6 +1,7 @@
 """Thread utilities for ATProto thread operations."""
 
 from collections.abc import Callable
+from typing import Any
 
 
 def resolve_facet_links(record) -> str:
@@ -173,7 +174,7 @@ def describe_post(post) -> str:
 
 def traverse_thread(
     thread_node,
-    visit: Callable[[any], None],
+    visit: Callable[[Any], None],
     *,
     include_parent: bool = True,
     include_replies: bool = True,
@@ -208,7 +209,7 @@ def traverse_thread(
             traverse_thread(reply, visit, include_parent=False, include_replies=True)
 
 
-def extract_posts_chronological(thread_node) -> list[any]:
+def extract_posts_chronological(thread_node) -> list[Any]:
     """Extract all posts from a thread in chronological order.
 
     Args:

@@ -87,6 +87,12 @@ class Settings(BaseSettings):
         default=14, description="UTC hour to post daily reflection (14 = ~9am CT)"
     )
 
+    # Original thought posts
+    thought_post_hours: list[int] = Field(
+        default=[15, 19, 23],
+        description="UTC hours to attempt original thought posts (15,19,23 = ~10am,2pm,6pm CT)",
+    )
+
     # Control API
     control_token: str | None = Field(
         default=None, description="Bearer token for /api/control endpoints"

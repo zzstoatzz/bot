@@ -13,7 +13,7 @@ max_lines = 10000
 
 [[rules]]
 path = "src/bot/agent.py"
-max_lines = 964
+max_lines = 1007
 
 [[rules]]
 path = "src/bot/memory/namespace_memory.py"
@@ -21,4 +21,4 @@ max_lines = 872
 
 [[rules]]
 path = "src/bot/main.py"
-max_lines = 793
+max_lines = 811

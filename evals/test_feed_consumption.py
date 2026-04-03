@@ -1,6 +1,6 @@
 """Evals for feed consumption, following, and owner-gating."""
 
-from conftest import OWNER_HANDLE
+from evals.conftest import OWNER_HANDLE
 
 
 async def test_reads_timeline_when_asked(feed_consumer_agent):

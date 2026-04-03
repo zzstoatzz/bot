@@ -230,6 +230,40 @@ class MessageHandler:
             bot_status.record_response()
             logger.info(f"replied to @{author_handle}: {response.text[:80]}")
 
+    async def original_thought(self):
+        """Generate and post an original thought if phi has something to say."""
+        with logfire.span("original thought"):
+            # Fetch recent posts so the agent can avoid repetition
+            recent_posts: list[str] = []
+            try:
+                feed = await self.client.get_own_posts(limit=5)
+                for item in feed:
+                    if hasattr(item.post.record, "text"):
+                        recent_posts.append(item.post.record.text)
+            except Exception as e:
+                logger.warning(f"failed to fetch recent posts for musing: {e}")
+
+            try:
+                response = await self.agent.process_musing(
+                    recent_posts=recent_posts or None
+                )
+            except Exception as e:
+                logger.exception(f"original thought failed: {e}")
+                return
+
+            if response.action in ("reply", "post") and response.text:
+                try:
+                    allowed = _allowed_handles()
+                    await self.client.create_post(
+                        response.text, allowed_handles=allowed
+                    )
+                    bot_status.record_response()
+                    logger.info(f"original thought posted: {response.text[:80]}")
+                except Exception as e:
+                    logger.exception(f"failed to post original thought: {e}")
+            else:
+                logger.info(f"original thought: nothing to say ({response.reason})")
+
     async def daily_reflection(self):
         """Generate and post a daily reflection if phi has something to say."""
         with logfire.span("daily reflection"):

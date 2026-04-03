@@ -6,6 +6,7 @@ from unittest.mock import patch
 import pytest
 from pydantic import BaseModel, Field
 from pydantic_ai import Agent, RunContext
+from pydantic_ai.exceptions import ModelHTTPError
 
 from bot.config import settings
 
@@ -79,20 +80,23 @@ class TestToolUsage:
             tool_calls.append({"tool": "search_web", "query": query})
             return f"Search results for '{query}': Latest news about {query}"
 
-        # Should NOT search for simple math
-        result = await agent.run("What is 2 + 2?")
-        assert len(tool_calls) == 0, f"Searched for basic math. Calls: {tool_calls}"
+        try:
+            # Should NOT search for simple math
+            result = await agent.run("What is 2 + 2?")
+            assert len(tool_calls) == 0, f"Searched for basic math. Calls: {tool_calls}"
 
-        # SHOULD search for current events
-        result = await agent.run("What happened in tech news today?")
-        assert len(tool_calls) > 0, (
-            f"Did not search for current news. Response: {result.output.text}"
-        )
-        assert tool_calls[0]["tool"] == "search_web"
-        assert (
-            "tech" in tool_calls[0]["query"].lower()
-            or "news" in tool_calls[0]["query"].lower()
-        )
+            # SHOULD search for current events
+            result = await agent.run("What happened in tech news today?")
+            assert len(tool_calls) > 0, (
+                f"Did not search for current news. Response: {result.output.text}"
+            )
+            assert tool_calls[0]["tool"] == "search_web"
+            assert (
+                "tech" in tool_calls[0]["query"].lower()
+                or "news" in tool_calls[0]["query"].lower()
+            )
+        except ModelHTTPError:
+            pytest.skip("Anthropic API unavailable")
 
     @pytest.mark.asyncio
     async def test_multiple_tool_calls(self):

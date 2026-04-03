@@ -261,6 +261,7 @@ def _format_unified_results(results: list[dict], handle: str) -> list[str]:
 async def _create_cosmik_record(collection: str, record: dict) -> str:
     """Write a cosmik record to phi's PDS. Returns the AT URI."""
     await bot_client.authenticate()
+    assert bot_client.client.me is not None
     result = bot_client.client.com.atproto.repo.create_record(
         data={
             "repo": bot_client.client.me.did,
@@ -619,7 +620,7 @@ class PhiAgent:
                 conn = CosmikConnection(
                     source=source,
                     target=target,
-                    connectionType=connection_type,
+                    connection_type=connection_type,
                     note=note,
                 )
             except Exception as e:
@@ -947,6 +948,59 @@ class PhiAgent:
 
         logger.info(
             f"reflection decided: {result.output.action}"
+            + (f" - {result.output.text[:80]}" if result.output.text else "")
+            + (f" ({result.output.reason})" if result.output.reason else "")
+        )
+        return result.output
+
+    async def process_musing(self, recent_posts: list[str] | None = None) -> Response:
+        """Generate an original thought post from memory, reading, patterns noticed."""
+        logger.info("processing musing")
+
+        # Build context about what phi has posted recently to avoid repetition
+        recent_activity = ""
+        if recent_posts:
+            posts_text = "\n".join(f"- {p[:200]}" for p in recent_posts)
+            recent_activity = f"[YOUR RECENT POSTS]:\n{posts_text}"
+
+        # Fetch episodic memory for interesting observations
+        if self.memory:
+            try:
+                episodic = await self.memory.get_recent_interactions(top_k=5)
+                if episodic:
+                    lines = [
+                        f"- with @{i['handle']}: {i['content'][:150]}"
+                        for i in episodic[:5]
+                    ]
+                    if recent_activity:
+                        recent_activity += "\n\n"
+                    recent_activity += "[RECENT CONVERSATIONS]:\n" + "\n".join(lines)
+            except Exception as e:
+                logger.warning(f"failed to get recent interactions for musing: {e}")
+
+        deps = PhiDeps(
+            author_handle="",
+            memory=self.memory,
+            recent_activity=recent_activity,
+        )
+
+        musing_task = (
+            "you have a moment. if something's been on your mind — something you read, "
+            "a pattern you noticed, a question that's been sitting with you — share it. "
+            "check your recent posts first. if you'd just be echoing yourself, skip it. "
+            "this is your feed; post things you'd want to follow yourself for. "
+            "use your tools — search posts, check trending, look things up — if something "
+            "sparks your curiosity. but don't force it. if nothing's there, action='ignore'."
+        )
+
+        toolsets = self._mcp_toolsets()
+        async with contextlib.AsyncExitStack() as stack:
+            for ts in toolsets:
+                await stack.enter_async_context(ts)
+            result = await self.agent.run(musing_task, deps=deps, toolsets=toolsets)
+
+        logger.info(
+            f"musing decided: {result.output.action}"
             + (f" - {result.output.text[:80]}" if result.output.text else "")
             + (f" ({result.output.reason})" if result.output.reason else "")
         )

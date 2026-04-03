@@ -74,6 +74,8 @@ class CosmikConnection(BaseModel):
     at://cosmik.network/com.atproto.lexicon.schema/network.cosmik.connection
     """
 
+    model_config = {"populate_by_name": True}
+
     source: EntityRef = Field(description="source entity — URL or at:// URI")
     target: EntityRef = Field(description="target entity — URL or at:// URI")
     connection_type: ConnectionType | None = Field(

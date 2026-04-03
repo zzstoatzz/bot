@@ -177,6 +177,8 @@ class BotClient:
                         uri=last_result.uri, cid=last_result.cid
                     )
             else:
+                assert last_result is not None
+                assert root_ref is not None
                 parent_ref = models.ComAtprotoRepoStrongRef.Main(
                     uri=last_result.uri, cid=last_result.cid
                 )

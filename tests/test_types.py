@@ -21,7 +21,7 @@ def test_connection_valid():
     conn = CosmikConnection(
         source="https://example.com",
         target="at://did:plc:abc/app.bsky.feed.post/123",
-        connectionType="related",
+        connection_type="related",
         note="test",
     )
     assert conn.source == "https://example.com"
@@ -32,7 +32,7 @@ def test_connection_to_record_full():
     conn = CosmikConnection(
         source="https://a.com",
         target="https://b.com",
-        connectionType="supports",
+        connection_type="supports",
         note="because reasons",
     )
     record = conn.to_record()
@@ -60,7 +60,7 @@ def test_connection_rejects_invalid_type():
         CosmikConnection(
             source="https://a.com",
             target="https://b.com",
-            connectionType="invented",
+            connection_type="invented",
         )
 
 
