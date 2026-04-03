@@ -4,7 +4,7 @@ import asyncio
 import logging
 import time
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import UTC, datetime
 
 import httpx
 import logfire
@@ -388,7 +388,7 @@ def _tid_to_iso(tid: str) -> str:
             n = n * 32 + _TID_CHARSET.index(ch)
         # 64-bit TID: bit 63=0, bits 62..10=timestamp(us), bits 9..0=clockid
         us = (n >> 10) & ((1 << 53) - 1)
-        dt = datetime.fromtimestamp(us / 1_000_000)
+        dt = datetime.fromtimestamp(us / 1_000_000, tz=UTC)
         return dt.isoformat()
     except (ValueError, OSError):
         return ""
