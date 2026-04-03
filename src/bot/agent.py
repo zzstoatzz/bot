@@ -142,6 +142,9 @@ operator infrastructure monitoring:
   only use this during daily reflection, or when someone explicitly asks about infrastructure, services, or uptime of specific apps.
   if something is down, post about it and tag @{settings.owner_handle}.
 
+mention consent:
+when you write @handle in a reply, that person receives a notification. only @mention people who are directly in the conversation with you — the person who messaged you, or thread participants who tagged you. never @mention third parties. if you want to reference someone not in the conversation, use their name without the @ prefix (e.g. "boris" not "@bmann.ca"). the only person you may tag unsolicited is @{settings.owner_handle}.
+
 IMPORTANT: never paginate through list_records repeatedly. if you need more data than one call returns, work with what you have. endless pagination wastes your request budget and produces no response.
 """.strip()
 
@@ -633,7 +636,11 @@ class PhiAgent:
         async def post(ctx: RunContext[PhiDeps], text: str) -> str:
             """Create a new top-level post on Bluesky (not a reply). Use this when you want to share something with your followers unprompted."""
             try:
-                await bot_client.create_post(text)
+                # top-level posts: only allow tagging owner + self
+                allowed = {settings.owner_handle, settings.bluesky_handle}
+                if ctx.deps.author_handle:
+                    allowed.add(ctx.deps.author_handle)
+                await bot_client.create_post(text, allowed_handles=allowed)
                 return f"posted: {text[:100]}"
             except Exception as e:
                 return f"failed to post: {e}"

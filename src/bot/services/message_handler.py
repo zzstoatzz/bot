@@ -9,6 +9,7 @@ from limits.storage import MemoryStorage
 from limits.strategies import MovingWindowRateLimiter
 
 from bot.agent import PhiAgent
+from bot.config import settings
 from bot.core.atproto_client import BotClient
 from bot.status import bot_status
 from bot.utils.thread import (
@@ -23,6 +24,16 @@ logger = logging.getLogger("bot.handler")
 _storage = MemoryStorage()
 _limiter = MovingWindowRateLimiter(_storage)
 _user_limit = parse_limit("30/hour")
+
+
+def _allowed_handles(*extra: str) -> set[str]:
+    """Build the set of handles phi may tag (create mention facets for).
+
+    Always includes the bot owner and the bot itself.  Pass conversation
+    participants as *extra*.
+    """
+    base = {settings.owner_handle, settings.bluesky_handle}
+    return base | {h for h in extra if h}
 
 
 class MessageHandler:
@@ -96,7 +107,10 @@ class MessageHandler:
             reply_ref = models.AppBskyFeedPost.ReplyRef(
                 parent=parent_ref, root=root_ref
             )
-            await self.client.create_post(response.text, reply_to=reply_ref)
+            allowed = _allowed_handles(author_handle)
+            await self.client.create_post(
+                response.text, reply_to=reply_ref, allowed_handles=allowed
+            )
             bot_status.record_response()
             logger.info(
                 f"replied on {reason} from @{author_handle}: {response.text[:80]}"
@@ -123,7 +137,8 @@ class MessageHandler:
             logger.info(f"ignoring follow from @{author_handle}: {response.reason}")
         elif response.action == "reply" and response.text:
             # post as a top-level post since there's no thread to reply to
-            await self.client.create_post(response.text)
+            allowed = _allowed_handles(author_handle)
+            await self.client.create_post(response.text, allowed_handles=allowed)
             bot_status.record_response()
             logger.info(f"posted on follow from @{author_handle}: {response.text[:80]}")
         else:
@@ -207,7 +222,10 @@ class MessageHandler:
             reply_ref = models.AppBskyFeedPost.ReplyRef(
                 parent=parent_ref, root=root_ref
             )
-            await self.client.create_post(response.text, reply_to=reply_ref)
+            allowed = _allowed_handles(author_handle)
+            await self.client.create_post(
+                response.text, reply_to=reply_ref, allowed_handles=allowed
+            )
 
             bot_status.record_response()
             logger.info(f"replied to @{author_handle}: {response.text[:80]}")
@@ -234,7 +252,10 @@ class MessageHandler:
 
             if response.action in ("reply", "post") and response.text:
                 try:
-                    await self.client.create_post(response.text)
+                    allowed = _allowed_handles()
+                    await self.client.create_post(
+                        response.text, allowed_handles=allowed
+                    )
                     bot_status.record_response()
                     logger.info(f"daily reflection posted: {response.text[:80]}")
                 except Exception as e:

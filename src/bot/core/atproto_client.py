@@ -141,12 +141,20 @@ class BotClient:
         # Use the params format instead of data
         self.client.app.bsky.notification.update_seen({"seenAt": seen_at})
 
-    async def create_post(self, text: str, reply_to=None):
-        """Create a new post or reply. Splits long text into a self-reply thread."""
+    async def create_post(
+        self, text: str, reply_to=None, allowed_handles: set[str] | None = None
+    ):
+        """Create a new post or reply. Splits long text into a self-reply thread.
+
+        *allowed_handles* controls which @mentions become notification-sending
+        facets.  Pass the set of handles who consented to interaction (e.g.
+        the message author + the bot owner).  ``None`` = no filtering (all
+        mentions become facets, legacy behaviour for the ``post`` tool).
+        """
         await self.authenticate()
 
         if len(text) <= 300:
-            facets = create_facets(text, self.client)
+            facets = create_facets(text, self.client, allowed_handles)
             if reply_to:
                 return self.client.send_post(
                     text=text, reply_to=reply_to, facets=facets
@@ -158,7 +166,7 @@ class BotClient:
         last_result = None
 
         for i, chunk in enumerate(chunks):
-            facets = create_facets(chunk, self.client)
+            facets = create_facets(chunk, self.client, allowed_handles)
 
             if i == 0:
                 last_result = self.client.send_post(
