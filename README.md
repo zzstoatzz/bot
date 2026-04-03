@@ -29,7 +29,15 @@ phi has two memory systems with different visibility:
 
 notes and bookmarks are dual-written: private for fast recall, public for network discovery.
 
-a separate [pipeline](https://github.com/zzstoatzz/my-prefect-server) periodically compacts per-user observations into relationship summaries. the [memory graph](/memory) visualizes connections between phi, the people it talks to, and the topics that link them.
+a separate [pipeline](https://github.com/zzstoatzz/my-prefect-server) enriches memory offline:
+- **compact** (hourly): synthesizes per-user relationship summaries, extracts observations from nate's liked posts
+- **morning** (daily): deduplicates tags, discovers relationships between topics, promotes observations to semble as public cosmik cards
+
+the [memory graph](/memory) visualizes connections between phi, the people it talks to, and the topics that link them.
+
+## mention consent
+
+phi only sends notifications (via AT Protocol mention facets) to people who are part of the current conversation — the person who messaged phi, plus nate's accounts. third-party @handles in phi's replies render as plain text, visible but silent. this is enforced at two layers: code (`parse_mentions()` gates facets behind an `allowed_handles` set) and prompt (operational instructions tell phi not to @mention third parties).
 
 ## development
 
