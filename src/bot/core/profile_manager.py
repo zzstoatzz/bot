@@ -9,7 +9,7 @@ from atproto import Client
 logger = logging.getLogger("bot.profile_manager")
 
 _SOURCE_LINK = "\n\nsource code: https://tangled.sh/zzstoatzz.io/bot"
-_ONLINE_SUFFIX = f"{_SOURCE_LINK}\n\n🟢 memory, thread context, atproto, publications, post search, trending"
+_ONLINE_SUFFIX = f"{_SOURCE_LINK}\n\n🟢 user memory, world memory, thread context, atproto records, publication search, post search, trending"
 _OFFLINE_SUFFIX = f"{_SOURCE_LINK}\n\n🔴 offline"
 _LEGACY_ONLINE = "\n\n🟢 user memory, world memory, thread context, atproto records, publication search, post search, trending"
 _LEGACY_OFFLINE = " • 🔴 offline"
@@ -167,7 +167,9 @@ class ProfileManager:
             # Strip any existing suffix to get clean base bio
             clean = self.base_bio
             # cut everything from the first status marker onward
-            clean = re.split(r"\s*•?\s*(?:🟢|🔴|source code:)", clean)[0].rstrip()
+            clean = re.split(r"\s*•?\s*(?:🟢|🔴|source code:|compositions:)", clean)[
+                0
+            ].rstrip()
 
             # Store cleaned base for next time
             self.base_bio = clean
