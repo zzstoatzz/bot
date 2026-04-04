@@ -1,9 +1,27 @@
 """Validated types for atproto records phi creates."""
 
+import time
 from datetime import UTC, datetime
 from typing import Annotated, Literal
 
 from pydantic import AfterValidator, BaseModel, Field
+
+_TID_CHARSET = "234567abcdefghijklmnopqrstuvwxyz"
+
+
+def generate_tid() -> str:
+    """Generate an AT Protocol TID (timestamp identifier).
+
+    13-char base32-sortstring encoding microsecond timestamp + clock_id.
+    """
+    us = int(time.time() * 1_000_000)
+    n = (us << 10) | 0  # clock_id = 0
+    chars = []
+    for _ in range(13):
+        chars.append(_TID_CHARSET[n & 0x1F])
+        n >>= 5
+    return "".join(reversed(chars))
+
 
 # --- validators ---
 
@@ -193,4 +211,29 @@ class CosmikCollectionLink(BaseModel):
             "card": {"uri": self.card.uri, "cid": self.card.cid},
             "addedBy": self.added_by,
             "addedAt": self.added_at,
+        }
+
+
+class GreenGaleDocument(BaseModel):
+    """app.greengale.document record — a long-form markdown blog post.
+
+    Published to phi's PDS, rendered at greengale.app/{handle}/{rkey},
+    and indexed by pub-search for discoverability.
+    """
+
+    title: str = Field(max_length=1000)
+    content: str = Field(max_length=100000)
+    tags: list[str] = Field(default_factory=list)
+    visibility: Literal["public", "url", "author"] = "public"
+
+    def to_record(self, handle: str, rkey: str) -> dict:
+        return {
+            "$type": "app.greengale.document",
+            "content": self.content,
+            "title": self.title,
+            "url": f"https://greengale.app/{handle}",
+            "path": f"/{rkey}",
+            "publishedAt": datetime.now(UTC).isoformat(),
+            "visibility": self.visibility,
+            "tags": self.tags,
         }

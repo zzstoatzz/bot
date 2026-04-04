@@ -1,0 +1,127 @@
+"""Search tools — bluesky posts, cosmik network, trending."""
+
+from datetime import date
+
+import httpx
+from pydantic_ai import RunContext
+
+from bot.core.atproto_client import bot_client
+from bot.tools._helpers import PhiDeps, _relative_age
+
+
+def register(agent):
+    @agent.tool
+    async def search_posts(
+        ctx: RunContext[PhiDeps], query: str, limit: int = 10
+    ) -> str:
+        """Search Bluesky posts by keyword. Use this to find what people are saying about a topic."""
+        try:
+            response = bot_client.client.app.bsky.feed.search_posts(
+                params={"q": query, "limit": min(limit, 25), "sort": "top"}
+            )
+            if not response.posts:
+                return f"no posts found for '{query}'"
+
+            today = date.today()
+            lines = []
+            for post in response.posts:
+                text = post.record.text if hasattr(post.record, "text") else ""
+                handle = post.author.handle
+                likes = post.like_count or 0
+                age = (
+                    _relative_age(post.indexed_at, today)
+                    if hasattr(post, "indexed_at") and post.indexed_at
+                    else ""
+                )
+                age_str = f", {age}" if age else ""
+                lines.append(f"@{handle} ({likes} likes{age_str}): {text[:200]}")
+            return "\n\n".join(lines)
+        except Exception as e:
+            return f"search failed: {e}"
+
+    @agent.tool
+    async def search_network(ctx: RunContext[PhiDeps], query: str) -> str:
+        """Search the cosmik network for cards and bookmarks collected by people across the atmosphere.
+        Use this to find what the network knows about a topic — links, notes, and resources that others have saved.
+        Different from recall (your private memory) and search_posts (live bluesky posts)."""
+        try:
+            async with httpx.AsyncClient(timeout=15) as client:
+                r = await client.get(
+                    "https://api.semble.so/api/search/semantic",
+                    params={"query": query, "limit": 10},
+                )
+                r.raise_for_status()
+                data = r.json()
+
+            # response is {urls: [...], pagination: {...}}
+            items = data.get("urls") if isinstance(data, dict) else data
+            if not items:
+                return f"no network results for '{query}'"
+
+            lines = []
+            for item in items:
+                meta = item.get("metadata", {})
+                title = meta.get("title") or item.get("title") or "untitled"
+                url = item.get("url", "")
+                saves = item.get("urlLibraryCount") or 0
+                desc = meta.get("description") or ""
+                line = f"{title}"
+                if url:
+                    line += f" — {url}"
+                if saves:
+                    line += f" ({saves} saves)"
+                if desc:
+                    line += f"\n  {desc[:200]}"
+                lines.append(line)
+            return "\n\n".join(lines)
+        except Exception as e:
+            return f"network search failed: {e}"
+
+    @agent.tool
+    async def get_trending(ctx: RunContext[PhiDeps]) -> str:
+        """Get what's currently trending on Bluesky. Returns entity-level trends from the firehose (via coral) and official Bluesky trending topics. Use this when someone asks about current events, what people are talking about, or when you want timely context."""
+        parts: list[str] = []
+
+        async with httpx.AsyncClient(timeout=15) as client:
+            # coral entity graph — NER-extracted trending entities from the firehose
+            try:
+                r = await client.get("https://coral.fly.dev/entity-graph")
+                r.raise_for_status()
+                data = r.json()
+                entities = data.get("entities", [])
+                stats = data.get("stats", {})
+
+                by_trend = sorted(
+                    entities, key=lambda e: e.get("trend", 0), reverse=True
+                )[:15]
+
+                lines = [
+                    f"coral ({stats.get('active', 0)} active entities, "
+                    f"{stats.get('clusters', 0)} clusters"
+                    f"{', percolating' if stats.get('percolates') else ''}):"
+                ]
+                for e in by_trend:
+                    lines.append(
+                        f"  {e['text']} ({e.get('label', '')}) "
+                        f"trend={e.get('trend', 0):.2f}"
+                    )
+                parts.append("\n".join(lines))
+            except Exception as e:
+                parts.append(f"coral unavailable: {e}")
+
+            # official bluesky trending topics
+            try:
+                r = await client.get(
+                    "https://public.api.bsky.app/xrpc/app.bsky.unspecced.getTrendingTopics"
+                )
+                r.raise_for_status()
+                topics = r.json().get("topics", [])
+                if topics:
+                    lines = ["bluesky trending:"]
+                    for t in topics[:15]:
+                        lines.append(f"  {t.get('displayName', t.get('topic', ''))}")
+                    parts.append("\n".join(lines))
+            except Exception as e:
+                parts.append(f"bluesky trending unavailable: {e}")
+
+        return "\n\n".join(parts) if parts else "no trending data available"

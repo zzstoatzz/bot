@@ -138,7 +138,7 @@ class TestPhiAgentToolRegistration:
         if not os.environ.get("ANTHROPIC_API_KEY"):
             pytest.skip("No Anthropic API key configured")
 
-        with patch("bot.agent.bot_client"):
+        with patch("bot.core.atproto_client.bot_client"):
             from bot.agent import PhiAgent
 
             agent = PhiAgent()
@@ -154,7 +154,7 @@ class TestPhiAgentToolRegistration:
         if not os.environ.get("ANTHROPIC_API_KEY"):
             pytest.skip("No Anthropic API key configured")
 
-        with patch("bot.agent.bot_client"):
+        with patch("bot.core.atproto_client.bot_client"):
             from bot.agent import PhiAgent
 
             agent = PhiAgent()
