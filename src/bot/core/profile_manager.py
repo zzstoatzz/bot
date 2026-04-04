@@ -7,8 +7,9 @@ from atproto import Client
 
 logger = logging.getLogger("bot.profile_manager")
 
-_ONLINE_SUFFIX = "\n\n🟢 user memory, world memory, thread context, atproto records, publication search, post search, trending"
-_OFFLINE_SUFFIX = " • 🔴 offline"
+_SOURCE_LINK = "\n\nsource code: https://tangled.sh/zzstoatzz.io/bot"
+_ONLINE_SUFFIX = f"{_SOURCE_LINK}\n\n🟢 user memory, world memory, thread context, atproto records, publication search, post search, trending"
+_OFFLINE_SUFFIX = f"{_SOURCE_LINK}\n\n🔴 offline"
 _ALL_SUFFIXES = [_ONLINE_SUFFIX, _OFFLINE_SUFFIX]
 
 

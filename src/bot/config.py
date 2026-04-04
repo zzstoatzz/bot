@@ -67,7 +67,11 @@ class Settings(BaseSettings):
         default="gcp-us-central1", description="The region for the TurboPuffer API"
     )
 
-    # Extraction model for observation extraction
+    # Model configuration
+    agent_model: str = Field(
+        default="anthropic:claude-sonnet-4-6",
+        description="Model for the main agent (pydantic-ai model string)",
+    )
     extraction_model: str = Field(
         default="claude-haiku-4-5-20251001",
         description="Model for extracting observations from conversations",

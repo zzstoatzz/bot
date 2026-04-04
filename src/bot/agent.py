@@ -308,7 +308,7 @@ class PhiAgent:
         # https://github.com/pydantic/pydantic-ai/issues/2818
         self.agent = Agent[PhiDeps, Response](
             name="phi",
-            model="anthropic:claude-sonnet-4-6",
+            model=settings.agent_model,
             system_prompt=f"{self.base_personality}\n\n{_build_operational_instructions()}",
             output_type=Response,
             deps_type=PhiDeps,
@@ -700,11 +700,12 @@ class PhiAgent:
             name: url-safe slug (e.g. "electronic-music"). becomes the feed rkey.
             display_name: human-readable feed title.
             description: what the feed shows.
-            filter_manifest: graze filter DSL. operators:
-              - regex_any: ["text", ["pattern1", "pattern2"], case_insensitive: bool, whole_word: bool]
-              - has_any_tag: [["#tag1", "#tag2"]]
-              - and: [...filters], or: [...filters]
-            example: {"filter": {"and": [{"regex_any": ["text", ["jazz", "bebop"], true, false]}, {"has_any_tag": [["#jazz"]]}]}}
+            filter_manifest: graze filter DSL (grazer engine operators). key operators:
+              - regex_any: ["field", ["term1", "term2"]] — match any term (case-insensitive by default)
+              - regex_none: ["field", ["term1", "term2"]] — exclude posts matching any term
+              - regex_matches: ["field", "pattern"] — single regex match
+              - and: [...filters], or: [...filters] — combine filters
+            field is usually "text". example: {"filter": {"and": [{"regex_any": ["text", ["jazz", "bebop"]]}]}}
             """
             if not _is_owner(ctx):
                 return f"only @{settings.owner_handle} can create feeds"
@@ -722,21 +723,66 @@ class PhiAgent:
 
         @self.agent.tool
         async def list_feeds(ctx: RunContext[PhiDeps]) -> str:
-            """List your existing graze-powered feeds."""
+            """List your existing graze-powered feeds. Returns name (slug for read_feed) and algo_id (for delete_feed)."""
             try:
                 feeds = await self.graze_client.list_feeds()
                 if not feeds:
                     return "no graze feeds found"
                 lines = []
                 for f in feeds:
-                    name = f.get("display_name") or f.get("name") or "unnamed"
+                    display = f.get("display_name") or f.get("name") or "unnamed"
                     algo_id = f.get("id") or f.get("algo_id") or "?"
                     uri = f.get("feed_uri") or f.get("uri") or ""
-                    lines.append(f"- {name} (id={algo_id}) {uri}")
+                    # extract rkey slug from feed_uri for use with read_feed
+                    rkey = f.get("record_name") or (
+                        uri.rsplit("/", 1)[-1] if uri else "?"
+                    )
+                    lines.append(f"- {display} | name={rkey} | algo_id={algo_id}")
                 return "\n".join(lines)
             except Exception as e:
                 logger.warning(f"list_feeds failed: {e}")
                 return f"failed to list feeds: {e}"
+
+        @self.agent.tool
+        async def delete_feed(ctx: RunContext[PhiDeps], algo_id: int) -> str:
+            """Delete a graze-powered feed by its algo_id. Only the bot's owner can use this tool.
+
+            algo_id: the numeric id from list_feeds (e.g. 33726).
+            This deletes both the graze registration and the PDS feed generator record.
+            """
+            if not _is_owner(ctx):
+                return f"only @{settings.owner_handle} can delete feeds"
+            try:
+                # find the record_name from graze so we can delete the PDS record too
+                feeds = await self.graze_client.list_feeds()
+                record_name = None
+                for f in feeds:
+                    if f.get("id") == algo_id:
+                        record_name = f.get("record_name")
+                        break
+
+                await self.graze_client.delete_feed(algo_id)
+
+                # also delete the PDS record if we found the rkey
+                if record_name:
+                    assert bot_client.client.me is not None
+                    try:
+                        bot_client.client.com.atproto.repo.delete_record(
+                            data={
+                                "repo": bot_client.client.me.did,
+                                "collection": "app.bsky.feed.generator",
+                                "rkey": record_name,
+                            }
+                        )
+                    except Exception as e:
+                        logger.warning(f"PDS record delete failed: {e}")
+
+                return f"deleted feed algo_id={algo_id}" + (
+                    f" and PDS record '{record_name}'" if record_name else ""
+                )
+            except Exception as e:
+                logger.warning(f"delete_feed failed: {e}")
+                return f"failed to delete feed: {e}"
 
         # --- feed consumption + following tools ---
 
@@ -756,10 +802,18 @@ class PhiAgent:
 
         @self.agent.tool
         async def read_feed(
-            ctx: RunContext[PhiDeps], feed_uri: str, limit: int = 20
+            ctx: RunContext[PhiDeps], name: str, limit: int = 20
         ) -> str:
-            """Read posts from a specific custom feed by AT-URI. Use list_feeds to find feed URIs first."""
+            """Read posts from one of your graze-powered feeds.
+
+            name: the feed slug (e.g. "mushroom-foraging"). use list_feeds to see available names.
+            """
             try:
+                await bot_client.authenticate()
+                assert bot_client.client.me is not None
+                feed_uri = (
+                    f"at://{bot_client.client.me.did}/app.bsky.feed.generator/{name}"
+                )
                 response = await bot_client.get_feed(feed_uri, limit=limit)
                 if not response.feed:
                     return "no posts in this feed yet"

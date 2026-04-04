@@ -12,7 +12,14 @@ just run
 
 **required:** `BLUESKY_HANDLE`, `BLUESKY_PASSWORD`, `ANTHROPIC_API_KEY`
 
-**optional:** `TURBOPUFFER_API_KEY` + `OPENAI_API_KEY` for episodic memory
+**optional:**
+- `TURBOPUFFER_API_KEY` + `OPENAI_API_KEY` — episodic memory
+- `AGENT_MODEL` — pydantic-ai model string for the main agent (default: `anthropic:claude-sonnet-4-6`)
+- `EXTRACTION_MODEL` — model for observation extraction (default: `claude-haiku-4-5-20251001`)
+- `DAILY_REFLECTION_HOUR` — UTC hour for daily reflection post (default: `14`)
+- `THOUGHT_POST_HOURS` — UTC hours for original thought posts (default: `[15, 19, 23]`)
+- `CONTROL_TOKEN` — bearer token for `/api/control` endpoints
+- `OWNER_HANDLE` — handle of the bot's owner for permission-gated tools (default: `zzstoatzz.io`)
 
 ## what phi does
 
@@ -100,7 +107,7 @@ sandbox/        # experiments and analysis
 <details>
 <summary>deployment</summary>
 
-runs on [fly.io](https://fly.io) — `shared-cpu-1x`, 512MB, region `ord`. auto-start is off; the machine sleeps until woken by an API call.
+runs on [fly.io](https://fly.io) — `shared-cpu-1x`, 1GB, region `ord`. auto-start is off; the machine sleeps until woken by an API call.
 
 secrets are set via `fly secrets set`. the bot uses session persistence (`.session` file) to avoid rate limits — tokens auto-refresh every ~2h.
 

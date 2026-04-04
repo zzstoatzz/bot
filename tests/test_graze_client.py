@@ -17,7 +17,7 @@ def _login_response():
     """Fake successful login response."""
     resp = httpx.Response(
         200,
-        json={"id": 42},
+        json={"user": {"id": 42}},
         request=httpx.Request("POST", f"{BASE_URL}/app/login"),
     )
     return resp
@@ -75,7 +75,7 @@ class TestCreateFeed:
         async def fake_request(method, path, **kwargs):
             call_log.append((method, path))
             if path == "/app/migrate_algo":
-                return _ok_response(json={"algo_id": 99})
+                return _ok_response(json={"id": 99})
             return _ok_response()
 
         with (
@@ -87,9 +87,7 @@ class TestCreateFeed:
                 display_name="Jazz Music",
                 description="posts about jazz",
                 filter_manifest={
-                    "filter": {
-                        "and": [{"regex_any": ["text", ["jazz", "bebop"], True, False]}]
-                    }
+                    "filter": {"and": [{"regex_any": ["text", ["jazz", "bebop"]]}]}
                 },
             )
 
@@ -103,12 +101,13 @@ class TestCreateFeed:
         assert record["displayName"] == "Jazz Music"
         assert record["did"] == "did:web:api.graze.social"
 
-        # verify all 4 graze API calls in order
+        # verify all 5 graze API calls in order
         assert call_log == [
             ("POST", "/app/migrate_algo"),
             ("POST", "/app/complete_migration"),
             ("GET", "/app/publish_algo/99"),
             ("GET", "/app/api/v1/algorithm-management/set-publicity/99/true"),
+            ("POST", "/app/api/v1/algorithm-management/backfill/99"),
         ]
 
     async def test_create_feed_propagates_errors(self, graze):
@@ -154,9 +153,12 @@ class TestListFeeds:
 
 class TestDeleteFeed:
     async def test_delete_feed(self, graze):
+        graze._user_id = 42
+
         async def fake_request(method, path, **kwargs):
-            assert method == "DELETE"
-            assert "/app/my_feeds/99" in path
+            assert method == "POST"
+            assert path == "/app/delete_algo"
+            assert kwargs["json"] == {"id": 99, "user_id": 42}
             return _ok_response()
 
         with patch.object(graze, "_request", side_effect=fake_request):

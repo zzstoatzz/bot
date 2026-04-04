@@ -41,7 +41,7 @@ class GrazeClient:
             )
             r.raise_for_status()
             data = r.json()
-            self._user_id = data["id"]
+            self._user_id = data["user"]["id"]
             self._cookies = r.cookies
             logger.info(f"graze login ok, user_id={self._user_id}")
 
@@ -119,7 +119,7 @@ class GrazeClient:
                 "algorithm_manifest": filter_manifest,
             },
         )
-        algo_id = r.json()["algo_id"]
+        algo_id = r.json()["id"]
         logger.info(f"algo migrated, algo_id={algo_id}")
 
         # 3. complete migration
@@ -138,15 +138,30 @@ class GrazeClient:
             f"/app/api/v1/algorithm-management/set-publicity/{algo_id}/true",
         )
 
+        # 6. backfill so the feed isn't empty
+        await self.backfill_feed(algo_id)
+
         logger.info(f"feed published: {feed_uri}")
         return {"uri": feed_uri, "algo_id": algo_id}
 
     async def list_feeds(self) -> list[dict]:
         """List phi's existing graze feeds."""
         r = await self._request("GET", "/app/my_feeds")
-        return r.json()
+        data = r.json()
+        return data.get("user_algos", data) if isinstance(data, dict) else data
 
     async def delete_feed(self, algo_id: int) -> None:
         """Delete a graze feed by algo_id."""
-        await self._request("DELETE", f"/app/my_feeds/{algo_id}")
+        await self._request(
+            "POST",
+            "/app/delete_algo",
+            json={"id": algo_id, "user_id": self._user_id},
+        )
         logger.info(f"feed deleted: algo_id={algo_id}")
+
+    async def backfill_feed(self, algo_id: int) -> None:
+        """Trigger a backfill for a feed so it picks up existing posts."""
+        await self._request(
+            "POST", f"/app/api/v1/algorithm-management/backfill/{algo_id}"
+        )
+        logger.info(f"feed backfill triggered: algo_id={algo_id}")

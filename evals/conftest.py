@@ -181,11 +181,12 @@ def feed_agent(settings):
         name: url-safe slug (e.g. "electronic-music"). becomes the feed rkey.
         display_name: human-readable feed title.
         description: what the feed shows.
-        filter_manifest: graze filter DSL. operators:
-          - regex_any: ["text", ["pattern1", "pattern2"], case_insensitive: bool, whole_word: bool]
-          - has_any_tag: [["#tag1", "#tag2"]]
-          - and: [...filters], or: [...filters]
-        example: {"filter": {"and": [{"regex_any": ["text", ["jazz", "bebop"], true, false]}, {"has_any_tag": [["#jazz"]]}]}}
+        filter_manifest: graze filter DSL (grazer engine operators). key operators:
+          - regex_any: ["field", ["term1", "term2"]] — match any term (case-insensitive by default)
+          - regex_none: ["field", ["term1", "term2"]] — exclude posts matching any term
+          - regex_matches: ["field", "pattern"] — single regex match
+          - and: [...filters], or: [...filters] — combine filters
+        field is usually "text". example: {"filter": {"and": [{"regex_any": ["text", ["jazz", "bebop"]]}]}}
         """
         _feed_spy.record(
             "create_feed",

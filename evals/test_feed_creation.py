@@ -8,7 +8,14 @@ def _has_filter_key(manifest: dict) -> bool:
     return "filter" in manifest
 
 
-KNOWN_OPERATORS = {"regex_any", "has_any_tag", "and", "or"}
+KNOWN_OPERATORS = {
+    "regex_any",
+    "regex_none",
+    "regex_matches",
+    "regex_negation_matches",
+    "and",
+    "or",
+}
 
 
 def _uses_known_operators(obj: dict | list) -> bool:

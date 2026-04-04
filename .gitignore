@@ -39,3 +39,4 @@ sandbox/
 logs/
 *.log
 threads.db
+.loq_cache
