@@ -148,4 +148,5 @@ USER_NAMESPACE_SCHEMA = {
     "content": {"type": "string", "full_text_search": True},
     "tags": {"type": "[]string", "filterable": True},
     "created_at": {"type": "string"},
+    "updated_at": {"type": "string"},
 }

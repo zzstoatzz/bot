@@ -136,6 +136,7 @@ class NamespaceMemory:
         content = f"user: {user_text}\nbot: {bot_text}"
         entry_id = self._generate_id(f"user-{handle}", "interaction", content)
 
+        now = datetime.now().isoformat()
         user_ns.write(
             upsert_rows=[
                 {
@@ -144,7 +145,8 @@ class NamespaceMemory:
                     "kind": "interaction",
                     "content": content,
                     "tags": [],
-                    "created_at": datetime.now().isoformat(),
+                    "created_at": now,
+                    "updated_at": now,
                 }
             ],
             distance_metric="cosine_distance",
@@ -160,6 +162,7 @@ class NamespaceMemory:
         rows = []
         for obs in observations:
             entry_id = self._generate_id(f"user-{handle}", "observation", obs.content)
+            now = datetime.now().isoformat()
             rows.append(
                 {
                     "id": entry_id,
@@ -167,7 +170,8 @@ class NamespaceMemory:
                     "kind": "observation",
                     "content": obs.content,
                     "tags": obs.tags,
-                    "created_at": datetime.now().isoformat(),
+                    "created_at": now,
+                    "updated_at": now,
                 }
             )
 
@@ -273,6 +277,7 @@ class NamespaceMemory:
         """Write a single observation to turbopuffer."""
         user_ns = self.get_user_namespace(handle)
         entry_id = self._generate_id(f"user-{handle}", "observation", obs.content)
+        now = datetime.now().isoformat()
         user_ns.write(
             upsert_rows=[
                 {
@@ -281,7 +286,8 @@ class NamespaceMemory:
                     "kind": "observation",
                     "content": obs.content,
                     "tags": obs.tags,
-                    "created_at": datetime.now().isoformat(),
+                    "created_at": now,
+                    "updated_at": now,
                 }
             ],
             distance_metric="cosine_distance",
