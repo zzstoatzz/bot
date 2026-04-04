@@ -10,7 +10,9 @@ logger = logging.getLogger("bot.profile_manager")
 _SOURCE_LINK = "\n\nsource code: https://tangled.sh/zzstoatzz.io/bot"
 _ONLINE_SUFFIX = f"{_SOURCE_LINK}\n\n🟢 user memory, world memory, thread context, atproto records, publication search, post search, trending"
 _OFFLINE_SUFFIX = f"{_SOURCE_LINK}\n\n🔴 offline"
-_ALL_SUFFIXES = [_ONLINE_SUFFIX, _OFFLINE_SUFFIX]
+_LEGACY_ONLINE = "\n\n🟢 user memory, world memory, thread context, atproto records, publication search, post search, trending"
+_LEGACY_OFFLINE = " • 🔴 offline"
+_ALL_SUFFIXES = [_ONLINE_SUFFIX, _OFFLINE_SUFFIX, _LEGACY_ONLINE, _LEGACY_OFFLINE]
 
 
 def _read_profile(client: Client) -> Any:
