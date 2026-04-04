@@ -109,9 +109,15 @@ class CosmikConnection(BaseModel):
 
     def to_record(self) -> dict:
         """Serialize to the shape expected by com.atproto.repo.createRecord."""
-        record: dict = {"source": self.source, "target": self.target}
+        now = datetime.now(UTC).isoformat()
+        record: dict = {
+            "source": self.source,
+            "target": self.target,
+            "createdAt": now,
+            "updatedAt": now,
+        }
         if self.connection_type:
-            record["connectionType"] = self.connection_type
+            record["connectionType"] = self.connection_type.upper()
         if self.note:
             record["note"] = self.note
         return record
