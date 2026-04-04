@@ -1,6 +1,7 @@
 """Manage bot profile status updates."""
 
 import logging
+import re
 from typing import Any
 
 from atproto import Client
@@ -165,9 +166,8 @@ class ProfileManager:
 
             # Strip any existing suffix to get clean base bio
             clean = self.base_bio
-            for suffix in _ALL_SUFFIXES:
-                clean = clean.replace(suffix, "")
-            clean = clean.rstrip()
+            # cut everything from the first status marker onward
+            clean = re.split(r"\s*•?\s*(?:🟢|🔴|source code:)", clean)[0].rstrip()
 
             # Store cleaned base for next time
             self.base_bio = clean
