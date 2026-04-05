@@ -117,7 +117,7 @@ class CosmikConnection(BaseModel):
             "updatedAt": now,
         }
         if self.connection_type:
-            record["connectionType"] = self.connection_type.upper()
+            record["connectionType"] = self.connection_type
         if self.note:
             record["note"] = self.note
         return record

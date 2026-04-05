@@ -252,9 +252,7 @@ class NamespaceMemory:
             # mark old row superseded, write merged version linking back
             old_id = best_match["id"]
             user_ns.write(
-                upsert_rows=[{"id": old_id, "status": "superseded"}],
-                distance_metric="cosine_distance",
-                schema=USER_NAMESPACE_SCHEMA,
+                patch_rows=[{"id": old_id, "status": "superseded"}],
             )
             merged = Observation(
                 content=decision.new_content or obs.content,
@@ -272,9 +270,7 @@ class NamespaceMemory:
             # mark old row superseded, write new one linking back
             old_id = best_match["id"]
             user_ns.write(
-                upsert_rows=[{"id": old_id, "status": "superseded"}],
-                distance_metric="cosine_distance",
-                schema=USER_NAMESPACE_SCHEMA,
+                patch_rows=[{"id": old_id, "status": "superseded"}],
             )
             await self._write_observation(handle, obs, embedding, supersedes=old_id)
             logger.info(

@@ -485,7 +485,11 @@ async def activity_feed():
     async with httpx.AsyncClient(timeout=10) as client:
         posts_coro = client.get(
             "https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed",
-            params={"actor": PHI_DID, "filter": "posts_no_replies", "limit": 10},
+            params={
+                "actor": PHI_DID,
+                "filter": "posts_and_author_threads",
+                "limit": 10,
+            },
         )
         cards_coro = client.get(
             "https://bsky.social/xrpc/com.atproto.repo.listRecords",

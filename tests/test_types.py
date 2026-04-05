@@ -36,18 +36,23 @@ def test_connection_to_record_full():
         note="because reasons",
     )
     record = conn.to_record()
-    assert record == {
-        "source": "https://a.com",
-        "target": "https://b.com",
-        "connectionType": "supports",
-        "note": "because reasons",
-    }
+    assert record["source"] == "https://a.com"
+    assert record["target"] == "https://b.com"
+    assert record["connectionType"] == "supports"
+    assert record["note"] == "because reasons"
+    assert "createdAt" in record
+    assert "updatedAt" in record
 
 
 def test_connection_to_record_minimal():
     conn = CosmikConnection(source="https://a.com", target="https://b.com")
     record = conn.to_record()
-    assert record == {"source": "https://a.com", "target": "https://b.com"}
+    assert record["source"] == "https://a.com"
+    assert record["target"] == "https://b.com"
+    assert "connectionType" not in record
+    assert "note" not in record
+    assert "createdAt" in record
+    assert "updatedAt" in record
 
 
 def test_connection_rejects_bare_string():
