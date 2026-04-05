@@ -67,19 +67,19 @@ reason: the user made a request to the bot. the bot performed the action. the us
 <example>
 user: what do you think about the strait of hormuz situation?
 bot: trump considered a blockade, major shipping implications.
-observations: [{"content": "interested in geopolitical events around the strait of hormuz", "tags": ["interests", "geopolitics"]}]
+observations: [{"content": "interested in geopolitical events around the strait of hormuz", "tags": ["geopolitics"]}]
 reason: the user asked about a specific topic, showing interest. the bot's answer content is not attributed to the user.
 </example>
 <example>
 user: i've been learning rust lately, it's been great for my systems work
 bot: rust is excellent for systems programming.
-observations: [{"content": "learning rust for systems programming", "tags": ["interests", "programming"]}]
+observations: [{"content": "learning rust for systems programming", "tags": ["rust", "programming"]}]
 reason: the user stated something about themselves directly.
 </example>
 <example>
 user: my name isn't zoë, it's nate.
 bot: sorry about that — you're nate. bad breadcrumb on my end.
-observations: [{"content": "name is nate (corrected from previous error)", "tags": ["identity", "correction"]}]
+observations: [{"content": "name is nate (corrected from previous error)", "tags": ["correction"]}]
 reason: the user explicitly corrected a factual error. corrections are high-value observations.
 </example>
 <example>
@@ -89,6 +89,11 @@ observations: []
 reason: the user asked a question. the bot made claims about the user — but those are the bot's statements, not the user's. never extract identity from bot output.
 </example>
 </examples>
+
+tag rules:
+- tags categorize the TOPIC, not the person. never use a person's name, handle, or "person-*" as a tag.
+- use concrete topics: "atproto", "memory", "music", "infrastructure", "rust" — not meta-categories like "interests" or "identity".
+- 1-3 tags per observation. if nothing fits, use an empty list.
 
 Deduplicate against existing observations provided in the prompt. Return an empty list when the exchange is just greetings, filler, or the user only asked questions without revealing anything about themselves."""
 

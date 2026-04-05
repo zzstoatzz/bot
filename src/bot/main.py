@@ -627,15 +627,13 @@ async def memory_page():
     <div id="graph"></div>
     <div class="tooltip" id="tooltip"></div>
     <div class="legend">
-        <div class="legend-title">nodes positioned by semantic similarity</div>
+        <div class="legend-title">social graph &middot; positioned by semantic similarity</div>
         <div class="legend-item"><div class="legend-dot" style="background:#58a6ff"></div><span class="legend-label">phi (self)</span></div>
         <div class="legend-item"><div class="legend-dot" style="background:#2ea043"></div><span class="legend-label">identities phi knows</span></div>
-        <div class="legend-item"><div class="legend-dot" style="background:#8b949e"></div><span class="legend-label">topics from conversations</span></div>
-        <div class="legend-item"><div class="legend-dot" style="background:#a371f7"></div><span class="legend-label">memories &amp; experiences</span></div>
     </div>
     <script>
-    const colors = {{ phi: '#58a6ff', user: '#2ea043', tag: '#8b949e', episodic: '#a371f7' }};
-    const radii = {{ phi: 14, user: 9, tag: 5, episodic: 7 }};
+    const colors = {{ phi: '#58a6ff', user: '#2ea043' }};
+    const radii = {{ phi: 14, user: 9 }};
 
     async function fetchAvatars(nodes) {{
         const identities = nodes
@@ -721,23 +719,12 @@ async def memory_page():
                     g.attr('transform', e.transform);
                     currentZoom = e.transform;
                     label.attr('font-size', d => {{
-                        const base = d.type === 'phi' ? 13 : d.type === 'user' ? 10 : 9;
+                        const base = d.type === 'phi' ? 13 : 10;
                         return base / Math.max(currentZoom.k, 0.5);
-                    }});
-                    label.style('display', d => {{
-                        if (d.type === 'phi' || d.type === 'user') return 'block';
-                        return currentZoom.k >= 1.2 ? 'block' : 'none';
                     }});
                 }}));
 
-            const edgeOpacity = (source, target) => {{
-                const s = typeof source === 'object' ? source.type : '';
-                const t = typeof target === 'object' ? target.type : '';
-                if (s === 'phi' && t === 'user') return 0.7;
-                if (s === 'user' && t === 'tag') return 0.2;
-                if (s === 'tag' || t === 'tag') return 0.25;
-                return 0.4;
-            }};
+            const edgeOpacity = () => 0.7;
 
             const simulation = d3.forceSimulation(data.nodes)
                 .force('link', d3.forceLink(data.edges).id(d => d.id).distance(40))
@@ -785,16 +772,14 @@ async def memory_page():
 
             const label = g.append('g')
                 .selectAll('text')
-                .data(data.nodes.filter(d => d.type === 'phi' || d.type === 'user' || d.type === 'episodic'))
+                .data(data.nodes)
                 .join('text')
                 .text(d => d.label)
-                .attr('font-size', d => d.type === 'phi' ? 13 : d.type === 'user' ? 10 : 9)
+                .attr('font-size', d => d.type === 'phi' ? 13 : 10)
                 .attr('font-family', "'SF Mono', 'Cascadia Code', 'Fira Code', monospace")
-                .attr('fill', d => d.type === 'episodic' ? '#a371f7' : '#8b949e')
-                .attr('fill-opacity', d => d.type === 'episodic' ? 0.6 : 1)
+                .attr('fill', '#8b949e')
                 .attr('text-anchor', 'middle')
-                .attr('dy', d => radii[d.type] + 14)
-                .style('display', d => d.type === 'episodic' ? 'none' : 'block');
+                .attr('dy', d => radii[d.type] + 14);
 
             simulation.on('tick', () => {{
                 link.attr('x1', d => d.source.x).attr('y1', d => d.source.y)

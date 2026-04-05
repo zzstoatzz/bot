@@ -537,8 +537,7 @@ class NamespaceMemory:
             return ""
         lines = ["[PHI'S RELEVANT MEMORIES]"]
         for r in results:
-            tags = f" [{', '.join(r['tags'])}]" if r.get("tags") else ""
-            lines.append(f"- {r['content']}{tags}")
+            lines.append(f"- {r['content']}")
         return "\n".join(lines)
 
     async def search_unified(
@@ -647,10 +646,6 @@ class NamespaceMemory:
         """Build graph nodes and edges from memory namespaces with semantic coordinates."""
         nodes = [{"id": "phi", "label": "phi", "type": "phi"}]
         edges = []
-        tag_set: set[str] = set()
-        user_tags: dict[str, set[str]] = {}  # handle -> tags
-        # vectors for computing semantic positions
-        tag_vectors: dict[str, list[list[float]]] = {}
         user_vectors: dict[str, list[list[float]]] = {}
 
         # discover user namespaces
@@ -664,103 +659,24 @@ class NamespaceMemory:
                 )
                 edges.append({"source": "phi", "target": f"user:{handle}"})
 
-                # get observations for this user to extract tags + vectors
+                # get observation vectors for semantic positioning
                 user_ns = self.client.namespace(ns_summary.id)
                 try:
                     response = user_ns.query(
                         rank_by=("vector", "ANN", [0.5] * 1536),
                         top_k=50,
                         filters={"kind": ["Eq", "observation"]},
-                        include_attributes=["tags", "vector"],
+                        include_attributes=["vector"],
                     )
                     if response.rows:
                         for row in response.rows:
                             vec = getattr(row, "vector", None)
-                            for tag in getattr(row, "tags", []) or []:
-                                tag_set.add(tag)
-                                user_tags.setdefault(handle, set()).add(tag)
-                                if vec:
-                                    tag_vectors.setdefault(tag, []).append(vec)
                             if vec:
                                 user_vectors.setdefault(handle, []).append(vec)
                 except Exception:
                     pass  # old namespace or no observations
         except Exception as e:
             logger.warning(f"failed to list user namespaces: {e}")
-
-        # add tag nodes and user→tag edges
-        for tag in tag_set:
-            nodes.append({"id": f"tag:{tag}", "label": tag, "type": "tag"})
-        for handle, tags in user_tags.items():
-            for tag in tags:
-                edges.append({"source": f"user:{handle}", "target": f"tag:{tag}"})
-
-        # episodic memories — group by top tags
-        episodic_tags: set[str] = set()
-        episodic_vectors: dict[str, list[list[float]]] = {}
-        try:
-            response = self.namespaces["episodic"].query(
-                rank_by=("vector", "ANN", [0.5] * 1536),
-                top_k=100,
-                include_attributes=["tags", "vector"],
-            )
-            if response.rows:
-                for row in response.rows:
-                    vec = getattr(row, "vector", None)
-                    for tag in getattr(row, "tags", []) or []:
-                        episodic_tags.add(tag)
-                        if vec:
-                            episodic_vectors.setdefault(tag, []).append(vec)
-        except Exception:
-            pass
-
-        for tag in episodic_tags:
-            node_id = f"episodic:{tag}"
-            nodes.append({"id": node_id, "label": tag, "type": "episodic"})
-            edges.append({"source": "phi", "target": node_id})
-            # bridge to user tags if shared
-            if tag in tag_set:
-                edges.append({"source": f"tag:{tag}", "target": node_id})
-
-        # read tag-to-tag relationships from phi-tag-relationships
-        node_ids = {n["id"] for n in nodes}
-        try:
-            rel_ns = self.client.namespace("phi-tag-relationships")
-            rel_response = rel_ns.query(
-                rank_by=("vector", "ANN", [0.5] * 1536),
-                top_k=200,
-                include_attributes=[
-                    "tag_a",
-                    "tag_b",
-                    "relationship_type",
-                    "confidence",
-                ],
-            )
-            if rel_response.rows:
-                for row in rel_response.rows:
-                    tag_a = getattr(row, "tag_a", "")
-                    tag_b = getattr(row, "tag_b", "")
-                    if not tag_a or not tag_b:
-                        continue
-                    # resolve to existing node IDs (prefer tag: over episodic:)
-                    source = (
-                        f"tag:{tag_a}"
-                        if f"tag:{tag_a}" in node_ids
-                        else f"episodic:{tag_a}"
-                        if f"episodic:{tag_a}" in node_ids
-                        else None
-                    )
-                    target = (
-                        f"tag:{tag_b}"
-                        if f"tag:{tag_b}" in node_ids
-                        else f"episodic:{tag_b}"
-                        if f"episodic:{tag_b}" in node_ids
-                        else None
-                    )
-                    if source and target and source != target:
-                        edges.append({"source": source, "target": target})
-        except Exception:
-            pass  # namespace may not exist yet
 
         # compute per-node embedding centroids
         def _centroid(vecs: list[list[float]]) -> list[float]:
@@ -769,12 +685,8 @@ class NamespaceMemory:
             return [sum(v[i] for v in vecs) / n for i in range(dim)]
 
         centroids: dict[str, list[float]] = {}
-        for tag, vecs in tag_vectors.items():
-            centroids[f"tag:{tag}"] = _centroid(vecs)
         for handle, vecs in user_vectors.items():
             centroids[f"user:{handle}"] = _centroid(vecs)
-        for tag, vecs in episodic_vectors.items():
-            centroids[f"episodic:{tag}"] = _centroid(vecs)
 
         coords = self._project_2d(centroids)
 
