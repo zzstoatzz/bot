@@ -143,8 +143,10 @@ class NamespaceMemory:
                     "id": entry_id,
                     "vector": await self._get_embedding(content),
                     "kind": "interaction",
+                    "status": "active",
                     "content": content,
                     "tags": [],
+                    "supersedes": "",
                     "created_at": now,
                     "updated_at": now,
                 }
@@ -168,8 +170,10 @@ class NamespaceMemory:
                     "id": entry_id,
                     "vector": await self._get_embedding(obs.content),
                     "kind": "observation",
+                    "status": "active",
                     "content": obs.content,
                     "tags": obs.tags,
+                    "supersedes": "",
                     "created_at": now,
                     "updated_at": now,
                 }
@@ -190,7 +194,13 @@ class NamespaceMemory:
             response = user_ns.query(
                 rank_by=("vector", "ANN", embedding),
                 top_k=top_k,
-                filters={"kind": ["Eq", "observation"]},
+                filters=[
+                    "And",
+                    [
+                        ["kind", "Eq", "observation"],
+                        ["status", "NotEq", "superseded"],
+                    ],
+                ],
                 include_attributes=["content", "tags", "created_at"],
             )
             if response.rows:
@@ -239,24 +249,36 @@ class NamespaceMemory:
             logger.info(f"ADD for @{handle}: {obs.content[:60]} ({decision.reason})")
 
         elif action == "UPDATE":
-            # delete the old one, write the merged version
-            user_ns.write(deletes=[best_match["id"]])
+            # mark old row superseded, write merged version linking back
+            old_id = best_match["id"]
+            user_ns.write(
+                upsert_rows=[{"id": old_id, "status": "superseded"}],
+                distance_metric="cosine_distance",
+                schema=USER_NAMESPACE_SCHEMA,
+            )
             merged = Observation(
                 content=decision.new_content or obs.content,
                 tags=decision.new_tags or obs.tags,
             )
             merged_embedding = await self._get_embedding(merged.content)
-            await self._write_observation(handle, merged, merged_embedding)
+            await self._write_observation(
+                handle, merged, merged_embedding, supersedes=old_id
+            )
             logger.info(
                 f"UPDATE for @{handle}: '{best_match['content'][:40]}' -> '{merged.content[:40]}' ({decision.reason})"
             )
 
         elif action == "DELETE":
-            # delete the existing one, store the new one
-            user_ns.write(deletes=[best_match["id"]])
-            await self._write_observation(handle, obs, embedding)
+            # mark old row superseded, write new one linking back
+            old_id = best_match["id"]
+            user_ns.write(
+                upsert_rows=[{"id": old_id, "status": "superseded"}],
+                distance_metric="cosine_distance",
+                schema=USER_NAMESPACE_SCHEMA,
+            )
+            await self._write_observation(handle, obs, embedding, supersedes=old_id)
             logger.info(
-                f"DELETE+ADD for @{handle}: removed '{best_match['content'][:40]}', added '{obs.content[:40]}' ({decision.reason})"
+                f"DELETE+ADD for @{handle}: superseded '{best_match['content'][:40]}', added '{obs.content[:40]}' ({decision.reason})"
             )
 
         elif action == "NOOP":
@@ -272,7 +294,11 @@ class NamespaceMemory:
             )
 
     async def _write_observation(
-        self, handle: str, obs: Observation, embedding: list[float]
+        self,
+        handle: str,
+        obs: Observation,
+        embedding: list[float],
+        supersedes: str | None = None,
     ) -> None:
         """Write a single observation to turbopuffer."""
         user_ns = self.get_user_namespace(handle)
@@ -284,8 +310,10 @@ class NamespaceMemory:
                     "id": entry_id,
                     "vector": embedding,
                     "kind": "observation",
+                    "status": "active",
                     "content": obs.content,
                     "tags": obs.tags,
+                    "supersedes": supersedes or "",
                     "created_at": now,
                     "updated_at": now,
                 }
@@ -295,18 +323,14 @@ class NamespaceMemory:
         )
 
     async def extract_and_store(self, handle: str, user_text: str, bot_text: str):
-        """Extract observations from an exchange and reconcile against existing memory."""
-        try:
-            # fetch existing observations for extraction context
-            existing = await self._get_observations(handle, top_k=20)
-            existing_text = (
-                "\n".join(f"- {o}" for o in existing) if existing else "none yet"
-            )
+        """Extract observations from an exchange and reconcile against existing memory.
 
-            prompt = (
-                f"existing observations about this user:\n{existing_text}\n\n"
-                f"new exchange:\nuser: {user_text}\nbot: {bot_text}"
-            )
+        Extraction runs blind — no existing observations in the prompt. This breaks
+        the feedback loop where the extraction model pattern-matches off existing
+        (potentially bad) observations. Deduplication happens in reconciliation.
+        """
+        try:
+            prompt = f"new exchange:\nuser: {user_text}\nbot: {bot_text}"
             result = await get_extraction_agent().run(prompt)
             if result.output.observations:
                 # reconcile each candidate against existing memory
@@ -343,25 +367,6 @@ class NamespaceMemory:
                 )
         return None
 
-    async def _get_observations(self, handle: str, top_k: int = 20) -> list[str]:
-        """Get existing observation content strings for a user."""
-        user_ns = self.get_user_namespace(handle)
-        try:
-            response = user_ns.query(
-                rank_by=("vector", "ANN", [0.5] * 1536),
-                top_k=top_k,
-                filters={"kind": ["Eq", "observation"]},
-                include_attributes=["content"],
-            )
-            if response.rows:
-                return [row.content for row in response.rows]
-        except Exception as e:
-            if "attribute not found" in str(e):
-                return []  # old namespace without kind column - no observations yet
-            if "was not found" not in str(e):
-                raise
-        return []
-
     async def build_user_context(
         self, handle: str, query_text: str, include_core: bool = True
     ) -> str:
@@ -394,11 +399,17 @@ class NamespaceMemory:
             interactions: list[str] = []
 
             try:
-                # semantic search for relevant observations
+                # semantic search for relevant observations (exclude superseded)
                 obs_response = user_ns.query(
                     rank_by=("vector", "ANN", query_embedding),
                     top_k=10,
-                    filters={"kind": ["Eq", "observation"]},
+                    filters=[
+                        "And",
+                        [
+                            ["kind", "Eq", "observation"],
+                            ["status", "NotEq", "superseded"],
+                        ],
+                    ],
                     include_attributes=["content", "tags"],
                 )
                 if obs_response.rows:
@@ -665,7 +676,13 @@ class NamespaceMemory:
                     response = user_ns.query(
                         rank_by=("vector", "ANN", [0.5] * 1536),
                         top_k=50,
-                        filters={"kind": ["Eq", "observation"]},
+                        filters=[
+                            "And",
+                            [
+                                ["kind", "Eq", "observation"],
+                                ["status", "NotEq", "superseded"],
+                            ],
+                        ],
                         include_attributes=["vector"],
                     )
                     if response.rows:

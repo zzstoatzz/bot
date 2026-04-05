@@ -16,7 +16,12 @@ class Observation(BaseModel):
     content: str = Field(
         description="one atomic fact about the user, stated as a short sentence"
     )
-    tags: list[str] = Field(description="1-3 lowercase tags categorizing this fact")
+    tags: list[str] = Field(
+        default_factory=list,
+        min_length=0,
+        max_length=3,
+        description="0-3 lowercase topic tags (not person names, not meta-categories like 'interests')",
+    )
 
 
 class ExtractionResult(BaseModel):
@@ -95,7 +100,7 @@ tag rules:
 - use concrete topics: "atproto", "memory", "music", "infrastructure", "rust" — not meta-categories like "interests" or "identity".
 - 1-3 tags per observation. if nothing fits, use an empty list.
 
-Deduplicate against existing observations provided in the prompt. Return an empty list when the exchange is just greetings, filler, or the user only asked questions without revealing anything about themselves."""
+Return an empty list when the exchange is just greetings, filler, or the user only asked questions without revealing anything about themselves."""
 
 RECONCILIATION_SYSTEM_PROMPT = """\
 You reconcile a NEW observation against an EXISTING observation from memory.
@@ -150,8 +155,10 @@ EPISODIC_SCHEMA = {
 
 USER_NAMESPACE_SCHEMA = {
     "kind": {"type": "string", "filterable": True},
+    "status": {"type": "string", "filterable": True},  # active, superseded
     "content": {"type": "string", "full_text_search": True},
     "tags": {"type": "[]string", "filterable": True},
+    "supersedes": {"type": "string"},  # id of observation this replaces
     "created_at": {"type": "string"},
     "updated_at": {"type": "string"},
 }
