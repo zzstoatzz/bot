@@ -26,13 +26,19 @@ _limiter = MovingWindowRateLimiter(_storage)
 _user_limit = parse_limit("30/hour")
 
 
-def _allowed_handles(*extra: str) -> set[str]:
+async def _allowed_handles(*extra: str) -> set[str]:
     """Build the set of handles phi may tag (create mention facets for).
 
-    Always includes the bot owner and the bot itself.  Pass conversation
-    participants as *extra*.
+    Always includes the bot owner, the bot itself, and anyone who has
+    opted in (stored on PDS).  Pass conversation participants as *extra*.
     """
+    from bot.core.mentionable import get_mentionable_handles
+
     base = {settings.owner_handle, settings.bluesky_handle}
+    try:
+        base.update(await get_mentionable_handles())
+    except Exception:
+        logger.warning("failed to load mentionable handles from PDS, using base set")
     return base | {h for h in extra if h}
 
 
@@ -107,7 +113,7 @@ class MessageHandler:
             reply_ref = models.AppBskyFeedPost.ReplyRef(
                 parent=parent_ref, root=root_ref
             )
-            allowed = _allowed_handles(author_handle)
+            allowed = await _allowed_handles(author_handle)
             await self.client.create_post(
                 response.text, reply_to=reply_ref, allowed_handles=allowed
             )
@@ -137,7 +143,7 @@ class MessageHandler:
             logger.info(f"ignoring follow from @{author_handle}: {response.reason}")
         elif response.action == "reply" and response.text:
             # post as a top-level post since there's no thread to reply to
-            allowed = _allowed_handles(author_handle)
+            allowed = await _allowed_handles(author_handle)
             await self.client.create_post(response.text, allowed_handles=allowed)
             bot_status.record_response()
             logger.info(f"posted on follow from @{author_handle}: {response.text[:80]}")
@@ -222,7 +228,7 @@ class MessageHandler:
             reply_ref = models.AppBskyFeedPost.ReplyRef(
                 parent=parent_ref, root=root_ref
             )
-            allowed = _allowed_handles(author_handle)
+            allowed = await _allowed_handles(author_handle)
             await self.client.create_post(
                 response.text, reply_to=reply_ref, allowed_handles=allowed
             )
@@ -253,7 +259,7 @@ class MessageHandler:
 
             if response.action in ("reply", "post") and response.text:
                 try:
-                    allowed = _allowed_handles()
+                    allowed = await _allowed_handles()
                     await self.client.create_post(
                         response.text, allowed_handles=allowed
                     )
@@ -286,7 +292,7 @@ class MessageHandler:
 
             if response.action in ("reply", "post") and response.text:
                 try:
-                    allowed = _allowed_handles()
+                    allowed = await _allowed_handles()
                     await self.client.create_post(
                         response.text, allowed_handles=allowed
                     )
