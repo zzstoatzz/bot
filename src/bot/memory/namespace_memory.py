@@ -14,7 +14,6 @@ from bot.memory.extraction import (
     EPISODIC_SCHEMA,
     USER_NAMESPACE_SCHEMA,
     Observation,
-    get_extraction_agent,
     get_reconciliation_agent,
 )
 
@@ -317,32 +316,6 @@ class NamespaceMemory:
             distance_metric="cosine_distance",
             schema=USER_NAMESPACE_SCHEMA,
         )
-
-    async def extract_and_store(self, handle: str, user_text: str, bot_text: str):
-        """Extract observations from an exchange and reconcile against existing memory.
-
-        Extraction runs blind — no existing observations in the prompt. This breaks
-        the feedback loop where the extraction model pattern-matches off existing
-        (potentially bad) observations. Deduplication happens in reconciliation.
-        """
-        try:
-            prompt = f"new exchange:\nuser: {user_text}\nbot: {bot_text}"
-            result = await get_extraction_agent().run(prompt)
-            if result.output.observations:
-                # reconcile each candidate against existing memory
-                for obs in result.output.observations:
-                    try:
-                        await self._reconcile_observation(handle, obs)
-                    except Exception as e:
-                        logger.warning(
-                            f"reconciliation failed for observation '{obs.content[:40]}': {e}"
-                        )
-                        # fall back to direct store on reconciliation failure
-                        await self.store_observations(handle, [obs])
-            else:
-                logger.debug(f"no new observations for @{handle}")
-        except Exception as e:
-            logger.warning(f"observation extraction failed for @{handle}: {e}")
 
     async def get_relationship_summary(self, handle: str) -> str | None:
         """Get the compacted relationship summary for a user, if one exists."""
@@ -751,7 +724,69 @@ class NamespaceMemory:
         results.sort(key=lambda r: r.get("created_at", ""), reverse=True)
         return results[:top_k]
 
+    async def get_unprocessed_interactions(self, top_k: int = 20) -> list[dict]:
+        """Get recent interactions that haven't been reviewed for observation extraction.
+
+        Uses a timestamp heuristic: interactions newer than the most recent
+        observation in each user namespace are considered unprocessed.
+        """
+        user_prefix = f"{self.NAMESPACES['users']}-"
+        results: list[dict] = []
+        try:
+            page = self.client.namespaces(prefix=user_prefix)
+            for ns_summary in page.namespaces:
+                handle = ns_summary.id.removeprefix(user_prefix).replace("_", ".")
+                user_ns = self.client.namespace(ns_summary.id)
+
+                # find the latest observation timestamp
+                latest_obs_time = ""
+                try:
+                    obs_response = user_ns.query(
+                        rank_by=("created_at", "desc"),
+                        top_k=1,
+                        filters=[
+                            "And",
+                            [
+                                ["kind", "Eq", "observation"],
+                                ["status", "NotEq", "superseded"],
+                            ],
+                        ],
+                        include_attributes=["created_at"],
+                    )
+                    if obs_response.rows:
+                        latest_obs_time = (
+                            getattr(obs_response.rows[0], "created_at", "") or ""
+                        )
+                except Exception:
+                    pass
+
+                # get interactions newer than that
+                try:
+                    int_response = user_ns.query(
+                        rank_by=("created_at", "desc"),
+                        top_k=5,
+                        filters={"kind": ["Eq", "interaction"]},
+                        include_attributes=["content", "created_at"],
+                    )
+                    if int_response.rows:
+                        for row in int_response.rows:
+                            created = getattr(row, "created_at", "") or ""
+                            if created > latest_obs_time:
+                                results.append(
+                                    {
+                                        "handle": handle,
+                                        "content": row.content,
+                                        "created_at": created,
+                                    }
+                                )
+                except Exception:
+                    pass
+        except Exception as e:
+            logger.warning(f"failed to get unprocessed interactions: {e}")
+
+        results.sort(key=lambda r: r.get("created_at", ""), reverse=True)
+        return results[:top_k]
+
     async def after_interaction(self, handle: str, user_text: str, bot_text: str):
-        """Post-interaction hook: store interaction then extract observations."""
+        """Post-interaction hook: store the raw exchange as ground truth."""
         await self.store_interaction(handle, user_text, bot_text)
-        await self.extract_and_store(handle, user_text, bot_text)

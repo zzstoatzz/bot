@@ -114,22 +114,7 @@ Decide one action:
 Corrections (e.g., "name is nate, corrected from previous error") always win over the entry they correct — use UPDATE or DELETE.
 When in doubt between ADD and NOOP, prefer NOOP. memory should be lean."""
 
-_extraction_agent: Agent[None, ExtractionResult] | None = None
 _reconciliation_agent: Agent[None, ReconciliationResult] | None = None
-
-
-def get_extraction_agent() -> Agent[None, ExtractionResult]:
-    global _extraction_agent
-    if _extraction_agent is None:
-        _extraction_agent = Agent[None, ExtractionResult](
-            name="observation-extractor",
-            model=f"anthropic:{settings.extraction_model}",
-            output_type=ExtractionResult,
-            system_prompt=EXTRACTION_SYSTEM_PROMPT,
-        )
-    agent = _extraction_agent
-    assert agent is not None
-    return agent
 
 
 def get_reconciliation_agent() -> Agent[None, ReconciliationResult]:

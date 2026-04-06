@@ -13,6 +13,7 @@ from pydantic_ai.mcp import MCPServerStreamableHTTP
 
 from bot.config import settings
 from bot.core.graze_client import GrazeClient
+from bot.memory.extraction import EXTRACTION_SYSTEM_PROMPT, ExtractionResult
 from bot.tools import PhiDeps, _check_services_impl, register_all
 
 logger = logging.getLogger("bot.agent")
@@ -208,6 +209,14 @@ class PhiAgent:
         )
         register_all(self.agent, self.graze_client)
 
+        # Extraction agent — phi extracts its own observations using its own model
+        self._extraction_agent = Agent[None, ExtractionResult](
+            name="phi-extractor",
+            model=settings.agent_model,
+            system_prompt=f"{self.base_personality}\n\n{EXTRACTION_SYSTEM_PROMPT}",
+            output_type=ExtractionResult,
+        )
+
         logger.info("phi agent initialized with pdsx + pub-search mcp tools")
 
     def _mcp_toolsets(self) -> list[MCPServerStreamableHTTP]:
@@ -400,3 +409,43 @@ class PhiAgent:
             + (f" ({result.output.reason})" if result.output.reason else "")
         )
         return result.output
+
+    async def process_extraction(self) -> int:
+        """Review recent unprocessed interactions and extract observations. Returns count stored."""
+        if not self.memory:
+            return 0
+
+        unprocessed = await self.memory.get_unprocessed_interactions(top_k=20)
+        if not unprocessed:
+            logger.info("extraction: no unprocessed interactions")
+            return 0
+
+        logger.info(
+            f"extraction: reviewing {len(unprocessed)} unprocessed interactions"
+        )
+
+        # group by handle
+        by_handle: dict[str, list[dict]] = {}
+        for interaction in unprocessed:
+            by_handle.setdefault(interaction["handle"], []).append(interaction)
+
+        total_stored = 0
+        for handle, interactions in by_handle.items():
+            exchange_texts = [i["content"] for i in interactions]
+            prompt = f"recent exchanges with @{handle}:\n\n" + "\n\n---\n\n".join(
+                exchange_texts
+            )
+
+            try:
+                result = await self._extraction_agent.run(prompt)
+                if result.output.observations:
+                    for obs in result.output.observations:
+                        try:
+                            await self.memory._reconcile_observation(handle, obs)
+                            total_stored += 1
+                        except Exception as e:
+                            logger.warning(f"reconciliation failed: {e}")
+            except Exception as e:
+                logger.warning(f"extraction failed for @{handle}: {e}")
+
+        return total_stored

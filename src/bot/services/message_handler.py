@@ -273,6 +273,14 @@ class MessageHandler:
     async def daily_reflection(self):
         """Generate and post a daily reflection if phi has something to say."""
         with logfire.span("daily reflection"):
+            # First: review unprocessed interactions and extract observations
+            try:
+                extracted = await self.agent.process_extraction()
+                if extracted:
+                    logger.info(f"daily reflection: extracted {extracted} observations")
+            except Exception as e:
+                logger.warning(f"extraction during reflection failed: {e}")
+
             # Fetch last top-level post so the agent knows what it said recently
             last_post_text = None
             try:
