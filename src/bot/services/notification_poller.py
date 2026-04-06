@@ -28,6 +28,8 @@ class NotificationPoller:
         self._last_daily_post: datetime | None = None
         self._last_thought_hours: set[int] = set()
         self._last_thought_date: date | None = None
+        self._last_exploration_hours: set[int] = set()
+        self._last_exploration_date: date | None = None
         self._semaphore = asyncio.Semaphore(MAX_CONCURRENT)
         self._background_tasks: set[asyncio.Task] = set()
 
@@ -79,6 +81,14 @@ class NotificationPoller:
                     task.add_done_callback(self._background_tasks.discard)
             except Exception as e:
                 logger.error(f"thought post error: {e}", exc_info=settings.debug)
+
+            try:
+                if self._should_do_exploration():
+                    task = asyncio.create_task(self._maybe_explore())
+                    self._background_tasks.add(task)
+                    task.add_done_callback(self._background_tasks.discard)
+            except Exception as e:
+                logger.error(f"exploration error: {e}", exc_info=settings.debug)
 
             try:
                 await asyncio.sleep(settings.notification_poll_interval)
@@ -190,3 +200,31 @@ class NotificationPoller:
             await self.handler.original_thought()
         except Exception as e:
             logger.error(f"thought post error: {e}", exc_info=settings.debug)
+
+    def _should_do_exploration(self) -> bool:
+        """Check if it's time for background exploration."""
+        now = datetime.now(UTC)
+        today = now.date()
+        if bot_status.paused:
+            return False
+        # reset tracked hours at midnight
+        if self._last_exploration_date != today:
+            self._last_exploration_hours = set()
+            self._last_exploration_date = today
+        hour = now.hour
+        if hour not in settings.exploration_hours:
+            return False
+        if hour in self._last_exploration_hours:
+            return False
+        return True
+
+    async def _maybe_explore(self):
+        """Run one background exploration."""
+        now = datetime.now(UTC)
+        self._last_exploration_hours.add(now.hour)
+        self._last_exploration_date = now.date()
+        logger.info("triggering background exploration")
+        try:
+            await self.handler.explore()
+        except Exception as e:
+            logger.error(f"exploration error: {e}", exc_info=settings.debug)

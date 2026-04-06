@@ -270,6 +270,18 @@ class MessageHandler:
             else:
                 logger.info(f"original thought: nothing to say ({response.reason})")
 
+    async def explore(self):
+        """Run one exploration from the curiosity queue."""
+        with logfire.span("exploration"):
+            try:
+                stored = await self.agent.process_exploration()
+                if stored:
+                    logger.info(f"exploration: stored {stored} findings")
+                else:
+                    logger.info("exploration: nothing to explore")
+            except Exception as e:
+                logger.warning(f"exploration failed: {e}")
+
     async def daily_reflection(self):
         """Generate and post a daily reflection if phi has something to say."""
         with logfire.span("daily reflection"):

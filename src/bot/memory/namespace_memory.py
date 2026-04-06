@@ -408,6 +408,26 @@ class NamespaceMemory:
                 if response.rows:
                     interactions = [row.content for row in response.rows]
 
+            # exploration notes (background research)
+            exploration_notes: list[str] = []
+            try:
+                exp_response = user_ns.query(
+                    rank_by=("vector", "ANN", query_embedding),
+                    top_k=5,
+                    filters=[
+                        "And",
+                        [
+                            ["kind", "Eq", "exploration_note"],
+                            ["status", "NotEq", "superseded"],
+                        ],
+                    ],
+                    include_attributes=["content"],
+                )
+                if exp_response.rows:
+                    exploration_notes = [row.content for row in exp_response.rows]
+            except Exception:
+                pass  # no exploration notes yet
+
             if observations:
                 parts.append(
                     f"\n[OBSERVATIONS ABOUT @{handle} — extracted from user's own words, trust: medium]"
@@ -422,7 +442,14 @@ class NamespaceMemory:
                 for interaction in interactions:
                     parts.append(f"- {interaction}")
 
-            if not observations and not interactions:
+            if exploration_notes:
+                parts.append(
+                    f"\n[BACKGROUND RESEARCH ON @{handle} — phi explored their public activity, trust: lowest]"
+                )
+                for note in exploration_notes:
+                    parts.append(f"- {note}")
+
+            if not observations and not interactions and not exploration_notes:
                 parts.append(f"\n[USER CONTEXT - @{handle}]")
                 parts.append("no previous interactions with this user.")
 
@@ -787,6 +814,75 @@ class NamespaceMemory:
         results.sort(key=lambda r: r.get("created_at", ""), reverse=True)
         return results[:top_k]
 
+    async def store_exploration_note(
+        self,
+        handle: str,
+        content: str,
+        tags: list[str],
+        evidence_uris: list[str],
+    ):
+        """Store an exploration note — background research phi did on someone."""
+        user_ns = self.get_user_namespace(handle)
+        # include evidence in content for searchability
+        full_content = content
+        if evidence_uris:
+            full_content += f"\n[evidence: {', '.join(evidence_uris)}]"
+        entry_id = self._generate_id(f"user-{handle}", "exploration_note", content)
+
+        now = datetime.now().isoformat()
+        user_ns.write(
+            upsert_rows=[
+                {
+                    "id": entry_id,
+                    "vector": await self._get_embedding(content),
+                    "kind": "exploration_note",
+                    "status": "active",
+                    "content": full_content,
+                    "tags": tags,
+                    "supersedes": "",
+                    "created_at": now,
+                    "updated_at": now,
+                }
+            ],
+            distance_metric="cosine_distance",
+            schema=USER_NAMESPACE_SCHEMA,
+        )
+        logger.info(f"stored exploration note for @{handle}: {content[:80]}")
+
+    async def _maybe_enqueue_exploration(self, handle: str):
+        """If we don't know much about this person, queue them for exploration.
+
+        Counts both observations and exploration_notes — if we've already
+        explored someone, don't re-enqueue just because obs count is low.
+        """
+        user_ns = self.get_user_namespace(handle)
+        try:
+            # count observations + exploration notes together
+            response = user_ns.query(
+                rank_by=("created_at", "desc"),
+                top_k=2,
+                filters=[
+                    "And",
+                    [
+                        ["kind", "In", ["observation", "exploration_note"]],
+                        ["status", "NotEq", "superseded"],
+                    ],
+                ],
+                include_attributes=["kind"],
+            )
+            knowledge_count = len(response.rows) if response.rows else 0
+        except Exception:
+            knowledge_count = 0  # namespace may not exist yet — worth exploring
+
+        if knowledge_count < 2:
+            from bot.core.curiosity_queue import enqueue
+
+            await enqueue(kind="explore_handle", subject=handle, source="interaction")
+
     async def after_interaction(self, handle: str, user_text: str, bot_text: str):
-        """Post-interaction hook: store the raw exchange as ground truth."""
+        """Post-interaction hook: store the raw exchange, maybe queue exploration."""
         await self.store_interaction(handle, user_text, bot_text)
+        try:
+            await self._maybe_enqueue_exploration(handle)
+        except Exception as e:
+            logger.debug(f"exploration enqueue check failed for @{handle}: {e}")

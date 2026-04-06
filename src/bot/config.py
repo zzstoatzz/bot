@@ -97,6 +97,12 @@ class Settings(BaseSettings):
         description="UTC hours to attempt original thought posts (15,19,23 = ~10am,2pm,6pm CT)",
     )
 
+    # Background exploration
+    exploration_hours: list[int] = Field(
+        default=[16, 20],
+        description="UTC hours to attempt background exploration (16,20 = ~11am,3pm CT)",
+    )
+
     # Control API
     control_token: str | None = Field(
         default=None, description="Bearer token for /api/control endpoints"
