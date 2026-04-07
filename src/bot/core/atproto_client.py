@@ -1,6 +1,7 @@
 import logging
 from pathlib import Path
 
+import httpx
 from atproto import Client, Session, SessionEvent
 from atproto_client import models
 
@@ -260,3 +261,63 @@ class BotClient:
 
 
 bot_client: BotClient = BotClient()
+
+
+# --- self-identity block (cached) ---
+
+_identity_block_cache: str | None = None
+
+
+async def get_identity_block() -> str:
+    """Build phi's self-identity block for the system prompt.
+
+    Resolves the PDS endpoint from the DID document via the PLC directory
+    on first call, then caches for the lifetime of the process. Phi's PDS
+    doesn't change between deploys, so a process-lifetime cache is fine.
+
+    The block prevents phi from confusing its own infrastructure with the
+    operator's — a real failure mode caught when phi wrote a blog post
+    claiming its memory lived on `pds.zzstoatzz.io` (the operator's PDS,
+    not phi's).
+    """
+    global _identity_block_cache
+    cached = _identity_block_cache
+    if cached is not None:
+        return cached
+
+    await bot_client.authenticate()
+    handle = settings.bluesky_handle
+    me = bot_client.client.me
+    did = me.did if me else "unknown"
+
+    pds: str | None = None
+    if did != "unknown":
+        try:
+            async with httpx.AsyncClient(timeout=10) as http:
+                r = await http.get(f"https://plc.directory/{did}")
+                r.raise_for_status()
+                doc = r.json()
+                for svc in doc.get("service", []):
+                    if svc.get("type") == "AtprotoPersonalDataServer":
+                        pds = svc.get("serviceEndpoint")
+                        break
+        except Exception as e:
+            logger.warning(f"failed to resolve pds endpoint for {did}: {e}")
+
+    lines = [
+        "[YOUR INFRASTRUCTURE]",
+        f"handle: @{handle}",
+        f"did: {did}",
+    ]
+    if pds:
+        lines.append(f"pds: {pds}")
+        lines.append(
+            "this is YOUR pds, not the operator's. your records — observations, "
+            "exchanges, blog posts, queue items — live here. the operator runs "
+            "their own pds elsewhere; don't conflate them."
+        )
+
+    block = "\n".join(lines)
+    _identity_block_cache = block
+    logger.info(f"identity block built: {handle} / {did} / {pds or 'unknown pds'}")
+    return block

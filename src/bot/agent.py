@@ -12,6 +12,7 @@ from pydantic_ai import Agent, ImageUrl, RunContext
 from pydantic_ai.mcp import MCPServerStreamableHTTP
 
 from bot.config import settings
+from bot.core.atproto_client import get_identity_block
 from bot.core.curiosity_queue import claim, complete, enqueue, fail
 from bot.core.graze_client import GrazeClient
 from bot.exploration import EXPLORATION_SYSTEM_PROMPT, ExplorationResult
@@ -150,6 +151,10 @@ class PhiAgent:
         )
 
         # --- dynamic system prompts ---
+
+        @self.agent.system_prompt(dynamic=True)
+        async def inject_identity() -> str:
+            return await get_identity_block()
 
         @self.agent.system_prompt(dynamic=True)
         def inject_today() -> str:
