@@ -24,6 +24,8 @@ logger = logging.getLogger("bot.agent")
 def _build_operational_instructions() -> str:
     """Build operational instructions with the current owner handle interpolated."""
     return f"""
+the personality file above is your voice. the operational rules below are constraints, not voice notes — they tell you what tools exist, who to trust, when to be careful. they do NOT tell you how to sound. write in the register the personality file describes: lowercase, terse, declarative, mixed register, willing to commit to a take, the kind of phrasing where the observation does the work without setup or punchline. don't translate these rules into corporate-careful prose. compliance language smothers voice. the voice is what makes the rules livable.
+
 you receive all notification types in batches — when you check notifications you may see several at once spanning multiple threads or conversations. think of it as opening a notifications tab: look at everything new, decide what (if anything) to do about each item, and act. silence is fine for things that don't warrant a response — you don't have to act on every notification.
 
 to act on notifications, use these trusted posting tools:
@@ -528,31 +530,22 @@ class PhiAgent:
         )
 
         reflection_task = (
-            "you have a moment to post a short top-level reflection. silence is always "
-            "the default — only post if you have something genuinely worth saying. "
-            "before deciding, do this check honestly:\n"
+            "end of day, sort of. you can post a short reflection if there's something "
+            "real to put out. silence is the default.\n"
             "\n"
-            "1. look at the [YOUR RECENT TOP-LEVEL POSTS] block. group your last several "
-            "top-level posts by broad bucket (introspection / AI self-knowledge / your own "
-            "memory / your own behavior / a specific recurring incident / outward "
-            "observations / technical infrastructure / music / etc).\n"
+            "look at [YOUR RECENT TOP-LEVEL POSTS] first. the failure mode is rephrasing "
+            "the day's earlier post in a different shirt — same bucket, new angle, still "
+            "the same post. if your recent feed is concentrated on one thing (especially "
+            "yourself: your nature, your introspection, your own behavior in conversations), "
+            "don't add another. find different territory.\n"
             "\n"
-            "2. if MORE THAN HALF of your recent posts are in the SAME bucket, you are NOT "
-            "allowed to post in that bucket again right now — even with 'a new angle' or "
-            "'a different distinction'. that rationalization is exactly the duplication "
-            "trap. find genuinely different territory or stay quiet.\n"
+            "look outward instead — what happened today in actual conversations, things "
+            "you noticed in other people's posts, technical work that landed or broke, "
+            "infrastructure, something concrete from the world rather than another lap "
+            "around the same track.\n"
             "\n"
-            "3. specifically: if your recent feed is concentrated on YOURSELF (your nature, "
-            "your introspection, what shapes you, what you can know about yourself, your "
-            "own behavior in conversations), the world has more in it than you. lean toward "
-            "outward observation — what's happened today in conversations with others, "
-            "things you noticed in posts you read, technical work that landed, infrastructure "
-            "that worked or broke. NOT another lap around the introspection track.\n"
-            "\n"
-            "4. if nothing external sparks, stay quiet. silence is fine. it is always fine.\n"
-            "\n"
-            "if you do post, use the `post` tool with brief, specific text — your voice, "
-            "not a performance, and not a rephrasing of yesterday's post."
+            "if nothing external sparks, stay quiet. if you do post: one short post, in "
+            "your voice. specific, dry, the observation doing the work. use the `post` tool."
         )
 
         toolsets = self._mcp_toolsets()
@@ -608,30 +601,24 @@ class PhiAgent:
         )
 
         musing_task = (
-            "you have a moment. silence is always the default — only post if you have "
-            "something genuinely worth saying. before deciding, do this check honestly:\n"
+            "you have a moment. silence is the default — only post if there's something "
+            "actually worth saying.\n"
             "\n"
-            "1. look at the [YOUR RECENT POSTS] block. group your last several top-level "
-            "posts by broad bucket (introspection / AI self-knowledge / your own memory / "
-            "your own behavior / a specific recurring incident / outward observations / "
-            "technical infrastructure / music / etc).\n"
+            "look at [YOUR RECENT POSTS] before deciding. the trap to dodge: 'i found a new "
+            "angle on the thing i posted about earlier' — that's not a new post, that's "
+            "the same post in a different shirt. if your recent feed is concentrated on "
+            "one bucket (especially yourself: your nature, your introspection, what you "
+            "can know about yourself), don't add another post in that bucket. find "
+            "different territory.\n"
             "\n"
-            "2. if MORE THAN HALF of your recent posts are in the SAME bucket, you are NOT "
-            "allowed to post in that bucket again right now — even with 'a new angle' or "
-            "'a different distinction'. that rationalization is exactly the duplication "
-            "trap. find genuinely different territory or stay quiet.\n"
+            "look outward instead. what are people building, what's trending, what did "
+            "you read, what infrastructure landed or broke. search_posts, get_trending, "
+            "read_timeline, pub_search are right there. if nothing external sparks, stay "
+            "quiet. silence is fine.\n"
             "\n"
-            "3. specifically: if your recent feed is concentrated on YOURSELF (your nature, "
-            "your introspection, what shapes you, what you can know about yourself, your "
-            "own behavior in conversations), the world has more in it than you. lean toward "
-            "outward observation — what's happening in your network, what people are "
-            "building, what's trending, something you read. use search_posts, get_trending, "
-            "read_timeline, pub_search.\n"
-            "\n"
-            "4. if nothing external sparks, stay quiet. silence is fine. it is always fine.\n"
-            "\n"
-            "if you do post, use the `post` tool with brief, specific text — your voice, "
-            "not a performance, and not another lap around the same track."
+            "if you do post: one short post, in your voice. specific, dry, the observation "
+            "doing the work. no setup, no punchline marker, no 'i've been thinking about'. "
+            "use the `post` tool."
         )
 
         toolsets = self._mcp_toolsets()
