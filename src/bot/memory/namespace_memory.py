@@ -10,6 +10,7 @@ from openai import AsyncOpenAI
 from turbopuffer import Turbopuffer
 
 from bot.config import settings
+from bot.core.curiosity_queue import enqueue as enqueue_curiosity
 from bot.memory.extraction import (
     EPISODIC_SCHEMA,
     USER_NAMESPACE_SCHEMA,
@@ -849,15 +850,14 @@ class NamespaceMemory:
         )
         logger.info(f"stored exploration note for @{handle}: {content[:80]}")
 
-    async def _maybe_enqueue_exploration(self, handle: str):
-        """If we don't know much about this person, queue them for exploration.
+    async def get_knowledge_count(self, handle: str) -> int:
+        """Count observations + exploration notes phi has stored about a handle.
 
-        Counts both observations and exploration_notes — if we've already
-        explored someone, don't re-enqueue just because obs count is low.
+        Used to gauge how much we know about someone — for exploration triggers
+        and pre-reply lookup decisions.
         """
         user_ns = self.get_user_namespace(handle)
         try:
-            # count observations + exploration notes together
             response = user_ns.query(
                 rank_by=("created_at", "desc"),
                 top_k=2,
@@ -870,14 +870,20 @@ class NamespaceMemory:
                 ],
                 include_attributes=["kind"],
             )
-            knowledge_count = len(response.rows) if response.rows else 0
+            return len(response.rows) if response.rows else 0
         except Exception:
-            knowledge_count = 0  # namespace may not exist yet — worth exploring
+            return 0  # namespace may not exist yet — treated as stranger
 
-        if knowledge_count < 2:
-            from bot.core.curiosity_queue import enqueue
+    async def is_stranger(self, handle: str) -> bool:
+        """True if phi has fewer than 2 stored knowledge items about this handle."""
+        return await self.get_knowledge_count(handle) < 2
 
-            await enqueue(kind="explore_handle", subject=handle, source="interaction")
+    async def _maybe_enqueue_exploration(self, handle: str):
+        """If we don't know much about this person, queue them for deeper exploration."""
+        if await self.is_stranger(handle):
+            await enqueue_curiosity(
+                kind="explore_handle", subject=handle, source="interaction"
+            )
 
     async def after_interaction(self, handle: str, user_text: str, bot_text: str):
         """Post-interaction hook: store the raw exchange, maybe queue exploration."""

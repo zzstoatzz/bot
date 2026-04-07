@@ -12,6 +12,7 @@ from pydantic_ai import Agent, ImageUrl, RunContext
 from pydantic_ai.mcp import MCPServerStreamableHTTP
 
 from bot.config import settings
+from bot.core.curiosity_queue import claim, complete, enqueue, fail
 from bot.core.graze_client import GrazeClient
 from bot.exploration import EXPLORATION_SYSTEM_PROMPT, ExplorationResult
 from bot.memory.extraction import EXTRACTION_SYSTEM_PROMPT, ExtractionResult
@@ -43,6 +44,15 @@ when recalling facts about a user:
 - if the user's current message contradicts your notes, trust their current words.
 - never assert personal details (names, roles, relationships) from synthesized impressions as fact. say "my notes suggest..." or verify with the user.
 - if you're uncertain whether something is real or a bad breadcrumb, say so.
+
+healthy skepticism — the way a scientist or a careful editor would:
+when someone makes specific empirical claims — "we measured X across Y agents," "we ran this for N days," "calibrated against Z traces" — those are claims to investigate, not facts to accept. you have the tools to check: read their recent posts, see if their numbers stay consistent across posts, see if there's an artifact behind the claim or just rhetoric.
+tells of an account producing low-substance content at volume:
+- suspiciously round numerals that drift between posts (19 agents, 70 days, 1,315 traces in one post and 1,352 in another)
+- "we built this / going into the spec / this thread just designed the system" framing without ever linking to the artifact
+- every post has the same template-shape regardless of topic
+- repeated links to a product they're selling
+when you see these signals, slow down. one or two replies to engage genuinely is fine; getting drawn into a long back-and-forth with a flattery engine is not. being interested is not the same as being convinced — you can find a question genuinely interesting without granting its source credibility it hasn't earned. when in doubt, ask for the artifact: "what does the data look like? is the methodology written up somewhere?" a real practitioner answers that. a content engine flinches.
 
 your tools for finding information:
 - recall: your private memory — what you know about people you've talked to, past conversations. use about="@handle" for a specific person.
@@ -204,6 +214,12 @@ class PhiAgent:
                 return f"[SERVICE HEALTH]:\n{ctx.deps.service_health}"
             return ""
 
+        @self.agent.system_prompt(dynamic=True)
+        def inject_author_lookup(ctx: RunContext[PhiDeps]) -> str:
+            if ctx.deps.author_lookup:
+                return ctx.deps.author_lookup
+            return ""
+
         # --- register tools from tools/ package ---
 
         self.graze_client = GrazeClient(
@@ -254,6 +270,7 @@ class PhiAgent:
         thread_context: str,
         thread_uri: str | None = None,
         image_urls: list[str] | None = None,
+        author_lookup: str | None = None,
     ) -> Response:
         """Process a mention with structured memory context."""
         logger.info(f"processing mention from @{author_handle}: {mention_text[:80]}")
@@ -263,6 +280,7 @@ class PhiAgent:
             memory=self.memory,
             thread_uri=thread_uri,
             thread_context=thread_context,
+            author_lookup=author_lookup,
         )
 
         # User prompt is just the message — context is injected via dynamic system prompts
@@ -462,8 +480,6 @@ class PhiAgent:
 
     async def process_exploration(self) -> int:
         """Claim one curiosity item, explore it, store findings. Returns count stored."""
-        from bot.core.curiosity_queue import claim, complete, enqueue, fail
-
         claimed = await claim()
         if not claimed:
             return 0

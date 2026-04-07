@@ -12,6 +12,7 @@ from bot.agent import PhiAgent
 from bot.config import settings
 from bot.core.atproto_client import BotClient
 from bot.status import bot_status
+from bot.utils.lookup import fetch_author_lookup
 from bot.utils.thread import (
     build_thread_context,
     describe_embed,
@@ -48,6 +49,29 @@ class MessageHandler:
     def __init__(self, client: BotClient):
         self.client = client
         self.agent = PhiAgent()
+
+    async def _maybe_lookup_stranger(self, author_handle: str) -> str | None:
+        """If author is a stranger, fetch their profile + recent posts as context.
+
+        Pre-reply behavior modeled on what a person would naturally do when
+        someone they don't know responds to them: glance at the profile.
+        Skipped for the owner, phi itself, and anyone phi already knows.
+        """
+        if not self.agent.memory:
+            return None
+        if author_handle in (settings.owner_handle, settings.bluesky_handle):
+            return None
+        try:
+            if not await self.agent.memory.is_stranger(author_handle):
+                return None
+        except Exception as e:
+            logger.debug(f"is_stranger check failed for @{author_handle}: {e}")
+            return None
+        try:
+            return await fetch_author_lookup(self.client, author_handle)
+        except Exception as e:
+            logger.debug(f"author lookup failed for @{author_handle}: {e}")
+            return None
 
     async def handle_notification(self, notification):
         """Process any notification through the agent."""
@@ -95,10 +119,12 @@ class MessageHandler:
 
         mention_text = f"[notification: @{author_handle} {reason}d your post]\nyour post: {post_text}"
 
+        author_lookup = await self._maybe_lookup_stranger(author_handle)
         response = await self.agent.process_mention(
             mention_text=mention_text,
             author_handle=author_handle,
             thread_context="",
+            author_lookup=author_lookup,
         )
 
         if response.action == "ignore":
@@ -133,10 +159,12 @@ class MessageHandler:
 
         mention_text = f"[notification: @{author_handle} followed you]"
 
+        author_lookup = await self._maybe_lookup_stranger(author_handle)
         response = await self.agent.process_mention(
             mention_text=mention_text,
             author_handle=author_handle,
             thread_context="",
+            author_lookup=author_lookup,
         )
 
         if response.action == "ignore":
@@ -198,6 +226,9 @@ class MessageHandler:
         except Exception as e:
             logger.warning(f"failed to fetch thread context: {e}")
 
+        # Pre-reply lookup for strangers — natural "let me see who you are" behavior
+        author_lookup = await self._maybe_lookup_stranger(author_handle)
+
         # Process with agent (has episodic memory + MCP tools)
         response = await self.agent.process_mention(
             mention_text=mention_text,
@@ -205,6 +236,7 @@ class MessageHandler:
             thread_context=thread_context,
             thread_uri=thread_uri,
             image_urls=image_urls,
+            author_lookup=author_lookup,
         )
 
         # Handle response actions

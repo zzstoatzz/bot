@@ -28,6 +28,7 @@ class PhiDeps:
     last_post_text: str | None = None
     recent_activity: str | None = None
     service_health: str | None = None
+    author_lookup: str | None = None
 
 
 def _is_owner(ctx: RunContext[PhiDeps]) -> bool:
