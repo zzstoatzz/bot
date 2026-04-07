@@ -56,9 +56,72 @@ class NotificationPoller:
         if self._background_tasks:
             await asyncio.gather(*self._background_tasks, return_exceptions=True)
 
+    async def _seed_schedule_from_history(self):
+        """Seed scheduling state from phi's recent post history.
+
+        Without this, every restart wipes _last_daily_post and
+        _last_thought_hours, causing phi to re-run today's daily reflection
+        and any thought-post hours that already happened. The fix: at startup,
+        look at phi's recent top-level posts and infer which schedule slots
+        have already been filled today.
+
+        Heuristic (deliberately loose):
+        - any top-level post made today UTC at or after daily_reflection_hour
+          marks the daily reflection slot as already done
+        - any top-level post made today UTC during a thought_post_hours hour
+          marks that hour as already done
+
+        This is approximate — phi makes top-level posts from many contexts
+        besides scheduled reflections (e.g. agent replies that decided to go
+        top-level). But the worst case of being approximate is that phi
+        SKIPS a scheduled post that was actually a reply-shaped post — which
+        is the safe failure mode (silence is fine, double-posting is not).
+        """
+        try:
+            feed = await self.client.get_own_posts(limit=20)
+        except Exception as e:
+            logger.warning(f"failed to seed schedule from history: {e}")
+            return
+
+        today = datetime.now(UTC).date()
+        seeded_daily = False
+        seeded_hours: set[int] = set()
+
+        for item in feed:
+            indexed_at = getattr(item.post, "indexed_at", None)
+            if not indexed_at:
+                continue
+            try:
+                ts = datetime.fromisoformat(indexed_at.replace("Z", "+00:00"))
+            except (ValueError, TypeError):
+                continue
+            if ts.date() != today:
+                continue
+
+            if not seeded_daily and ts.hour >= settings.daily_reflection_hour:
+                self._last_daily_post = ts
+                seeded_daily = True
+
+            if ts.hour in settings.thought_post_hours:
+                seeded_hours.add(ts.hour)
+
+        if seeded_hours:
+            self._last_thought_hours = seeded_hours
+            self._last_thought_date = today
+
+        if seeded_daily or seeded_hours:
+            logger.info(
+                f"seeded schedule from history: "
+                f"daily_done={seeded_daily}, thought_hours={sorted(seeded_hours)}"
+            )
+
     async def _poll_loop(self):
         """Main polling loop."""
         await self.client.authenticate()
+
+        # Restore scheduling state from observed post history so deploys
+        # don't cause duplicate scheduled posts.
+        await self._seed_schedule_from_history()
 
         while self._running:
             try:

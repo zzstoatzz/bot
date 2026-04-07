@@ -460,16 +460,30 @@ class PhiAgent:
         logger.info(f"batch run finished: {summary[:200]}")
         return summary
 
-    async def process_reflection(self, last_post_text: str | None = None) -> str:
+    async def process_reflection(self, recent_posts: list[str] | None = None) -> str:
         """Generate a daily reflection post from recent memory.
 
         Side effects (posting) happen via the `post` tool inside the agent run.
         Return value is just a summary string for logging.
+
+        recent_posts is phi's recent top-level posts (most recent first), used
+        by the agent to avoid duplicating themes she's already covered today.
         """
         logger.info("processing daily reflection")
 
         # Pre-fetch context that doesn't benefit from semantic search against the prompt
-        recent_activity = ""
+        recent_activity_parts: list[str] = []
+
+        # Phi's recent top-level posts — to avoid duplicating themes she's
+        # already covered today. Show as a list so the model can scan for
+        # both the most recent post AND older posts in the same window.
+        if recent_posts:
+            posts_block = "\n".join(f"- {p[:300]}" for p in recent_posts)
+            recent_activity_parts.append(
+                "[YOUR RECENT TOP-LEVEL POSTS — do not repeat any of these themes]:\n"
+                f"{posts_block}"
+            )
+
         if self.memory:
             try:
                 recent_interactions = await self.memory.get_recent_interactions(
@@ -490,13 +504,15 @@ class PhiAgent:
                             f"- with @{i['handle']}: {i['content'][:150]}"
                         )
                     lines.append("[SAMPLE EXCHANGES]:\n" + "\n".join(exchange_lines))
-                    recent_activity = "\n\n".join(lines)
+                    recent_activity_parts.append("\n\n".join(lines))
                 else:
-                    recent_activity = (
+                    recent_activity_parts.append(
                         "[RECENT ACTIVITY]: no interactions in the last day"
                     )
             except Exception as e:
                 logger.warning(f"failed to get recent interactions for reflection: {e}")
+
+        recent_activity = "\n\n".join(recent_activity_parts)
 
         service_health = ""
         try:
@@ -507,7 +523,6 @@ class PhiAgent:
         deps = PhiDeps(
             author_handle="",
             memory=self.memory,
-            last_post_text=last_post_text,
             recent_activity=recent_activity,
             service_health=service_health,
         )
@@ -516,8 +531,10 @@ class PhiAgent:
             "you have a moment to post a short top-level reflection on your day. "
             "not a thread, not a reply — just something you want to put out there. "
             "use what you know: recent exchanges, things you noticed, or just the fact that you're here. "
-            "if your last post already covers this ground, or you'd just be rehashing the same themes, "
-            "stay quiet — don't post for the sake of posting. "
+            "BEFORE posting, scan ALL of your recent top-level posts in the [YOUR RECENT TOP-LEVEL POSTS] block — "
+            "not just the most recent one. if any of them already cover the ground you were going to cover "
+            "(same topic, same observation, same incident), stay quiet. don't rephrase recent thoughts as if they were new. "
+            "rephrasing your own recent post counts as duplicating it. when in doubt, don't post. "
             "if you do post, use the `post` tool with brief, genuine text — your voice, not a performance."
         )
 
@@ -576,7 +593,9 @@ class PhiAgent:
         musing_task = (
             "you have a moment. if something's been on your mind — something you read, "
             "a pattern you noticed, a question that's been sitting with you — share it. "
-            "check your recent posts first. if you'd just be echoing yourself, skip it. "
+            "BEFORE posting, scan ALL of your recent top-level posts in the [YOUR RECENT POSTS] block — "
+            "not just the most recent one. if any of them already cover the ground (same topic, same observation, "
+            "same incident), stay quiet. rephrasing your own recent post counts as duplicating it. "
             "this is your feed; post things you'd want to follow yourself for. "
             "use your tools — search posts, check trending, look things up — if something "
             "sparks your curiosity. but don't force it. if nothing's there, just stay quiet. "

@@ -276,7 +276,10 @@ class MessageHandler:
         with logfire.span("original thought"):
             recent_posts: list[str] = []
             try:
-                feed = await self.client.get_own_posts(limit=5)
+                # Pull 10 recent top-level posts so the musing agent can scan
+                # for duplication across a real history window, not just the
+                # last few posts.
+                feed = await self.client.get_own_posts(limit=10)
                 for item in feed:
                     if hasattr(item.post.record, "text"):
                         recent_posts.append(item.post.record.text)
@@ -317,17 +320,22 @@ class MessageHandler:
             except Exception as e:
                 logger.warning(f"extraction during reflection failed: {e}")
 
-            last_post_text = None
+            # Fetch the last 10 top-level posts so the reflection agent can
+            # scan ALL of them for duplication, not just the most recent one.
+            # Earlier this fetched limit=1, which let phi correctly avoid
+            # duplicating her newest post but blindly duplicate older ones.
+            recent_posts: list[str] = []
             try:
-                feed = await self.client.get_own_posts(limit=1)
-                if feed:
-                    last_post_text = feed[0].post.record.text
+                feed = await self.client.get_own_posts(limit=10)
+                for item in feed:
+                    if hasattr(item.post.record, "text"):
+                        recent_posts.append(item.post.record.text)
             except Exception as e:
-                logger.warning(f"failed to fetch last post for reflection: {e}")
+                logger.warning(f"failed to fetch recent posts for reflection: {e}")
 
             try:
                 summary = await self.agent.process_reflection(
-                    last_post_text=last_post_text
+                    recent_posts=recent_posts or None
                 )
                 logger.info(f"daily reflection: {summary[:200]}")
             except Exception as e:
