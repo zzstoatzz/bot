@@ -4,6 +4,8 @@ import asyncio
 import logging
 from datetime import UTC, date, datetime
 
+import logfire
+
 from bot.config import settings
 from bot.core.atproto_client import BotClient
 from bot.services.message_handler import MessageHandler
@@ -107,10 +109,38 @@ class NotificationPoller:
         """
         check_time = self.client.client.get_current_time_iso()
 
-        response = await self.client.get_notifications()
-        notifications = response.notifications
+        # Wrap the bsky list_notifications call in an observability span so we
+        # can see the raw response — counts AND the actual unread items.
+        # Without this we only see phi's downstream interpretation (post-filter
+        # batch size), which makes "why did bsky return only N" unanswerable
+        # from logs alone.
+        with logfire.span("fetch notifications", check_time=check_time) as fetch_span:
+            response = await self.client.get_notifications()
+            notifications = response.notifications
 
-        unread = [n for n in notifications if not n.is_read]
+            unread = [n for n in notifications if not n.is_read]
+
+            fetch_span.set_attribute("total_count", len(notifications))
+            fetch_span.set_attribute("unread_count", len(unread))
+            if unread:
+                # Capture each unread entry as a structured dict so we can
+                # answer questions like "did bsky return all 3 mentions or
+                # just 1" without re-running the test.
+                fetch_span.set_attribute(
+                    "unread_items",
+                    [
+                        {
+                            "uri": n.uri,
+                            "cid": getattr(n, "cid", "") or "",
+                            "author_handle": n.author.handle,
+                            "reason": n.reason,
+                            "reason_subject": getattr(n, "reason_subject", None) or "",
+                            "indexed_at": str(getattr(n, "indexed_at", "") or ""),
+                            "is_read": n.is_read,
+                        }
+                        for n in unread
+                    ],
+                )
 
         # First poll: show initial state
         if self._first_poll:
