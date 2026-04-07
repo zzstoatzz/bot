@@ -294,10 +294,29 @@ class PhiAgent:
         # the reference count instead of opening/closing across tasks.
         # https://github.com/pydantic/pydantic-ai/issues/2818
         toolsets = self._mcp_toolsets()
-        async with contextlib.AsyncExitStack() as stack:
-            for ts in toolsets:
-                await stack.enter_async_context(ts)
-            result = await self.agent.run(user_prompt, deps=deps, toolsets=toolsets)
+        try:
+            async with contextlib.AsyncExitStack() as stack:
+                for ts in toolsets:
+                    await stack.enter_async_context(ts)
+                result = await self.agent.run(user_prompt, deps=deps, toolsets=toolsets)
+        except Exception as e:
+            # Don't go silent on tool/agent failures — surface to the operator.
+            # Phi posts a brief honest reply tagging the owner so the failure
+            # gets noticed instead of disappearing into a log line.
+            err_type = type(e).__name__
+            err_msg = str(e)[:200]
+            logger.exception(
+                f"agent.run failed for mention from @{author_handle}: {err_type}"
+            )
+            return Response(
+                action="reply",
+                text=(
+                    f"hit a tool error mid-response and dropped out so i don't compound it. "
+                    f"@{settings.owner_handle} this needs your attention — check the logs."
+                ),
+                reason=f"{err_type}: {err_msg}",
+            )
+
         logger.info(
             f"agent decided: {result.output.action}"
             + (f" - {result.output.text[:80]}" if result.output.text else "")
@@ -373,10 +392,20 @@ class PhiAgent:
         )
 
         toolsets = self._mcp_toolsets()
-        async with contextlib.AsyncExitStack() as stack:
-            for ts in toolsets:
-                await stack.enter_async_context(ts)
-            result = await self.agent.run(reflection_task, deps=deps, toolsets=toolsets)
+        try:
+            async with contextlib.AsyncExitStack() as stack:
+                for ts in toolsets:
+                    await stack.enter_async_context(ts)
+                result = await self.agent.run(
+                    reflection_task, deps=deps, toolsets=toolsets
+                )
+        except Exception as e:
+            err_type = type(e).__name__
+            logger.exception(f"agent.run failed during reflection: {err_type}")
+            return Response(
+                action="ignore",
+                reason=f"reflection {err_type}: {str(e)[:200]}",
+            )
 
         logger.info(
             f"reflection decided: {result.output.action}"
@@ -426,10 +455,18 @@ class PhiAgent:
         )
 
         toolsets = self._mcp_toolsets()
-        async with contextlib.AsyncExitStack() as stack:
-            for ts in toolsets:
-                await stack.enter_async_context(ts)
-            result = await self.agent.run(musing_task, deps=deps, toolsets=toolsets)
+        try:
+            async with contextlib.AsyncExitStack() as stack:
+                for ts in toolsets:
+                    await stack.enter_async_context(ts)
+                result = await self.agent.run(musing_task, deps=deps, toolsets=toolsets)
+        except Exception as e:
+            err_type = type(e).__name__
+            logger.exception(f"agent.run failed during musing: {err_type}")
+            return Response(
+                action="ignore",
+                reason=f"musing {err_type}: {str(e)[:200]}",
+            )
 
         logger.info(
             f"musing decided: {result.output.action}"

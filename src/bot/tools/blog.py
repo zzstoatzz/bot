@@ -43,7 +43,11 @@ def register(agent):
                 url = f"https://greengale.app/{handle}/{rkey}"
                 tag_str = f" [{', '.join(tags)}]" if tags else ""
                 date_str = f" ({published[:10]})" if published else ""
-                lines.append(f"- {title}{tag_str}{date_str}\n  {url}")
+                # include the AT-URI explicitly so the model doesn't have to guess
+                # the collection name when passing to pub_get_document.
+                lines.append(
+                    f"- {title}{tag_str}{date_str}\n  uri: {rec.uri}\n  url: {url}"
+                )
             return "\n".join(lines)
         except Exception as e:
             return f"failed to list blog posts: {e}"
