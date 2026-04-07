@@ -97,7 +97,14 @@ class NotificationPoller:
                 raise
 
     async def _check_notifications(self):
-        """Check and process new notifications."""
+        """Check for new notifications and dispatch the whole batch as one task.
+
+        The unit of work is *one poll cycle*. Every unread notification at this
+        moment goes into a single batch that the handler processes as one
+        cognitive event. This means a chain of replies in a thread, or activity
+        across multiple threads, all gets considered together by one agent run
+        that decides what (if anything) to do about each item.
+        """
         check_time = self.client.client.get_current_time_iso()
 
         response = await self.client.get_notifications()
@@ -121,36 +128,33 @@ class NotificationPoller:
                 logger.debug(f"paused, skipping {len(unread)} unread notifications")
             return
 
-        dispatched = 0
+        # Build the batch from unread notifications phi hasn't already processed
+        batch = [n for n in unread if n.uri not in self._processed_uris]
+        if not batch:
+            return
 
-        # Dispatch notifications as concurrent background tasks
-        for notification in reversed(notifications):
-            if notification.is_read or notification.uri in self._processed_uris:
-                continue
+        for n in batch:
+            self._processed_uris.add(n.uri)
 
-            self._processed_uris.add(notification.uri)
-            task = asyncio.create_task(self._handle_with_semaphore(notification))
-            self._background_tasks.add(task)
-            task.add_done_callback(self._background_tasks.discard)
-            dispatched += 1
+        # Dispatch the entire batch as one task — one cognitive event per poll
+        task = asyncio.create_task(self._handle_batch_with_semaphore(batch))
+        self._background_tasks.add(task)
+        task.add_done_callback(self._background_tasks.discard)
 
-        # Mark as read immediately — don't wait for processing
-        if dispatched:
-            await self.client.mark_notifications_seen(check_time)
-            logger.info(f"dispatched {dispatched} notifications, marked as read")
+        # Mark notifications as seen on bsky immediately — don't wait for processing
+        await self.client.mark_notifications_seen(check_time)
+        logger.info(f"dispatched batch of {len(batch)} notifications, marked as read")
 
-            if len(self._processed_uris) > 1000:
-                self._processed_uris = set(list(self._processed_uris)[-500:])
+        if len(self._processed_uris) > 1000:
+            self._processed_uris = set(list(self._processed_uris)[-500:])
 
-    async def _handle_with_semaphore(self, notification):
-        """Handle a single notification with concurrency limiting."""
+    async def _handle_batch_with_semaphore(self, batch: list):
+        """Handle a notification batch with concurrency limiting."""
         async with self._semaphore:
             try:
-                await self.handler.handle_notification(notification)
+                await self.handler.handle_batch(batch)
             except Exception as e:
-                logger.error(
-                    f"notification handler error: {e}", exc_info=settings.debug
-                )
+                logger.error(f"batch handler error: {e}", exc_info=settings.debug)
                 bot_status.record_error()
 
     def _should_do_daily_post(self) -> bool:

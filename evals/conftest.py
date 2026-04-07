@@ -1,4 +1,13 @@
-"""Eval test configuration."""
+"""Eval test configuration.
+
+The eval test agents define their own structured `Response` output type
+locally — production phi (in bot.agent) was migrated to a tool-based
+action layer where side effects happen via tool calls and the agent run
+returns a plain summary string. The eval fixtures predate that migration
+and still want a structured-output shape so individual eval tests can
+make assertions on response.action / response.text. Keeping it local to
+the eval harness keeps the production code clean of vestigial action shapes.
+"""
 
 import os
 from collections import defaultdict
@@ -6,12 +15,24 @@ from collections.abc import Awaitable, Callable
 from pathlib import Path
 
 import pytest
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from pydantic_ai import Agent, RunContext
 
-from bot.agent import Response
 from bot.config import Settings
 from bot.memory import NamespaceMemory
+
+
+class Response(BaseModel):
+    """Structured response shape used by the eval test agents only."""
+
+    action: str = Field(description="reply, like, repost, post, or ignore")
+    text: str | None = Field(
+        default=None, description="response text when action is reply or post"
+    )
+    reason: str | None = Field(
+        default=None, description="brief reason when action is ignore"
+    )
+
 
 # feed tool instructions — extracted from OPERATIONAL_INSTRUCTIONS to avoid
 # the full agent import requiring bluesky creds at module level.

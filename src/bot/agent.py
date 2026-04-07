@@ -7,7 +7,6 @@ from collections.abc import Sequence
 from datetime import date
 from pathlib import Path
 
-from pydantic import BaseModel, Field
 from pydantic_ai import Agent, ImageUrl, RunContext
 from pydantic_ai.mcp import MCPServerStreamableHTTP
 
@@ -25,12 +24,23 @@ logger = logging.getLogger("bot.agent")
 def _build_operational_instructions() -> str:
     """Build operational instructions with the current owner handle interpolated."""
     return f"""
-indicate your response action via the structured output — do not use atproto tools to post, like, or repost directly.
+you receive all notification types in batches — when you check notifications you may see several at once spanning multiple threads or conversations. think of it as opening a notifications tab: look at everything new, decide what (if anything) to do about each item, and act. silence is fine for things that don't warrant a response — you don't have to act on every notification.
+
+to act on notifications, use these trusted posting tools:
+- reply_to(uri, text): reply to a specific post from your current notifications. handles mention-consent allowlists, reply-ref construction, grapheme-aware splitting, and memory writes for you.
+- like_post(uri): like a post from your current notifications. use sparingly, only when something deserves a quiet acknowledgment.
+- repost_post(uri): repost a post from your current notifications. use very rarely, only when something genuinely deserves amplification.
+- post (top-level): create a new top-level post unprompted. use for musings or daily reflections, not in response to a notification.
+
+these tools are the only sanctioned path. do NOT use raw atproto record tools (e.g. create_record on app.bsky.feed.post via the pdsx MCP) to post — those bypass mention consent and memory writes. the URI you pass to reply_to / like_post / repost_post must be a URI you saw in your current [NEW NOTIFICATIONS] block; the tools refuse arbitrary URIs.
+
 when sharing URLs, verify them with check_urls first and always include https://.
 
 you receive all notification types — mentions, replies, quotes, likes, reposts, and follows.
 for mentions, replies, and quotes: someone is talking to you or about you. respond if you have something to say.
 for likes, reposts, and follows: someone showed up. use your tools to learn about them — check their profile, read their posts, see what they're about. note anything interesting for later. you'll almost never reply to a like, but you might learn something worth remembering.
+
+when you see a single author has posted multiple things in one thread in this batch, treat it as one logical message — reply once at the most recent post (or where it makes most sense), not once per post.
 
 your memory is a tool, not ground truth. context injected before each message comes
 from multiple sources with different reliability:
@@ -103,16 +113,77 @@ def _extract_query_text(prompt: str | Sequence[str | ImageUrl] | None) -> str:
     return " ".join(part for part in prompt if isinstance(part, str))
 
 
-class Response(BaseModel):
-    """Agent response indicating what action to take."""
+def _format_notifications_block(notifications_context: dict) -> str:
+    """Format the notifications batch as a readable [NEW NOTIFICATIONS] block.
 
-    action: str = Field(description="reply, like, repost, or ignore")
-    text: str | None = Field(
-        default=None, description="response text when action is reply"
+    Groups thread-style notifications (mention/reply/quote) by thread root so
+    multiple posts in one conversation render as one section. Engagement items
+    (like/repost/follow) are listed separately at the end. Each item shows its
+    URI in brackets so the agent can pass it to the trusted posting tools.
+    """
+    if not notifications_context:
+        return ""
+
+    threads: dict[str, list[dict]] = {}
+    engagement: list[dict] = []
+    for entry in notifications_context.values():
+        reason = entry.get("reason", "")
+        if reason in ("mention", "reply", "quote"):
+            root = entry.get("root_uri") or entry.get("uri", "")
+            threads.setdefault(root, []).append(entry)
+        else:
+            engagement.append(entry)
+
+    lines: list[str] = []
+    lines.append(
+        "[NEW NOTIFICATIONS — process the batch and use posting tools as appropriate]"
     )
-    reason: str | None = Field(
-        default=None, description="brief reason when action is ignore"
+    lines.append(
+        "you have new activity since your last poll. for each item, decide whether to act and how. "
+        "use reply_to / like_post / repost_post to act on items in this batch. "
+        "you don't have to act on every notification — silence is fine for things that don't warrant a response."
     )
+
+    for root_uri, entries in threads.items():
+        # sort entries within a thread chronologically
+        entries.sort(key=lambda e: e.get("indexed_at", ""))
+        thread_ctx = entries[0].get("thread_context", "") or ""
+
+        lines.append("")
+        lines.append(f"═══ thread: {root_uri} ═══")
+        if thread_ctx and thread_ctx != "No previous messages in this thread.":
+            lines.append("thread context:")
+            lines.append(thread_ctx)
+        lines.append("")
+        lines.append("new in this thread:")
+        for e in entries:
+            handle = e.get("author_handle", "?")
+            uri = e.get("uri", "")
+            reason = e.get("reason", "")
+            ts = (e.get("indexed_at") or "")[:19].replace("T", " ")
+            text = e.get("post_text", "")
+            embed = e.get("embed_desc") or ""
+            embed_part = f"\n    {embed}" if embed else ""
+            lines.append(f"- @{handle} [{reason}, {ts}] [{uri}]: {text}{embed_part}")
+
+    if engagement:
+        lines.append("")
+        lines.append("═══ engagement ═══")
+        for e in engagement:
+            handle = e.get("author_handle", "?")
+            reason = e.get("reason", "")
+            uri = e.get("uri", "")
+            ts = (e.get("indexed_at") or "")[:19].replace("T", " ")
+            target_text = e.get("post_text", "")
+            target_part = f' — "{target_text[:120]}"' if target_text else ""
+            if reason == "follow":
+                lines.append(f"- @{handle} [follow, {ts}] followed you")
+            else:
+                lines.append(
+                    f"- @{handle} [{reason}, {ts}] {reason}d your post {uri}{target_part}"
+                )
+
+    return "\n".join(lines)
 
 
 class PhiAgent:
@@ -142,11 +213,16 @@ class PhiAgent:
         # Create PydanticAI agent without MCP toolsets — they're created
         # fresh per agent.run() call to avoid the cancel scope bug:
         # https://github.com/pydantic/pydantic-ai/issues/2818
-        self.agent = Agent[PhiDeps, Response](
+        #
+        # output_type=str: the agent's "decision" is no longer a structured
+        # action — actions happen as tool calls during the run (reply_to,
+        # like_post, etc). The final string return is just a brief summary
+        # for logging.
+        self.agent = Agent[PhiDeps, str](
             name="phi",
             model=settings.agent_model,
             system_prompt=f"{self.base_personality}\n\n{_build_operational_instructions()}",
-            output_type=Response,
+            output_type=str,
             deps_type=PhiDeps,
         )
 
@@ -161,36 +237,70 @@ class PhiAgent:
             return f"[TODAY]: {date.today().isoformat()}"
 
         @self.agent.system_prompt(dynamic=True)
-        def inject_thread(ctx: RunContext[PhiDeps]) -> str:
-            tc = ctx.deps.thread_context
-            if tc and tc != "No previous messages in this thread.":
-                return (
-                    f"[CURRENT THREAD - these are the messages in THIS thread]:\n{tc}"
-                )
-            return ""
+        def inject_notifications(ctx: RunContext[PhiDeps]) -> str:
+            """Render the notifications batch as the [NEW NOTIFICATIONS] block."""
+            return _format_notifications_block(ctx.deps.notifications_context or {})
 
         @self.agent.system_prompt(dynamic=True)
         async def inject_user_memory(ctx: RunContext[PhiDeps]) -> str:
-            if not ctx.deps.memory or not ctx.deps.author_handle:
+            """Inject per-author memory blocks for every unique author in the batch.
+
+            For each unique author across the notifications context, build a
+            memory block keyed on the union of their post texts in this batch
+            (so semantic search returns memories relevant to what they're
+            currently saying). Core memory is fetched once via the first block
+            to avoid repetition.
+            """
+            if not ctx.deps.memory:
                 return ""
-            query = _extract_query_text(ctx.prompt)
-            if not query:
+            notifs = ctx.deps.notifications_context or {}
+            if not notifs:
                 return ""
-            try:
-                memory_context = await ctx.deps.memory.build_user_context(
-                    ctx.deps.author_handle, query_text=query, include_core=True
-                )
-                if memory_context:
-                    return f"[PAST CONTEXT WITH @{ctx.deps.author_handle}]:\n{memory_context}"
-            except Exception as e:
-                logger.warning(f"failed to retrieve memories: {e}")
-            return ""
+
+            by_author: dict[str, list[str]] = {}
+            for entry in notifs.values():
+                handle = entry.get("author_handle")
+                text = entry.get("post_text", "")
+                if handle and handle not in (
+                    settings.owner_handle,
+                    settings.bluesky_handle,
+                ):
+                    by_author.setdefault(handle, []).append(text or "")
+
+            if not by_author:
+                return ""
+
+            blocks: list[str] = []
+            include_core = True
+            for handle, texts in by_author.items():
+                query = " ".join(t for t in texts if t) or handle
+                try:
+                    block = await ctx.deps.memory.build_user_context(
+                        handle, query_text=query, include_core=include_core
+                    )
+                    include_core = False  # only include core in the first block
+                    if block:
+                        blocks.append(block)
+                except Exception as e:
+                    logger.warning(f"failed to retrieve memories for @{handle}: {e}")
+            return "\n\n".join(blocks)
 
         @self.agent.system_prompt(dynamic=True)
         async def inject_episodic(ctx: RunContext[PhiDeps]) -> str:
             if not ctx.deps.memory:
                 return ""
-            query = _extract_query_text(ctx.prompt)
+            # build query from notification post texts when batch is present,
+            # else fall back to the user prompt text (musing/reflection cases)
+            notifs = ctx.deps.notifications_context or {}
+            if notifs:
+                texts = [
+                    e.get("post_text", "")
+                    for e in notifs.values()
+                    if e.get("post_text")
+                ]
+                query = " ".join(texts)
+            else:
+                query = _extract_query_text(ctx.prompt)
             if not query:
                 return ""
             try:
@@ -220,10 +330,12 @@ class PhiAgent:
             return ""
 
         @self.agent.system_prompt(dynamic=True)
-        def inject_author_lookup(ctx: RunContext[PhiDeps]) -> str:
-            if ctx.deps.author_lookup:
-                return ctx.deps.author_lookup
-            return ""
+        def inject_author_lookups(ctx: RunContext[PhiDeps]) -> str:
+            """Inject pre-fetched stranger lookups for unfamiliar authors in this batch."""
+            lookups = ctx.deps.author_lookups or {}
+            if not lookups:
+                return ""
+            return "\n\n".join(lookups.values())
 
         # --- register tools from tools/ package ---
 
@@ -268,36 +380,64 @@ class PhiAgent:
             ),
         ]
 
-    async def process_mention(
+    async def process_notifications(
         self,
-        mention_text: str,
-        author_handle: str,
-        thread_context: str,
-        thread_uri: str | None = None,
-        image_urls: list[str] | None = None,
-        author_lookup: str | None = None,
-    ) -> Response:
-        """Process a mention with structured memory context."""
-        logger.info(f"processing mention from @{author_handle}: {mention_text[:80]}")
+        notifications_context: dict,
+        author_lookups: dict[str, str] | None = None,
+        image_urls_by_uri: dict[str, list[str]] | None = None,
+    ) -> str:
+        """Run the agent over a batch of notifications.
 
-        deps = PhiDeps(
-            author_handle=author_handle,
-            memory=self.memory,
-            thread_uri=thread_uri,
-            thread_context=thread_context,
-            author_lookup=author_lookup,
+        The unit of work is "the set of new notifications since the last poll."
+        The agent looks at all of them at once, decides what (if anything) to do
+        about each, and acts via the trusted posting tools (reply_to / like_post
+        / repost_post). Side effects happen as tool calls during the run; the
+        return value is just a summary string for logging.
+
+        notifications_context: dict mapping post URI -> per-notification context
+            (cid, reason, author, text, thread refs, etc). Built by the handler.
+        author_lookups: pre-fetched stranger lookups keyed by author handle.
+        image_urls_by_uri: optional map of post URI -> image URLs for vision.
+        """
+        if not notifications_context:
+            logger.info("process_notifications: empty batch, nothing to do")
+            return ""
+
+        author_count = len(
+            {
+                e.get("author_handle")
+                for e in notifications_context.values()
+                if e.get("author_handle")
+            }
+        )
+        logger.info(
+            f"processing notifications batch: {len(notifications_context)} items, "
+            f"{author_count} unique authors"
         )
 
-        # User prompt is just the message — context is injected via dynamic system prompts
-        user_prompt: str | list = f"@{author_handle}: {mention_text}"
-        if image_urls:
-            user_prompt = [user_prompt] + [ImageUrl(url=url) for url in image_urls]
-            logger.info(f"including {len(image_urls)} images in prompt")
+        deps = PhiDeps(
+            author_handle="",
+            memory=self.memory,
+            notifications_context=notifications_context,
+            author_lookups=author_lookups,
+        )
 
-        # Enter MCP servers before agent.run() so the connection is opened
-        # in this task. Parallel tool calls inside agent.run() then just bump
-        # the reference count instead of opening/closing across tasks.
-        # https://github.com/pydantic/pydantic-ai/issues/2818
+        # User prompt is a short task instruction — the actual notifications
+        # block is rendered via the inject_notifications dynamic system prompt.
+        # Images from any post in the batch are attached as multimodal inputs.
+        user_prompt: str | list = (
+            "process your new notifications batch. look at the [NEW NOTIFICATIONS] "
+            "block in your context, decide what to do, and use the trusted posting "
+            "tools to act. you don't have to act on every item — silence is fine."
+        )
+        all_image_urls: list[str] = []
+        if image_urls_by_uri:
+            for urls in image_urls_by_uri.values():
+                all_image_urls.extend(urls)
+        if all_image_urls:
+            user_prompt = [user_prompt] + [ImageUrl(url=u) for u in all_image_urls]
+            logger.info(f"including {len(all_image_urls)} images in batch prompt")
+
         toolsets = self._mcp_toolsets()
         try:
             async with contextlib.AsyncExitStack() as stack:
@@ -305,42 +445,27 @@ class PhiAgent:
                     await stack.enter_async_context(ts)
                 result = await self.agent.run(user_prompt, deps=deps, toolsets=toolsets)
         except Exception as e:
-            # Don't go silent on tool/agent failures — surface to the operator.
-            # Phi posts a brief honest reply tagging the owner so the failure
-            # gets noticed instead of disappearing into a log line.
+            # Don't go silent on tool/agent failures. The batch path can't easily
+            # post a reply to a specific notification on failure (we don't know
+            # which one would have been the target), so we log loudly and let
+            # the operator notice via metrics / status. The previous fallback
+            # of "post a tagged reply" doesn't fit a multi-target batch.
             err_type = type(e).__name__
-            err_msg = str(e)[:200]
             logger.exception(
-                f"agent.run failed for mention from @{author_handle}: {err_type}"
+                f"agent.run failed during batch processing: {err_type}: {e}"
             )
-            return Response(
-                action="reply",
-                text=(
-                    f"hit a tool error mid-response and dropped out so i don't compound it. "
-                    f"@{settings.owner_handle} this needs your attention — check the logs."
-                ),
-                reason=f"{err_type}: {err_msg}",
-            )
+            return f"batch failed: {err_type}: {str(e)[:200]}"
 
-        logger.info(
-            f"agent decided: {result.output.action}"
-            + (f" - {result.output.text[:80]}" if result.output.text else "")
-            + (f" ({result.output.reason})" if result.output.reason else "")
-        )
+        summary = result.output or ""
+        logger.info(f"batch run finished: {summary[:200]}")
+        return summary
 
-        # Store interaction and extract observations
-        if self.memory and result.output.action == "reply" and result.output.text:
-            try:
-                await self.memory.after_interaction(
-                    author_handle, mention_text, result.output.text
-                )
-            except Exception as e:
-                logger.warning(f"failed to store interaction: {e}")
+    async def process_reflection(self, last_post_text: str | None = None) -> str:
+        """Generate a daily reflection post from recent memory.
 
-        return result.output
-
-    async def process_reflection(self, last_post_text: str | None = None) -> Response:
-        """Generate a daily reflection post from recent memory."""
+        Side effects (posting) happen via the `post` tool inside the agent run.
+        Return value is just a summary string for logging.
+        """
         logger.info("processing daily reflection")
 
         # Pre-fetch context that doesn't benefit from semantic search against the prompt
@@ -388,12 +513,12 @@ class PhiAgent:
         )
 
         reflection_task = (
-            "you're posting a short top-level reflection on your day. "
+            "you have a moment to post a short top-level reflection on your day. "
             "not a thread, not a reply — just something you want to put out there. "
             "use what you know: recent exchanges, things you noticed, or just the fact that you're here. "
             "if your last post already covers this ground, or you'd just be rehashing the same themes, "
-            "action='ignore' is the right call — don't post for the sake of posting. "
-            "if you do post, keep it brief and genuine — your voice, not a performance."
+            "stay quiet — don't post for the sake of posting. "
+            "if you do post, use the `post` tool with brief, genuine text — your voice, not a performance."
         )
 
         toolsets = self._mcp_toolsets()
@@ -407,20 +532,18 @@ class PhiAgent:
         except Exception as e:
             err_type = type(e).__name__
             logger.exception(f"agent.run failed during reflection: {err_type}")
-            return Response(
-                action="ignore",
-                reason=f"reflection {err_type}: {str(e)[:200]}",
-            )
+            return f"reflection failed: {err_type}: {str(e)[:200]}"
 
-        logger.info(
-            f"reflection decided: {result.output.action}"
-            + (f" - {result.output.text[:80]}" if result.output.text else "")
-            + (f" ({result.output.reason})" if result.output.reason else "")
-        )
-        return result.output
+        summary = result.output or ""
+        logger.info(f"reflection finished: {summary[:200]}")
+        return summary
 
-    async def process_musing(self, recent_posts: list[str] | None = None) -> Response:
-        """Generate an original thought post from memory, reading, patterns noticed."""
+    async def process_musing(self, recent_posts: list[str] | None = None) -> str:
+        """Generate an original thought post from memory, reading, patterns noticed.
+
+        Side effects (posting) happen via the `post` tool inside the agent run.
+        Return value is just a summary string for logging.
+        """
         logger.info("processing musing")
 
         # Build context about what phi has posted recently to avoid repetition
@@ -456,7 +579,8 @@ class PhiAgent:
             "check your recent posts first. if you'd just be echoing yourself, skip it. "
             "this is your feed; post things you'd want to follow yourself for. "
             "use your tools — search posts, check trending, look things up — if something "
-            "sparks your curiosity. but don't force it. if nothing's there, action='ignore'."
+            "sparks your curiosity. but don't force it. if nothing's there, just stay quiet. "
+            "if you do want to post, use the `post` tool."
         )
 
         toolsets = self._mcp_toolsets()
@@ -468,17 +592,11 @@ class PhiAgent:
         except Exception as e:
             err_type = type(e).__name__
             logger.exception(f"agent.run failed during musing: {err_type}")
-            return Response(
-                action="ignore",
-                reason=f"musing {err_type}: {str(e)[:200]}",
-            )
+            return f"musing failed: {err_type}: {str(e)[:200]}"
 
-        logger.info(
-            f"musing decided: {result.output.action}"
-            + (f" - {result.output.text[:80]}" if result.output.text else "")
-            + (f" ({result.output.reason})" if result.output.reason else "")
-        )
-        return result.output
+        summary = result.output or ""
+        logger.info(f"musing finished: {summary[:200]}")
+        return summary
 
     async def process_extraction(self) -> int:
         """Review recent unprocessed interactions and extract observations. Returns count stored."""

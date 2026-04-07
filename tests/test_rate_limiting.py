@@ -35,24 +35,38 @@ class TestPerUserRateLimiting:
 
 
 class TestMessageHandlerRateLimiting:
-    """Test that MessageHandler.handle_notification respects rate limits."""
+    """Test that MessageHandler.handle_batch respects per-author rate limits.
 
-    async def test_rate_limited_notification_returns_early(self):
+    Even though batches now coalesce a poll cycle's notifications into one
+    agent run, rate limiting still applies per-author per-notification — a
+    spammer who chains posts gets each post counted toward their hourly cap.
+    Once the cap is hit, subsequent notifications from that author are filtered
+    out of the batch and the agent run is skipped if nothing remains.
+    """
+
+    async def test_rate_limited_author_filtered_from_batch(self):
         from bot.services import message_handler
 
         handler = Mock()
         handler.client = Mock()
         handler.agent = Mock()
-        handler._handle_post = AsyncMock()
+        handler.agent.process_notifications = AsyncMock()
+        handler._build_post_entry = AsyncMock(return_value=None)
+        handler._build_engagement_entry = AsyncMock(return_value=None)
+        handler._build_follow_entry = AsyncMock(return_value=None)
+        handler._maybe_lookup_stranger = AsyncMock(return_value=None)
 
-        notification = Mock()
-        notification.reason = "mention"
-        notification.author.handle = "spammer.bsky.social"
+        def make_notif():
+            n = Mock()
+            n.reason = "mention"
+            n.author.handle = "spammer.bsky.social"
+            n.uri = "at://example/post/1"
+            return n
 
         original_limiter = message_handler._limiter
         original_limit = message_handler._user_limit
 
-        # use a 1/minute limit so the second call is blocked
+        # use a 1/minute limit so the second batch with the same author is blocked
         test_storage = MemoryStorage()
         test_limiter = MovingWindowRateLimiter(test_storage)
         test_limit = parse_limit("1/minute")
@@ -61,19 +75,18 @@ class TestMessageHandlerRateLimiting:
         message_handler._user_limit = test_limit
 
         try:
-            # first call succeeds (hits the limiter, then dispatches)
-            await message_handler.MessageHandler.handle_notification(
-                handler, notification
-            )
-            handler._handle_post.assert_called_once()
+            # first batch: one notification from the spammer — passes the limiter
+            await message_handler.MessageHandler.handle_batch(handler, [make_notif()])
+            # _build_post_entry was called (limiter let it through)
+            handler._build_post_entry.assert_called_once()
 
-            handler._handle_post.reset_mock()
+            handler._build_post_entry.reset_mock()
 
-            # second call is rate limited — _handle_post not called
-            await message_handler.MessageHandler.handle_notification(
-                handler, notification
-            )
-            handler._handle_post.assert_not_called()
+            # second batch from the same author — filtered out by limiter
+            # nothing was actionable so build/process never get invoked
+            await message_handler.MessageHandler.handle_batch(handler, [make_notif()])
+            handler._build_post_entry.assert_not_called()
+            handler.agent.process_notifications.assert_not_called()
         finally:
             message_handler._limiter = original_limiter
             message_handler._user_limit = original_limit

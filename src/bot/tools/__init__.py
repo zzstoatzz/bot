@@ -6,7 +6,7 @@ from bot.tools._helpers import PhiDeps, _check_services_impl
 
 def register_all(agent, graze_client: GrazeClient):
     """Register all tools on the agent."""
-    from bot.tools import blog, bluesky, cosmik, feeds, memory, search
+    from bot.tools import blog, bluesky, cosmik, feeds, memory, posting, search
 
     memory.register(agent)
     search.register(agent)
@@ -14,6 +14,7 @@ def register_all(agent, graze_client: GrazeClient):
     feeds.register(agent, graze_client)
     bluesky.register(agent)
     blog.register(agent)
+    posting.register(agent)
 
 
 __all__ = ["PhiDeps", "_check_services_impl", "register_all"]
