@@ -16,6 +16,7 @@ from bot.core.curiosity_queue import claim, complete, enqueue, fail
 from bot.core.graze_client import GrazeClient
 from bot.exploration import EXPLORATION_SYSTEM_PROMPT, ExplorationResult
 from bot.memory.extraction import EXTRACTION_SYSTEM_PROMPT, ExtractionResult
+from bot.memory.review import REVIEW_SYSTEM_PROMPT, ReviewResult
 from bot.tools import PhiDeps, _check_services_impl, register_all
 
 logger = logging.getLogger("bot.agent")
@@ -318,6 +319,15 @@ class PhiAgent:
             model=settings.agent_model,
             system_prompt=f"{self.base_personality}\n\n{EXPLORATION_SYSTEM_PROMPT}",
             output_type=ExplorationResult,
+        )
+
+        # Review agent — the dream/distill pass. Reviews observations with
+        # distance from the original conversation and decides keep/supersede/promote.
+        self._review_agent = Agent[None, ReviewResult](
+            name="phi-reviewer",
+            model=settings.agent_model,
+            system_prompt=f"{self.base_personality}\n\n{REVIEW_SYSTEM_PROMPT}",
+            output_type=ReviewResult,
         )
 
         logger.info("phi agent initialized with pdsx + pub-search mcp tools")
@@ -690,3 +700,122 @@ class PhiAgent:
 
         await complete(rkey)
         return total_stored
+
+    async def process_review(self) -> str:
+        """Review recent observations with distance. The dream/distill pass.
+
+        Fetches recent observations across user namespaces, asks the review
+        agent to evaluate each (keep/supersede/promote), and applies the
+        decisions. Returns a summary string for logging.
+        """
+        if not self.memory:
+            return "no memory"
+
+        # gather recent observations across all user namespaces
+        user_prefix = f"{self.memory.NAMESPACES['users']}-"
+        observations: list[dict] = []
+        try:
+            page = self.memory.client.namespaces(prefix=user_prefix)
+            for ns_summary in page.namespaces:
+                handle = ns_summary.id.removeprefix(user_prefix).replace("_", ".")
+                user_ns = self.memory.client.namespace(ns_summary.id)
+                try:
+                    response = user_ns.query(
+                        rank_by=("created_at", "desc"),
+                        top_k=10,
+                        filters=[
+                            "And",
+                            [
+                                ["kind", "Eq", "observation"],
+                                ["status", "NotEq", "superseded"],
+                            ],
+                        ],
+                        include_attributes=["content", "tags", "created_at"],
+                    )
+                    if response.rows:
+                        for row in response.rows:
+                            observations.append(
+                                {
+                                    "handle": handle,
+                                    "id": row.id,
+                                    "content": row.content,
+                                    "tags": getattr(row, "tags", []),
+                                    "created_at": getattr(row, "created_at", ""),
+                                }
+                            )
+                except Exception:
+                    pass
+        except Exception as e:
+            logger.warning(f"review: failed to gather observations: {e}")
+            return f"failed: {e}"
+
+        if not observations:
+            logger.info("review: no observations to review")
+            return "nothing to review"
+
+        logger.info(f"review: examining {len(observations)} observations")
+
+        # format for the review agent
+        lines = []
+        for i, obs in enumerate(observations):
+            lines.append(
+                f"{i + 1}. [@{obs['handle']}] {obs['content']} "
+                f"(tags: {obs['tags']}, from: {obs['created_at'][:10]})"
+            )
+        prompt = f"review these {len(observations)} observations:\n\n" + "\n".join(
+            lines
+        )
+
+        try:
+            result = await self._review_agent.run(prompt)
+        except Exception as e:
+            logger.warning(f"review agent failed: {e}")
+            return f"review agent failed: {e}"
+
+        output = result.output
+        superseded = 0
+        promoted = 0
+
+        for i, decision in enumerate(output.decisions):
+            if i >= len(observations):
+                break
+            obs = observations[i]
+            handle = obs["handle"]
+
+            if decision.action == "supersede":
+                user_ns = self.memory.get_user_namespace(handle)
+                user_ns.write(patch_rows=[{"id": obs["id"], "status": "superseded"}])
+                superseded += 1
+                logger.info(
+                    f"review: superseded observation for @{handle}: "
+                    f"{obs['content'][:60]} ({decision.reason})"
+                )
+
+            elif decision.action == "promote" and decision.card_title:
+                try:
+                    from bot.tools._helpers import _create_cosmik_record
+                    from bot.types import CosmikNoteCard, NoteContent
+
+                    card = CosmikNoteCard(
+                        content=NoteContent(
+                            text=decision.card_description or obs["content"]
+                        )
+                    )
+                    uri = await _create_cosmik_record(
+                        "network.cosmik.card", card.to_record()
+                    )
+                    promoted += 1
+                    logger.info(
+                        f"review: promoted to cosmik card for @{handle}: "
+                        f"{decision.card_title} → {uri}"
+                    )
+                except Exception as e:
+                    logger.warning(f"review: failed to promote: {e}")
+
+        summary = (
+            f"reviewed {len(observations)} observations: "
+            f"{superseded} superseded, {promoted} promoted, "
+            f"{len(observations) - superseded - promoted} kept"
+        )
+        logger.info(f"review: {summary}")
+        return summary
