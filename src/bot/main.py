@@ -389,6 +389,19 @@ async def trigger_post(request: Request, background_tasks: BackgroundTasks):
     return {"triggered": True}
 
 
+@app.post("/api/control/explore")
+async def trigger_explore(request: Request, background_tasks: BackgroundTasks):
+    """Trigger one exploration from the curiosity queue immediately."""
+    if err := _check_control_token(request):
+        return err
+    poller: NotificationPoller | None = getattr(app.state, "poller", None)
+    if not poller:
+        return JSONResponse({"error": "poller not available"}, status_code=503)
+    background_tasks.add_task(poller.handler.explore)
+    logger.info("exploration triggered via API")
+    return {"triggered": True}
+
+
 @app.get("/status", response_class=HTMLResponse)
 async def status_page():
     """Status page."""
