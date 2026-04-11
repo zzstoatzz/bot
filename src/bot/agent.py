@@ -11,7 +11,7 @@ from pydantic_ai import Agent, ImageUrl, RunContext
 from pydantic_ai.mcp import MCPServerStreamableHTTP
 
 from bot.config import settings
-from bot.core.atproto_client import get_identity_block
+from bot.core.atproto_client import bot_client, get_identity_block
 from bot.core.curiosity_queue import claim, complete, enqueue, fail
 from bot.core.graze_client import GrazeClient
 from bot.exploration import EXPLORATION_SYSTEM_PROMPT, ExplorationResult
@@ -271,6 +271,62 @@ class PhiAgent:
             if not lookups:
                 return ""
             return "\n\n".join(lookups.values())
+
+        @self.agent.system_prompt(dynamic=True)
+        async def inject_public_memory() -> str:
+            """Inject phi's own cosmik state — collections and recent cards.
+
+            Gives phi awareness of what it has already curated publicly so it
+            can decide whether to add new cards, update collections, or draw
+            connections without having to search_network for its own records.
+            """
+            await bot_client.authenticate()
+            if not bot_client.client.me:
+                return ""
+            did = bot_client.client.me.did
+
+            lines: list[str] = []
+            try:
+                # collections
+                cols = bot_client.client.com.atproto.repo.list_records(
+                    {
+                        "repo": did,
+                        "collection": "network.cosmik.collection",
+                        "limit": 20,
+                    }
+                )
+                if cols.records:
+                    lines.append("[YOUR PUBLIC COLLECTIONS (semble)]")
+                    for r in cols.records:
+                        val = dict(r.value)
+                        lines.append(f"- {val.get('name', '?')}")
+
+                # recent cards (last 5)
+                cards = bot_client.client.com.atproto.repo.list_records(
+                    {
+                        "repo": did,
+                        "collection": "network.cosmik.card",
+                        "limit": 5,
+                    }
+                )
+                if cards.records:
+                    lines.append("\n[YOUR RECENT PUBLIC CARDS]")
+                    for r in cards.records:
+                        val = dict(r.value)
+                        card_type = val.get("type", "?")
+                        content = dict(val.get("content", {}))
+                        if card_type == "URL":
+                            meta = dict(content.get("metadata", {}))
+                            lines.append(
+                                f"- [URL] {meta.get('title', content.get('url', '?'))}"
+                            )
+                        elif card_type == "NOTE":
+                            text = content.get("text", "")
+                            lines.append(f"- [NOTE] {text[:120]}")
+            except Exception as e:
+                logger.debug(f"failed to fetch cosmik state: {e}")
+
+            return "\n".join(lines) if lines else ""
 
         # --- register tools from tools/ package ---
 
