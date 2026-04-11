@@ -26,7 +26,6 @@ fetched via `client.get_thread(uri, depth=100)` when processing a mention. provi
 
 | namespace | contents |
 |-----------|----------|
-| `phi-core` | identity and guidelines (highest trust) |
 | `phi-users-{handle}` | per-user observations + raw interaction logs |
 | `phi-episodic` | phi's own notes about the world |
 
@@ -102,8 +101,7 @@ these are indexed by [semble](https://semble.so) and searchable by anyone via `s
 when phi processes a mention from `@alice` about topic X:
 
 ```
-[CORE IDENTITY AND GUIDELINES]        ← phi-core namespace (highest trust)
-[PHI'S SYNTHESIZED IMPRESSION]        ← relationship summary (lowest trust)
+[PHI'S SYNTHESIZED IMPRESSION]        ← relationship summary (low trust)
 [OBSERVATIONS ABOUT @alice]           ← user namespace, kind=observation, status!=superseded
 [PAST EXCHANGES WITH @alice]          ← user namespace, kind=interaction
 [PHI'S RELEVANT MEMORIES]             ← episodic namespace, semantic search

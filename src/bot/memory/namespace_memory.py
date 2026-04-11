@@ -30,7 +30,6 @@ class NamespaceMemory:
     """
 
     NAMESPACES: ClassVar[dict[str, str]] = {
-        "core": "phi-core",
         "users": "phi-users",
         "episodic": "phi-episodic",
     }
@@ -65,68 +64,6 @@ class NamespaceMemory:
             model="text-embedding-3-small", input=text
         )
         return response.data[0].embedding
-
-    # --- core memory (unchanged) ---
-
-    async def store_core_memory(
-        self,
-        label: str,
-        content: str,
-        memory_type: str = "system",
-        char_limit: int = 10_000,
-    ):
-        """Store or update core memory block."""
-        if len(content) > char_limit:
-            content = content[: char_limit - 3] + "..."
-
-        block_id = self._generate_id("core", label)
-
-        self.namespaces["core"].write(
-            upsert_rows=[
-                {
-                    "id": block_id,
-                    "vector": await self._get_embedding(content),
-                    "label": label,
-                    "type": memory_type,
-                    "content": content,
-                    "importance": 1.0,
-                    "created_at": datetime.now().isoformat(),
-                    "updated_at": datetime.now().isoformat(),
-                }
-            ],
-            distance_metric="cosine_distance",
-            schema={
-                "label": {"type": "string"},
-                "type": {"type": "string"},
-                "content": {"type": "string", "full_text_search": True},
-                "importance": {"type": "float"},
-                "created_at": {"type": "string"},
-                "updated_at": {"type": "string"},
-            },
-        )
-
-    async def get_core_memories(self) -> list[dict]:
-        """Get all core memories."""
-        response = self.namespaces["core"].query(
-            rank_by=("vector", "ANN", [0.5] * 1536),
-            top_k=100,
-            include_attributes=["label", "type", "content", "importance", "created_at"],
-        )
-
-        entries = []
-        if response.rows:
-            for row in response.rows:
-                entries.append(
-                    {
-                        "id": row.id,
-                        "content": row.content,
-                        "label": getattr(row, "label", "unknown"),
-                        "type": getattr(row, "type", "system"),
-                        "importance": getattr(row, "importance", 1.0),
-                        "created_at": row.created_at,
-                    }
-                )
-        return entries
 
     # --- user memory ---
 
@@ -337,21 +274,9 @@ class NamespaceMemory:
                 )
         return None
 
-    async def build_user_context(
-        self, handle: str, query_text: str, include_core: bool = True
-    ) -> str:
+    async def build_user_context(self, handle: str, query_text: str) -> str:
         """Build context for a conversation from observations and recent interactions."""
         parts = []
-
-        if include_core:
-            core_memories = await self.get_core_memories()
-            if core_memories:
-                parts.append("[CORE IDENTITY AND GUIDELINES]")
-                for mem in sorted(
-                    core_memories, key=lambda x: x.get("importance", 0), reverse=True
-                ):
-                    label = mem.get("label", "unknown")
-                    parts.append(f"[{label}] {mem['content']}")
 
         # relationship summary (synthesized by compact flow — treat as phi's impression, not ground truth)
         summary = await self.get_relationship_summary(handle)

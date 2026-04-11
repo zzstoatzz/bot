@@ -44,6 +44,6 @@ fly.io app `zzstoatzz-phi`. deploys are triggered by `v*` tags, not pushes to ma
 
 - all notification types (mentions, replies, quotes, likes, reposts, follows) run through the full agent loop — phi decides what's worth responding to
 - personality is separate from operational instructions (agent.py `OPERATIONAL_INSTRUCTIONS`)
-- memory: turbopuffer namespaces (`phi-core`, `phi-users-{handle}`, `phi-episodic`)
+- memory: turbopuffer namespaces (`phi-users-{handle}`, `phi-episodic`)
 - relationship summaries are compacted by a separate pipeline in my-prefect-server
 - MCP servers: pdsx (atproto record CRUD), pub-search (publication search)

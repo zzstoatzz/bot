@@ -132,7 +132,7 @@ def phi_agent(settings):
             if self.memory:
                 try:
                     memory_context = await self.memory.build_user_context(
-                        author_handle, query_text=mention_text, include_core=True
+                        author_handle, query_text=mention_text
                     )
                 except Exception:
                     pass
