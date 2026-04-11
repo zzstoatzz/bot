@@ -152,3 +152,28 @@ def register(agent):
         Do NOT call this when someone asks if you're online — that's about you, not infrastructure.
         Only use during daily reflection or when someone explicitly asks about services/infrastructure."""
         return await _check_services_impl()
+
+    @agent.tool
+    async def changelog(ctx: RunContext[PhiDeps], count: int = 10) -> str:
+        """See your own recent changes — what was deployed and when.
+
+        Reads commit history from the github mirror (github.com/zzstoatzz/bot).
+        Origin is tangled.sh/zzstoatzz.io/bot. Use when you want to know what
+        changed, when a feature was added, or why something works differently.
+        """
+        try:
+            async with httpx.AsyncClient(timeout=10) as http:
+                r = await http.get(
+                    "https://api.github.com/repos/zzstoatzz/bot/commits",
+                    params={"per_page": min(count, 30)},
+                )
+                r.raise_for_status()
+                commits = r.json()
+            lines = []
+            for c in commits:
+                date = c["commit"]["author"]["date"][:10]
+                msg = c["commit"]["message"].split("\n")[0]
+                lines.append(f"[{date}] {msg}")
+            return "\n".join(lines)
+        except Exception as e:
+            return f"failed to fetch changelog: {e}"
