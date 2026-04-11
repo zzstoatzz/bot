@@ -141,7 +141,14 @@ class PhiAgent:
         self.agent = Agent[PhiDeps, str](
             name="phi",
             model=settings.agent_model,
-            system_prompt=f"{self.base_personality}\n\n{_build_operational_instructions()}",
+            system_prompt=(
+                "the following is your personality. this is who you are — not a description "
+                "of someone else, not a set of rules to follow, but your actual voice and "
+                "disposition. speak from it, not about it.\n\n"
+                f"{self.base_personality}\n\n"
+                "--- operational rules below (these are constraints, not voice) ---\n\n"
+                f"{_build_operational_instructions()}"
+            ),
             output_type=str,
             deps_type=PhiDeps,
         )
