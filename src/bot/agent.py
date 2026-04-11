@@ -72,53 +72,36 @@ def _format_notifications_block(notifications_context: dict) -> str:
             engagement.append(entry)
 
     lines: list[str] = []
-    lines.append(
-        "[NEW NOTIFICATIONS — process the batch and use posting tools as appropriate]"
-    )
-    lines.append(
-        "you have new activity since your last poll. for each item, decide whether to act and how. "
-        "use reply_to / like_post / repost_post to act on items in this batch. "
-        "you don't have to act on every notification — silence is fine for things that don't warrant a response."
-    )
+    lines.append("[NEW NOTIFICATIONS]")
 
     for root_uri, entries in threads.items():
-        # sort entries within a thread chronologically
         entries.sort(key=lambda e: e.get("indexed_at", ""))
         thread_ctx = entries[0].get("thread_context", "") or ""
 
         lines.append("")
-        lines.append(f"═══ thread: {root_uri} ═══")
         if thread_ctx and thread_ctx != "No previous messages in this thread.":
-            lines.append("thread context:")
             lines.append(thread_ctx)
-        lines.append("")
-        lines.append("new in this thread:")
+            lines.append("")
         for e in entries:
             handle = e.get("author_handle", "?")
             uri = e.get("uri", "")
-            reason = e.get("reason", "")
-            ts = (e.get("indexed_at") or "")[:19].replace("T", " ")
             text = e.get("post_text", "")
             embed = e.get("embed_desc") or ""
-            embed_part = f"\n    {embed}" if embed else ""
-            lines.append(f"- @{handle} [{reason}, {ts}] [{uri}]: {text}{embed_part}")
+            embed_part = f"\n  {embed}" if embed else ""
+            lines.append(f"@{handle} [{uri}]: {text}{embed_part}")
 
     if engagement:
         lines.append("")
-        lines.append("═══ engagement ═══")
         for e in engagement:
             handle = e.get("author_handle", "?")
             reason = e.get("reason", "")
             uri = e.get("uri", "")
-            ts = (e.get("indexed_at") or "")[:19].replace("T", " ")
             target_text = e.get("post_text", "")
             target_part = f' — "{target_text[:120]}"' if target_text else ""
             if reason == "follow":
-                lines.append(f"- @{handle} [follow, {ts}] followed you")
+                lines.append(f"@{handle} followed you")
             else:
-                lines.append(
-                    f"- @{handle} [{reason}, {ts}] {reason}d your post {uri}{target_part}"
-                )
+                lines.append(f"@{handle} {reason}d your post [{uri}]{target_part}")
 
     return "\n".join(lines)
 
@@ -498,14 +481,8 @@ class PhiAgent:
         )
 
         reflection_task = (
-            "end of day. you can post a short reflection if you have something. "
-            "silence is the default.\n"
-            "\n"
-            "check [YOUR RECENT TOP-LEVEL POSTS]. don't rephrase something you "
-            "already posted. if your recent posts are mostly about yourself, look "
-            "outward instead.\n"
-            "\n"
-            "if nothing sparks, stay quiet. if you post, use the `post` tool. one post."
+            "end of day. post a reflection if you have one, or don't. "
+            "your recent posts are in [YOUR RECENT TOP-LEVEL POSTS] — don't repeat yourself."
         )
 
         toolsets = self._mcp_toolsets()
@@ -561,14 +538,8 @@ class PhiAgent:
         )
 
         musing_task = (
-            "you have a moment. silence is the default.\n"
-            "\n"
-            "check [YOUR RECENT POSTS]. if you'd just be rephrasing something you "
-            "already posted, don't. if your recent posts are mostly about yourself, "
-            "look outward instead — what are people building, what's trending, what "
-            "did you read. if nothing sparks, stay quiet.\n"
-            "\n"
-            "if you post, use the `post` tool. one post, short."
+            "you have a moment. post something if you want to, or don't. "
+            "your recent posts are in [YOUR RECENT POSTS] — don't repeat yourself."
         )
 
         toolsets = self._mcp_toolsets()
