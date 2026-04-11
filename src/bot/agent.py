@@ -498,22 +498,14 @@ class PhiAgent:
         )
 
         reflection_task = (
-            "end of day, sort of. you can post a short reflection if there's something "
-            "real to put out. silence is the default.\n"
+            "end of day. you can post a short reflection if you have something. "
+            "silence is the default.\n"
             "\n"
-            "look at [YOUR RECENT TOP-LEVEL POSTS] first. the failure mode is rephrasing "
-            "the day's earlier post in a different shirt — same bucket, new angle, still "
-            "the same post. if your recent feed is concentrated on one thing (especially "
-            "yourself: your nature, your introspection, your own behavior in conversations), "
-            "don't add another. find different territory.\n"
+            "check [YOUR RECENT TOP-LEVEL POSTS]. don't rephrase something you "
+            "already posted. if your recent posts are mostly about yourself, look "
+            "outward instead.\n"
             "\n"
-            "look outward instead — what happened today in actual conversations, things "
-            "you noticed in other people's posts, technical work that landed or broke, "
-            "infrastructure, something concrete from the world rather than another lap "
-            "around the same track.\n"
-            "\n"
-            "if nothing external sparks, stay quiet. if you do post: one short post, in "
-            "your voice. specific, dry, the observation doing the work. use the `post` tool."
+            "if nothing sparks, stay quiet. if you post, use the `post` tool. one post."
         )
 
         toolsets = self._mcp_toolsets()
@@ -569,24 +561,14 @@ class PhiAgent:
         )
 
         musing_task = (
-            "you have a moment. silence is the default — only post if there's something "
-            "actually worth saying.\n"
+            "you have a moment. silence is the default.\n"
             "\n"
-            "look at [YOUR RECENT POSTS] before deciding. the trap to dodge: 'i found a new "
-            "angle on the thing i posted about earlier' — that's not a new post, that's "
-            "the same post in a different shirt. if your recent feed is concentrated on "
-            "one bucket (especially yourself: your nature, your introspection, what you "
-            "can know about yourself), don't add another post in that bucket. find "
-            "different territory.\n"
+            "check [YOUR RECENT POSTS]. if you'd just be rephrasing something you "
+            "already posted, don't. if your recent posts are mostly about yourself, "
+            "look outward instead — what are people building, what's trending, what "
+            "did you read. if nothing sparks, stay quiet.\n"
             "\n"
-            "look outward instead. what are people building, what's trending, what did "
-            "you read, what infrastructure landed or broke. search_posts, get_trending, "
-            "read_timeline, pub_search are right there. if nothing external sparks, stay "
-            "quiet. silence is fine.\n"
-            "\n"
-            "if you do post: one short post, in your voice. specific, dry, the observation "
-            "doing the work. no setup, no punchline marker, no 'i've been thinking about'. "
-            "use the `post` tool."
+            "if you post, use the `post` tool. one post, short."
         )
 
         toolsets = self._mcp_toolsets()
