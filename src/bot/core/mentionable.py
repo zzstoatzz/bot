@@ -26,7 +26,9 @@ async def _load() -> None:
         result = bot_client.client.com.atproto.repo.get_record(
             {"repo": bot_client.client.me.did, "collection": COLLECTION, "rkey": RKEY}
         )
-        _handles = set(result.value.get("handles", []))
+        # bracket access — result.value is a DotDict where .get() is
+        # intercepted as attribute lookup and returns None
+        _handles = set(result.value["handles"])
         logger.info(f"loaded {len(_handles)} mentionable handles from PDS")
     except Exception:
         _handles = set()

@@ -4,6 +4,11 @@ Stored as individual records on phi's PDS at:
   at://{did}/io.zzstoatzz.phi.curiosityQueue/{tid}
 
 Lifecycle: pending → in_progress → completed | failed
+
+NOTE: record values from the atproto SDK are DotDict objects, NOT plain dicts.
+DotDict intercepts attribute access via __getattr__, which means .get() resolves
+to DotDict["get"] (None) instead of dict.get(). Always use bracket access
+(val["key"]) for record value fields, not .get().
 """
 
 import logging
@@ -63,9 +68,9 @@ async def enqueue(
     for rec in records:
         val = rec.value
         if (
-            val.get("kind") == kind
-            and val.get("subject") == subject
-            and val.get("status") in ("pending", "in_progress")
+            val["kind"] == kind
+            and val["subject"] == subject
+            and val["status"] in ("pending", "in_progress")
         ):
             logger.debug(f"duplicate queue item: {kind} {subject}")
             return False
@@ -98,7 +103,7 @@ async def claim() -> tuple[dict, str] | None:
     """
     records = await _list_records()
 
-    pending = [r for r in records if r.value.get("status") == "pending"]
+    pending = [r for r in records if r.value["status"] == "pending"]
     if not pending:
         return None
 
@@ -106,7 +111,7 @@ async def claim() -> tuple[dict, str] | None:
     oldest = pending[-1]
     value = await _update_status(oldest, "in_progress")
     rkey = _rkey(oldest)
-    logger.info(f"claimed: {value.get('kind')} {value.get('subject')}")
+    logger.info(f"claimed: {value['kind']} {value['subject']}")
     return value, rkey
 
 
@@ -116,9 +121,7 @@ async def complete(rkey: str) -> None:
     for rec in records:
         if _rkey(rec) == rkey:
             await _update_status(rec, "completed")
-            logger.info(
-                f"completed: {rec.value.get('kind')} {rec.value.get('subject')}"
-            )
+            logger.info(f"completed: {rec.value['kind']} {rec.value['subject']}")
             return
 
 
@@ -128,14 +131,12 @@ async def fail(rkey: str) -> None:
     for rec in records:
         if _rkey(rec) == rkey:
             await _update_status(rec, "failed")
-            logger.warning(
-                f"failed: {rec.value.get('kind')} {rec.value.get('subject')}"
-            )
+            logger.warning(f"failed: {rec.value['kind']} {rec.value['subject']}")
             return
 
 
 async def list_pending(limit: int = 10) -> list[dict]:
     """List pending queue items for inspection."""
     records = await _list_records()
-    pending = [dict(r.value) for r in records if r.value.get("status") == "pending"]
+    pending = [dict(r.value) for r in records if r.value["status"] == "pending"]
     return pending[:limit]

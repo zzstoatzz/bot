@@ -31,15 +31,12 @@ def register(agent):
 
             lines = []
             for rec in response.records:
-                val = rec.value
-                title = (
-                    val.get("title", "untitled")
-                    if isinstance(val, dict)
-                    else "untitled"
-                )
+                # dict() wraps DotDict → plain dict so .get() works normally
+                val = dict(rec.value)
+                title = val.get("title", "untitled")
                 rkey = rec.uri.split("/")[-1]
-                published = val.get("publishedAt", "") if isinstance(val, dict) else ""
-                tags = val.get("tags", []) if isinstance(val, dict) else []
+                published = val.get("publishedAt", "")
+                tags = val.get("tags", [])
                 url = f"https://greengale.app/{handle}/{rkey}"
                 tag_str = f" [{', '.join(tags)}]" if tags else ""
                 date_str = f" ({published[:10]})" if published else ""
@@ -93,10 +90,8 @@ def register(agent):
             )
             if existing.records:
                 for rec in existing.records:
-                    val = rec.value
-                    existing_title = (
-                        val.get("title", "") if isinstance(val, dict) else ""
-                    )
+                    val = dict(rec.value)
+                    existing_title = val.get("title", "")
                     if existing_title == title:
                         rkey = rec.uri.split("/")[-1]
                         return (
