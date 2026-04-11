@@ -11,7 +11,7 @@ from pydantic_ai import Agent, ImageUrl, RunContext
 from pydantic_ai.mcp import MCPServerStreamableHTTP
 
 from bot.config import settings
-from bot.core.atproto_client import get_identity_block
+from bot.core.atproto_client import bot_client, get_identity_block
 from bot.core.curiosity_queue import claim, complete, enqueue, fail
 from bot.core.graze_client import GrazeClient
 from bot.exploration import EXPLORATION_SYSTEM_PROMPT, ExplorationResult
@@ -271,6 +271,41 @@ class PhiAgent:
             if not lookups:
                 return ""
             return "\n\n".join(lookups.values())
+
+        @self.agent.system_prompt(dynamic=True)
+        async def inject_public_memory() -> str:
+            """One-line summary of phi's cosmik state.
+
+            Just enough for phi to know it has public collections — the
+            details are available via search_network and list_records when
+            phi actually needs them.
+            """
+            await bot_client.authenticate()
+            if not bot_client.client.me:
+                return ""
+            did = bot_client.client.me.did
+            try:
+                cols = bot_client.client.com.atproto.repo.list_records(
+                    {
+                        "repo": did,
+                        "collection": "network.cosmik.collection",
+                        "limit": 50,
+                    }
+                )
+                cards = bot_client.client.com.atproto.repo.list_records(
+                    {
+                        "repo": did,
+                        "collection": "network.cosmik.card",
+                        "limit": 50,
+                    }
+                )
+                nc = len(cols.records) if cols.records else 0
+                nk = len(cards.records) if cards.records else 0
+                if nc or nk:
+                    return f"[SEMBLE]: you have {nc} public collections and {nk} cards on semble. use search_network to browse, save_url/create_connection to add."
+            except Exception as e:
+                logger.debug(f"failed to fetch cosmik counts: {e}")
+            return ""
 
         # --- register tools from tools/ package ---
 
