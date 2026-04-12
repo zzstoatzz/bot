@@ -4,7 +4,7 @@ import contextlib
 import logging
 import os
 from collections.abc import Sequence
-from datetime import date
+from datetime import UTC, datetime
 from pathlib import Path
 
 from pydantic_ai import Agent, ImageUrl, RunContext
@@ -162,7 +162,8 @@ class PhiAgent:
 
         @self.agent.system_prompt(dynamic=True)
         def inject_today() -> str:
-            return f"[TODAY]: {date.today().isoformat()}"
+            now = datetime.now(UTC)
+            return f"[NOW]: {now.strftime('%Y-%m-%d %H:%M UTC')}"
 
         @self.agent.system_prompt(dynamic=True)
         def inject_notifications(ctx: RunContext[PhiDeps]) -> str:

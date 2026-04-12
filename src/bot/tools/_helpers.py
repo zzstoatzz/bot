@@ -92,6 +92,11 @@ def _format_feed_posts(feed_posts, limit: int = 20) -> str:
     return "\n\n".join(lines)
 
 
+def _short_date(iso: str) -> str:
+    """Extract YYYY-MM-DD from an ISO timestamp, or return '' if missing."""
+    return iso[:10] if iso and len(iso) >= 10 else ""
+
+
 def _format_user_results(results: list[dict], handle: str) -> list[str]:
     parts = []
     for r in results:
@@ -99,7 +104,9 @@ def _format_user_results(results: list[dict], handle: str) -> list[str]:
         content = r.get("content", "")
         tags = r.get("tags", [])
         tag_str = f"[{', '.join(tags)}]" if tags else ""
-        parts.append(f"[{kind}]{tag_str} {content}")
+        date = _short_date(r.get("created_at", ""))
+        date_str = f" ({date})" if date else ""
+        parts.append(f"[{kind}]{tag_str}{date_str} {content}")
     return parts
 
 
@@ -107,7 +114,9 @@ def _format_episodic_results(results: list[dict]) -> list[str]:
     parts = []
     for r in results:
         tags = f" [{', '.join(r['tags'])}]" if r.get("tags") else ""
-        parts.append(f"{r['content']}{tags}")
+        date = _short_date(r.get("created_at", ""))
+        date_str = f" ({date})" if date else ""
+        parts.append(f"[note]{tags}{date_str} {r['content']}")
     return parts
 
 
@@ -118,11 +127,13 @@ def _format_unified_results(results: list[dict], handle: str) -> list[str]:
         content = r.get("content", "")
         tags = r.get("tags", [])
         tag_str = f" [{', '.join(tags)}]" if tags else ""
+        date = _short_date(r.get("created_at", ""))
+        date_str = f" ({date})" if date else ""
         if source == "user":
             kind = r.get("kind", "unknown")
-            parts.append(f"[@{handle} {kind}]{tag_str} {content}")
+            parts.append(f"[@{handle} {kind}]{tag_str}{date_str} {content}")
         else:
-            parts.append(f"[note]{tag_str} {content}")
+            parts.append(f"[note]{tag_str}{date_str} {content}")
     return parts
 
 
