@@ -8,7 +8,6 @@ import logfire
 
 from bot.config import settings
 from bot.core.atproto_client import BotClient
-from bot.core.feed_scanner import FeedScanner
 from bot.services.message_handler import MessageHandler
 from bot.status import bot_status
 
@@ -24,7 +23,6 @@ class NotificationPoller:
     def __init__(self, client: BotClient):
         self.client = client
         self.handler = MessageHandler(client)
-        self.feed_scanner = FeedScanner()
         self._running = False
         self._task: asyncio.Task | None = None
         self._processed_uris: set[str] = set()
@@ -35,7 +33,6 @@ class NotificationPoller:
         self._semaphore = asyncio.Semaphore(MAX_CONCURRENT)
         self._background_tasks: set[asyncio.Task] = set()
         # event-driven exploration state
-        self._poll_count: int = 0
         self._explorations_this_hour: int = 0
         self._exploration_hour: int = -1
         self._polls_since_last_exploration: int = 0
@@ -128,7 +125,6 @@ class NotificationPoller:
         await self._seed_schedule_from_history()
 
         while self._running:
-            self._poll_count += 1
             self._polls_since_last_exploration += 1
 
             try:
@@ -153,14 +149,6 @@ class NotificationPoller:
                     task.add_done_callback(self._background_tasks.discard)
             except Exception as e:
                 logger.error(f"thought post error: {e}", exc_info=settings.debug)
-
-            # feed scanning — fire-and-forget, does NOT count as background work
-            # (so it doesn't block idle exploration)
-            try:
-                if self._poll_count % settings.feed_scan_interval == 0:
-                    asyncio.create_task(self._scan_feeds())
-            except Exception as e:
-                logger.error(f"feed scan error: {e}", exc_info=settings.debug)
 
             # event-driven exploration — drain queue when idle
             try:
@@ -302,8 +290,7 @@ class NotificationPoller:
         self._last_thought_date = now.date()
         logger.info("triggering original thought")
         try:
-            feed_context = self.feed_scanner.get_recent_posts_text()
-            await self.handler.original_thought(feed_context=feed_context)
+            await self.handler.original_thought()
         except Exception as e:
             logger.error(f"thought post error: {e}", exc_info=settings.debug)
 
@@ -338,13 +325,3 @@ class NotificationPoller:
             await self.handler.explore()
         except Exception as e:
             logger.error(f"exploration error: {e}", exc_info=settings.debug)
-
-    async def _scan_feeds(self):
-        """Scan For You feed for strangers to explore."""
-        try:
-            memory = self.handler.agent.memory
-            enqueued = await self.feed_scanner.scan(memory)
-            if enqueued:
-                logger.info(f"feed scan enqueued {enqueued} strangers")
-        except Exception as e:
-            logger.warning(f"feed scan error: {e}")

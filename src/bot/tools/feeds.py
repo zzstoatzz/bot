@@ -126,14 +126,21 @@ def register(agent, graze_client: GrazeClient):
 
     @agent.tool
     async def read_feed(ctx: RunContext[PhiDeps], name: str, limit: int = 20) -> str:
-        """Read posts from one of your graze-powered feeds.
+        """Read posts from a feed by name.
 
-        name: the feed slug (e.g. "mushroom-foraging"). use list_feeds to see available names.
+        name: a saved feed name (e.g. "for-you") or one of your own feed slugs.
+        use list_feeds to see available names.
         """
         try:
-            await bot_client.authenticate()
-            assert bot_client.client.me is not None
-            feed_uri = f"at://{bot_client.client.me.did}/app.bsky.feed.generator/{name}"
+            # check saved feeds first (external feeds mapped by friendly name)
+            feed_uri = settings.saved_feeds.get(name)
+            if not feed_uri:
+                # fall back to phi's own graze-powered feeds
+                await bot_client.authenticate()
+                assert bot_client.client.me is not None
+                feed_uri = (
+                    f"at://{bot_client.client.me.did}/app.bsky.feed.generator/{name}"
+                )
             response = await bot_client.get_feed(feed_uri, limit=limit)
             if not response.feed:
                 return "no posts in this feed yet"

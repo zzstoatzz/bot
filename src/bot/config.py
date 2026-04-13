@@ -98,13 +98,11 @@ class Settings(BaseSettings):
     )
 
     # Event-driven exploration
-    feed_scan_interval: int = Field(
-        default=6,
-        description="poll cycles between feed scans (6 * 10s = ~60s)",
-    )
-    for_you_feed_uri: str = Field(
-        default="at://did:plc:3guzzweuqraryl3rdkimjamk/app.bsky.feed.generator/for-you",
-        description="AT-URI of the For You feed generator to scan",
+    saved_feeds: dict[str, str] = Field(
+        default={
+            "for-you": "at://did:plc:3guzzweuqraryl3rdkimjamk/app.bsky.feed.generator/for-you",
+        },
+        description="friendly name → AT-URI for external feeds phi can read",
     )
     max_idle_explorations_per_hour: int = Field(
         default=3,
