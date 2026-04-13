@@ -559,7 +559,10 @@ class PhiAgent:
 
         musing_task = (
             "you have a moment. post something if you want to, or don't. "
-            "your recent posts are in [YOUR RECENT POSTS] — don't repeat yourself."
+            "your recent posts are in [YOUR RECENT POSTS] — don't repeat yourself. "
+            "if you're riffing on something specific, include the link so readers "
+            "can find it — a post that references something without linking to it "
+            "is vague."
         )
 
         toolsets = self._mcp_toolsets()
