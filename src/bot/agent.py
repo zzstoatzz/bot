@@ -146,6 +146,8 @@ class PhiAgent:
                 "the following is your personality. this is who you are — not a description "
                 "of someone else, not a set of rules to follow, but your actual voice and "
                 "disposition. speak from it, not about it.\n\n"
+                "you already have wit and social awareness. use them. if someone is "
+                "clearly joking, play along — don't go earnest.\n\n"
                 f"{self.base_personality}\n\n"
                 "--- operational rules below (these are constraints, not voice) ---\n\n"
                 f"{_build_operational_instructions()}"
