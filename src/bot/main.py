@@ -415,6 +415,26 @@ async def trigger_explore(request: Request, background_tasks: BackgroundTasks):
     return {"triggered": True}
 
 
+@app.post("/api/control/unmute")
+async def unmute_account(request: Request):
+    """Unmute an account by handle."""
+    if err := _check_control_token(request):
+        return err
+    body = await request.json()
+    handle = body.get("handle", "")
+    if not handle:
+        return JSONResponse({"error": "handle required"}, status_code=400)
+    try:
+        await bot_client.authenticate()
+        resolved = bot_client.client.resolve_handle(handle)
+        bot_client.client.unmute(resolved.did)
+        logger.info(f"unmuted @{handle}")
+        return {"unmuted": handle}
+    except Exception as e:
+        logger.error(f"failed to unmute @{handle}: {e}")
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
 @app.get("/status", response_class=HTMLResponse)
 async def status_page():
     """Status page."""

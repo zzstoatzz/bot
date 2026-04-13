@@ -678,6 +678,32 @@ class PhiAgent:
         output = result.output
         logger.info(f"exploration result: {output.summary}")
 
+        # handle mute decisions — skip detailed storage, mute the account
+        if output.mute_subject and kind == "explore_handle":
+            logger.info(f"muting @{subject}: {output.mute_reason}")
+            try:
+                await bot_client.authenticate()
+                resolved = bot_client.client.resolve_handle(subject)
+                bot_client.client.mute(resolved.did)
+            except Exception as e:
+                logger.warning(f"failed to mute {subject}: {e}")
+            # store one user-scoped marker so is_stranger() sees it
+            if self.memory:
+                reason = output.mute_reason or output.summary[:150]
+                evidence = (
+                    f" [evidence: {', '.join(output.mute_evidence)}]"
+                    if output.mute_evidence
+                    else ""
+                )
+                await self.memory.store_exploration_note(
+                    handle=subject,
+                    content=f"muted — {reason}{evidence}",
+                    tags=["muted", "spam"],
+                    evidence_uris=output.mute_evidence,
+                )
+            await complete(rkey)
+            return 0
+
         total_stored = 0
 
         # store findings
