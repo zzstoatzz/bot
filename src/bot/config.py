@@ -97,10 +97,22 @@ class Settings(BaseSettings):
         description="UTC hours to attempt original thought posts (~8am-10pm CT, every 2h)",
     )
 
-    # Background exploration
-    exploration_hours: list[int] = Field(
-        default=[16, 20],
-        description="UTC hours to attempt background exploration (16,20 = ~11am,3pm CT)",
+    # Event-driven exploration
+    feed_scan_interval: int = Field(
+        default=6,
+        description="poll cycles between feed scans (6 * 10s = ~60s)",
+    )
+    for_you_feed_uri: str = Field(
+        default="at://did:plc:3guzzweuqraryl3rdkimjamk/app.bsky.feed.generator/for-you",
+        description="AT-URI of the For You feed generator to scan",
+    )
+    max_idle_explorations_per_hour: int = Field(
+        default=3,
+        description="cap exploration drains per hour",
+    )
+    exploration_cooldown_polls: int = Field(
+        default=30,
+        description="min polls (~5 min) between explorations",
     )
 
     # Control API

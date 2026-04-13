@@ -522,7 +522,9 @@ class PhiAgent:
         logger.info(f"reflection finished: {summary[:200]}")
         return summary
 
-    async def process_musing(self, recent_posts: list[str] | None = None) -> str:
+    async def process_musing(
+        self, recent_posts: list[str] | None = None, feed_context: str = ""
+    ) -> str:
         """Generate an original thought post from memory, reading, patterns noticed.
 
         Side effects (posting) happen via the `post` tool inside the agent run.
@@ -550,6 +552,13 @@ class PhiAgent:
                     recent_activity += "[RECENT CONVERSATIONS]:\n" + "\n".join(lines)
             except Exception as e:
                 logger.warning(f"failed to get recent interactions for musing: {e}")
+
+        if feed_context:
+            if recent_activity:
+                recent_activity += "\n\n"
+            recent_activity += (
+                "[FOR YOU FEED — posts from across the network]:\n" + feed_context
+            )
 
         deps = PhiDeps(
             author_handle="",
@@ -623,8 +632,16 @@ class PhiAgent:
         if not claimed:
             return 0
 
+        KIND_ALIASES = {
+            "person_exploration": "explore_handle",
+            "product_explore": "explore_topic",
+            "topic_exploration": "explore_topic",
+            "concept": "explore_topic",
+            "read": "explore_url",
+        }
+
         item, rkey = claimed
-        kind = item.get("kind", "")
+        kind = KIND_ALIASES.get(item.get("kind", ""), item.get("kind", ""))
         subject = item.get("subject", "")
         logger.info(f"exploring: {kind} {subject}")
 

@@ -1,4 +1,4 @@
-"""Simplified notification poller."""
+"""Notification poller with event-driven exploration."""
 
 import asyncio
 import logging
@@ -8,6 +8,7 @@ import logfire
 
 from bot.config import settings
 from bot.core.atproto_client import BotClient
+from bot.core.feed_scanner import FeedScanner
 from bot.services.message_handler import MessageHandler
 from bot.status import bot_status
 
@@ -23,6 +24,7 @@ class NotificationPoller:
     def __init__(self, client: BotClient):
         self.client = client
         self.handler = MessageHandler(client)
+        self.feed_scanner = FeedScanner()
         self._running = False
         self._task: asyncio.Task | None = None
         self._processed_uris: set[str] = set()
@@ -30,10 +32,13 @@ class NotificationPoller:
         self._last_daily_post: datetime | None = None
         self._last_thought_hours: set[int] = set()
         self._last_thought_date: date | None = None
-        self._last_exploration_hours: set[int] = set()
-        self._last_exploration_date: date | None = None
         self._semaphore = asyncio.Semaphore(MAX_CONCURRENT)
         self._background_tasks: set[asyncio.Task] = set()
+        # event-driven exploration state
+        self._poll_count: int = 0
+        self._explorations_this_hour: int = 0
+        self._exploration_hour: int = -1
+        self._polls_since_last_exploration: int = 0
 
     async def start(self) -> asyncio.Task:
         """Start polling for notifications."""
@@ -52,7 +57,6 @@ class NotificationPoller:
                 await self._task
             except asyncio.CancelledError:
                 pass
-        # wait for any in-flight notification handlers
         if self._background_tasks:
             await asyncio.gather(*self._background_tasks, return_exceptions=True)
 
@@ -124,6 +128,9 @@ class NotificationPoller:
         await self._seed_schedule_from_history()
 
         while self._running:
+            self._poll_count += 1
+            self._polls_since_last_exploration += 1
+
             try:
                 await self._check_notifications()
             except Exception as e:
@@ -147,8 +154,18 @@ class NotificationPoller:
             except Exception as e:
                 logger.error(f"thought post error: {e}", exc_info=settings.debug)
 
+            # feed scanning — background task, never blocks notifications
             try:
-                if self._should_do_exploration():
+                if self._poll_count % settings.feed_scan_interval == 0:
+                    task = asyncio.create_task(self._scan_feeds())
+                    self._background_tasks.add(task)
+                    task.add_done_callback(self._background_tasks.discard)
+            except Exception as e:
+                logger.error(f"feed scan error: {e}", exc_info=settings.debug)
+
+            # event-driven exploration — drain queue when idle
+            try:
+                if self._can_explore():
                     task = asyncio.create_task(self._maybe_explore())
                     self._background_tasks.add(task)
                     task.add_done_callback(self._background_tasks.discard)
@@ -172,11 +189,6 @@ class NotificationPoller:
         """
         check_time = self.client.client.get_current_time_iso()
 
-        # Wrap the bsky list_notifications call in an observability span so we
-        # can see the raw response — counts AND the actual unread items.
-        # Without this we only see phi's downstream interpretation (post-filter
-        # batch size), which makes "why did bsky return only N" unanswerable
-        # from logs alone.
         with logfire.span("fetch notifications", check_time=check_time) as fetch_span:
             response = await self.client.get_notifications()
             notifications = response.notifications
@@ -186,9 +198,6 @@ class NotificationPoller:
             fetch_span.set_attribute("total_count", len(notifications))
             fetch_span.set_attribute("unread_count", len(unread))
             if unread:
-                # Capture each unread entry as a structured dict so we can
-                # answer questions like "did bsky return all 3 mentions or
-                # just 1" without re-running the test.
                 fetch_span.set_attribute(
                     "unread_items",
                     [
@@ -294,34 +303,49 @@ class NotificationPoller:
         self._last_thought_date = now.date()
         logger.info("triggering original thought")
         try:
-            await self.handler.original_thought()
+            feed_context = self.feed_scanner.get_recent_posts_text()
+            await self.handler.original_thought(feed_context=feed_context)
         except Exception as e:
             logger.error(f"thought post error: {e}", exc_info=settings.debug)
 
-    def _should_do_exploration(self) -> bool:
-        """Check if it's time for background exploration."""
-        now = datetime.now(UTC)
-        today = now.date()
+    # --- event-driven exploration ---
+
+    def _can_explore(self) -> bool:
+        """Check if exploration should run — idle budget, not a cron."""
         if bot_status.paused:
             return False
-        # reset tracked hours at midnight
-        if self._last_exploration_date != today:
-            self._last_exploration_hours = set()
-            self._last_exploration_date = today
-        hour = now.hour
-        if hour not in settings.exploration_hours:
+        # reset hourly counter
+        now_hour = datetime.now(UTC).hour
+        if now_hour != self._exploration_hour:
+            self._explorations_this_hour = 0
+            self._exploration_hour = now_hour
+        # budget cap
+        if self._explorations_this_hour >= settings.max_idle_explorations_per_hour:
             return False
-        if hour in self._last_exploration_hours:
+        # cooldown between explorations
+        if self._polls_since_last_exploration < settings.exploration_cooldown_polls:
+            return False
+        # don't explore while any background work is in-flight
+        if len(self._background_tasks) > 0:
             return False
         return True
 
     async def _maybe_explore(self):
-        """Run one background exploration."""
-        now = datetime.now(UTC)
-        self._last_exploration_hours.add(now.hour)
-        self._last_exploration_date = now.date()
-        logger.info("triggering background exploration")
+        """Drain one item from the curiosity queue."""
+        self._explorations_this_hour += 1
+        self._polls_since_last_exploration = 0
+        logger.info("triggering idle exploration")
         try:
             await self.handler.explore()
         except Exception as e:
             logger.error(f"exploration error: {e}", exc_info=settings.debug)
+
+    async def _scan_feeds(self):
+        """Scan For You feed for strangers to explore."""
+        try:
+            memory = self.handler.agent.memory
+            enqueued = await self.feed_scanner.scan(memory)
+            if enqueued:
+                logger.info(f"feed scan enqueued {enqueued} strangers")
+        except Exception as e:
+            logger.warning(f"feed scan error: {e}")

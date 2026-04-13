@@ -268,7 +268,7 @@ class MessageHandler:
                 logger.exception(f"batch handler error: {e}")
                 bot_status.record_error()
 
-    async def original_thought(self):
+    async def original_thought(self, feed_context: str = ""):
         """Generate and post an original thought if phi has something to say.
 
         The agent uses the `post` tool inside its run if it decides to post.
@@ -288,7 +288,8 @@ class MessageHandler:
 
             try:
                 summary = await self.agent.process_musing(
-                    recent_posts=recent_posts or None
+                    recent_posts=recent_posts or None,
+                    feed_context=feed_context,
                 )
                 logger.info(f"original thought: {summary[:200]}")
             except Exception as e:

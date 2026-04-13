@@ -19,6 +19,7 @@ from bot.core.atproto_client import bot_client
 logger = logging.getLogger("bot.curiosity_queue")
 
 COLLECTION = "io.zzstoatzz.phi.curiosityQueue"
+CANONICAL_KINDS = {"explore_handle", "explore_topic", "explore_url"}
 
 
 async def _list_records() -> list:
@@ -62,6 +63,10 @@ async def enqueue(
     source_uri: str | None = None,
 ) -> bool:
     """Create a pending queue record. Returns False if a duplicate pending/in_progress item exists."""
+    if kind not in CANONICAL_KINDS:
+        logger.warning(f"rejected non-canonical kind: {kind}")
+        return False
+
     records = await _list_records()
 
     # deduplicate: skip if pending or in_progress item with same kind+subject exists
