@@ -775,6 +775,54 @@ class NamespaceMemory:
         )
         logger.info(f"stored exploration note for @{handle}: {content[:80]}")
 
+    async def clear_mute_marker(self, handle: str) -> bool:
+        """Supersede any muted/spam exploration notes for a handle.
+
+        Returns True if a marker was found and superseded.
+        """
+        user_ns = self.get_user_namespace(handle)
+        try:
+            response = user_ns.query(
+                rank_by=("created_at", "desc"),
+                top_k=5,
+                filters=[
+                    "And",
+                    [
+                        ["kind", "Eq", "exploration_note"],
+                        ["status", "Eq", "active"],
+                        ["tags", "ContainsAll", ["muted"]],
+                    ],
+                ],
+                include_attributes=["content", "tags"],
+            )
+            if not response.rows:
+                return False
+            now = datetime.now().isoformat()
+            for row in response.rows:
+                user_ns.write(
+                    upsert_rows=[
+                        {
+                            "id": row.id,
+                            "vector": row.vector,
+                            "kind": "exploration_note",
+                            "status": "superseded",
+                            "content": row.content,
+                            "tags": getattr(row, "tags", []),
+                            "supersedes": "",
+                            "created_at": getattr(row, "created_at", now),
+                            "updated_at": now,
+                        }
+                    ],
+                    distance_metric="cosine_distance",
+                    schema=USER_NAMESPACE_SCHEMA,
+                )
+            logger.info(f"cleared mute marker for @{handle}")
+            return True
+        except Exception as e:
+            if "was not found" in str(e):
+                return False
+            raise
+
     async def get_knowledge_count(self, handle: str) -> int:
         """Count observations + exploration notes phi has stored about a handle.
 

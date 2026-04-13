@@ -417,7 +417,7 @@ async def trigger_explore(request: Request, background_tasks: BackgroundTasks):
 
 @app.post("/api/control/unmute")
 async def unmute_account(request: Request):
-    """Unmute an account by handle."""
+    """Unmute an account by handle — reverses both the platform mute and the memory marker."""
     if err := _check_control_token(request):
         return err
     body = await request.json()
@@ -428,8 +428,13 @@ async def unmute_account(request: Request):
         await bot_client.authenticate()
         resolved = bot_client.client.resolve_handle(handle)
         bot_client.client.unmute(resolved.did)
-        logger.info(f"unmuted @{handle}")
-        return {"unmuted": handle}
+        # also clear the private spam marker so phi treats them as a stranger again
+        poller: NotificationPoller | None = getattr(app.state, "poller", None)
+        marker_cleared = False
+        if poller and poller.handler.agent.memory:
+            marker_cleared = await poller.handler.agent.memory.clear_mute_marker(handle)
+        logger.info(f"unmuted @{handle} (marker_cleared={marker_cleared})")
+        return {"unmuted": handle, "marker_cleared": marker_cleared}
     except Exception as e:
         logger.error(f"failed to unmute @{handle}: {e}")
         return JSONResponse({"error": str(e)}, status_code=500)

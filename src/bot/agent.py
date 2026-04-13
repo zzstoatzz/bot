@@ -687,17 +687,14 @@ class PhiAgent:
                 bot_client.client.mute(resolved.did)
             except Exception as e:
                 logger.warning(f"failed to mute {subject}: {e}")
+                await fail(rkey)
+                return 0
             # store one user-scoped marker so is_stranger() sees it
             if self.memory:
                 reason = output.mute_reason or output.summary[:150]
-                evidence = (
-                    f" [evidence: {', '.join(output.mute_evidence)}]"
-                    if output.mute_evidence
-                    else ""
-                )
                 await self.memory.store_exploration_note(
                     handle=subject,
-                    content=f"muted — {reason}{evidence}",
+                    content=f"muted — {reason}",
                     tags=["muted", "spam"],
                     evidence_uris=output.mute_evidence,
                 )
