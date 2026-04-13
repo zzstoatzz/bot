@@ -32,7 +32,7 @@ async with contextlib.AsyncExitStack() as stack:
 
 phi has two kinds of tools:
 
-- **native tools** (defined in `agent.py`) — memory, search, cosmik records, trending, URL checks. these need direct access to phi's deps (memory client, config, etc).
+- **native tools** (defined in `src/bot/tools/`) — memory, search, cosmik records, trending, feeds, posting. these need direct access to phi's deps (memory client, config, etc).
 - **MCP tools** (from remote servers) — atproto CRUD, publication search. these are stateless HTTP calls that don't need phi's internal state.
 
 the agent sees all tools uniformly and picks the right one for the task.

@@ -17,7 +17,7 @@ just run
 - `AGENT_MODEL` — pydantic-ai model string for the main agent (default: `anthropic:claude-sonnet-4-6`)
 - `EXTRACTION_MODEL` — model for observation extraction (default: `claude-haiku-4-5-20251001`)
 - `DAILY_REFLECTION_HOUR` — UTC hour for daily reflection post (default: `14`)
-- `THOUGHT_POST_HOURS` — UTC hours for original thought posts (default: `[15, 19, 23]`)
+- `THOUGHT_POST_HOURS` — UTC hours for original thought posts (default: every 2h, 8am-10pm CT)
 - `CONTROL_TOKEN` — bearer token for `/api/control` endpoints
 - `OWNER_HANDLE` — handle of the bot's owner for permission-gated tools (default: `zzstoatzz.io`)
 
@@ -60,47 +60,9 @@ just deploy     # deploy to fly.io
 <details>
 <summary>architecture</summary>
 
-```
-notification → PhiAgent (pydantic-ai)
-                 ├── context: thread (ATProto) + private memory (tpuf) + network (semble)
-                 ├── native tools: memory, search, cosmik records, etc (see agent.py)
-                 ├── mcp servers: pdsx (atproto CRUD), pub-search (publications)
-                 └── output: Response(action, text, reason)
-                        ↓
-               MessageHandler executes action
-```
+phi is a pydantic-ai agent with a personality prompt, tool access via native tools and remote MCP servers, and tool-based actions — the agent decides AND acts inside one run via tool calls (reply, like, post, note, etc). no separate action dispatch.
 
-phi is a pydantic-ai agent with a personality prompt, structured output, and tool access via both native tools and remote MCP servers. the agent decides what to do; the handler does it. tools are defined in `agent.py`.
-
-</details>
-
-<details>
-<summary>project structure</summary>
-
-```
-src/bot/
-├── agent.py               # pydantic-ai agent, tools, personality
-├── types.py               # cosmik record models (cards, connections)
-├── config.py              # settings (env vars)
-├── main.py                # fastapi app, status pages, memory graph ui
-├── status.py              # runtime metrics
-├── core/
-│   ├── atproto_client.py  # at protocol client, session persistence
-│   ├── profile_manager.py # online/offline status, self-labels
-│   └── rich_text.py       # text formatting with facets
-├── memory/
-│   └── namespace_memory.py # turbopuffer episodic memory
-├── services/
-│   ├── message_handler.py # action dispatch (reply, like, repost)
-│   └── notification_poller.py # mention polling loop
-└── utils/
-    └── thread.py          # thread context building
-
-evals/          # behavioral tests (llm-as-judge)
-personalities/  # personality definitions
-scripts/        # proven utility scripts
-sandbox/        # experiments and analysis
-```
+see `docs/architecture.md` for data flow and scheduling details.
 
 </details>
 

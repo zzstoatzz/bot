@@ -5,6 +5,7 @@ phi — a bluesky bot with episodic memory. python + pydantic-ai + fastapi + tur
 - `just run` / `just dev` (hot-reload) / `just deploy` (fly.io)
 - `just evals` — behavioral tests (llm-as-judge)
 - `just check` — lint + typecheck + test
+- `just loq-relax <file>` — when a file exceeds its line limit, relax it. never manually edit loq.toml or compress code to fit
 - work from repo root
 
 ## python style
@@ -14,34 +15,15 @@ phi — a bluesky bot with episodic memory. python + pydantic-ai + fastapi + tur
 - imports at the top — no deferred imports unless circular
 - never use `pytest.mark.asyncio`
 
-## project structure
-
-```
-src/bot/
-├── agent.py               # pydantic-ai agent, tools, personality
-├── config.py              # settings (env vars)
-├── main.py                # fastapi app, status pages, memory graph
-├── status.py              # runtime metrics
-├── core/                  # atproto client, profile management
-├── memory/                # turbopuffer episodic memory
-├── services/              # notification polling, message handling
-└── utils/                 # thread context, text formatting
-
-personalities/             # personality definitions (public)
-evals/                     # behavioral tests
-scripts/                   # proven utility scripts
-sandbox/                   # experiments (graduate to scripts/ once proven)
-.eggs/                     # cloned reference projects
-```
-
 ## deployment
 
-fly.io app `zzstoatzz-phi`. deploys are triggered by `v*` tags, not pushes to main. to deploy: `just release <version>` (e.g. `just release 0.2.0`) or `just deploy` for manual fly.io deploy without tagging.
+fly.io app `zzstoatzz-phi`. deploys triggered by `v*` tags via tangled CI. `just release <version>` tags and pushes. `just deploy` for manual.
 
 ## key architecture
 
-- all notification types (mentions, replies, quotes, likes, reposts, follows) run through the full agent loop — phi decides what's worth responding to
-- personality is separate from operational instructions (agent.py `OPERATIONAL_INSTRUCTIONS`)
-- memory: turbopuffer namespaces (`phi-core`, `phi-users-{handle}`, `phi-episodic`)
-- relationship summaries are compacted by a separate pipeline in my-prefect-server
+- all notification types run through the full agent loop — phi decides what's worth responding to
+- actions (reply, like, post) happen via tool calls inside the agent run, not structured output
+- personality is separate from operational instructions
+- memory: turbopuffer namespaces (`phi-users-{handle}`, `phi-episodic`)
+- exploration is event-driven: curiosity queue on PDS, drained when idle
 - MCP servers: pdsx (atproto record CRUD), pub-search (publication search)

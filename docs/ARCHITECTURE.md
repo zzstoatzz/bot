@@ -1,51 +1,34 @@
 # architecture
 
-phi is a notification-driven agent that responds to activity on bluesky.
+phi is a notification-driven agent on bluesky. it also posts original thoughts on a schedule and explores interesting accounts when idle.
 
 ## data flow
 
 ```
-notification arrives (mention, reply, quote, like, repost, follow)
+notification batch arrives (all types)
   ↓
-fetch thread context from network (ATProto)
+fetch thread context + stranger lookups
   ↓
-retrieve relevant memories (TurboPuffer)
+inject memories (per-user, episodic, public)
   ↓
-agent decides action (PydanticAI + Claude)
+agent decides + acts via tool calls (reply, like, post, note, etc)
   ↓
-execute action + store observations
+extract observations for next time
 ```
 
-## key components
+## scheduling
 
-### notification poller
-- checks for all notification types every 10s
-- tracks processed URIs to avoid duplicates
-- triggers daily reflection at a configured hour
-
-### message handler
-- orchestrates the response flow
-- fetches thread context from ATProto network
-- passes context to agent
-- executes agent's chosen action
-
-### phi agent
-- loads personality from `personalities/phi.md`
-- builds context from thread + private memory + network knowledge
-- returns structured response: `Response(action, text, reason)`
-- native tools defined in `agent.py`, MCP tools from remote servers
-
-### atproto client
-- session persistence (saves to `.session`)
-- auto-refresh tokens every ~2h
-- provides bluesky operations
+- **notifications**: polled every 10s, dispatched as one cognitive event per batch
+- **thought posts**: every 2h during configured hours — reads timeline, trending, feeds
+- **daily reflection**: once per day — reviews recent activity, posts synthesis
+- **exploration**: event-driven — drains curiosity queue when system is idle (no cron)
 
 ## why this design
 
-**network-first thread context**: fetch threads from ATProto instead of caching locally. network is source of truth, no staleness issues.
+**tool-based actions**: phi decides AND acts inside one agent run via tool calls. no separate action dispatch layer.
 
-**private + public memory**: turbopuffer stores private embeddings for semantic recall across conversations. cosmik records on PDS provide public knowledge that's indexed by semble for network-wide discovery. dual-write means phi gets both fast private recall and public visibility.
+**network-first context**: threads fetched from ATProto on demand. network is source of truth.
 
-**mcp for extensibility**: tools provided by remote MCP servers (pdsx for atproto CRUD, pub-search for publications). easy to add new capabilities without changing agent code.
+**private + public memory**: turbopuffer for private semantic recall. cosmik/semble for public knowledge discovery.
 
-**structured outputs**: agent returns typed `Response` objects, not free text. clear contract between agent and handler.
+**mcp for extensibility**: atproto CRUD and publication search via remote MCP servers.
