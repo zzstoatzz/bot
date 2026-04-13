@@ -93,8 +93,8 @@ class Settings(BaseSettings):
 
     # Original thought posts
     thought_post_hours: list[int] = Field(
-        default=[15, 19, 23],
-        description="UTC hours to attempt original thought posts (15,19,23 = ~10am,2pm,6pm CT)",
+        default=[13, 15, 17, 19, 21, 23, 1, 3],
+        description="UTC hours to attempt original thought posts (~8am-10pm CT, every 2h)",
     )
 
     # Background exploration
