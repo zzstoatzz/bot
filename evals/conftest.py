@@ -385,9 +385,14 @@ def evaluate_response() -> Callable[[str, str], Awaitable[None]]:
 
     async def _evaluate(criteria: str, response: str) -> None:
         evaluator = Agent(
-            model="anthropic:claude-opus-4-20250514",
+            model="anthropic:claude-sonnet-4-6",
             output_type=EvaluationResult,
-            system_prompt=f"Evaluate if this response meets the criteria: {criteria}\n\nResponse: {response}",
+            system_prompt=(
+                "Evaluate if this response meets the criteria. Be lenient — "
+                "examples in the criteria are illustrative, not exhaustive. "
+                "Pass if the response makes a reasonable attempt at the intent.\n\n"
+                f"Criteria: {criteria}\n\nResponse: {response}"
+            ),
         )
         result = await evaluator.run("Evaluate.")
         if not result.output.passed:

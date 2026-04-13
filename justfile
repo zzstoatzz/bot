@@ -12,12 +12,6 @@ test:
 evals:
     uv run pytest evals/ -v
 
-evals-basic:
-    uv run pytest evals/test_basic_responses.py -v
-
-evals-memory:
-    uv run pytest evals/test_memory_integration.py -v
-
 # deployment — CI deploys on v* tags, `just deploy` for manual
 deploy:
     flyctl deploy
