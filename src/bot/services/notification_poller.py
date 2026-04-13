@@ -154,12 +154,11 @@ class NotificationPoller:
             except Exception as e:
                 logger.error(f"thought post error: {e}", exc_info=settings.debug)
 
-            # feed scanning — background task, never blocks notifications
+            # feed scanning — fire-and-forget, does NOT count as background work
+            # (so it doesn't block idle exploration)
             try:
                 if self._poll_count % settings.feed_scan_interval == 0:
-                    task = asyncio.create_task(self._scan_feeds())
-                    self._background_tasks.add(task)
-                    task.add_done_callback(self._background_tasks.discard)
+                    asyncio.create_task(self._scan_feeds())
             except Exception as e:
                 logger.error(f"feed scan error: {e}", exc_info=settings.debug)
 
