@@ -144,29 +144,50 @@ class MessageHandler:
         root_cid = ""
         thread_uri = post_uri
         thread_context = ""
-        try:
-            posts_resp = await self.client.get_posts([post_uri])
-            if posts_resp.posts:
-                p = posts_resp.posts[0]
-                post_text = p.record.text if hasattr(p.record, "text") else ""
-                cid = p.cid
-                root_cid = cid
+        with logfire.span(
+            "build engagement entry",
+            post_uri=post_uri,
+            author=notification.author.handle,
+            reason=notification.reason,
+        ):
+            try:
+                posts_resp = await self.client.get_posts([post_uri])
+                if posts_resp.posts:
+                    p = posts_resp.posts[0]
+                    post_text = p.record.text if hasattr(p.record, "text") else ""
+                    cid = p.cid
+                    root_cid = cid
 
-                # resolve thread refs so phi sees the full conversation
-                if hasattr(p.record, "reply") and p.record.reply:
-                    root_uri = p.record.reply.root.uri
-                    root_cid = p.record.reply.root.cid
-                    thread_uri = root_uri
-
-                try:
-                    thread_data = await self.client.get_thread(thread_uri, depth=100)
-                    thread_context = build_thread_context(thread_data.thread)
-                except Exception as e:
-                    logger.debug(
-                        f"failed to fetch thread for engaged post {post_uri}: {e}"
+                    has_reply = hasattr(p.record, "reply") and p.record.reply
+                    logger.info(
+                        f"engagement on {post_uri}: has_reply={has_reply}, "
+                        f"text={post_text[:80]}"
                     )
-        except Exception as e:
-            logger.debug(f"failed to fetch engaged post {post_uri}: {e}")
+
+                    # resolve thread refs so phi sees the full conversation
+                    if has_reply:
+                        root_uri = p.record.reply.root.uri
+                        root_cid = p.record.reply.root.cid
+                        thread_uri = root_uri
+                        logger.info(f"fetching thread context from {thread_uri}")
+
+                    try:
+                        thread_data = await self.client.get_thread(
+                            thread_uri, depth=100
+                        )
+                        thread_context = build_thread_context(thread_data.thread)
+                        logger.info(
+                            f"thread context for engagement: "
+                            f"{len(thread_context)} chars"
+                        )
+                    except Exception as e:
+                        logger.warning(
+                            f"failed to fetch thread for engaged post {post_uri}: {e}"
+                        )
+                else:
+                    logger.warning(f"get_posts returned empty for {post_uri}")
+            except Exception as e:
+                logger.warning(f"failed to fetch engaged post {post_uri}: {e}")
 
         return {
             "uri": post_uri,
