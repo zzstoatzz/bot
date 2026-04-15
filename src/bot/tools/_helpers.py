@@ -40,8 +40,20 @@ class PhiDeps:
 
 
 def _is_owner(ctx: RunContext[PhiDeps]) -> bool:
-    """Check if the current message author is the bot's owner."""
-    return ctx.deps.author_handle == settings.owner_handle
+    """Check if the bot's owner is participating in this interaction.
+
+    In single-message mode, checks author_handle directly. In batch mode
+    (author_handle is empty), checks whether any notification in the batch
+    came from the owner — a like counts as presence.
+    """
+    if ctx.deps.author_handle == settings.owner_handle:
+        return True
+    if ctx.deps.notifications_context:
+        return any(
+            e.get("author_handle") == settings.owner_handle
+            for e in ctx.deps.notifications_context.values()
+        )
+    return False
 
 
 # --- formatting ---
