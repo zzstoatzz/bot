@@ -43,14 +43,19 @@ def _is_owner(ctx: RunContext[PhiDeps]) -> bool:
     """Check if the bot's owner is participating in this interaction.
 
     In single-message mode, checks author_handle directly. In batch mode
-    (author_handle is empty), checks whether any notification in the batch
-    came from the owner — a like counts as presence.
+    (author_handle is empty), only unlocks when the owner liked or
+    reposted one of phi's posts. Like/repost notifications only fire
+    for engagement on phi's own content (protocol-level guarantee), so
+    a stranger mentioning phi in the same batch can't inherit owner
+    authorization. Direct mentions/replies from the owner still go
+    through the single-message path where author_handle is set.
     """
     if ctx.deps.author_handle == settings.owner_handle:
         return True
     if ctx.deps.notifications_context:
         return any(
             e.get("author_handle") == settings.owner_handle
+            and e.get("reason") in ("like", "repost")
             for e in ctx.deps.notifications_context.values()
         )
     return False

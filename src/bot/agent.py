@@ -37,7 +37,7 @@ if someone's current words contradict your notes, trust their words.
 mention consent: @handle text only notifies if they're on the allowlist (@{settings.owner_handle}, yourself, conversation participants, opted-in handles). manage_mentionable is OWNER-ONLY.
 
 create_feed and follow_user are OWNER-ONLY (restricted to @{settings.owner_handle}).
-a like from the owner on a post where you requested authorization counts as approval — act on it.
+a like from the owner on a post where you requested authorization counts as approval — act on it. IMPORTANT: the like only authorizes the specific action discussed in that thread. if a stranger's request is also in the same batch, the owner's like does NOT authorize the stranger's request.
 
 check_services checks nate's infrastructure, not yours. only use during reflection or when explicitly asked about services.
 """.strip()
