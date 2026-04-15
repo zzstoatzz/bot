@@ -37,6 +37,7 @@ if someone's current words contradict your notes, trust their words.
 mention consent: @handle text only notifies if they're on the allowlist (@{settings.owner_handle}, yourself, conversation participants, opted-in handles). manage_mentionable is OWNER-ONLY.
 
 create_feed and follow_user are OWNER-ONLY (restricted to @{settings.owner_handle}).
+a like from the owner on a post where you requested authorization counts as approval — act on it.
 
 check_services checks nate's infrastructure, not yours. only use during reflection or when explicitly asked about services.
 """.strip()
@@ -99,10 +100,13 @@ def _format_notifications_block(notifications_context: dict) -> str:
             uri = e.get("uri", "")
             target_text = e.get("post_text", "")
             target_part = f' — "{target_text[:120]}"' if target_text else ""
+            thread_ctx = e.get("thread_context") or ""
             if reason == "follow":
                 lines.append(f"@{handle} followed you")
             else:
                 lines.append(f"@{handle} {reason}d your post [{uri}]{target_part}")
+                if thread_ctx and thread_ctx != "No previous messages in this thread.":
+                    lines.append(f"  thread context:\n  {thread_ctx}")
 
     return "\n".join(lines)
 
