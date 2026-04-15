@@ -131,16 +131,40 @@ class MessageHandler:
         For these, notification.uri is phi's own post that was engaged with —
         so we fetch it for context but the action target (if phi decides to
         respond) is the engager's profile, not the post.
+
+        Thread context is fetched so phi can understand *what conversation*
+        the liked post belongs to — a like on an authorization-request post
+        in a thread about following someone is very different from a like
+        on a standalone musing.
         """
         post_uri = notification.uri
         post_text = ""
         cid = ""
+        root_uri = post_uri
+        root_cid = ""
+        thread_uri = post_uri
+        thread_context = ""
         try:
             posts_resp = await self.client.get_posts([post_uri])
             if posts_resp.posts:
                 p = posts_resp.posts[0]
                 post_text = p.record.text if hasattr(p.record, "text") else ""
                 cid = p.cid
+                root_cid = cid
+
+                # resolve thread refs so phi sees the full conversation
+                if hasattr(p.record, "reply") and p.record.reply:
+                    root_uri = p.record.reply.root.uri
+                    root_cid = p.record.reply.root.cid
+                    thread_uri = root_uri
+
+                try:
+                    thread_data = await self.client.get_thread(thread_uri, depth=100)
+                    thread_context = build_thread_context(thread_data.thread)
+                except Exception as e:
+                    logger.debug(
+                        f"failed to fetch thread for engaged post {post_uri}: {e}"
+                    )
         except Exception as e:
             logger.debug(f"failed to fetch engaged post {post_uri}: {e}")
 
@@ -153,10 +177,10 @@ class MessageHandler:
             "post_text": post_text,
             "embed_desc": "",
             "image_urls": [],
-            "root_uri": post_uri,
-            "root_cid": cid,
-            "thread_uri": post_uri,
-            "thread_context": "",
+            "root_uri": root_uri,
+            "root_cid": root_cid,
+            "thread_uri": thread_uri,
+            "thread_context": thread_context,
             "indexed_at": getattr(notification, "indexed_at", "") or "",
         }
 
