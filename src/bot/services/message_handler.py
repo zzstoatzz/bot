@@ -128,16 +128,12 @@ class MessageHandler:
     async def _build_engagement_entry(self, notification) -> dict | None:
         """Build the notifications_context entry for a like/repost.
 
-        For these, notification.uri is phi's own post that was engaged with —
-        so we fetch it for context but the action target (if phi decides to
-        respond) is the engager's profile, not the post.
-
-        Thread context is fetched so phi can understand *what conversation*
-        the liked post belongs to — a like on an authorization-request post
-        in a thread about following someone is very different from a like
-        on a standalone musing.
+        notification.uri is the engagement record (like/repost), NOT the post.
+        notification.reason_subject is the URI of phi's post that was engaged
+        with. We fetch that post for context + thread history.
         """
-        post_uri = notification.uri
+        # reason_subject is the actual post that was liked/reposted
+        post_uri = getattr(notification, "reason_subject", None) or notification.uri
         post_text = ""
         cid = ""
         root_uri = post_uri
@@ -147,6 +143,7 @@ class MessageHandler:
         with logfire.span(
             "build engagement entry",
             post_uri=post_uri,
+            engagement_uri=notification.uri,
             author=notification.author.handle,
             reason=notification.reason,
         ):
