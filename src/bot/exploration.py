@@ -73,10 +73,4 @@ Rules:
   explain in mute_reason, cite evidence in mute_evidence, and return empty findings.
   the threshold is high: replying a lot is not spam. 25 generic replies in 30 minutes
   to strangers' threads is.
-
-Tools available:
-- list_records / get_record: read atproto records (profiles, posts)
-- search_posts: search bluesky posts
-- pub_search / pub_get_document: search long-form publications
-- get_trending: what's happening on the network
 """
