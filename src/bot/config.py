@@ -56,6 +56,12 @@ class Settings(BaseSettings):
         default=None, description="The search engine ID for the Google API"
     )
 
+    # Tavily web search — grounds phi against the open web for currency
+    # checks and source-finding. Free tier covers 1k searches/month.
+    tavily_api_key: str | None = Field(
+        default=None, description="API key for Tavily web search"
+    )
+
     # TurboPuffer configuration
     turbopuffer_api_key: str | None = Field(
         default=None, description="The API key for the TurboPuffer API"
