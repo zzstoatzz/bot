@@ -348,6 +348,28 @@ class MessageHandler:
             except Exception as e:
                 logger.warning(f"exploration failed: {e}")
 
+    async def check_infrastructure(self):
+        """Run a scheduled monitor check and let phi decide whether to post."""
+        with logfire.span("monitor check"):
+            recent_posts: list[str] = []
+            try:
+                # Pass phi's recent posts so the agent can avoid restating
+                # what it already reported.
+                feed = await self.client.get_own_posts(limit=10)
+                for item in feed:
+                    if hasattr(item.post.record, "text"):
+                        recent_posts.append(item.post.record.text)
+            except Exception as e:
+                logger.warning(f"failed to fetch recent posts for monitor check: {e}")
+
+            try:
+                summary = await self.agent.process_monitor_check(
+                    recent_posts=recent_posts or None,
+                )
+                logger.info(f"monitor check: {summary[:200]}")
+            except Exception as e:
+                logger.exception(f"monitor check failed: {e}")
+
     async def review_memories(self):
         """Run the dream/distill pass — review observations with distance."""
         with logfire.span("memory review"):

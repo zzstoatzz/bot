@@ -124,6 +124,18 @@ class Settings(BaseSettings):
         description="Handle of the bot's owner (for permission-gated tools)",
     )
 
+    # Infrastructure monitoring — phi polls this endpoint on a schedule and
+    # reports status transitions. Service is the source of truth for what's
+    # being monitored; phi is just the courier.
+    monitors_url: str = Field(
+        default="https://relay-eval.waow.tech/api/phi/monitors",
+        description="Endpoint returning infrastructure monitor states",
+    )
+    monitor_check_interval_polls: int = Field(
+        default=1080,  # 1080 polls * 10s = 10800s = 3h
+        description="Min polls between scheduled monitor checks (~3h at default poll interval)",
+    )
+
     # Debug mode
     debug: bool = Field(default=True, description="Whether to run in debug mode")
 

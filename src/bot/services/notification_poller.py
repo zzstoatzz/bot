@@ -36,6 +36,8 @@ class NotificationPoller:
         self._explorations_this_hour: int = 0
         self._exploration_hour: int = -1
         self._polls_since_last_exploration: int = 0
+        # scheduled monitor check state
+        self._polls_since_last_monitor_check: int = 0
 
     async def start(self) -> asyncio.Task:
         """Start polling for notifications."""
@@ -126,6 +128,7 @@ class NotificationPoller:
 
         while self._running:
             self._polls_since_last_exploration += 1
+            self._polls_since_last_monitor_check += 1
 
             try:
                 await self._check_notifications()
@@ -158,6 +161,15 @@ class NotificationPoller:
                     task.add_done_callback(self._background_tasks.discard)
             except Exception as e:
                 logger.error(f"exploration error: {e}", exc_info=settings.debug)
+
+            # scheduled infrastructure monitoring
+            try:
+                if self._should_check_monitors():
+                    task = asyncio.create_task(self._maybe_check_monitors())
+                    self._background_tasks.add(task)
+                    task.add_done_callback(self._background_tasks.discard)
+            except Exception as e:
+                logger.error(f"monitor check error: {e}", exc_info=settings.debug)
 
             try:
                 await asyncio.sleep(settings.notification_poll_interval)
@@ -325,3 +337,22 @@ class NotificationPoller:
             await self.handler.explore()
         except Exception as e:
             logger.error(f"exploration error: {e}", exc_info=settings.debug)
+
+    # --- scheduled monitor checks ---
+
+    def _should_check_monitors(self) -> bool:
+        """Check if it's time for a scheduled infrastructure monitor check."""
+        if bot_status.paused:
+            return False
+        if self._polls_since_last_monitor_check < settings.monitor_check_interval_polls:
+            return False
+        return True
+
+    async def _maybe_check_monitors(self):
+        """Run a scheduled monitor check."""
+        self._polls_since_last_monitor_check = 0
+        logger.info("triggering monitor check")
+        try:
+            await self.handler.check_infrastructure()
+        except Exception as e:
+            logger.error(f"monitor check error: {e}", exc_info=settings.debug)

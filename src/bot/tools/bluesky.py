@@ -154,6 +154,52 @@ def register(agent):
         return await _check_services_impl()
 
     @agent.tool
+    async def check_monitors(ctx: RunContext[PhiDeps]) -> str:
+        """Check the atproto relay fleet nate evaluates via relay-eval.
+
+        Measures firehose connectivity and event coverage vs each relay's
+        baseline. Returns headlines grouped by status. Report headlines
+        verbatim — the service knows its own baselines.
+
+        For app health (plyr, PDS, prefect, etc), use check_services."""
+        try:
+            async with httpx.AsyncClient(timeout=15) as http:
+                r = await http.get(settings.monitors_url)
+                r.raise_for_status()
+                monitors = r.json()
+        except Exception as e:
+            return f"monitors endpoint unreachable: {e}"
+
+        if not isinstance(monitors, list) or not monitors:
+            return "no monitors reported"
+
+        by_status: dict[str, list[dict]] = {
+            "critical": [],
+            "degraded": [],
+            "nominal": [],
+        }
+        for m in monitors:
+            status = m.get("status", "unknown")
+            by_status.setdefault(status, []).append(m)
+
+        today = date.today()
+        lines: list[str] = []
+        for status in ("critical", "degraded", "nominal"):
+            items = by_status.get(status, [])
+            if not items:
+                continue
+            lines.append(f"[{status}] ({len(items)})")
+            for m in items:
+                headline = m.get("headline", m.get("name", "?"))
+                last_changed = m.get("last_changed", "")
+                age = _relative_age(last_changed, today) if last_changed else ""
+                age_str = f" (changed {age})" if age else ""
+                lines.append(f"  - {headline}{age_str}")
+            lines.append("")
+
+        return "\n".join(lines).rstrip()
+
+    @agent.tool
     async def changelog(ctx: RunContext[PhiDeps], count: int = 10) -> str:
         """See your own recent changes — what was deployed and when.
 
