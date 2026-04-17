@@ -124,16 +124,17 @@ class Settings(BaseSettings):
         description="Handle of the bot's owner (for permission-gated tools)",
     )
 
-    # Infrastructure monitoring — phi polls this endpoint on a schedule and
-    # reports status transitions. Service is the source of truth for what's
-    # being monitored; phi is just the courier.
-    monitors_url: str = Field(
-        default="https://relay-eval.waow.tech/api/phi/monitors",
-        description="Endpoint returning infrastructure monitor states",
+    # Relay fleet monitoring — phi polls relay-eval on a schedule and
+    # reports status transitions. The service is the source of truth;
+    # phi is the courier. This is the base URL; /history and /events
+    # are derived from it.
+    relays_url: str = Field(
+        default="https://relay-eval.waow.tech/api/relays",
+        description="Base URL for relay-eval's relay API (snapshot endpoint)",
     )
-    monitor_check_interval_polls: int = Field(
+    relay_check_interval_polls: int = Field(
         default=1080,  # 1080 polls * 10s = 10800s = 3h
-        description="Min polls between scheduled monitor checks (~3h at default poll interval)",
+        description="Min polls between scheduled relay checks (~3h at default poll interval)",
     )
 
     # Debug mode

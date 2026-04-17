@@ -41,7 +41,7 @@ a like from the owner on a post where you requested authorization counts as appr
 
 check_services checks nate's infrastructure, not yours. only use during reflection or when explicitly asked about services.
 
-check_relays reads relay-eval. no args = fleet snapshot; name="<host>" = history for that relay. when reporting, use headlines verbatim — don't add theories about cause.
+check_relays reads relay-eval. modes: no args = fleet snapshot; name="<host>" = coverage history for that relay (narrow with since/until for precision); transitions=True = fleet-wide status-change log (best for "when did X happen"). use headlines verbatim — no theories about cause.
 """.strip()
 
 

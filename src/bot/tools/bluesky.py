@@ -33,7 +33,7 @@ async def fetch_relay_names() -> list[str]:
         return _relay_names_cache["names"]
     try:
         async with httpx.AsyncClient(timeout=10) as http:
-            r = await http.get(settings.monitors_url)
+            r = await http.get(settings.relays_url)
             r.raise_for_status()
             names = sorted({m.get("name", "") for m in r.json() if m.get("name")})
             _relay_names_cache["names"] = names
@@ -188,40 +188,102 @@ def register(agent):
             str | None,
             Field(
                 description=(
-                    "Specific relay hostname to query history for "
-                    "(e.g. 'zlay.waow.tech'). Omit for a fleet-wide "
-                    "snapshot of current status."
+                    "Relay hostname (e.g. 'zlay.waow.tech'). In history "
+                    "mode, required. In transitions mode, optional filter. "
+                    "Valid hostnames are in [KNOWN RELAYS]."
                 )
             ),
         ] = None,
+        since: Annotated[
+            str | None,
+            Field(
+                description=(
+                    "Start of window, ISO 8601 UTC (e.g. '2026-04-16T00:00:00Z'). "
+                    "Use with history or transitions to bound the time range."
+                )
+            ),
+        ] = None,
+        until: Annotated[
+            str | None,
+            Field(description="End of window, ISO 8601 UTC. Pairs with since."),
+        ] = None,
+        transitions: Annotated[
+            bool,
+            Field(
+                description=(
+                    "If True, return status-change events instead of coverage "
+                    "points. Best for 'when did X happen' questions."
+                )
+            ),
+        ] = False,
         limit: Annotated[
             int | None,
             Field(
                 description=(
-                    "Max history points to return when name is set. "
-                    "Default ~288 = one day at ~5-min cadence."
+                    "Recent-N fallback for history mode when since/until "
+                    "aren't set. Default ~288 = one day at 5-min cadence."
                 )
             ),
         ] = None,
     ) -> str:
         """Check the atproto relay fleet nate evaluates via relay-eval.
 
-        Default (no name): current snapshot of every relay, grouped by status.
-        Report headlines verbatim.
+        Three modes:
+        - snapshot (default, no args): current status of every relay.
+        - history (name=<host>): coverage timeseries for one relay. Bound
+          with since/until for a precise window, or use limit for recent-N.
+        - transitions (transitions=True): status-change events across the
+          fleet. Answers "when did X happen." Optionally filter by name.
 
-        With name: recent coverage history for one relay — summary stats +
-        recent points. Valid hostnames are listed in the [KNOWN RELAYS]
-        system-prompt block; pass one of those exactly.
-
+        Report headlines verbatim — the service owns interpretation.
         For app health (plyr, PDS, prefect, etc), use check_services."""
+        base = settings.relays_url
+
+        if transitions:
+            params: dict[str, str | int] = {}
+            if name:
+                params["name"] = name
+            if since:
+                params["since"] = since
+            if until:
+                params["until"] = until
+            try:
+                async with httpx.AsyncClient(timeout=15) as http:
+                    r = await http.get(f"{base}/events", params=params)
+                    r.raise_for_status()
+                    events = r.json()
+            except Exception as e:
+                return f"events endpoint unreachable: {e}"
+
+            if not events:
+                window = f"{since} → {until}" if since or until else "last 24h"
+                scope = f" for {name}" if name else ""
+                return f"no transitions{scope} in {window}"
+
+            scope = f" for {name}" if name else " (fleet)"
+            lines = [f"transitions{scope}: {len(events)}"]
+            for e in events:
+                ts = e.get("ts", "")[:16].replace("T", " ")
+                n = e.get("name", "?")
+                from_s = e.get("from_status", "?")
+                to_s = e.get("to_status", "?")
+                headline = e.get("headline", "")
+                lines.append(f"  {ts}  {n}  {from_s} → {to_s}")
+                if headline:
+                    lines.append(f'    "{headline}"')
+            return "\n".join(lines)
+
         if name:
-            history_url = settings.monitors_url.replace("/monitors", "/history")
-            params: dict[str, str | int] = {"name": name}
+            params = {"name": name}
+            if since:
+                params["since"] = since
+            if until:
+                params["until"] = until
             if limit:
                 params["limit"] = limit
             try:
                 async with httpx.AsyncClient(timeout=15) as http:
-                    r = await http.get(history_url, params=params)
+                    r = await http.get(f"{base}/history", params=params)
                     r.raise_for_status()
                     data = r.json()
             except Exception as e:
@@ -238,28 +300,43 @@ def register(agent):
             connected = summary.get("connected_runs", 0)
             total = summary.get("total_runs", 0)
 
+            first_ts = (points[0].get("ts", "") or "")[:16].replace("T", " ")
+            last_ts = (points[-1].get("ts", "") or "")[:16].replace("T", " ")
+
+            # downsample if the series is large; phi can narrow the window
+            # with since/until for finer detail.
+            max_display = 200
+            if len(points) <= max_display:
+                display = points
+                downsample_note = ""
+            else:
+                step = max(1, len(points) // max_display)
+                display = points[::step]
+                downsample_note = f"  (downsampled: 1 in {step})"
+
             lines = [
-                f"history for {name} ({total} runs):",
-                f"  mean {mean:.2f}% | min {lo:.2f}% | max {hi:.2f}%",
-                f"  connected {connected}/{total} runs",
+                f"history for {name}",
+                f"  window: {first_ts} → {last_ts} ({total} points)",
+                f"  mean {mean:.2f}% | min {lo:.2f}% | max {hi:.2f}% | "
+                f"connected {connected}/{total}",
                 "",
-                "recent:",
+                f"  series ({len(display)} shown){downsample_note}:",
             ]
-            for p in points[-5:]:
-                ts = p.get("ts", "")[:16].replace("T", " ")
+            for p in display:
+                ts = (p.get("ts", "") or "")[:16].replace("T", " ")
                 pct = p.get("coverage_pct", 0)
-                conn = "connected" if p.get("connected") else "disconnected"
-                lines.append(f"  {ts} — {pct:.2f}% ({conn})")
+                conn = "ok" if p.get("connected") else "DISCONNECTED"
+                lines.append(f"    {ts}  {pct:5.2f}%  {conn}")
             return "\n".join(lines)
 
         # snapshot mode
         try:
             async with httpx.AsyncClient(timeout=15) as http:
-                r = await http.get(settings.monitors_url)
+                r = await http.get(base)
                 r.raise_for_status()
                 monitors = r.json()
         except Exception as e:
-            return f"monitors endpoint unreachable: {e}"
+            return f"relay endpoint unreachable: {e}"
 
         if not isinstance(monitors, list) or not monitors:
             return "no monitors reported"

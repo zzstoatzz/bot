@@ -344,7 +344,7 @@ class NotificationPoller:
         """Check if it's time for a scheduled infrastructure monitor check."""
         if bot_status.paused:
             return False
-        if self._polls_since_last_monitor_check < settings.monitor_check_interval_polls:
+        if self._polls_since_last_monitor_check < settings.relay_check_interval_polls:
             return False
         return True
 
