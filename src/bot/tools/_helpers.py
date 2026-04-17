@@ -42,23 +42,31 @@ class PhiDeps:
 def _is_owner(ctx: RunContext[PhiDeps]) -> bool:
     """Check if the bot's owner is participating in this interaction.
 
-    In single-message mode, checks author_handle directly. In batch mode
-    (author_handle is empty), only unlocks when the owner liked or
-    reposted one of phi's posts. Like/repost notifications only fire
-    for engagement on phi's own content (protocol-level guarantee), so
-    a stranger mentioning phi in the same batch can't inherit owner
-    authorization. Direct mentions/replies from the owner still go
-    through the single-message path where author_handle is set.
+    Single-message mode: direct author_handle check.
+
+    Batch mode (author_handle is empty): unlock only when the owner liked
+    or reposted one of phi's posts AND no other authors are present in
+    the batch. The "no other authors" guard eliminates the cross-request
+    exploit where a stranger's owner-gated request would inherit
+    authorization from an unrelated owner like in the same poll window.
+    If a stranger is in the batch, likes don't authorize — just re-like
+    after the batch clears.
     """
     if ctx.deps.author_handle == settings.owner_handle:
         return True
-    if ctx.deps.notifications_context:
-        return any(
-            e.get("author_handle") == settings.owner_handle
-            and e.get("reason") in ("like", "repost")
-            for e in ctx.deps.notifications_context.values()
-        )
-    return False
+    if not ctx.deps.notifications_context:
+        return False
+
+    authors = {e.get("author_handle") for e in ctx.deps.notifications_context.values()}
+    # any author other than the owner or phi itself means batch is mixed
+    if authors - {settings.owner_handle, settings.bluesky_handle}:
+        return False
+
+    return any(
+        e.get("author_handle") == settings.owner_handle
+        and e.get("reason") in ("like", "repost")
+        for e in ctx.deps.notifications_context.values()
+    )
 
 
 # --- formatting ---
