@@ -174,6 +174,16 @@ class PhiAgent:
             return f"[NOW]: {now.strftime('%Y-%m-%d %H:%M UTC')}"
 
         @self.agent.system_prompt(dynamic=True)
+        async def inject_known_relays() -> str:
+            """List the valid relay hostnames for check_relays(name=...)."""
+            from bot.tools.bluesky import fetch_relay_names
+
+            names = await fetch_relay_names()
+            if not names:
+                return ""
+            return "[KNOWN RELAYS]: " + ", ".join(names)
+
+        @self.agent.system_prompt(dynamic=True)
         def inject_notifications(ctx: RunContext[PhiDeps]) -> str:
             """Render the notifications batch as the [NEW NOTIFICATIONS] block."""
             return _format_notifications_block(ctx.deps.notifications_context or {})

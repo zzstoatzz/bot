@@ -3,6 +3,7 @@
 import asyncio
 import ipaddress
 import socket
+import time
 from datetime import date
 from typing import Annotated
 from urllib.parse import urlparse
@@ -15,6 +16,31 @@ from bot.config import settings
 from bot.core.atproto_client import bot_client
 from bot.core.mentionable import add_handle, get_mentionable_handles, remove_handle
 from bot.tools._helpers import PhiDeps, _check_services_impl, _is_owner, _relative_age
+
+# cached relay names, refreshed from the snapshot endpoint. surfaced to
+# the LLM via a dynamic system prompt so it picks from real values when
+# calling check_relays(name=...).
+_RELAY_NAMES_TTL = 300  # 5 minutes
+_relay_names_cache: dict = {"names": [], "fetched_at": 0.0}
+
+
+async def fetch_relay_names() -> list[str]:
+    now = time.time()
+    if (
+        now - _relay_names_cache["fetched_at"] < _RELAY_NAMES_TTL
+        and _relay_names_cache["names"]
+    ):
+        return _relay_names_cache["names"]
+    try:
+        async with httpx.AsyncClient(timeout=10) as http:
+            r = await http.get(settings.monitors_url)
+            r.raise_for_status()
+            names = sorted({m.get("name", "") for m in r.json() if m.get("name")})
+            _relay_names_cache["names"] = names
+            _relay_names_cache["fetched_at"] = now
+            return names
+    except Exception:
+        return _relay_names_cache["names"]  # fall back to last known
 
 
 def register(agent):
@@ -180,12 +206,12 @@ def register(agent):
     ) -> str:
         """Check the atproto relay fleet nate evaluates via relay-eval.
 
-        Default (no name): current snapshot of every relay, grouped by
-        status — answers "how's the fleet right now." Report headlines
-        verbatim.
+        Default (no name): current snapshot of every relay, grouped by status.
+        Report headlines verbatim.
 
-        With name: recent coverage history for one relay (summary stats +
-        recent points) — answers "what was X's coverage yesterday."
+        With name: recent coverage history for one relay — summary stats +
+        recent points. Valid hostnames are listed in the [KNOWN RELAYS]
+        system-prompt block; pass one of those exactly.
 
         For app health (plyr, PDS, prefect, etc), use check_services."""
         if name:
@@ -204,7 +230,7 @@ def register(agent):
             points = data.get("points", [])
             summary = data.get("summary", {})
             if not points:
-                return f"no history found for {name}"
+                return f"no history found for '{name}'"
 
             mean = summary.get("mean_coverage_pct", 0)
             lo = summary.get("min_coverage_pct", 0)
