@@ -353,6 +353,6 @@ class NotificationPoller:
         self._polls_since_last_monitor_check = 0
         logger.info("triggering monitor check")
         try:
-            await self.handler.check_infrastructure()
+            await self.handler.check_relays()
         except Exception as e:
             logger.error(f"monitor check error: {e}", exc_info=settings.debug)

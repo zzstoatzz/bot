@@ -41,7 +41,7 @@ a like from the owner on a post where you requested authorization counts as appr
 
 check_services checks nate's infrastructure, not yours. only use during reflection or when explicitly asked about services.
 
-check_monitors reads relay-eval and returns per-relay status headlines. when reporting from it, use the headline verbatim — don't add theories about cause.
+check_relays reads relay-eval. no args = fleet snapshot; name="<host>" = history for that relay. when reporting, use headlines verbatim — don't add theories about cause.
 """.strip()
 
 
@@ -586,15 +586,15 @@ class PhiAgent:
         logger.info(f"musing finished: {summary[:200]}")
         return summary
 
-    async def process_monitor_check(self, recent_posts: list[str] | None = None) -> str:
-        """Check infrastructure monitors and post about transitions if notable.
+    async def process_relay_check(self, recent_posts: list[str] | None = None) -> str:
+        """Scheduled relay-fleet check. Posts about transitions if notable.
 
-        Uses the check_monitors tool to fetch current state. The tool returns
+        Uses the check_relays tool to fetch current state. The tool returns
         status-grouped headlines that phi should report verbatim — no theories
         about cause, just observation. Stays silent if nothing's changed or
         the change is already reflected in recent posts.
         """
-        logger.info("processing monitor check")
+        logger.info("processing relay check")
 
         recent_activity = ""
         if recent_posts:
@@ -607,8 +607,8 @@ class PhiAgent:
             recent_activity=recent_activity,
         )
 
-        monitor_task = (
-            "scheduled relay check. call check_monitors to see current relay "
+        relay_task = (
+            "scheduled relay check. call check_relays to see current relay "
             "status. if a relay has transitioned to critical or degraded "
             "recently, post the headline verbatim. silence is fine if "
             "everything's nominal or you've already posted about the current "
@@ -624,16 +624,14 @@ class PhiAgent:
             async with contextlib.AsyncExitStack() as stack:
                 for ts in toolsets:
                     await stack.enter_async_context(ts)
-                result = await self.agent.run(
-                    monitor_task, deps=deps, toolsets=toolsets
-                )
+                result = await self.agent.run(relay_task, deps=deps, toolsets=toolsets)
         except Exception as e:
             err_type = type(e).__name__
-            logger.exception(f"agent.run failed during monitor check: {err_type}")
-            return f"monitor check failed: {err_type}: {str(e)[:200]}"
+            logger.exception(f"agent.run failed during relay check: {err_type}")
+            return f"relay check failed: {err_type}: {str(e)[:200]}"
 
         summary = result.output or ""
-        logger.info(f"monitor check finished: {summary[:200]}")
+        logger.info(f"relay check finished: {summary[:200]}")
         return summary
 
     async def process_extraction(self) -> int:

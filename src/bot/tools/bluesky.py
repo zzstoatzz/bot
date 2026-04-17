@@ -4,9 +4,11 @@ import asyncio
 import ipaddress
 import socket
 from datetime import date
+from typing import Annotated
 from urllib.parse import urlparse
 
 import httpx
+from pydantic import Field
 from pydantic_ai import RunContext
 
 from bot.config import settings
@@ -154,14 +156,77 @@ def register(agent):
         return await _check_services_impl()
 
     @agent.tool
-    async def check_monitors(ctx: RunContext[PhiDeps]) -> str:
+    async def check_relays(
+        ctx: RunContext[PhiDeps],
+        name: Annotated[
+            str | None,
+            Field(
+                description=(
+                    "Specific relay hostname to query history for "
+                    "(e.g. 'zlay.waow.tech'). Omit for a fleet-wide "
+                    "snapshot of current status."
+                )
+            ),
+        ] = None,
+        limit: Annotated[
+            int | None,
+            Field(
+                description=(
+                    "Max history points to return when name is set. "
+                    "Default ~288 = one day at ~5-min cadence."
+                )
+            ),
+        ] = None,
+    ) -> str:
         """Check the atproto relay fleet nate evaluates via relay-eval.
 
-        Measures firehose connectivity and event coverage vs each relay's
-        baseline. Returns headlines grouped by status. Report headlines
-        verbatim — the service knows its own baselines.
+        Default (no name): current snapshot of every relay, grouped by
+        status — answers "how's the fleet right now." Report headlines
+        verbatim.
+
+        With name: recent coverage history for one relay (summary stats +
+        recent points) — answers "what was X's coverage yesterday."
 
         For app health (plyr, PDS, prefect, etc), use check_services."""
+        if name:
+            history_url = settings.monitors_url.replace("/monitors", "/history")
+            params: dict[str, str | int] = {"name": name}
+            if limit:
+                params["limit"] = limit
+            try:
+                async with httpx.AsyncClient(timeout=15) as http:
+                    r = await http.get(history_url, params=params)
+                    r.raise_for_status()
+                    data = r.json()
+            except Exception as e:
+                return f"history endpoint unreachable: {e}"
+
+            points = data.get("points", [])
+            summary = data.get("summary", {})
+            if not points:
+                return f"no history found for {name}"
+
+            mean = summary.get("mean_coverage_pct", 0)
+            lo = summary.get("min_coverage_pct", 0)
+            hi = summary.get("max_coverage_pct", 0)
+            connected = summary.get("connected_runs", 0)
+            total = summary.get("total_runs", 0)
+
+            lines = [
+                f"history for {name} ({total} runs):",
+                f"  mean {mean:.2f}% | min {lo:.2f}% | max {hi:.2f}%",
+                f"  connected {connected}/{total} runs",
+                "",
+                "recent:",
+            ]
+            for p in points[-5:]:
+                ts = p.get("ts", "")[:16].replace("T", " ")
+                pct = p.get("coverage_pct", 0)
+                conn = "connected" if p.get("connected") else "disconnected"
+                lines.append(f"  {ts} — {pct:.2f}% ({conn})")
+            return "\n".join(lines)
+
+        # snapshot mode
         try:
             async with httpx.AsyncClient(timeout=15) as http:
                 r = await http.get(settings.monitors_url)
@@ -183,7 +248,7 @@ def register(agent):
             by_status.setdefault(status, []).append(m)
 
         today = date.today()
-        lines: list[str] = []
+        lines = []
         for status in ("critical", "degraded", "nominal"):
             items = by_status.get(status, [])
             if not items:
