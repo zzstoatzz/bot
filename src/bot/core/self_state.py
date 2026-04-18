@@ -162,12 +162,16 @@ def _format_goals_block(goals: list[dict]) -> str:
     if not goals:
         return ""
     lines = [
-        "[GOALS — your anchors. work that doesn't serve these is drift, "
-        "which is fine but visible. mutate via propose_goal_change with "
-        "owner approval]"
+        "[GOALS — stored at io.zzstoatzz.phi.goal on your PDS — your "
+        "anchors. work that doesn't serve these is drift, which is fine "
+        "but visible. mutate via propose_goal_change with owner approval]"
     ]
     for g in goals:
-        lines.append(f"- {g.get('title', 'untitled')}: {g.get('description', '')}")
+        rkey = g.get("_rkey", "")
+        rkey_part = f"[rkey {rkey}] " if rkey else ""
+        lines.append(
+            f"- {rkey_part}{g.get('title', 'untitled')}: {g.get('description', '')}"
+        )
         if g.get("progress_signal"):
             lines.append(f"  (progress = {g['progress_signal']})")
     return "\n".join(lines)
