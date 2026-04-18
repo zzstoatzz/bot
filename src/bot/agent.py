@@ -14,10 +14,12 @@ from bot.config import settings
 from bot.core.atproto_client import bot_client, get_identity_block
 from bot.core.curiosity_queue import claim, complete, enqueue, fail
 from bot.core.graze_client import GrazeClient
+from bot.core.self_state import get_state_block
 from bot.exploration import EXPLORATION_SYSTEM_PROMPT, ExplorationResult
 from bot.memory.extraction import EXTRACTION_SYSTEM_PROMPT, ExtractionResult
 from bot.memory.review import REVIEW_SYSTEM_PROMPT, ReviewResult
 from bot.tools import PhiDeps, _check_services_impl, register_all
+from bot.tools.bluesky import fetch_relay_names
 
 logger = logging.getLogger("bot.agent")
 
@@ -172,12 +174,15 @@ class PhiAgent:
         @self.agent.system_prompt(dynamic=True)
         async def inject_known_relays() -> str:
             """List the valid relay hostnames for check_relays(name=...)."""
-            from bot.tools.bluesky import fetch_relay_names
-
             names = await fetch_relay_names()
             if not names:
                 return ""
             return "[KNOWN RELAYS]: " + ", ".join(names)
+
+        @self.agent.system_prompt(dynamic=True)
+        async def inject_self_state() -> str:
+            """How phi looks from outside + canonical pointers (last follow, queue)."""
+            return await get_state_block(bot_client)
 
         @self.agent.system_prompt(dynamic=True)
         def inject_notifications(ctx: RunContext[PhiDeps]) -> str:
