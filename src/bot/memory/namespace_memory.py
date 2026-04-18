@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import ClassVar
 
 from openai import AsyncOpenAI
+from pydantic_ai import Agent
 from turbopuffer import Turbopuffer
 
 from bot.config import settings
@@ -19,6 +20,70 @@ from bot.memory.extraction import (
 )
 
 logger = logging.getLogger("bot.memory")
+
+
+# Lazy haiku agent — synthesizes top-K episodic candidates into a coherent
+# block, given phi's goals + the current query as context. Replaces a raw
+# top-K dump that was producing stale/contradictory content alongside fresh.
+_episodic_synth_agent: Agent | None = None
+
+
+def _get_episodic_synth_agent() -> Agent:
+    global _episodic_synth_agent
+    if _episodic_synth_agent is None:
+        _episodic_synth_agent = Agent[None, str](
+            name="phi-episodic-synth",
+            model=settings.extraction_model,
+            system_prompt=(
+                "You're helping phi pull a tight, useful summary from its "
+                "episodic memory for the situation at hand. You'll see phi's "
+                "current goals, what phi is processing right now, and the "
+                "raw candidates retrieved by similarity from the vector "
+                "store.\n\n"
+                "Write only what helps phi act on the current query. Dedupe "
+                "near-identical entries. Prefer recent over stale when they "
+                "conflict. Flag entries that may be stale (e.g. 'pending X' "
+                "notes about actions that may have completed since) — phi "
+                "can verify with tools if it matters.\n\n"
+                "Lowercase. No preamble, no meta-commentary. If nothing in "
+                "the candidates is actually relevant, return an empty string."
+            ),
+            output_type=str,
+        )
+    return _episodic_synth_agent
+
+
+async def _synthesize_episodic(
+    goals: list[dict], query: str, raw_notes: list[dict]
+) -> str:
+    if not raw_notes:
+        return ""
+
+    if goals:
+        goals_block = "\n".join(
+            f"- {g.get('title', '')}: {g.get('description', '')}" for g in goals
+        )
+    else:
+        goals_block = "(no goals set)"
+
+    notes_block = "\n".join(
+        f"[{(n.get('created_at') or '')[:10]}] {n.get('content', '')}"
+        for n in raw_notes
+    )
+
+    payload = (
+        f"phi's current goals:\n{goals_block}\n\n"
+        f"what phi is processing right now:\n{query}\n\n"
+        f"raw episodic candidates (top {len(raw_notes)} by similarity):\n"
+        f"{notes_block}"
+    )
+
+    try:
+        result = await _get_episodic_synth_agent().run(payload)
+        return (result.output or "").strip()
+    except Exception as e:
+        logger.warning(f"episodic synthesis failed: {e}")
+        return ""
 
 
 class NamespaceMemory:
@@ -463,15 +528,28 @@ class NamespaceMemory:
                 return []
             raise
 
-    async def get_episodic_context(self, query_text: str, top_k: int = 5) -> str:
-        """Get formatted episodic context for injection into conversation prompt."""
-        results = await self.search_episodic(query_text, top_k=top_k)
-        if not results:
+    async def get_episodic_context(
+        self,
+        query_text: str,
+        goals: list[dict] | None = None,
+        top_k: int = 10,
+    ) -> str:
+        """Get a haiku-synthesized episodic context block for the prompt.
+
+        Top-K from the vector store, then a synthesis pass that takes phi's
+        goals + the current query as context and produces a coherent
+        block (deduped, recency-aware, contradictions flagged) instead of
+        a raw dump of similarity-ranked notes.
+
+        Returns an empty string if there are no relevant candidates.
+        """
+        raw = await self.search_episodic(query_text, top_k=top_k)
+        if not raw:
             return ""
-        lines = ["[PHI'S RELEVANT MEMORIES]"]
-        for r in results:
-            lines.append(f"- {r['content']}")
-        return "\n".join(lines)
+        summary = await _synthesize_episodic(goals or [], query_text, raw)
+        if not summary:
+            return ""
+        return f"[RELEVANT MEMORIES — synthesized for this query]\n{summary}"
 
     async def search_unified(
         self, handle: str, query: str, top_k: int = 8

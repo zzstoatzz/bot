@@ -13,6 +13,7 @@ from pydantic_ai.mcp import MCPServerStreamableHTTP
 from bot.config import settings
 from bot.core.atproto_client import bot_client, get_identity_block
 from bot.core.curiosity_queue import claim, complete, enqueue, fail
+from bot.core.goals import list_goals as list_goal_records
 from bot.core.graze_client import GrazeClient
 from bot.core.self_state import get_state_block
 from bot.exploration import EXPLORATION_SYSTEM_PROMPT, ExplorationResult
@@ -249,8 +250,15 @@ class PhiAgent:
                 query = _extract_query_text(ctx.prompt)
             if not query:
                 return ""
+            # Pass phi's goals so the synthesis can rank by relevance to intent.
             try:
-                episodic_context = await ctx.deps.memory.get_episodic_context(query)
+                goals = await list_goal_records(bot_client)
+            except Exception:
+                goals = []
+            try:
+                episodic_context = await ctx.deps.memory.get_episodic_context(
+                    query, goals=goals
+                )
                 if episodic_context:
                     return episodic_context
             except Exception as e:
