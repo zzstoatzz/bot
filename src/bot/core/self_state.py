@@ -1,7 +1,14 @@
-"""[SELF STATE] block — phi's view of its own recent posting pattern, queue, and engagement.
+"""[GOALS] + [STRANGER'S AUDIT] + [SELF STATE] — phi sees its compass, its drift, and its operational pointers.
 
-Sources are canonical: posts/follows live on PDS, the haiku summary is *derived*
-from those posts and cached in-memory (regeneratable, not duplicated state).
+GOALS are intent: what phi is for. Stored on PDS as canonical state.
+STRANGER'S AUDIT is friction: a fresh reader's critique of recent posts,
+evaluated against the stated goals — patterns to push against, not maintain.
+SELF STATE is operational: last follow, queue depth.
+
+The haiku audit is *derived* (not duplicated state) and cached in memory:
+1h TTL, invalidated when the latest post URI changes or goals change. The
+whole compose is also block-cached at 5min so notification polls (10s)
+don't hammer PDS.
 """
 
 import logging
@@ -12,59 +19,84 @@ from pydantic_ai import Agent
 
 from bot.config import settings
 from bot.core.atproto_client import BotClient
+from bot.core.goals import list_goals as list_goal_records
 
 logger = logging.getLogger("bot.self_state")
 
-# Haiku summary cache — invalidated by new post (latest URI changes) or TTL.
-_SUMMARY_TTL_SECONDS = 3600  # 1h
-_summary_cache: dict = {"text": "", "fetched_at": 0.0, "based_on_uri": ""}
+# Audit cache — invalidated on new post (latest URI) or goal change (signature) or TTL.
+_AUDIT_TTL_SECONDS = 3600  # 1h
+_audit_cache: dict = {
+    "text": "",
+    "fetched_at": 0.0,
+    "based_on_uri": "",
+    "goals_signature": "",
+}
 
-# Whole-block cache — re-renders at most every few minutes so dynamic system
-# prompts firing on every notification poll (10s) don't hammer PDS.
+# Whole-block cache — bounds PDS lookups under high tick frequency.
 _BLOCK_TTL_SECONDS = 300  # 5min
 _block_cache: dict = {"text": "", "fetched_at": 0.0}
 
-# Lazy haiku agent — characterizes recent posts as if from a fresh observer.
-# Framing is intentional: phi sees how its voice lands to someone with no prior
-# context, which is also how strangers actually encounter the timeline.
-_summary_agent: Agent | None = None
+# Lazy haiku agent — performs a stranger's audit, not a characterization.
+# Verb matters: "audit" surfaces friction; "characterize" produces identity.
+_audit_agent: Agent | None = None
 
 
-def _get_summary_agent() -> Agent:
-    global _summary_agent
-    if _summary_agent is None:
-        _summary_agent = Agent[None, str](
-            name="phi-self-summary",
+def _get_audit_agent() -> Agent:
+    global _audit_agent
+    if _audit_agent is None:
+        _audit_agent = Agent[None, str](
+            name="phi-stranger-audit",
             model=settings.extraction_model,
             system_prompt=(
-                "You read recent top-level posts from a single Bluesky account "
-                "and characterize what they've been writing about lately, as if "
-                "you're a fresh observer who's never seen this account before. "
-                "Lowercase. No preamble, no meta-commentary, no quoting back. "
-                "Two or three short observations max. Note: themes, recurring "
-                "beats, who they reference, anything notable (concentration on "
-                "one topic or person, absences from usual variety, "
-                "grounded-vs-pattern-matched balance)."
+                "You're a stranger who landed on this Bluesky account for the "
+                "first time. You'll see recent top-level posts and (when "
+                "present) the account's stated goals. Give a brief honest "
+                "audit. Focus on patterns the account should push against, "
+                "not maintain.\n\n"
+                "Specifically flag:\n"
+                "- which posts a fresh reader would find opaque (jargon, "
+                "  internal references, abstract framings without grounding)\n"
+                "- what's the account leaning on too heavily (one person, "
+                "  one frame, one register, one source of inspiration)\n"
+                "- which posts serve the stated goals vs are drift "
+                "  (drift is fine; just call it out so the account sees it)\n"
+                "- what's missing from the rotation that you'd want\n\n"
+                "Two or three short observations, lowercase, direct. Do NOT "
+                "characterize the account's voice, summarize its themes, or "
+                "produce a profile — the account will read this to push "
+                "against patterns, not to maintain a brand."
             ),
             output_type=str,
         )
-    return _summary_agent
+    return _audit_agent
 
 
-async def _summarize_posts(posts: list[str]) -> str:
+def _goals_signature(goals: list[dict]) -> str:
+    """Stable string for goals, used to invalidate the audit when goals change."""
+    return "|".join(f"{g.get('_rkey', '')}:{g.get('updated_at', '')}" for g in goals)
+
+
+async def _audit_posts(posts: list[str], goals: list[dict]) -> str:
     if not posts:
         return ""
-    payload = "\n\n---\n\n".join(posts)
+    parts = ["recent top-level posts (most recent first):", ""]
+    parts.append("\n\n---\n\n".join(posts))
+    if goals:
+        goal_lines = "\n".join(
+            f"- {g.get('title', 'untitled')}: {g.get('description', '')}" for g in goals
+        )
+        parts.append("\n\nthe account's stated goals:")
+        parts.append(goal_lines)
+    payload = "\n".join(parts)
     try:
-        result = await _get_summary_agent().run(payload)
+        result = await _get_audit_agent().run(payload)
         return (result.output or "").strip()
     except Exception as e:
-        logger.warning(f"haiku summary failed: {e}")
+        logger.warning(f"stranger audit failed: {e}")
         return ""
 
 
 def _relative_when(iso_ts: str) -> str:
-    """Human-readable age from an ISO timestamp."""
     try:
         ts = datetime.fromisoformat(iso_ts.replace("Z", "+00:00"))
     except (ValueError, TypeError):
@@ -85,7 +117,6 @@ def _relative_when(iso_ts: str) -> str:
 
 
 async def _last_follow_when(client: BotClient) -> str:
-    """Look up the most recent app.bsky.graph.follow record on phi's PDS."""
     try:
         await client.authenticate()
         if not client.client.me:
@@ -108,7 +139,6 @@ async def _last_follow_when(client: BotClient) -> str:
 
 
 async def _queue_depth(client: BotClient) -> int:
-    """Count pending items in phi's curiosity queue."""
     try:
         await client.authenticate()
         if not client.client.me:
@@ -128,20 +158,40 @@ async def _queue_depth(client: BotClient) -> int:
         return 0
 
 
-async def get_state_block(client: BotClient) -> str:
-    """Compose the [SELF STATE] block.
+def _format_goals_block(goals: list[dict]) -> str:
+    if not goals:
+        return ""
+    lines = [
+        "[GOALS — your anchors. work that doesn't serve these is drift, "
+        "which is fine but visible. mutate via propose_goal_change with "
+        "owner approval]"
+    ]
+    for g in goals:
+        lines.append(f"- {g.get('title', 'untitled')}: {g.get('description', '')}")
+        if g.get("progress_signal"):
+            lines.append(f"  (progress = {g['progress_signal']})")
+    return "\n".join(lines)
 
-    Returns the cached block text when fresh; recomputes from canonical PDS
-    state otherwise. The haiku summary inside is cached separately (longer TTL,
-    URI-invalidated) so we don't regenerate it on every block refresh.
+
+async def get_state_block(client: BotClient) -> str:
+    """Compose [GOALS] + [STRANGER'S AUDIT] + [SELF STATE].
+
+    Cached at the block level (5min) and audit level (1h, invalidated on
+    new post or goal change).
     """
     now = time.time()
     if _block_cache["text"] and now - _block_cache["fetched_at"] < _BLOCK_TTL_SECONDS:
         return _block_cache["text"]
 
+    goals = await list_goal_records(client)
     parts: list[str] = []
 
-    # Posting pattern — fresh-observer characterization of last 10 posts.
+    # Goals first — phi reads its anchors before reading critique of its work.
+    goals_block = _format_goals_block(goals)
+    if goals_block:
+        parts.append(goals_block)
+
+    # Stranger's audit — recent posts vs goals, accessibility check.
     try:
         feed = await client.get_own_posts(limit=10)
         posts: list[str] = []
@@ -152,36 +202,38 @@ async def get_state_block(client: BotClient) -> str:
                 if not latest_uri:
                     latest_uri = item.post.uri
 
-        summary_stale = now - _summary_cache["fetched_at"] > _SUMMARY_TTL_SECONDS
-        summary_invalid = latest_uri != _summary_cache["based_on_uri"]
-        if not _summary_cache["text"] or summary_stale or summary_invalid:
-            new_summary = await _summarize_posts(posts)
-            if new_summary:
-                _summary_cache["text"] = new_summary
-                _summary_cache["fetched_at"] = now
-                _summary_cache["based_on_uri"] = latest_uri
+        goals_sig = _goals_signature(goals)
+        audit_stale = now - _audit_cache["fetched_at"] > _AUDIT_TTL_SECONDS
+        post_changed = latest_uri != _audit_cache["based_on_uri"]
+        goals_changed = goals_sig != _audit_cache["goals_signature"]
+        if not _audit_cache["text"] or audit_stale or post_changed or goals_changed:
+            new_audit = await _audit_posts(posts, goals)
+            if new_audit:
+                _audit_cache["text"] = new_audit
+                _audit_cache["fetched_at"] = now
+                _audit_cache["based_on_uri"] = latest_uri
+                _audit_cache["goals_signature"] = goals_sig
 
-        if _summary_cache["text"]:
+        if _audit_cache["text"]:
             parts.append(
-                "[POSTING PATTERN — fresh observer, last 10 posts]\n"
-                f"{_summary_cache['text']}"
+                "[STRANGER'S AUDIT — patterns to push against, not maintain]\n"
+                f"{_audit_cache['text']}"
             )
     except Exception as e:
-        logger.debug(f"posting-pattern compose failed: {e}")
+        logger.debug(f"stranger audit compose failed: {e}")
 
-    # Last follow + queue depth (canonical PDS state)
+    # Operational pointers — last follow, queue depth.
     follow_age = await _last_follow_when(client)
     queue_n = await _queue_depth(client)
-
     misc: list[str] = []
     if follow_age:
         misc.append(f"last follow: {follow_age}")
     if queue_n > 0:
         misc.append(f"exploration queue: {queue_n} pending")
     if misc:
-        parts.append(" | ".join(misc))
+        parts.append("[SELF STATE]\n" + " | ".join(misc))
 
-    block = "[SELF STATE]\n" + "\n\n".join(parts) if parts else ""
+    block = "\n\n".join(parts)
     _block_cache["text"] = block
     _block_cache["fetched_at"] = now
     return block
