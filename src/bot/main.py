@@ -4,9 +4,8 @@ import asyncio
 import logging
 import time
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime
+from datetime import datetime
 
-import httpx
 import logfire
 from fastapi import BackgroundTasks, FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -21,7 +20,7 @@ from bot.logging_config import _clear_uvicorn_handlers
 from bot.memory import NamespaceMemory
 from bot.services.notification_poller import NotificationPoller
 from bot.status import bot_status
-from bot.ui import home_page, memory_page, status_page
+from bot.ui import activity_router, home_page, memory_page, status_page
 
 logger = logging.getLogger("bot.main")
 
@@ -100,8 +99,7 @@ try:
 except Exception as _e:
     logger.warning(f"logfire fastapi instrumentation failed: {_e}")
 
-
-PHI_DID = "did:plc:65sucjiel52gefhcdcypynsr"
+app.include_router(activity_router)
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -228,123 +226,9 @@ async def status_page_route():
     return status_page(cards_html=cards_html)
 
 
-_TID_CHARSET = "234567abcdefghijklmnopqrstuvwxyz"
-
-
-def _tid_to_iso(tid: str) -> str:
-    """Decode an AT Protocol TID (base32-sortstring) to ISO8601."""
-    try:
-        n = 0
-        for ch in tid:
-            n = n * 32 + _TID_CHARSET.index(ch)
-        # 64-bit TID: bit 63=0, bits 62..10=timestamp(us), bits 9..0=clockid
-        us = (n >> 10) & ((1 << 53) - 1)
-        dt = datetime.fromtimestamp(us / 1_000_000, tz=UTC)
-        return dt.isoformat()
-    except (ValueError, OSError):
-        return ""
-
-
-_activity_cache_data: list[dict] | None = None
-_activity_cache_expires: float = 0.0
-_ACTIVITY_CACHE_TTL = 60  # seconds
-
 _graph_cache_data: dict | None = None
 _graph_cache_expires: float = 0.0
 _GRAPH_CACHE_TTL = 60  # seconds
-
-
-@app.get("/api/activity")
-async def activity_feed():
-    """Recent posts and cosmik cards, merged by time."""
-    global _activity_cache_data, _activity_cache_expires
-    now = time.monotonic()
-    if _activity_cache_data is not None and now < _activity_cache_expires:
-        return JSONResponse(_activity_cache_data)
-
-    items: list[dict] = []
-    async with httpx.AsyncClient(timeout=10) as client:
-        posts_coro = client.get(
-            "https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed",
-            params={
-                "actor": PHI_DID,
-                "filter": "posts_and_author_threads",
-                "limit": 10,
-            },
-        )
-        cards_coro = client.get(
-            "https://bsky.social/xrpc/com.atproto.repo.listRecords",
-            params={"repo": PHI_DID, "collection": "network.cosmik.card", "limit": 10},
-        )
-        posts_resp, cards_resp = await asyncio.gather(
-            posts_coro, cards_coro, return_exceptions=True
-        )
-
-    if isinstance(posts_resp, httpx.Response) and posts_resp.status_code == 200:
-        for entry in posts_resp.json().get("feed", []):
-            post = entry.get("post", {})
-            record = post.get("record", {})
-            uri = post.get("uri", "")
-            # at://did/app.bsky.feed.post/rkey -> bsky.app link
-            parts = uri.split("/")
-            bsky_url = (
-                f"https://bsky.app/profile/{PHI_DID}/post/{parts[-1]}"
-                if len(parts) >= 5
-                else None
-            )
-            items.append(
-                {
-                    "type": "post",
-                    "text": record.get("text", ""),
-                    "time": record.get("createdAt", ""),
-                    "uri": uri,
-                    "url": bsky_url,
-                }
-            )
-
-    if isinstance(cards_resp, httpx.Response) and cards_resp.status_code == 200:
-        for rec in cards_resp.json().get("records", []):
-            value = rec.get("value", {})
-            card_type = value.get("type", "NOTE")
-            item_type = "url" if card_type == "URL" else "note"
-            content = value.get("content", {})
-            # metadata may be nested under content.metadata (semble lexicon)
-            meta = content.get("metadata", {}) if isinstance(content, dict) else {}
-            if item_type == "url":
-                card_title = content.get("title", "") or meta.get("title", "")
-                desc = content.get("description", "") or meta.get("description", "")
-                # skip semble tag metadata ("discussed in context of: ...")
-                if desc and desc.startswith("discussed in context of:"):
-                    desc = ""
-                # text is the description (or URL fallback), title is separate
-                text = desc or (content.get("url", "") if not card_title else "")
-            else:
-                card_title = (
-                    content.get("title", "") if isinstance(content, dict) else ""
-                )
-                text = (
-                    content.get("text", "")
-                    if isinstance(content, dict)
-                    else str(content)
-                )
-            # derive time from TID rkey (base32-sortstring microseconds)
-            rkey = rec.get("uri", "").rsplit("/", 1)[-1]
-            card_time = _tid_to_iso(rkey)
-            items.append(
-                {
-                    "type": item_type,
-                    "text": text,
-                    "title": card_title or None,
-                    "time": card_time,
-                    "uri": rec.get("uri", ""),
-                    "url": content.get("url") if item_type == "url" else None,
-                }
-            )
-
-    items.sort(key=lambda x: x.get("time", ""), reverse=True)
-    _activity_cache_data = items
-    _activity_cache_expires = now + _ACTIVITY_CACHE_TTL
-    return JSONResponse(items)
 
 
 @app.get("/api/memory/graph")
