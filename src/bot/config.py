@@ -134,6 +134,14 @@ class Settings(BaseSettings):
         description="Min polls between scheduled relay checks (~3h at default poll interval)",
     )
 
+    # Discovery pool — generic agents endpoint serving authors the operator
+    # has been liking. Currently lives on hub.waow.tech as part of the
+    # prefect-server side; consumers (phi here) read it as opaque JSON.
+    discovery_pool_url: str = Field(
+        default="https://hub.waow.tech/api/agents/discovery-pool",
+        description="URL of the discovery-pool JSON endpoint (operator-likes derived)",
+    )
+
     # Debug mode
     debug: bool = Field(default=True, description="Whether to run in debug mode")
 

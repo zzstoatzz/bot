@@ -12,6 +12,7 @@ from pydantic_ai.mcp import MCPServerStreamableHTTP
 
 from bot.config import settings
 from bot.core.atproto_client import bot_client, get_identity_block
+from bot.core.discovery_pool import get_discovery_pool_block
 from bot.core.goals import list_goals as list_goal_records
 from bot.core.graze_client import GrazeClient
 from bot.core.recent_operations import get_operations_block
@@ -188,6 +189,11 @@ class PhiAgent:
         async def inject_recent_operations() -> str:
             """[RECENT OPERATIONS] — last N PDS writes across collections, for continuity."""
             return await get_operations_block(bot_client)
+
+        @self.agent.system_prompt(dynamic=True)
+        async def inject_discovery_pool(ctx: RunContext[PhiDeps]) -> str:
+            """[DISCOVERY POOL] — strangers the operator has been liking; warm leads."""
+            return await get_discovery_pool_block(ctx.deps.memory)
 
         @self.agent.system_prompt(dynamic=True)
         def inject_notifications(ctx: RunContext[PhiDeps]) -> str:
