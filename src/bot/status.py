@@ -71,8 +71,12 @@ class BotStatus:
                 "mentions_received": self.mentions_received,
                 "responses_sent": self.responses_sent,
                 "errors": self.errors,
-                "last_mention_time": self.last_mention_time.isoformat() if self.last_mention_time else None,
-                "last_response_time": self.last_response_time.isoformat() if self.last_response_time else None,
+                "last_mention_time": self.last_mention_time.isoformat()
+                if self.last_mention_time
+                else None,
+                "last_response_time": self.last_response_time.isoformat()
+                if self.last_response_time
+                else None,
             }
             STATUS_FILE.write_text(json.dumps(data))
         except Exception as e:
@@ -88,10 +92,16 @@ class BotStatus:
             self.responses_sent = data.get("responses_sent", 0)
             self.errors = data.get("errors", 0)
             if data.get("last_mention_time"):
-                self.last_mention_time = datetime.fromisoformat(data["last_mention_time"])
+                self.last_mention_time = datetime.fromisoformat(
+                    data["last_mention_time"]
+                )
             if data.get("last_response_time"):
-                self.last_response_time = datetime.fromisoformat(data["last_response_time"])
-            logger.info(f"restored status: {self.mentions_received} mentions, {self.responses_sent} responses")
+                self.last_response_time = datetime.fromisoformat(
+                    data["last_response_time"]
+                )
+            logger.info(
+                f"restored status: {self.mentions_received} mentions, {self.responses_sent} responses"
+            )
         except Exception as e:
             logger.warning(f"failed to load status: {e}")
 
