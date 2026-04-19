@@ -189,44 +189,6 @@ async def trigger_review(request: Request, background_tasks: BackgroundTasks):
     return {"triggered": True}
 
 
-@app.post("/api/control/explore")
-async def trigger_explore(request: Request, background_tasks: BackgroundTasks):
-    """Trigger one exploration from the curiosity queue immediately."""
-    if err := _check_control_token(request):
-        return err
-    poller: NotificationPoller | None = getattr(app.state, "poller", None)
-    if not poller:
-        return JSONResponse({"error": "poller not available"}, status_code=503)
-    background_tasks.add_task(poller.handler.explore)
-    logger.info("exploration triggered via API")
-    return {"triggered": True}
-
-
-@app.post("/api/control/unmute")
-async def unmute_account(request: Request):
-    """Unmute an account by handle — reverses both the platform mute and the memory marker."""
-    if err := _check_control_token(request):
-        return err
-    body = await request.json()
-    handle = body.get("handle", "")
-    if not handle:
-        return JSONResponse({"error": "handle required"}, status_code=400)
-    try:
-        await bot_client.authenticate()
-        resolved = bot_client.client.resolve_handle(handle)
-        bot_client.client.unmute(resolved.did)
-        # also clear the private spam marker so phi treats them as a stranger again
-        poller: NotificationPoller | None = getattr(app.state, "poller", None)
-        marker_cleared = False
-        if poller and poller.handler.agent.memory:
-            marker_cleared = await poller.handler.agent.memory.clear_mute_marker(handle)
-        logger.info(f"unmuted @{handle} (marker_cleared={marker_cleared})")
-        return {"unmuted": handle, "marker_cleared": marker_cleared}
-    except Exception as e:
-        logger.error(f"failed to unmute @{handle}: {e}")
-        return JSONResponse({"error": str(e)}, status_code=500)
-
-
 @app.get("/status", response_class=HTMLResponse)
 async def status_page_route():
     """Status page."""

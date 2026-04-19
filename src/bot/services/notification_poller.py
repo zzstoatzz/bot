@@ -32,10 +32,6 @@ class NotificationPoller:
         self._last_thought_date: date | None = None
         self._semaphore = asyncio.Semaphore(MAX_CONCURRENT)
         self._background_tasks: set[asyncio.Task] = set()
-        # event-driven exploration state
-        self._explorations_this_hour: int = 0
-        self._exploration_hour: int = -1
-        self._polls_since_last_exploration: int = 0
         # scheduled monitor check state
         self._polls_since_last_monitor_check: int = 0
 
@@ -127,7 +123,6 @@ class NotificationPoller:
         await self._seed_schedule_from_history()
 
         while self._running:
-            self._polls_since_last_exploration += 1
             self._polls_since_last_monitor_check += 1
 
             try:
@@ -152,15 +147,6 @@ class NotificationPoller:
                     task.add_done_callback(self._background_tasks.discard)
             except Exception as e:
                 logger.error(f"thought post error: {e}", exc_info=settings.debug)
-
-            # event-driven exploration — drain queue when idle
-            try:
-                if self._can_explore():
-                    task = asyncio.create_task(self._maybe_explore())
-                    self._background_tasks.add(task)
-                    task.add_done_callback(self._background_tasks.discard)
-            except Exception as e:
-                logger.error(f"exploration error: {e}", exc_info=settings.debug)
 
             # scheduled infrastructure monitoring
             try:
@@ -305,38 +291,6 @@ class NotificationPoller:
             await self.handler.original_thought()
         except Exception as e:
             logger.error(f"thought post error: {e}", exc_info=settings.debug)
-
-    # --- event-driven exploration ---
-
-    def _can_explore(self) -> bool:
-        """Check if exploration should run — idle budget, not a cron."""
-        if bot_status.paused:
-            return False
-        # reset hourly counter
-        now_hour = datetime.now(UTC).hour
-        if now_hour != self._exploration_hour:
-            self._explorations_this_hour = 0
-            self._exploration_hour = now_hour
-        # budget cap
-        if self._explorations_this_hour >= settings.max_idle_explorations_per_hour:
-            return False
-        # cooldown between explorations
-        if self._polls_since_last_exploration < settings.exploration_cooldown_polls:
-            return False
-        # don't explore while any background work is in-flight
-        if len(self._background_tasks) > 0:
-            return False
-        return True
-
-    async def _maybe_explore(self):
-        """Drain one item from the curiosity queue."""
-        self._explorations_this_hour += 1
-        self._polls_since_last_exploration = 0
-        logger.info("triggering idle exploration")
-        try:
-            await self.handler.explore()
-        except Exception as e:
-            logger.error(f"exploration error: {e}", exc_info=settings.debug)
 
     # --- scheduled monitor checks ---
 

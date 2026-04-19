@@ -11,7 +11,6 @@ from pydantic_ai import Agent
 from turbopuffer import Turbopuffer
 
 from bot.config import settings
-from bot.core.curiosity_queue import enqueue as enqueue_curiosity
 from bot.memory.extraction import (
     EPISODIC_SCHEMA,
     USER_NAMESPACE_SCHEMA,
@@ -818,89 +817,6 @@ class NamespaceMemory:
         results.sort(key=lambda r: r.get("created_at", ""), reverse=True)
         return results[:top_k]
 
-    async def store_exploration_note(
-        self,
-        handle: str,
-        content: str,
-        tags: list[str],
-        evidence_uris: list[str],
-    ):
-        """Store an exploration note — background research phi did on someone."""
-        user_ns = self.get_user_namespace(handle)
-        # include evidence in content for searchability
-        full_content = content
-        if evidence_uris:
-            full_content += f"\n[evidence: {', '.join(evidence_uris)}]"
-        entry_id = self._generate_id(f"user-{handle}", "exploration_note", content)
-
-        now = datetime.now().isoformat()
-        user_ns.write(
-            upsert_rows=[
-                {
-                    "id": entry_id,
-                    "vector": await self._get_embedding(content),
-                    "kind": "exploration_note",
-                    "status": "active",
-                    "content": full_content,
-                    "tags": tags,
-                    "supersedes": "",
-                    "created_at": now,
-                    "updated_at": now,
-                }
-            ],
-            distance_metric="cosine_distance",
-            schema=USER_NAMESPACE_SCHEMA,
-        )
-        logger.info(f"stored exploration note for @{handle}: {content[:80]}")
-
-    async def clear_mute_marker(self, handle: str) -> bool:
-        """Supersede any muted/spam exploration notes for a handle.
-
-        Returns True if a marker was found and superseded.
-        """
-        user_ns = self.get_user_namespace(handle)
-        try:
-            response = user_ns.query(
-                rank_by=("created_at", "desc"),
-                top_k=5,
-                filters=[
-                    "And",
-                    [
-                        ["kind", "Eq", "exploration_note"],
-                        ["status", "Eq", "active"],
-                        ["tags", "ContainsAll", ["muted"]],
-                    ],
-                ],
-                include_attributes=["content", "tags"],
-            )
-            if not response.rows:
-                return False
-            now = datetime.now().isoformat()
-            for row in response.rows:
-                user_ns.write(
-                    upsert_rows=[
-                        {
-                            "id": row.id,
-                            "vector": row.vector,
-                            "kind": "exploration_note",
-                            "status": "superseded",
-                            "content": row.content,
-                            "tags": getattr(row, "tags", []),
-                            "supersedes": "",
-                            "created_at": getattr(row, "created_at", now),
-                            "updated_at": now,
-                        }
-                    ],
-                    distance_metric="cosine_distance",
-                    schema=USER_NAMESPACE_SCHEMA,
-                )
-            logger.info(f"cleared mute marker for @{handle}")
-            return True
-        except Exception as e:
-            if "was not found" in str(e):
-                return False
-            raise
-
     async def get_knowledge_count(self, handle: str) -> int:
         """Count observations + exploration notes phi has stored about a handle.
 
@@ -929,17 +845,6 @@ class NamespaceMemory:
         """True if phi has fewer than 2 stored knowledge items about this handle."""
         return await self.get_knowledge_count(handle) < 2
 
-    async def _maybe_enqueue_exploration(self, handle: str):
-        """If we don't know much about this person, queue them for deeper exploration."""
-        if await self.is_stranger(handle):
-            await enqueue_curiosity(
-                kind="explore_handle", subject=handle, source="interaction"
-            )
-
     async def after_interaction(self, handle: str, user_text: str, bot_text: str):
-        """Post-interaction hook: store the raw exchange, maybe queue exploration."""
+        """Post-interaction hook: store the raw exchange."""
         await self.store_interaction(handle, user_text, bot_text)
-        try:
-            await self._maybe_enqueue_exploration(handle)
-        except Exception as e:
-            logger.debug(f"exploration enqueue check failed for @{handle}: {e}")

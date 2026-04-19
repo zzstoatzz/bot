@@ -110,15 +110,6 @@ class Settings(BaseSettings):
         },
         description="friendly name → AT-URI for external feeds phi can read",
     )
-    max_idle_explorations_per_hour: int = Field(
-        default=3,
-        description="cap exploration drains per hour",
-    )
-    exploration_cooldown_polls: int = Field(
-        default=30,
-        description="min polls (~5 min) between explorations",
-    )
-
     # Control API
     control_token: str | None = Field(
         default=None, description="Bearer token for /api/control endpoints"

@@ -33,6 +33,10 @@ filterwarnings = [
     "ignore::logfire._internal.config.LogfireNotConfiguredWarning",
     # upstream otel 1.39 renamed EventLogger → Logger; pydantic-ai + otel internals still use old names
     "ignore:.*Deprecated since version 1\\.39\\.0:DeprecationWarning",
+    # atproto SDK's lexicon model loader uses Field(default=None) inside an Annotated
+    # type alias context that newer pydantic warns about. nothing we can do until the
+    # SDK fixes it; the warning fires once at import and isn't actionable on our side.
+    "ignore::pydantic.warnings.UnsupportedFieldAttributeWarning",
 ]
 
 [dependency-groups]

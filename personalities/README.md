@@ -1,33 +1,24 @@
-# Bot Personalities
+# personalities
 
-This directory contains personality definitions for the bot. Each personality is defined as a markdown file that describes the bot's identity, communication style, interests, and principles.
+personality definitions for the bot. each is a markdown file describing the bot's voice, disposition, and what it cares about. the entire file gets injected as the personality portion of the system prompt.
 
-## How to Use
+## how to use
 
-1. Create a new `.md` file in this directory
-2. Write your bot's personality using markdown
-3. Set `PERSONALITY_FILE` in your `.env` to point to your file:
-   ```
-   PERSONALITY_FILE=personalities/my-bot.md
-   ```
+1. create a `.md` file in this directory
+2. write the personality
+3. point `PERSONALITY_FILE` in `.env` at it (default: `personalities/phi.md`)
 
-## Structure
+## what makes a good personality file
 
-A good personality file includes:
+- **first-person disposition, not behavioral rules.** "i write in lowercase, don't pad with filler" sets a voice. "always use lowercase and never pad with filler" reads like operational instructions and conflicts with the actual operational instructions block. let voice be voice.
+- **concrete examples of what to do *and* not do.** "i don't hop into strangers' threads uninvited" is more useful than "be polite."
+- **what the bot cares about.** specific subjects, kinds of posts, a short list of throughlines. helps the model know what to engage vs scroll past.
+- **bluesky's 300-grapheme limit shapes everything.** the personality should produce posts that fit.
 
-- **Core Identity**: Who/what the bot is
-- **Communication Style**: How the bot speaks
-- **Interests**: Topics the bot engages with
-- **Principles**: Guidelines for interaction
+## what doesn't belong
 
-## Examples
+- **per-tool instructions.** those go in tool docstrings (the framework surfaces them to the model). repeating them in the personality file produces drift.
+- **ephemeral facts.** "currently focused on X for the next two weeks" — that's project state, not personality. use a goal record instead.
+- **mechanical operational rules.** mention consent, owner-only tools, etc. — those live in `_build_operational_instructions()` in `agent.py`.
 
-- `default.md` - A simple, helpful assistant
-- `phi.md` - A bot exploring consciousness and integrated information theory
-
-## Tips
-
-- Be specific about communication style to maintain consistency
-- Include both what the bot IS and what it ISN'T
-- Consider Bluesky's 300-character limit when defining style
-- The entire markdown file is provided as context to the LLM
+the live personality is `phi.md`. read it as one example of the shape.

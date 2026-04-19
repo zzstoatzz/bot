@@ -336,18 +336,6 @@ class MessageHandler:
             except Exception as e:
                 logger.exception(f"original thought failed: {e}")
 
-    async def explore(self):
-        """Run one exploration from the curiosity queue."""
-        with logfire.span("exploration"):
-            try:
-                stored = await self.agent.process_exploration()
-                if stored:
-                    logger.info(f"exploration: stored {stored} findings")
-                else:
-                    logger.info("exploration: nothing to explore")
-            except Exception as e:
-                logger.warning(f"exploration failed: {e}")
-
     async def check_relays(self):
         """Run a scheduled relay-fleet check and let phi decide whether to post."""
         with logfire.span("relay check"):

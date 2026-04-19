@@ -1,19 +1,21 @@
 # documentation
 
-deeper dive into phi's design and implementation.
+deeper dive into phi's design.
 
 ## contents
 
-- [architecture.md](architecture.md) - system design and data flow
-- [memory.md](memory.md) - thread context vs episodic memory
-- [mcp.md](mcp.md) - model context protocol integration
-- [testing.md](testing.md) - testing philosophy and approach
+- [architecture.md](architecture.md) — entry points, scheduling, why this shape
+- [memory.md](memory.md) — the four kinds of state phi draws on (thread, private, public, intent)
+- [system-prompt.md](system-prompt.md) — block-by-block reference for what's actually in phi's context per run
+- [mcp.md](mcp.md) — model context protocol integration
+- [testing.md](testing.md) — testing philosophy
 
 ## reading order
 
-1. start with **architecture.md** for overall system understanding
-2. read **memory.md** to understand the key design insight (two memory systems)
-3. read **mcp.md** to see how bluesky integration works
-4. read **testing.md** for quality assurance approach
+1. **architecture.md** — overall shape
+2. **memory.md** — what phi knows and where it lives
+3. **system-prompt.md** — exactly what reaches the model on every run
+4. **mcp.md** — external capabilities
+5. **testing.md** — how we verify behavior
 
 each doc is self-contained and can be read independently.

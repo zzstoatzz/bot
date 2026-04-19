@@ -12,11 +12,9 @@ from pydantic_ai.mcp import MCPServerStreamableHTTP
 
 from bot.config import settings
 from bot.core.atproto_client import bot_client, get_identity_block
-from bot.core.curiosity_queue import claim, complete, enqueue, fail
 from bot.core.goals import list_goals as list_goal_records
 from bot.core.graze_client import GrazeClient
 from bot.core.self_state import get_state_block
-from bot.exploration import EXPLORATION_SYSTEM_PROMPT, ExplorationResult
 from bot.memory.extraction import EXTRACTION_SYSTEM_PROMPT, ExtractionResult
 from bot.memory.review import REVIEW_SYSTEM_PROMPT, ReviewResult
 from bot.tools import PhiDeps, _check_services_impl, register_all
@@ -339,14 +337,6 @@ class PhiAgent:
             model=settings.agent_model,
             system_prompt=f"{self.base_personality}\n\n{EXTRACTION_SYSTEM_PROMPT}",
             output_type=ExtractionResult,
-        )
-
-        # Exploration agent — background research on people/topics
-        self._exploration_agent = Agent[None, ExplorationResult](
-            name="phi-explorer",
-            model=settings.agent_model,
-            system_prompt=f"{self.base_personality}\n\n{EXPLORATION_SYSTEM_PROMPT}",
-            output_type=ExplorationResult,
         )
 
         # Review agent — the dream/distill pass. Reviews observations with
@@ -691,124 +681,6 @@ class PhiAgent:
             except Exception as e:
                 logger.warning(f"extraction failed for @{handle}: {e}")
 
-        return total_stored
-
-    async def process_exploration(self) -> int:
-        """Claim one curiosity item, explore it, store findings. Returns count stored."""
-        claimed = await claim()
-        if not claimed:
-            return 0
-
-        KIND_ALIASES = {
-            "person_exploration": "explore_handle",
-            "product_explore": "explore_topic",
-            "topic_exploration": "explore_topic",
-            "concept": "explore_topic",
-            "read": "explore_url",
-        }
-
-        item, rkey = claimed
-        kind = KIND_ALIASES.get(item.get("kind", ""), item.get("kind", ""))
-        subject = item.get("subject", "")
-        logger.info(f"exploring: {kind} {subject}")
-
-        # build prompt by kind
-        if kind == "explore_handle":
-            prompt = (
-                f"learn about @{subject} — check their profile, recent posts, "
-                f"and any publications. what are they interested in? what do they work on?"
-            )
-        elif kind == "explore_topic":
-            prompt = (
-                f"research this topic: {subject} — search posts, publications, "
-                f"and trending content. what's interesting or notable?"
-            )
-        elif kind == "explore_url":
-            prompt = f"read this URL and note what's interesting: {subject}"
-        else:
-            logger.warning(f"unknown exploration kind: {kind}")
-            await fail(rkey)
-            return 0
-
-        # run exploration agent with MCP toolsets (pdsx + pub-search)
-        toolsets = self._mcp_toolsets()
-        try:
-            async with contextlib.AsyncExitStack() as stack:
-                for ts in toolsets:
-                    await stack.enter_async_context(ts)
-                result = await self._exploration_agent.run(prompt, toolsets=toolsets)
-        except Exception as e:
-            logger.warning(f"exploration agent failed for {kind} {subject}: {e}")
-            await fail(rkey)
-            return 0
-
-        output = result.output
-        logger.info(f"exploration result: {output.summary}")
-
-        # handle mute decisions — skip detailed storage, mute the account
-        if output.mute_subject and kind == "explore_handle":
-            logger.info(f"muting @{subject}: {output.mute_reason}")
-            try:
-                await bot_client.authenticate()
-                resolved = bot_client.client.resolve_handle(subject)
-                bot_client.client.mute(resolved.did)
-            except Exception as e:
-                logger.warning(f"failed to mute {subject}: {e}")
-                await fail(rkey)
-                return 0
-            # store one user-scoped marker so is_stranger() sees it
-            if self.memory:
-                reason = output.mute_reason or output.summary[:150]
-                await self.memory.store_exploration_note(
-                    handle=subject,
-                    content=f"muted — {reason}",
-                    tags=["muted", "spam"],
-                    evidence_uris=output.mute_evidence,
-                )
-            await complete(rkey)
-            return 0
-
-        total_stored = 0
-
-        # store findings
-        if self.memory:
-            for finding in output.findings:
-                try:
-                    if finding.target_handle:
-                        await self.memory.store_exploration_note(
-                            handle=finding.target_handle,
-                            content=finding.content,
-                            tags=finding.tags,
-                            evidence_uris=finding.evidence_uris,
-                        )
-                    else:
-                        # general finding → episodic memory
-                        content = finding.content
-                        if finding.evidence_uris:
-                            content += (
-                                f" [evidence: {', '.join(finding.evidence_uris)}]"
-                            )
-                        await self.memory.store_episodic_memory(
-                            content=content,
-                            tags=finding.tags,
-                            source="exploration",
-                        )
-                    total_stored += 1
-                except Exception as e:
-                    logger.warning(f"failed to store exploration finding: {e}")
-
-        # enqueue follow-ups
-        for follow_up in output.follow_ups:
-            try:
-                await enqueue(
-                    kind=follow_up.get("kind", "explore_topic"),
-                    subject=follow_up.get("subject", ""),
-                    source="extraction",
-                )
-            except Exception as e:
-                logger.warning(f"failed to enqueue follow-up: {e}")
-
-        await complete(rkey)
         return total_stored
 
     async def process_review(self) -> str:

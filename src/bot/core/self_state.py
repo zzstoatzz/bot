@@ -138,26 +138,6 @@ async def _last_follow_when(client: BotClient) -> str:
         return ""
 
 
-async def _queue_depth(client: BotClient) -> int:
-    try:
-        await client.authenticate()
-        if not client.client.me:
-            return 0
-        response = client.client.com.atproto.repo.list_records(
-            {
-                "repo": client.client.me.did,
-                "collection": "io.zzstoatzz.phi.curiosityQueue",
-                "limit": 100,
-            }
-        )
-        return sum(
-            1 for r in response.records if dict(r.value).get("status") == "pending"
-        )
-    except Exception as e:
-        logger.debug(f"queue depth lookup failed: {e}")
-        return 0
-
-
 def _format_goals_block(goals: list[dict]) -> str:
     if not goals:
         return ""
@@ -226,16 +206,10 @@ async def get_state_block(client: BotClient) -> str:
     except Exception as e:
         logger.debug(f"stranger audit compose failed: {e}")
 
-    # Operational pointers — last follow, queue depth.
+    # Operational pointers.
     follow_age = await _last_follow_when(client)
-    queue_n = await _queue_depth(client)
-    misc: list[str] = []
     if follow_age:
-        misc.append(f"last follow: {follow_age}")
-    if queue_n > 0:
-        misc.append(f"exploration queue: {queue_n} pending")
-    if misc:
-        parts.append("[SELF STATE]\n" + " | ".join(misc))
+        parts.append(f"[SELF STATE]\nlast follow: {follow_age}")
 
     block = "\n\n".join(parts)
     _block_cache["text"] = block
