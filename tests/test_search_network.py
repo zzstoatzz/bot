@@ -55,29 +55,43 @@ def _mock_response(status_code: int, json_data=None):
 
 def _semble_response(items):
     """Wrap items in semble's {urls: [...], pagination: {...}} envelope."""
-    return {"urls": items, "pagination": {"currentPage": 1, "totalPages": 1, "totalCount": len(items), "hasMore": False, "limit": 10}}
+    return {
+        "urls": items,
+        "pagination": {
+            "currentPage": 1,
+            "totalPages": 1,
+            "totalCount": len(items),
+            "hasMore": False,
+            "limit": 10,
+        },
+    }
 
 
 class TestSearchNetworkFormatting:
     async def test_formats_results_with_all_fields(self):
-        resp = _mock_response(200, _semble_response([
-            {
-                "url": "https://atproto.com",
-                "metadata": {
-                    "title": "AT Protocol",
-                    "description": "Federated social networking protocol",
-                },
-                "urlLibraryCount": 5,
-            },
-            {
-                "url": "https://docs.bsky.app",
-                "metadata": {
-                    "title": "Bluesky Docs",
-                    "description": "Documentation for Bluesky",
-                },
-                "urlLibraryCount": 3,
-            },
-        ]))
+        resp = _mock_response(
+            200,
+            _semble_response(
+                [
+                    {
+                        "url": "https://atproto.com",
+                        "metadata": {
+                            "title": "AT Protocol",
+                            "description": "Federated social networking protocol",
+                        },
+                        "urlLibraryCount": 5,
+                    },
+                    {
+                        "url": "https://docs.bsky.app",
+                        "metadata": {
+                            "title": "Bluesky Docs",
+                            "description": "Documentation for Bluesky",
+                        },
+                        "urlLibraryCount": 3,
+                    },
+                ]
+            ),
+        )
         with patch("httpx.AsyncClient.get", new_callable=AsyncMock, return_value=resp):
             result = await _search_network("atproto")
         assert "AT Protocol — https://atproto.com (5 saves)" in result
@@ -85,9 +99,17 @@ class TestSearchNetworkFormatting:
         assert "Bluesky Docs — https://docs.bsky.app (3 saves)" in result
 
     async def test_formats_results_with_minimal_fields(self):
-        resp = _mock_response(200, _semble_response([
-            {"url": "https://example.com/music", "metadata": {"title": "some note about music"}},
-        ]))
+        resp = _mock_response(
+            200,
+            _semble_response(
+                [
+                    {
+                        "url": "https://example.com/music",
+                        "metadata": {"title": "some note about music"},
+                    },
+                ]
+            ),
+        )
         with patch("httpx.AsyncClient.get", new_callable=AsyncMock, return_value=resp):
             result = await _search_network("music")
         assert "some note about music" in result
@@ -115,9 +137,14 @@ class TestSearchNetworkFormatting:
         assert result.startswith("network search failed:")
 
     async def test_untitled_fallback(self):
-        resp = _mock_response(200, _semble_response([
-            {"url": "https://example.com", "metadata": {}},
-        ]))
+        resp = _mock_response(
+            200,
+            _semble_response(
+                [
+                    {"url": "https://example.com", "metadata": {}},
+                ]
+            ),
+        )
         with patch("httpx.AsyncClient.get", new_callable=AsyncMock, return_value=resp):
             result = await _search_network("test")
         assert "untitled — https://example.com" in result
