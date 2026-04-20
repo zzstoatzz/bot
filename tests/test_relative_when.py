@@ -81,3 +81,12 @@ def test_z_suffix_handled():
     )
     s = relative_when(z_form)
     assert s.endswith("m ago")
+
+
+def test_tz_naive_handled_as_utc():
+    # Legacy memory rows used `datetime.now().isoformat()` with no tz info.
+    # Those tz-naive strings must not raise; should be treated as UTC.
+    naive = datetime.now(UTC).replace(tzinfo=None, microsecond=0).isoformat()
+    s = relative_when(naive)
+    # Should parse cleanly; age is "0s ago" or near-zero.
+    assert s.endswith("s ago") or s.endswith("m ago")

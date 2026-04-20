@@ -17,12 +17,17 @@ def relative_when(iso_ts: str) -> str:
     paginate ages: seconds → minutes → hours (with one decimal under 10) →
     days (one decimal under 10) → months → years.
 
-    Returns '' on parse failure or future timestamps.
+    Returns '' on parse failure or future timestamps. Handles both tz-aware
+    ('2026-04-20T15:00:00+00:00' / '...Z') and tz-naive ('2026-04-20T15:00:00')
+    inputs — naive values are treated as UTC (which is how legacy rows in
+    turbopuffer were written: `datetime.now().isoformat()` without tz info).
     """
     try:
         ts = datetime.fromisoformat(iso_ts.replace("Z", "+00:00"))
     except (ValueError, TypeError):
         return ""
+    if ts.tzinfo is None:
+        ts = ts.replace(tzinfo=UTC)
     delta = (datetime.now(UTC) - ts).total_seconds()
     if delta < 0:
         return ""
