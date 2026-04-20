@@ -309,7 +309,9 @@ class NamespaceMemory:
                         ["status", "NotEq", "superseded"],
                     ],
                 ],
-                include_attributes=["content", "tags", "created_at", "source_uris"],
+                # include_attributes=True so pre-schema-evolution namespaces
+                # don't 400 on a missing source_uris column
+                include_attributes=True,
             )
             if response.rows:
                 return [
@@ -490,7 +492,10 @@ class NamespaceMemory:
             interactions: list[_InteractionDisplay] = []
 
             try:
-                # semantic search for relevant observations (exclude superseded)
+                # semantic search for relevant observations (exclude superseded).
+                # include_attributes=True (all) so we don't error on namespaces
+                # whose schema predates source_uris — turbopuffer 400s if you
+                # list an attribute the namespace doesn't know yet.
                 obs_response = user_ns.query(
                     rank_by=("vector", "ANN", query_embedding),
                     top_k=10,
@@ -501,12 +506,7 @@ class NamespaceMemory:
                             ["status", "NotEq", "superseded"],
                         ],
                     ],
-                    include_attributes=[
-                        "content",
-                        "tags",
-                        "source_uris",
-                        "created_at",
-                    ],
+                    include_attributes=True,
                 )
                 if obs_response.rows:
                     observations = [
@@ -525,7 +525,7 @@ class NamespaceMemory:
                     rank_by=("vector", "ANN", query_embedding),
                     top_k=5,
                     filters={"kind": ["Eq", "interaction"]},
-                    include_attributes=["content", "created_at"],
+                    include_attributes=True,
                 )
                 if interaction_response.rows:
                     interactions = [
@@ -968,7 +968,7 @@ class NamespaceMemory:
                         rank_by=("created_at", "desc"),
                         top_k=5,
                         filters={"kind": ["Eq", "interaction"]},
-                        include_attributes=["content", "created_at", "source_uris"],
+                        include_attributes=True,
                     )
                     if int_response.rows:
                         for row in int_response.rows:
