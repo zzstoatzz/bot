@@ -13,10 +13,10 @@ from __future__ import annotations
 
 import logging
 import time
-from datetime import UTC, datetime
 from typing import TypedDict
 
 from bot.core.atproto_client import BotClient
+from bot.utils.time import relative_when
 
 logger = logging.getLogger("bot.recent_operations")
 
@@ -49,26 +49,6 @@ class _Row(TypedDict):
     nsid: str
     created_at: str
     summary: str
-
-
-def _relative_when(iso_ts: str) -> str:
-    """Render ISO timestamp as 'Ns/m/h/d ago'."""
-    try:
-        ts = datetime.fromisoformat(iso_ts.replace("Z", "+00:00"))
-    except (ValueError, TypeError):
-        return ""
-    delta = (datetime.now(UTC) - ts).total_seconds()
-    if delta < 0:
-        return ""
-    if delta < 60:
-        return f"{int(delta)}s ago"
-    if delta < 3600:
-        return f"{int(delta // 60)}m ago"
-    if delta < 86400:
-        hours = delta / 3600
-        return f"{hours:.1f}h ago" if hours < 10 else f"{int(hours)}h ago"
-    days = delta / 86400
-    return f"{days:.1f}d ago" if days < 10 else f"{int(days)}d ago"
 
 
 def _short(text: str, n: int = TEXT_TRUNCATE) -> str:
@@ -168,7 +148,7 @@ def _render(rows: list[_Row]) -> str:
     ]
     for r in rows:
         ts = r["created_at"]
-        when = _relative_when(ts) if ts else ""
+        when = relative_when(ts) if ts else ""
         time_part = f"{ts[:19]}Z ({when})" if ts and when else (ts or "")
         nsid_part = r["nsid"].ljust(nsid_width)
         lines.append(f"{time_part}  {nsid_part}  {r['summary']}")

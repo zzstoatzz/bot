@@ -85,7 +85,7 @@ def register(agent):
 
         try:
             allowed = await _build_allowed_handles(author_handle)
-            await bot_client.create_post(
+            result = await bot_client.create_post(
                 text, reply_to=reply_ref, allowed_handles=allowed
             )
         except Exception as e:
@@ -95,10 +95,16 @@ def register(agent):
         bot_status.record_response()
         logger.info(f"replied to @{author_handle}: {text[:80]}")
 
-        # store the exchange in memory so phi remembers it next time
+        # store the exchange in memory so phi remembers it next time. cite
+        # both ends of the exchange so future observations extracted from
+        # this interaction inherit real provenance.
         if ctx.deps.memory:
+            bot_post_uri = getattr(result, "uri", "") if result else ""
+            sources = [u for u in (uri, bot_post_uri) if u]
             try:
-                await ctx.deps.memory.after_interaction(author_handle, post_text, text)
+                await ctx.deps.memory.after_interaction(
+                    author_handle, post_text, text, source_uris=sources
+                )
             except Exception as e:
                 logger.warning(f"failed to store interaction for @{author_handle}: {e}")
 

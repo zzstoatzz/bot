@@ -1,0 +1,41 @@
+"""Shared relative-time rendering for system prompt blocks.
+
+Single canonical helper used by every block that surfaces "when did this
+happen" — `[RECENT OPERATIONS]`, `[SELF STATE]`, `[OBSERVATIONS]`,
+interaction render. Granularity is fine enough for continuity signals
+(seconds → days) without paginating into months/years (use the date-based
+helper in `tools/_helpers.py:_relative_age` for that — different shape).
+"""
+
+from datetime import UTC, datetime
+
+
+def relative_when(iso_ts: str) -> str:
+    """Render an ISO timestamp as a human-readable age.
+
+    Granularity slides with the size of the gap so callers don't have to
+    paginate ages: seconds → minutes → hours (with one decimal under 10) →
+    days (one decimal under 10) → months → years.
+
+    Returns '' on parse failure or future timestamps.
+    """
+    try:
+        ts = datetime.fromisoformat(iso_ts.replace("Z", "+00:00"))
+    except (ValueError, TypeError):
+        return ""
+    delta = (datetime.now(UTC) - ts).total_seconds()
+    if delta < 0:
+        return ""
+    if delta < 60:
+        return f"{int(delta)}s ago"
+    if delta < 3600:
+        return f"{int(delta // 60)}m ago"
+    if delta < 86400:
+        hours = delta / 3600
+        return f"{hours:.1f}h ago" if hours < 10 else f"{int(hours)}h ago"
+    days = delta / 86400
+    if days < 30:
+        return f"{days:.1f}d ago" if days < 10 else f"{int(days)}d ago"
+    if days < 365:
+        return f"{int(days // 30)}mo ago"
+    return f"{int(days // 365)}y ago"

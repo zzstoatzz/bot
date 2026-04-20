@@ -4,6 +4,7 @@ Models, prompts, and agent factories for extracting facts from conversations
 and reconciling new observations against existing memory.
 """
 
+from atproto_client.models.string_formats import AtUri
 from pydantic import BaseModel, Field
 from pydantic_ai import Agent
 
@@ -21,6 +22,16 @@ class Observation(BaseModel):
         min_length=0,
         max_length=3,
         description="0-3 lowercase topic tags (not person names, not meta-categories like 'interests')",
+    )
+    source_uris: list[AtUri] = Field(
+        default_factory=list,
+        description=(
+            "AT-URIs that back this observation: the post(s), exchange(s), or "
+            "like(s) that justify the claim. cite when you can — empty is "
+            "allowed but treated as lower-trust on read. the URI's own "
+            "structure (DID + collection NSID + TID) carries author, kind, "
+            "and timestamp — no separate fields needed."
+        ),
     )
 
 
@@ -135,6 +146,7 @@ EPISODIC_SCHEMA = {
     "content": {"type": "string", "full_text_search": True},
     "tags": {"type": "[]string", "filterable": True},
     "source": {"type": "string", "filterable": True},  # "tool", "conversation"
+    "source_uris": {"type": "[]string"},  # AT-URIs backing this memory (optional)
     "created_at": {"type": "string"},
 }
 
@@ -144,6 +156,11 @@ USER_NAMESPACE_SCHEMA = {
     "content": {"type": "string", "full_text_search": True},
     "tags": {"type": "[]string", "filterable": True},
     "supersedes": {"type": "string"},  # id of observation this replaces
+    # AT-URIs backing this row. for observations: the post(s) that justify it.
+    # for interactions: [parent_uri, bot_post_uri]. empty is allowed but read
+    # as lower-trust ("uncited"). DID + NSID + TID are extractable from the
+    # URI itself, so author / kind / timestamp need no separate fields.
+    "source_uris": {"type": "[]string"},
     "created_at": {"type": "string"},
     "updated_at": {"type": "string"},
 }

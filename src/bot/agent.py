@@ -18,6 +18,7 @@ from bot.core.graze_client import GrazeClient
 from bot.core.recent_operations import get_operations_block
 from bot.core.self_state import get_state_block
 from bot.memory.extraction import EXTRACTION_SYSTEM_PROMPT, ExtractionResult
+from bot.memory.namespace_memory import InteractionRow
 from bot.memory.review import REVIEW_SYSTEM_PROMPT, ReviewResult
 from bot.tools import PhiDeps, _check_services_impl, register_all
 from bot.tools.bluesky import fetch_relay_names
@@ -670,13 +671,22 @@ class PhiAgent:
         )
 
         # group by handle
-        by_handle: dict[str, list[dict]] = {}
+        by_handle: dict[str, list[InteractionRow]] = {}
         for interaction in unprocessed:
             by_handle.setdefault(interaction["handle"], []).append(interaction)
 
         total_stored = 0
         for handle, interactions in by_handle.items():
             exchange_texts = [i["content"] for i in interactions]
+            # collect every URI cited by the interactions in this batch.
+            # the extraction agent doesn't see URIs (only the exchange text),
+            # so we attribute *every* extracted observation in this batch to
+            # *all* the URIs that fed it. coarse, but always-true: an
+            # observation extracted from this batch was justified by
+            # something in this batch. dedup-preserve-order.
+            batch_uris = list(
+                dict.fromkeys(uri for i in interactions for uri in i["source_uris"])
+            )
             prompt = f"recent exchanges with @{handle}:\n\n" + "\n\n---\n\n".join(
                 exchange_texts
             )
@@ -685,6 +695,10 @@ class PhiAgent:
                 result = await self._extraction_agent.run(prompt)
                 if result.output.observations:
                     for obs in result.output.observations:
+                        # inherit URIs from the interactions that sourced
+                        # this batch unless the model already filled them in
+                        if not obs.source_uris and batch_uris:
+                            obs.source_uris = list(batch_uris)
                         try:
                             await self.memory._reconcile_observation(handle, obs)
                             total_stored += 1

@@ -40,9 +40,22 @@ def register(agent):
         return "\n".join(_format_user_results(results, about))
 
     @agent.tool
-    async def note(ctx: RunContext[PhiDeps], content: str, tags: list[str]) -> str:
-        """Leave a note for your future self. Stored privately for fast vector recall."""
+    async def note(
+        ctx: RunContext[PhiDeps],
+        content: str,
+        tags: list[str],
+        source_uri: str = "",
+    ) -> str:
+        """Leave a note for your future self. Stored privately for fast vector recall.
+
+        Pass source_uri when the note is grounded in a specific post, thread,
+        or card you can cite — it makes the note checkable later. Empty is
+        allowed when the thought is purely your own, but cite when you can.
+        """
         if ctx.deps.memory:
-            await ctx.deps.memory.store_episodic_memory(content, tags, source="tool")
+            sources = [source_uri] if source_uri else None
+            await ctx.deps.memory.store_episodic_memory(
+                content, tags, source="tool", source_uris=sources
+            )
             return f"noted — {content[:100]}"
         return "private memory not available"

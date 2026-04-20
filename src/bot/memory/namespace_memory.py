@@ -4,8 +4,10 @@ import asyncio
 import hashlib
 import logging
 from datetime import datetime
-from typing import ClassVar
+from typing import ClassVar, TypedDict
 
+from atproto_core.exceptions import InvalidAtUriError
+from atproto_core.uri import AtUri
 from openai import AsyncOpenAI
 from pydantic_ai import Agent
 from turbopuffer import Turbopuffer
@@ -17,6 +19,98 @@ from bot.memory.extraction import (
     Observation,
     get_reconciliation_agent,
 )
+from bot.utils.time import relative_when
+
+
+class ObservationRow(TypedDict):
+    """An observation row as read back from turbopuffer.
+
+    Mirrors USER_NAMESPACE_SCHEMA's observation shape. Used by
+    _find_similar_observations and build_user_context so the in-memory
+    representation has a known shape, not bare dicts.
+    """
+
+    id: str
+    content: str
+    tags: list[str]
+    created_at: str
+    source_uris: list[str]
+
+
+class InteractionRow(TypedDict):
+    """An interaction row from a user namespace, as used by the extraction
+    pipeline. The source_uris field carries the AT-URIs of the underlying
+    bsky exchange (parent + bot post) so extracted observations can inherit
+    real provenance instead of being uncited."""
+
+    handle: str
+    content: str
+    created_at: str
+    source_uris: list[str]
+
+
+class _InteractionDisplay(TypedDict):
+    """Minimal interaction shape used by build_user_context for render only.
+
+    The extraction pipeline uses InteractionRow (which carries the handle
+    and source_uris); the display path only needs content + age, so the
+    smaller shape avoids passing around fields the renderer doesn't use.
+    """
+
+    content: str
+    created_at: str
+
+
+def _source_role(uri: str, phi_did: str = "", owner_did: str = "") -> str:
+    """Classify an AT-URI by what kind of evidence it represents.
+
+    Used to assign a coarse trust/kind label to a source citation. The URI's
+    host (DID or handle) + collection NSID are enough to derive the role —
+    no extra schema needed. phi_did / owner_did are optional context: when
+    provided, lets us distinguish phi's own posts and operator-likes.
+    """
+    try:
+        parsed = AtUri.from_str(uri)
+    except (InvalidAtUriError, ValueError, TypeError):
+        return "unknown"
+
+    match (parsed.host, parsed.collection):
+        case (h, "app.bsky.feed.post") if phi_did and h == phi_did:
+            return "phi-post"
+        case (h, "app.bsky.feed.like") if owner_did and h == owner_did:
+            return "operator-liked"
+        case (_, "app.bsky.feed.post"):
+            return "their-post"
+        case (_, "app.greengale.document"):
+            return "essay"
+        case (_, "network.cosmik.card"):
+            return "card"
+        case (_, "app.bsky.feed.like"):
+            return "liked-by-other"
+        case _:
+            return "other"
+
+
+def _citation_tail(source_uris: list[str], created_at: str = "") -> str:
+    """Compact provenance tail: '(N sources, 2w ago)' / '(2w ago)' / '' etc.
+
+    Two trust signals in one line: how-anchored (sources count) + how-aged
+    (relative time of the row's most recent active version). Detail (the
+    URIs themselves, the per-URI roles) is recoverable on demand via tools.
+    Empty inputs collapse to "".
+    """
+    parts: list[str] = []
+    n = len(source_uris)
+    if n:
+        parts.append(f"{n} source{'s' if n != 1 else ''}")
+    if created_at:
+        when = relative_when(created_at)
+        if when:
+            parts.append(when)
+    if not parts:
+        return ""
+    return f" ({', '.join(parts)})"
+
 
 logger = logging.getLogger("bot.memory")
 
@@ -131,8 +225,19 @@ class NamespaceMemory:
 
     # --- user memory ---
 
-    async def store_interaction(self, handle: str, user_text: str, bot_text: str):
-        """Store a raw interaction log (user message + bot reply)."""
+    async def store_interaction(
+        self,
+        handle: str,
+        user_text: str,
+        bot_text: str,
+        source_uris: list[str] | None = None,
+    ):
+        """Store a raw interaction log (user message + bot reply).
+
+        source_uris should be the AT-URIs of the posts that constitute this
+        exchange — typically [parent_uri, bot_post_uri]. Empty is allowed
+        for legacy paths but loses provenance.
+        """
         user_ns = self.get_user_namespace(handle)
         content = f"user: {user_text}\nbot: {bot_text}"
         entry_id = self._generate_id(f"user-{handle}", "interaction", content)
@@ -148,6 +253,7 @@ class NamespaceMemory:
                     "content": content,
                     "tags": [],
                     "supersedes": "",
+                    "source_uris": list(source_uris or []),
                     "created_at": now,
                     "updated_at": now,
                 }
@@ -175,6 +281,7 @@ class NamespaceMemory:
                     "content": obs.content,
                     "tags": obs.tags,
                     "supersedes": "",
+                    "source_uris": list(obs.source_uris),
                     "created_at": now,
                     "updated_at": now,
                 }
@@ -188,7 +295,7 @@ class NamespaceMemory:
 
     async def _find_similar_observations(
         self, handle: str, embedding: list[float], top_k: int = 3
-    ) -> list[dict]:
+    ) -> list[ObservationRow]:
         """Find existing observations similar to the given embedding."""
         user_ns = self.get_user_namespace(handle)
         try:
@@ -202,16 +309,17 @@ class NamespaceMemory:
                         ["status", "NotEq", "superseded"],
                     ],
                 ],
-                include_attributes=["content", "tags", "created_at"],
+                include_attributes=["content", "tags", "created_at", "source_uris"],
             )
             if response.rows:
                 return [
-                    {
-                        "id": row.id,
-                        "content": row.content,
-                        "tags": getattr(row, "tags", []),
-                        "created_at": getattr(row, "created_at", ""),
-                    }
+                    ObservationRow(
+                        id=row.id,
+                        content=row.content,
+                        tags=getattr(row, "tags", []),
+                        created_at=getattr(row, "created_at", ""),
+                        source_uris=list(getattr(row, "source_uris", []) or []),
+                    )
                     for row in response.rows
                 ]
         except Exception as e:
@@ -250,7 +358,9 @@ class NamespaceMemory:
             logger.info(f"ADD for @{handle}: {obs.content[:60]} ({decision.reason})")
 
         elif action == "UPDATE":
-            # mark old row superseded, write merged version linking back
+            # mark old row superseded, write merged version linking back.
+            # union sources so the new row inherits the full pedigree —
+            # both the old observation's evidence and the new observation's.
             old_id = best_match["id"]
             user_ns.write(
                 patch_rows=[{"id": old_id, "status": "superseded"}],
@@ -258,17 +368,28 @@ class NamespaceMemory:
             merged = Observation(
                 content=decision.new_content or obs.content,
                 tags=decision.new_tags or obs.tags,
+                source_uris=obs.source_uris,
             )
             merged_embedding = await self._get_embedding(merged.content)
+            unioned = list(
+                dict.fromkeys(best_match.get("source_uris", []) + list(obs.source_uris))
+            )
             await self._write_observation(
-                handle, merged, merged_embedding, supersedes=old_id
+                handle,
+                merged,
+                merged_embedding,
+                supersedes=old_id,
+                source_uris_override=unioned,
             )
             logger.info(
                 f"UPDATE for @{handle}: '{best_match['content'][:40]}' -> '{merged.content[:40]}' ({decision.reason})"
             )
 
         elif action == "DELETE":
-            # mark old row superseded, write new one linking back
+            # mark old row superseded, write new one linking back.
+            # don't union here — the new claim is asserting the old was
+            # wrong, not refining it. preserve pedigree via supersedes link
+            # for trace, but the new row stands on its own sources.
             old_id = best_match["id"]
             user_ns.write(
                 patch_rows=[{"id": old_id, "status": "superseded"}],
@@ -296,11 +417,21 @@ class NamespaceMemory:
         obs: Observation,
         embedding: list[float],
         supersedes: str | None = None,
+        source_uris_override: list[str] | None = None,
     ) -> None:
-        """Write a single observation to turbopuffer."""
+        """Write a single observation to turbopuffer.
+
+        source_uris_override lets reconciliation (UPDATE) merge in URIs from
+        the superseded row. Default uses obs.source_uris as-is.
+        """
         user_ns = self.get_user_namespace(handle)
         entry_id = self._generate_id(f"user-{handle}", "observation", obs.content)
         now = datetime.now().isoformat()
+        sources = (
+            source_uris_override
+            if source_uris_override is not None
+            else list(obs.source_uris)
+        )
         user_ns.write(
             upsert_rows=[
                 {
@@ -311,6 +442,7 @@ class NamespaceMemory:
                     "content": obs.content,
                     "tags": obs.tags,
                     "supersedes": supersedes or "",
+                    "source_uris": sources,
                     "created_at": now,
                     "updated_at": now,
                 }
@@ -354,8 +486,8 @@ class NamespaceMemory:
         try:
             query_embedding = await self._get_embedding(query_text)
 
-            observations: list[str] = []
-            interactions: list[str] = []
+            observations: list[ObservationRow] = []
+            interactions: list[_InteractionDisplay] = []
 
             try:
                 # semantic search for relevant observations (exclude superseded)
@@ -369,10 +501,24 @@ class NamespaceMemory:
                             ["status", "NotEq", "superseded"],
                         ],
                     ],
-                    include_attributes=["content", "tags"],
+                    include_attributes=[
+                        "content",
+                        "tags",
+                        "source_uris",
+                        "created_at",
+                    ],
                 )
                 if obs_response.rows:
-                    observations = [row.content for row in obs_response.rows]
+                    observations = [
+                        ObservationRow(
+                            id=row.id,
+                            content=row.content,
+                            tags=getattr(row, "tags", []),
+                            created_at=getattr(row, "created_at", "") or "",
+                            source_uris=list(getattr(row, "source_uris", []) or []),
+                        )
+                        for row in obs_response.rows
+                    ]
 
                 # recent interactions for conversational context
                 interaction_response = user_ns.query(
@@ -382,7 +528,13 @@ class NamespaceMemory:
                     include_attributes=["content", "created_at"],
                 )
                 if interaction_response.rows:
-                    interactions = [row.content for row in interaction_response.rows]
+                    interactions = [
+                        _InteractionDisplay(
+                            content=row.content,
+                            created_at=getattr(row, "created_at", "") or "",
+                        )
+                        for row in interaction_response.rows
+                    ]
             except Exception as e:
                 if "attribute not found" not in str(e):
                     raise
@@ -396,7 +548,10 @@ class NamespaceMemory:
                     include_attributes=["content"],
                 )
                 if response.rows:
-                    interactions = [row.content for row in response.rows]
+                    interactions = [
+                        _InteractionDisplay(content=row.content, created_at="")
+                        for row in response.rows
+                    ]
 
             # exploration notes (background research)
             exploration_notes: list[str] = []
@@ -420,17 +575,22 @@ class NamespaceMemory:
 
             if observations:
                 parts.append(
-                    f"\n[OBSERVATIONS ABOUT @{handle} — extracted from user's own words, trust: medium]"
+                    f"\n[OBSERVATIONS ABOUT @{handle} — extracted from user's own words, trust: medium. tail shows source count and age (uncited and/or aged observations are lower-trust).]"
                 )
                 for obs in observations:
-                    parts.append(f"- {obs}")
+                    parts.append(
+                        f"- {obs['content']}"
+                        f"{_citation_tail(obs['source_uris'], obs['created_at'])}"
+                    )
 
             if interactions:
                 parts.append(
-                    f"\n[PAST EXCHANGES WITH @{handle} — verbatim logs, trust: high]"
+                    f"\n[PAST EXCHANGES WITH @{handle} — verbatim logs, trust: high. age in parens.]"
                 )
                 for interaction in interactions:
-                    parts.append(f"- {interaction}")
+                    age = relative_when(interaction["created_at"])
+                    age_part = f" ({age})" if age else ""
+                    parts.append(f"- {interaction['content']}{age_part}")
 
             if exploration_notes:
                 parts.append(
@@ -481,9 +641,18 @@ class NamespaceMemory:
     # --- episodic memory (phi's own world knowledge) ---
 
     async def store_episodic_memory(
-        self, content: str, tags: list[str], source: str = "tool"
+        self,
+        content: str,
+        tags: list[str],
+        source: str = "tool",
+        source_uris: list[str] | None = None,
     ):
-        """Store an episodic memory — something phi learned about the world."""
+        """Store an episodic memory — something phi learned about the world.
+
+        source_uris are AT-URIs that back this memory (a post phi was reading,
+        a thread phi was in, a card phi made). Empty allowed but lower-trust
+        on read.
+        """
         entry_id = self._generate_id("episodic", source, content)
         self.namespaces["episodic"].write(
             upsert_rows=[
@@ -493,6 +662,7 @@ class NamespaceMemory:
                     "content": content,
                     "tags": tags,
                     "source": source,
+                    "source_uris": list(source_uris or []),
                     "created_at": datetime.now().isoformat(),
                 }
             ],
@@ -754,14 +924,16 @@ class NamespaceMemory:
         results.sort(key=lambda r: r.get("created_at", ""), reverse=True)
         return results[:top_k]
 
-    async def get_unprocessed_interactions(self, top_k: int = 20) -> list[dict]:
+    async def get_unprocessed_interactions(
+        self, top_k: int = 20
+    ) -> list[InteractionRow]:
         """Get recent interactions that haven't been reviewed for observation extraction.
 
         Uses a timestamp heuristic: interactions newer than the most recent
         observation in each user namespace are considered unprocessed.
         """
         user_prefix = f"{self.NAMESPACES['users']}-"
-        results: list[dict] = []
+        results: list[InteractionRow] = []
         try:
             page = self.client.namespaces(prefix=user_prefix)
             for ns_summary in page.namespaces:
@@ -796,18 +968,21 @@ class NamespaceMemory:
                         rank_by=("created_at", "desc"),
                         top_k=5,
                         filters={"kind": ["Eq", "interaction"]},
-                        include_attributes=["content", "created_at"],
+                        include_attributes=["content", "created_at", "source_uris"],
                     )
                     if int_response.rows:
                         for row in int_response.rows:
                             created = getattr(row, "created_at", "") or ""
                             if created > latest_obs_time:
                                 results.append(
-                                    {
-                                        "handle": handle,
-                                        "content": row.content,
-                                        "created_at": created,
-                                    }
+                                    InteractionRow(
+                                        handle=handle,
+                                        content=row.content,
+                                        created_at=created,
+                                        source_uris=list(
+                                            getattr(row, "source_uris", []) or []
+                                        ),
+                                    )
                                 )
                 except Exception:
                     pass
@@ -845,6 +1020,14 @@ class NamespaceMemory:
         """True if phi has fewer than 2 stored knowledge items about this handle."""
         return await self.get_knowledge_count(handle) < 2
 
-    async def after_interaction(self, handle: str, user_text: str, bot_text: str):
-        """Post-interaction hook: store the raw exchange."""
-        await self.store_interaction(handle, user_text, bot_text)
+    async def after_interaction(
+        self,
+        handle: str,
+        user_text: str,
+        bot_text: str,
+        source_uris: list[str] | None = None,
+    ):
+        """Post-interaction hook: store the raw exchange with source URIs."""
+        await self.store_interaction(
+            handle, user_text, bot_text, source_uris=source_uris
+        )

@@ -13,13 +13,13 @@ don't hammer PDS.
 
 import logging
 import time
-from datetime import UTC, datetime
 
 from pydantic_ai import Agent
 
 from bot.config import settings
 from bot.core.atproto_client import BotClient
 from bot.core.goals import list_goals as list_goal_records
+from bot.utils.time import relative_when
 
 logger = logging.getLogger("bot.self_state")
 
@@ -96,26 +96,6 @@ async def _audit_posts(posts: list[str], goals: list[dict]) -> str:
         return ""
 
 
-def _relative_when(iso_ts: str) -> str:
-    try:
-        ts = datetime.fromisoformat(iso_ts.replace("Z", "+00:00"))
-    except (ValueError, TypeError):
-        return ""
-    delta = datetime.now(UTC) - ts
-    days = delta.days
-    if days < 0:
-        return ""
-    if days == 0:
-        hours = delta.seconds // 3600
-        return f"{hours}h ago" if hours else "just now"
-    if days == 1:
-        return "1d ago"
-    if days < 30:
-        return f"{days}d ago"
-    months = days // 30
-    return f"{months}mo ago" if months < 12 else f"{days // 365}y ago"
-
-
 async def _last_follow_when(client: BotClient) -> str:
     try:
         await client.authenticate()
@@ -132,7 +112,7 @@ async def _last_follow_when(client: BotClient) -> str:
             return ""
         record = response.records[0]
         created_at = dict(record.value).get("createdAt", "") if record.value else ""
-        return _relative_when(created_at)
+        return relative_when(created_at)
     except Exception as e:
         logger.debug(f"last_follow lookup failed: {e}")
         return ""
