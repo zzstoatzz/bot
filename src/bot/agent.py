@@ -9,6 +9,7 @@ from pathlib import Path
 
 from pydantic_ai import Agent, ImageUrl, RunContext
 from pydantic_ai.mcp import MCPServerStreamableHTTP
+from pydantic_ai_skills import SkillsToolset
 
 from bot.config import settings
 from bot.core.atproto_client import bot_client, get_identity_block
@@ -137,6 +138,12 @@ class PhiAgent:
             self.memory = None
             logger.warning("no memory - missing turbopuffer or openai key")
 
+        # Skills — filesystem-backed, progressive disclosure. The preamble
+        # (skill names + descriptions) is injected automatically by the
+        # toolset on pydantic-ai>=1.74. Full SKILL.md bodies are loaded on
+        # demand via load_skill.
+        self.skills_toolset = SkillsToolset(directories=[settings.skills_dir])
+
         # Create PydanticAI agent without MCP toolsets — they're created
         # fresh per agent.run() call to avoid the cancel scope bug:
         # https://github.com/pydantic/pydantic-ai/issues/2818
@@ -160,6 +167,7 @@ class PhiAgent:
             ),
             output_type=str,
             deps_type=PhiDeps,
+            toolsets=[self.skills_toolset],
         )
 
         # --- dynamic system prompts ---

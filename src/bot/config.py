@@ -39,6 +39,10 @@ class Settings(BaseSettings):
         default="personalities/phi.md",
         description="The file containing the bot's personality",
     )
+    skills_dir: str = Field(
+        default="skills",
+        description="Directory containing agentskills.io-format skill packages",
+    )
 
     # LLM configuration (support multiple providers)
     openai_api_key: str | None = Field(

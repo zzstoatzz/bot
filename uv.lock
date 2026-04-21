@@ -225,6 +225,7 @@ dependencies = [
     { name = "numpy" },
     { name = "openai" },
     { name = "pydantic-ai" },
+    { name = "pydantic-ai-skills" },
     { name = "pydantic-settings" },
     { name = "slowapi" },
     { name = "turbopuffer" },
@@ -249,6 +250,7 @@ requires-dist = [
     { name = "numpy", specifier = ">=2.4.4" },
     { name = "openai" },
     { name = "pydantic-ai", specifier = ">=1.9" },
+    { name = "pydantic-ai-skills", specifier = ">=0.8.0" },
     { name = "pydantic-settings" },
     { name = "slowapi", specifier = ">=0.1.9" },
     { name = "turbopuffer" },
@@ -1957,6 +1959,20 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/d0/fa/74ebb63cab77331fd98124e6665bff1634415a739a5f4aba077ce34f0e81/pydantic_ai-1.80.0.tar.gz", hash = "sha256:93aa897fac720cd9e11b4f47b0c456649cc72f4b65e575eddfd9adbecc200b81", size = 12793, upload-time = "2026-04-10T23:31:17.844Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/2c/9a/6d65ea560f8e84f57cf5cf7f5b611d48bd5d1869120bc7fcc3b40aed0556/pydantic_ai-1.80.0-py3-none-any.whl", hash = "sha256:71d0117a7c55116c00d7dfdc973f0bead056709608b251f83a884821341177ee", size = 7549, upload-time = "2026-04-10T23:31:09.674Z" },
+]
+
+[[package]]
+name = "pydantic-ai-skills"
+version = "0.8.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "anyio" },
+    { name = "pydantic-ai-slim" },
+    { name = "pyyaml" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/5f/07/176bad219d92507c5c828bc9e91a9a8ae16248a8f09c71ccb5c45157eff5/pydantic_ai_skills-0.8.0.tar.gz", hash = "sha256:464a3d32602e98bc8d66026b007360d34fc7fcf9da9c423cc65a0441239cf5a7", size = 9011241, upload-time = "2026-04-21T02:16:18.577Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/50/66/eb87dba97db261c18bcbeb70480fcf8d4b7dc609b553904e605ed01b0746/pydantic_ai_skills-0.8.0-py3-none-any.whl", hash = "sha256:04a6925d33e05e022595b54ae4fea1981edd2d47b937ea8f146a55e7d44529f9", size = 54782, upload-time = "2026-04-21T02:16:16.225Z" },
 ]
 
 [[package]]

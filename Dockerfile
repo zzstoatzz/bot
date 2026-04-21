@@ -32,6 +32,7 @@ COPY --from=builder /app /app
 
 # Copy runtime data
 COPY personalities/ /app/personalities/
+COPY skills/ /app/skills/
 
 ENV PATH="/app/bin:$PATH"
 ENV PYTHONUNBUFFERED=1
