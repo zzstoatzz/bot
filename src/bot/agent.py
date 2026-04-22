@@ -16,6 +16,7 @@ from bot.core.atproto_client import bot_client, get_identity_block
 from bot.core.discovery_pool import get_discovery_pool_block
 from bot.core.goals import list_goals as list_goal_records
 from bot.core.graze_client import GrazeClient
+from bot.core.observations import list_active as list_active_observations
 from bot.core.recent_operations import get_operations_block
 from bot.core.self_state import get_state_block
 from bot.memory.extraction import EXTRACTION_SYSTEM_PROMPT, ExtractionResult
@@ -23,6 +24,7 @@ from bot.memory.namespace_memory import InteractionRow
 from bot.memory.review import REVIEW_SYSTEM_PROMPT, ReviewResult
 from bot.tools import PhiDeps, _check_services_impl, register_all
 from bot.tools.bluesky import fetch_relay_names
+from bot.utils.time import relative_when
 
 logger = logging.getLogger("bot.agent")
 
@@ -193,6 +195,26 @@ class PhiAgent:
         async def inject_self_state() -> str:
             """How phi looks from outside + canonical pointers (last follow, queue)."""
             return await get_state_block(bot_client)
+
+        @self.agent.system_prompt(dynamic=True)
+        async def inject_active_observations() -> str:
+            """[ACTIVE OBSERVATIONS] — phi's small attention pool, sits next to GOALS."""
+            rows = await list_active_observations(bot_client)
+            if not rows:
+                return ""
+            lines = [
+                "[ACTIVE OBSERVATIONS — stored at io.zzstoatzz.phi.observation on "
+                "your PDS — things you've seen and not yet acted on, kept small "
+                "(max 5) and rotating. mutate via observe / drop_observation. "
+                "older items age out into a searchable archive (not in prompt).]"
+            ]
+            for r in rows:
+                age = relative_when(r["created_at"]) if r["created_at"] else ""
+                age_part = f" ({age})" if age else ""
+                lines.append(f"- [rkey={r['rkey']}] {r['content']}{age_part}")
+                if r["reasoning"]:
+                    lines.append(f"  reasoning: {r['reasoning']}")
+            return "\n".join(lines)
 
         @self.agent.system_prompt(dynamic=True)
         async def inject_recent_operations() -> str:
@@ -639,14 +661,20 @@ class PhiAgent:
 
         relay_task = (
             "scheduled relay check. call check_relays to see current relay "
-            "status. if a relay has transitioned to critical or degraded "
-            "recently, post the headline verbatim. silence is fine if "
-            "everything's nominal or you've already posted about the current "
-            f"state. tag @{settings.owner_handle} in either of these cases: "
-            "(1) any relay under *.waow.tech is degraded or worse — those are "
-            "nate's own, he needs to know immediately; (2) every relay in the "
-            "fleet is degraded or worse — that's fleet-wide and nate needs to "
-            "know. otherwise, no tag."
+            "status. for any relay that's transitioned to degraded or "
+            "critical recently, call observe() with the factual change in "
+            "your voice — what dropped, by how much, baseline. no theories "
+            "about cause. observations sit in your active pool and the "
+            "next musing or reflection will see them; don't post about each "
+            "one as it happens.\n\n"
+            f"only post immediately (and tag @{settings.owner_handle}) in "
+            "either of these cases: (1) any *.waow.tech relay is degraded "
+            "or worse — those are nate's own, he needs to know now; (2) "
+            "the whole fleet is degraded or worse — that's fleet-wide and "
+            "needs immediate visibility. write the post in your voice with "
+            "the factual change, group multiple transitions into one post.\n\n"
+            "otherwise: silent on the timeline, observe everything, let the "
+            "digest happen later."
         )
 
         toolsets = self._mcp_toolsets()
