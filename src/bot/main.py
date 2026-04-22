@@ -1,14 +1,24 @@
-"""FastAPI application for phi."""
+"""FastAPI application for phi.
+
+Serves:
+- API endpoints under /api/* and /health (consumed by both the SvelteKit
+  frontend and external automations)
+- The SvelteKit static build mounted at / as a SPA (with fallback to
+  index.html so client-side routes work). The frontend lives in
+  bot/web/, builds to bot/web/build/, and is copied into the docker
+  image at /app/web/.
+"""
 
 import asyncio
 import logging
 import time
 from contextlib import asynccontextmanager
-from datetime import datetime
+from pathlib import Path
 
 import logfire
 from fastapi import BackgroundTasks, FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from slowapi import Limiter
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
@@ -20,7 +30,7 @@ from bot.logging_config import _clear_uvicorn_handlers
 from bot.memory import NamespaceMemory
 from bot.services.notification_poller import NotificationPoller
 from bot.status import bot_status
-from bot.ui import activity_router, home_page, memory_page, status_page
+from bot.ui import activity_router
 
 logger = logging.getLogger("bot.main")
 
@@ -82,7 +92,7 @@ limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
 
 app = FastAPI(
     title=settings.bot_name,
-    description="consciousness exploration bot with episodic memory",
+    description="phi: a bluesky bot with episodic memory and an active attention pool",
     lifespan=lifespan,
 )
 app.state.limiter = limiter
@@ -102,24 +112,9 @@ except Exception as _e:
 app.include_router(activity_router)
 
 
-@app.get("/", response_class=HTMLResponse)
-async def root():
-    """Landing page with activity feed."""
-    status = "online" if bot_status.polling_active else "offline"
-    status_color = "#2ea043" if bot_status.polling_active else "#da3633"
-    return home_page(
-        handle=settings.bluesky_handle,
-        status=status,
-        status_color=status_color,
-        uptime=bot_status.uptime_str,
-        mentions=bot_status.mentions_received,
-        responses=bot_status.responses_sent,
-    )
-
-
 @app.get("/health")
 async def health():
-    """Health check endpoint."""
+    """Health check endpoint — also consumed by the frontend's status pill."""
     return {
         "status": "healthy",
         "polling_active": bot_status.polling_active,
@@ -187,45 +182,6 @@ async def trigger_review(request: Request, background_tasks: BackgroundTasks):
     return {"triggered": True}
 
 
-@app.get("/status", response_class=HTMLResponse)
-async def status_page_route():
-    """Status page."""
-
-    def format_time_ago(timestamp):
-        if not timestamp:
-            return "never"
-        delta = (datetime.now() - timestamp).total_seconds()
-        if delta < 60:
-            return f"{int(delta)}s ago"
-        elif delta < 3600:
-            return f"{int(delta / 60)}m ago"
-        else:
-            return f"{int(delta / 3600)}h ago"
-
-    active = bot_status.polling_active
-    status_text = "online" if active else "offline"
-    status_color = "#2ea043" if active else "#da3633"
-    error_color = "#da3633" if bot_status.errors > 0 else "#c9d1d9"
-
-    metrics = [
-        ("uptime", bot_status.uptime_str, "#58a6ff"),
-        ("status", status_text, status_color),
-        ("mentions", str(bot_status.mentions_received), "#c9d1d9"),
-        ("responses", str(bot_status.responses_sent), "#c9d1d9"),
-        ("last mention", format_time_ago(bot_status.last_mention_time), "#8b949e"),
-        ("last response", format_time_ago(bot_status.last_response_time), "#8b949e"),
-        ("errors", str(bot_status.errors), error_color),
-        ("handle", f"@{settings.bluesky_handle}", "#58a6ff"),
-    ]
-    cards_html = "\n".join(
-        f'<div class="metric-card"><div class="metric-label">{label}</div>'
-        f'<div class="metric-value" style="color:{color}">{value}</div></div>'
-        for label, value, color in metrics
-    )
-
-    return status_page(cards_html=cards_html)
-
-
 _graph_cache_data: dict | None = None
 _graph_cache_expires: float = 0.0
 _GRAPH_CACHE_TTL = 60  # seconds
@@ -254,7 +210,31 @@ async def memory_graph_data(request: Request):
         )
 
 
-@app.get("/memory", response_class=HTMLResponse)
-async def memory_page_route():
-    """Interactive memory graph visualization."""
-    return memory_page(handle=settings.bluesky_handle)
+# --- frontend mount ---
+#
+# bot/web/ is a sveltekit project built with adapter-static. the build
+# directory is copied into /app/web/ in the docker runtime stage. in dev,
+# this directory may not exist (just run `bun run dev` separately and let
+# vite proxy /api/* to the python server) — we mount conditionally so dev
+# of the python side doesn't fail.
+
+WEB_DIR = Path(settings.web_build_dir)
+if WEB_DIR.is_dir():
+
+    @app.get("/{full_path:path}")
+    async def spa_fallback(full_path: str):
+        """SPA fallback: any unmatched route returns index.html.
+
+        sveltekit's adapter-static emits a single index.html with client-side
+        routing — so /, /feed, /mind, /blog, etc all serve the same shell and
+        the svelte router takes over. assets under /_app/* and the favicon
+        are served by the StaticFiles mount below before this handler runs.
+        """
+        return FileResponse(WEB_DIR / "index.html")
+
+    app.mount("/", StaticFiles(directory=str(WEB_DIR), html=True), name="web")
+    logger.info(f"frontend mounted from {WEB_DIR}")
+else:
+    logger.warning(
+        f"frontend build not found at {WEB_DIR} — only API routes will be served"
+    )

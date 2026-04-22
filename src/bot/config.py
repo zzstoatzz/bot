@@ -43,6 +43,13 @@ class Settings(BaseSettings):
         default="skills",
         description="Directory containing agentskills.io-format skill packages",
     )
+    web_build_dir: str = Field(
+        default="/app/web",
+        description=(
+            "Directory containing the built sveltekit frontend (adapter-static "
+            "output). Mounted at / by the FastAPI app when present."
+        ),
+    )
 
     # LLM configuration (support multiple providers)
     openai_api_key: str | None = Field(
