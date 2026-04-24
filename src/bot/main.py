@@ -217,23 +217,33 @@ async def memory_graph_data(request: Request):
 # this directory may not exist (just run `bun run dev` separately and let
 # vite proxy /api/* to the python server) — we mount conditionally so dev
 # of the python side doesn't fail.
+#
+# routing layering:
+#   1. all explicit @app.get/@app.post handlers above (api, control, health)
+#   2. StaticFiles mount at "/" — serves index.html for "/" and any real
+#      file under /app/web/* (assets, favicon)
+#   3. 404 handler — for client-side routes (/feed, /mind, etc) that have
+#      no corresponding file, falls back to index.html so the svelte
+#      router takes over.
+#
+# the previous version registered an @app.get("/{full_path:path}") catch-all
+# BEFORE the mount, which intercepted every request including JS assets and
+# returned index.html with text/html content-type — browsers refuse to load
+# js modules served as text/html, so the SPA never booted.
 
 WEB_DIR = Path(settings.web_build_dir)
 if WEB_DIR.is_dir():
-
-    @app.get("/{full_path:path}")
-    async def spa_fallback(full_path: str):
-        """SPA fallback: any unmatched route returns index.html.
-
-        sveltekit's adapter-static emits a single index.html with client-side
-        routing — so /, /feed, /mind, /blog, etc all serve the same shell and
-        the svelte router takes over. assets under /_app/* and the favicon
-        are served by the StaticFiles mount below before this handler runs.
-        """
-        return FileResponse(WEB_DIR / "index.html")
-
     app.mount("/", StaticFiles(directory=str(WEB_DIR), html=True), name="web")
     logger.info(f"frontend mounted from {WEB_DIR}")
+
+    @app.exception_handler(404)
+    async def spa_fallback(request: Request, exc):  # noqa: ARG001
+        # Only fall back for browser navigation requests; api/health 404s
+        # should still return JSON.
+        path = request.url.path
+        if path.startswith("/api/") or path == "/health":
+            return JSONResponse({"error": "not found"}, status_code=404)
+        return FileResponse(WEB_DIR / "index.html")
 else:
     logger.warning(
         f"frontend build not found at {WEB_DIR} — only API routes will be served"
