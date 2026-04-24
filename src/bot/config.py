@@ -145,6 +145,29 @@ class Settings(BaseSettings):
         description="Min polls between scheduled relay checks (~3h at default poll interval)",
     )
 
+    # Prefect flow monitoring — phi polls the prefect-server via the prefect
+    # MCP to notice failed/crashed flows (ingest, brief, compact, etc.) and
+    # flag persistent failures to the operator. Same pattern as relays.
+    prefect_mcp_url: str = Field(
+        default="https://prefect-by-zzstoatzz.fastmcp.app/mcp",
+        description="URL of the prefect MCP server (fastmcp.app deployment)",
+    )
+    prefect_api_url: str = Field(
+        default="https://prefect-server.waow.tech/api",
+        description="Prefect OSS API URL (passed to MCP via x-prefect-api-url header)",
+    )
+    prefect_api_auth_string: str | None = Field(
+        default=None,
+        description=(
+            "Basic auth string 'user:pass' for prefect OSS. Passed to MCP via "
+            "x-prefect-api-auth-string header. Set via fly secret."
+        ),
+    )
+    flow_check_interval_polls: int = Field(
+        default=360,  # 360 polls * 10s = 3600s = 1h
+        description="Min polls between scheduled prefect flow checks (~1h)",
+    )
+
     # Discovery pool — generic agents endpoint serving authors the operator
     # has been liking. Currently lives on hub.waow.tech as part of the
     # prefect-server side; consumers (phi here) read it as opaque JSON.

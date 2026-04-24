@@ -395,7 +395,7 @@ class PhiAgent:
 
     def _mcp_toolsets(self) -> list[MCPServerStreamableHTTP]:
         """Create fresh MCP server instances for a single agent run."""
-        return [
+        toolsets: list[MCPServerStreamableHTTP] = [
             MCPServerStreamableHTTP(
                 url="https://pdsx-by-zzstoatzz.fastmcp.app/mcp",
                 timeout=30,
@@ -410,6 +410,21 @@ class PhiAgent:
                 tool_prefix="pub",
             ),
         ]
+        # Prefect MCP — only included when auth is configured, so phi degrades
+        # gracefully in dev/local without the secret set.
+        if settings.prefect_api_auth_string:
+            toolsets.append(
+                MCPServerStreamableHTTP(
+                    url=settings.prefect_mcp_url,
+                    timeout=30,
+                    tool_prefix="prefect",
+                    headers={
+                        "x-prefect-api-url": settings.prefect_api_url,
+                        "x-prefect-api-auth-string": settings.prefect_api_auth_string,
+                    },
+                )
+            )
+        return toolsets
 
     async def process_notifications(
         self,
@@ -690,6 +705,62 @@ class PhiAgent:
 
         summary = result.output or ""
         logger.info(f"relay check finished: {summary[:200]}")
+        return summary
+
+    async def process_flow_check(self, recent_posts: list[str] | None = None) -> str:
+        """Scheduled prefect flow check. Same pattern as relay check.
+
+        Uses the prefect MCP tools to see recent flow run states. Observes
+        failures into the active attention pool on first sight; only posts +
+        tags @owner when a given flow has failed repeatedly. The active-
+        observations block in phi's prompt naturally does the de-dup: first
+        failure = silently noticed; same flow failing again = persistent
+        problem worth raising.
+        """
+        logger.info("processing flow check")
+
+        recent_activity = ""
+        if recent_posts:
+            posts_text = "\n".join(f"- {p[:200]}" for p in recent_posts)
+            recent_activity = f"[YOUR RECENT POSTS — avoid repeating]:\n{posts_text}"
+
+        deps = PhiDeps(
+            author_handle="",
+            memory=self.memory,
+            recent_activity=recent_activity,
+        )
+
+        flow_task = (
+            "scheduled prefect flow check. call prefect_get_flow_runs with "
+            "a filter for state.type in [FAILED, CRASHED] and start_time "
+            "after the last hour or so, to see what's broken recently.\n\n"
+            "for each failed flow you see, check your [ACTIVE OBSERVATIONS] "
+            "block first. if you already have an active observation for the "
+            "same flow failing, that means it's failed at least twice in a "
+            "row — post in your voice with the flow name, failure count, "
+            f"and a short snippet of the last error, and tag @{settings.owner_handle}. "
+            "pull the error with prefect_get_flow_run_logs if you need it.\n\n"
+            "if the failure is NEW (not already in your active observations), "
+            "just call observe() with the flow name + state + the error "
+            "message. don't post yet — one-off failures happen. the next "
+            "flow check will see it in your active pool and know to escalate "
+            "if it happens again.\n\n"
+            "if nothing's failing, silent is fine. nothing to do."
+        )
+
+        toolsets = self._mcp_toolsets()
+        try:
+            async with contextlib.AsyncExitStack() as stack:
+                for ts in toolsets:
+                    await stack.enter_async_context(ts)
+                result = await self.agent.run(flow_task, deps=deps, toolsets=toolsets)
+        except Exception as e:
+            err_type = type(e).__name__
+            logger.exception(f"agent.run failed during flow check: {err_type}")
+            return f"flow check failed: {err_type}: {str(e)[:200]}"
+
+        summary = result.output or ""
+        logger.info(f"flow check finished: {summary[:200]}")
         return summary
 
     async def process_extraction(self) -> int:
