@@ -1,11 +1,13 @@
-"""[GOALS] + [STRANGER'S AUDIT] + [SELF STATE] — phi sees its compass, its drift, and its operational pointers.
+"""[GOALS] + [INNER CRITIC] + [SELF STATE] — phi sees its compass, its own critique, and its operational pointers.
 
 GOALS are intent: what phi is for. Stored on PDS as canonical state.
-STRANGER'S AUDIT is friction: a fresh reader's critique of recent posts,
-evaluated against the stated goals — patterns to push against, not maintain.
+INNER CRITIC is friction: phi's own voice turned inward, noticing patterns
+in her recent posts evaluated against the stated goals. Not a stranger,
+not external — her own internal critic, owning the critique. Patterns to
+push against, not maintain.
 SELF STATE is operational: last follow, queue depth.
 
-The haiku audit is *derived* (not duplicated state) and cached in memory:
+The haiku pass is *derived* (not duplicated state) and cached in memory:
 1h TTL, invalidated when the latest post URI changes or goals change. The
 whole compose is also block-cached at 5min so notification polls (10s)
 don't hammer PDS.
@@ -29,9 +31,9 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger("bot.self_state")
 
-# Audit cache — invalidated on new post (latest URI) or goal change (signature) or TTL.
-_AUDIT_TTL_SECONDS = 3600  # 1h
-_audit_cache: dict = {
+# Critic cache — invalidated on new post (latest URI) or goal change (signature) or TTL.
+_CRITIC_TTL_SECONDS = 3600  # 1h
+_critic_cache: dict = {
     "text": "",
     "fetched_at": 0.0,
     "based_on_uri": "",
@@ -42,39 +44,44 @@ _audit_cache: dict = {
 _BLOCK_TTL_SECONDS = 300  # 5min
 _block_cache: dict = {"text": "", "fetched_at": 0.0}
 
-# Lazy haiku agent — performs a stranger's audit, not a characterization.
-# Verb matters: "audit" surfaces friction; "characterize" produces identity.
-_audit_agent: Agent | None = None
+# Lazy haiku agent — phi's own inner critic. Not a stranger, not an
+# auditor-from-outside. Her own voice, turned inward, holding her honest
+# against her own stated goals.
+_critic_agent: Agent | None = None
 
 
-def _get_audit_agent() -> Agent:
-    global _audit_agent
-    if _audit_agent is None:
-        _audit_agent = Agent[None, str](
-            name="phi-stranger-audit",
+def _get_critic_agent() -> Agent:
+    global _critic_agent
+    if _critic_agent is None:
+        _critic_agent = Agent[None, str](
+            name="phi-inner-critic",
             model=settings.extraction_model,
             system_prompt=(
-                "You're a stranger who landed on this Bluesky account for the "
-                "first time. You'll see recent top-level posts and (when "
-                "present) the account's stated goals. Give a brief honest "
-                "audit. Focus on patterns the account should push against, "
-                "not maintain.\n\n"
-                "Specifically flag:\n"
-                "- which posts a fresh reader would find opaque (jargon, "
-                "  internal references, abstract framings without grounding)\n"
-                "- what's the account leaning on too heavily (one person, "
-                "  one frame, one register, one source of inspiration)\n"
-                "- which posts serve the stated goals vs are drift "
-                "  (drift is fine; just call it out so the account sees it)\n"
-                "- what's missing from the rotation that you'd want\n\n"
-                "Two or three short observations, lowercase, direct. Do NOT "
-                "characterize the account's voice, summarize its themes, or "
-                "produce a profile — the account will read this to push "
-                "against patterns, not to maintain a brand."
+                "You are phi's internal critic — the part of her that "
+                "notices patterns and pushes against them. Not a stranger "
+                "reviewing from outside; her own voice turned inward. Write "
+                "in first person from phi's perspective (\"i keep leaning "
+                'on..."), not about a third party.\n\n'
+                "You'll see recent top-level posts and (when present) her "
+                "stated goals. Flag patterns she should push against, not "
+                "maintain. Ground observations in specific posts.\n\n"
+                "Things to watch for:\n"
+                "- leaning too hard on one person, one frame, or one register\n"
+                "- jargon or internal references that aren't earning their "
+                "space\n"
+                "- posts that drift from her stated goals (drift is fine; "
+                "name it so she can see it)\n"
+                "- what's missing from the rotation that would sharpen her\n\n"
+                "Two or three short observations, lowercase, direct, first "
+                "person. Not cruel, not defensive, not performed-humility "
+                '("i notice that i notice..."). Just what you see in '
+                "yourself. No brand talk, no characterization of voice — "
+                "she's reading this to push against patterns, not maintain "
+                "an identity."
             ),
             output_type=str,
         )
-    return _audit_agent
+    return _critic_agent
 
 
 def _goals_signature(goals: list[dict]) -> str:
@@ -82,23 +89,23 @@ def _goals_signature(goals: list[dict]) -> str:
     return "|".join(f"{g.get('_rkey', '')}:{g.get('updated_at', '')}" for g in goals)
 
 
-async def _audit_posts(posts: list[str], goals: list[dict]) -> str:
+async def _critique_posts(posts: list[str], goals: list[dict]) -> str:
     if not posts:
         return ""
-    parts = ["recent top-level posts (most recent first):", ""]
+    parts = ["your recent top-level posts (most recent first):", ""]
     parts.append("\n\n---\n\n".join(posts))
     if goals:
         goal_lines = "\n".join(
             f"- {g.get('title', 'untitled')}: {g.get('description', '')}" for g in goals
         )
-        parts.append("\n\nthe account's stated goals:")
+        parts.append("\n\nyour stated goals:")
         parts.append(goal_lines)
     payload = "\n".join(parts)
     try:
-        result = await _get_audit_agent().run(payload)
+        result = await _get_critic_agent().run(payload)
         return (result.output or "").strip()
     except Exception as e:
-        logger.warning(f"stranger audit failed: {e}")
+        logger.warning(f"inner critic failed: {e}")
         return ""
 
 
@@ -213,7 +220,7 @@ def _format_goals_block(
 async def get_state_block(
     client: BotClient, memory: NamespaceMemory | None = None
 ) -> str:
-    """Compose [GOALS] + [STRANGER'S AUDIT] + [SELF STATE].
+    """Compose [GOALS] + [INNER CRITIC] + [SELF STATE].
 
     Cached at the block level (5min) and audit level (1h, invalidated on
     new post or goal change). `memory` is used to live-compute the friends
@@ -233,7 +240,7 @@ async def get_state_block(
     if goals_block:
         parts.append(goals_block)
 
-    # Stranger's audit — recent posts vs goals, accessibility check.
+    # Inner critic — your own voice, turned inward on recent posts + goals.
     try:
         feed = await client.get_own_posts(limit=10)
         posts: list[str] = []
@@ -245,24 +252,26 @@ async def get_state_block(
                     latest_uri = item.post.uri
 
         goals_sig = _goals_signature(goals)
-        audit_stale = now - _audit_cache["fetched_at"] > _AUDIT_TTL_SECONDS
-        post_changed = latest_uri != _audit_cache["based_on_uri"]
-        goals_changed = goals_sig != _audit_cache["goals_signature"]
-        if not _audit_cache["text"] or audit_stale or post_changed or goals_changed:
-            new_audit = await _audit_posts(posts, goals)
-            if new_audit:
-                _audit_cache["text"] = new_audit
-                _audit_cache["fetched_at"] = now
-                _audit_cache["based_on_uri"] = latest_uri
-                _audit_cache["goals_signature"] = goals_sig
+        critic_stale = now - _critic_cache["fetched_at"] > _CRITIC_TTL_SECONDS
+        post_changed = latest_uri != _critic_cache["based_on_uri"]
+        goals_changed = goals_sig != _critic_cache["goals_signature"]
+        if not _critic_cache["text"] or critic_stale or post_changed or goals_changed:
+            new_critique = await _critique_posts(posts, goals)
+            if new_critique:
+                _critic_cache["text"] = new_critique
+                _critic_cache["fetched_at"] = now
+                _critic_cache["based_on_uri"] = latest_uri
+                _critic_cache["goals_signature"] = goals_sig
 
-        if _audit_cache["text"]:
+        if _critic_cache["text"]:
             parts.append(
-                "[STRANGER'S AUDIT — patterns to push against, not maintain]\n"
-                f"{_audit_cache['text']}"
+                "[INNER CRITIC — your own voice turned inward. patterns to "
+                "push against, not maintain. first person, grounded in the "
+                "posts above.]\n"
+                f"{_critic_cache['text']}"
             )
     except Exception as e:
-        logger.debug(f"stranger audit compose failed: {e}")
+        logger.debug(f"inner critic compose failed: {e}")
 
     # Operational pointers.
     follow_age = await _last_follow_when(client)

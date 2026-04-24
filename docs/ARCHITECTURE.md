@@ -29,7 +29,7 @@ build notifications_context: per-notif fetch (post body, thread context,
   reply refs, embeds), pre-fetch stranger profiles for unfamiliar authors
   ↓
 PhiDeps assembled, system prompt composed:
-  identity / time / known relays / goals / stranger's audit / self state
+  identity / time / known relays / goals / inner critic / self state
   / notifications block / per-author memory / synthesized episodic / ...
   ↓
 agent.run() — tool calls happen inside (reply_to, like_post, etc.)

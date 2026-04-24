@@ -75,7 +75,7 @@ when phi processes a notification batch, the system prompt assembles blocks from
 
 ```
 [GOALS]                                ← intent (PDS)
-[STRANGER'S AUDIT]                     ← haiku critique of recent posts vs goals
+[INNER CRITIC]                         ← haiku critique of recent posts vs goals, first person
 [SELF STATE]                           ← last-follow age, queue depth
 [NEW NOTIFICATIONS]                    ← the batch itself
 [PHI'S SYNTHESIZED IMPRESSION]         ← per-author relationship summary (low trust)
@@ -92,7 +92,7 @@ see [system-prompt.md](system-prompt.md) for the full block-by-block reference (
 
 ## why episodic gets synthesized, observations don't
 
-episodic memory was getting raw top-K from the vector store dumped into the prompt — stale "pending X" notes appeared next to fresh ones with equal weight, no reconciliation against current PDS state. now `inject_episodic` fetches top-K, then a haiku pass takes phi's goals + the current query as context and produces a coherent block (deduped, recency-aware, contradictions flagged). same shape as `[STRANGER'S AUDIT]` does for posts.
+episodic memory was getting raw top-K from the vector store dumped into the prompt — stale "pending X" notes appeared next to fresh ones with equal weight, no reconciliation against current PDS state. now `inject_episodic` fetches top-K, then a haiku pass takes phi's goals + the current query as context and produces a coherent block (deduped, recency-aware, contradictions flagged). same shape as `[INNER CRITIC]` does for posts.
 
 per-author observation blocks aren't synthesized because they're already curated by reconciliation on write — by the time they hit the prompt they're an active set with no near-duplicates by design.
 
