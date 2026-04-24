@@ -11,8 +11,11 @@ whole compose is also block-cached at 5min so notification polls (10s)
 don't hammer PDS.
 """
 
+from __future__ import annotations
+
 import logging
 import time
+from typing import TYPE_CHECKING
 
 from pydantic_ai import Agent
 
@@ -20,6 +23,9 @@ from bot.config import settings
 from bot.core.atproto_client import BotClient
 from bot.core.goals import list_goals as list_goal_records
 from bot.utils.time import relative_when
+
+if TYPE_CHECKING:
+    from bot.memory import NamespaceMemory
 
 logger = logging.getLogger("bot.self_state")
 
@@ -118,7 +124,61 @@ async def _last_follow_when(client: BotClient) -> str:
         return ""
 
 
-def _format_goals_block(goals: list[dict]) -> str:
+async def _compute_friends_progress(
+    memory: NamespaceMemory | None,
+) -> list[tuple[str, int]]:
+    """Count handles with >=3 stored interactions in their namespace.
+
+    Cheap check against the `make 3 friends` goal — the frozen text in the
+    goal record says `currently: 0` but phi has in fact had substantive
+    exchanges. This computes the objective portion of the goal's
+    progress_signal live so phi reasons against current truth, not
+    author-intent text.
+
+    Excludes phi herself and the operator (nate); both match "non-nate"
+    exclusion from the goal definition. Devlog is not excluded — it's
+    nate's own testing account and phi can weigh it appropriately.
+
+    Returns [(handle, exchange_count), ...] sorted by count desc.
+    """
+    if memory is None:
+        return []
+    try:
+        user_prefix = f"{memory.NAMESPACES['users']}-"
+        page = memory.client.namespaces(prefix=user_prefix)
+    except Exception as e:
+        logger.debug(f"friends-progress: listing namespaces failed: {e}")
+        return []
+
+    excluded = {settings.bluesky_handle, settings.owner_handle}
+    results: list[tuple[str, int]] = []
+    for ns_summary in page.namespaces:
+        handle = ns_summary.id.removeprefix(user_prefix).replace("_", ".")
+        if handle in excluded:
+            continue
+        try:
+            user_ns = memory.client.namespace(ns_summary.id)
+            # top_k=10 is enough to tell "has >=3"; we cap the meaningful
+            # number at 10 exchanges anyway — more than that is just "a lot"
+            response = user_ns.query(
+                rank_by=("created_at", "desc"),
+                top_k=10,
+                filters={"kind": ["Eq", "interaction"]},
+                include_attributes=["kind"],
+            )
+            count = len(response.rows) if response.rows else 0
+            if count >= 3:
+                results.append((handle, count))
+        except Exception:
+            continue
+
+    results.sort(key=lambda t: (-t[1], t[0]))
+    return results
+
+
+def _format_goals_block(
+    goals: list[dict], friends_progress: list[tuple[str, int]]
+) -> str:
     if not goals:
         return ""
     lines = [
@@ -133,25 +193,43 @@ def _format_goals_block(goals: list[dict]) -> str:
             f"- {rkey_part}{g.get('title', 'untitled')}: {g.get('description', '')}"
         )
         if g.get("progress_signal"):
-            lines.append(f"  (progress = {g['progress_signal']})")
+            lines.append(f"  (definition: {g['progress_signal']})")
+        # Live-computed friends progress, appended for the make-3-friends
+        # goal. Identified heuristically by title; trivial to generalize
+        # later to a per-goal computed-progress map if more goals accrue.
+        if "friend" in g.get("title", "").lower() and friends_progress:
+            qualifying = ", ".join(
+                f"@{h} ({n}+)"[:100] for h, n in friends_progress[:8]
+            )
+            lines.append(
+                f"  current (computed): {len(friends_progress)} handles "
+                f"with ≥3 exchanges — {qualifying}"
+            )
+        elif "friend" in g.get("title", "").lower():
+            lines.append("  current (computed): 0 handles with ≥3 exchanges")
     return "\n".join(lines)
 
 
-async def get_state_block(client: BotClient) -> str:
+async def get_state_block(
+    client: BotClient, memory: NamespaceMemory | None = None
+) -> str:
     """Compose [GOALS] + [STRANGER'S AUDIT] + [SELF STATE].
 
     Cached at the block level (5min) and audit level (1h, invalidated on
-    new post or goal change).
+    new post or goal change). `memory` is used to live-compute the friends
+    progress count; if omitted, the computed line is skipped (goal record
+    text still renders).
     """
     now = time.time()
     if _block_cache["text"] and now - _block_cache["fetched_at"] < _BLOCK_TTL_SECONDS:
         return _block_cache["text"]
 
     goals = await list_goal_records(client)
+    friends_progress = await _compute_friends_progress(memory)
     parts: list[str] = []
 
     # Goals first — phi reads its anchors before reading critique of its work.
-    goals_block = _format_goals_block(goals)
+    goals_block = _format_goals_block(goals, friends_progress)
     if goals_block:
         parts.append(goals_block)
 

@@ -194,7 +194,7 @@ class PhiAgent:
         @self.agent.system_prompt(dynamic=True)
         async def inject_self_state() -> str:
             """How phi looks from outside + canonical pointers (last follow, queue)."""
-            return await get_state_block(bot_client)
+            return await get_state_block(bot_client, self.memory)
 
         @self.agent.system_prompt(dynamic=True)
         async def inject_active_observations() -> str:
