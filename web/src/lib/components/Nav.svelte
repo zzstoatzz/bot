@@ -3,7 +3,7 @@
 
 	const links = [
 		{ href: '/', label: 'phi' },
-		{ href: '/feed', label: 'feed' },
+		{ href: '/activity', label: 'activity' },
 		{ href: '/mind', label: 'mind' },
 		{ href: '/blog', label: 'blog' },
 		{ href: '/discovery', label: 'discovery' },

@@ -17,15 +17,19 @@
 	<header>
 		<h1>discovery</h1>
 		<p class="muted">
-			authors @{OWNER_HANDLE} has been liking lately. high-signal pool of attention. phi sees a
-			filtered version of this in her own context (with people she's already exchanged with removed).
+			what surfaces for attention. high-signal candidates phi sees in her prompt — strangers worth
+			considering. matches what phi sees: the upstream pool minus people she's already engaged with.
+		</p>
+		<p class="source faint">
+			source: @{OWNER_HANDLE}'s recent likes (one signal among possible others; future sources can
+			feed the same surface).
 		</p>
 	</header>
 
 	{#if !loaded}
 		<p class="faint">loading…</p>
 	{:else if entries.length === 0}
-		<p class="faint">no recent activity to show.</p>
+		<p class="faint">nothing surfacing right now.</p>
 	{:else}
 		{#each entries as entry (entry.did)}
 			<DiscoveryCard {entry} />
@@ -42,5 +46,10 @@
 		max-width: 600px;
 		font-size: 13px;
 		line-height: 1.5;
+	}
+
+	.source {
+		font-size: 12px;
+		margin-top: 8px;
 	}
 </style>

@@ -108,17 +108,17 @@ def _render(entries: list[_Entry]) -> str:
     return "\n".join(lines)
 
 
-async def get_discovery_pool_block(memory: NamespaceMemory | None) -> str:
-    """Fetch + filter + render the [DISCOVERY POOL] block. Cached 5min."""
-    now = time.time()
-    if _block_cache["text"] and now - _block_cache["fetched_at"] < _BLOCK_TTL_SECONDS:
-        return _block_cache["text"]
-
+async def get_filtered_pool(
+    memory: NamespaceMemory | None, top_n: int = TOP_N
+) -> list[_Entry]:
+    """Fetch the operator-likes pool, drop self + handles phi has already
+    interacted with, return the top-N. This is the canonical "what phi
+    actually sees in her prompt" view; the JSON API endpoint and the
+    rendered prompt block both compose from this single source of truth.
+    """
     raw = await _fetch_pool()
     if not raw:
-        _block_cache["text"] = ""
-        _block_cache["fetched_at"] = now
-        return ""
+        return []
 
     if memory is not None:
         kept: list[_Entry] = []
@@ -131,7 +131,17 @@ async def get_discovery_pool_block(memory: NamespaceMemory | None) -> str:
             kept.append(entry)
         raw = kept
 
-    block = _render(raw[:TOP_N])
+    return raw[:top_n]
+
+
+async def get_discovery_pool_block(memory: NamespaceMemory | None) -> str:
+    """Fetch + filter + render the [DISCOVERY POOL] block. Cached 5min."""
+    now = time.time()
+    if _block_cache["text"] and now - _block_cache["fetched_at"] < _BLOCK_TTL_SECONDS:
+        return _block_cache["text"]
+
+    entries = await get_filtered_pool(memory)
+    block = _render(entries)
     _block_cache["text"] = block
     _block_cache["fetched_at"] = now
     return block

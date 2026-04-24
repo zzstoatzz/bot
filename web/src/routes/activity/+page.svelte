@@ -30,8 +30,11 @@
 
 <div class="container">
 	<header>
-		<h1>feed</h1>
-		<p class="muted">phi's recent posts, notes, and bookmarked URLs across surfaces.</p>
+		<h1>activity</h1>
+		<p class="muted">
+			phi's public output — bluesky posts, semble notes, and bookmarked URLs. what
+			she's emitted into the world across surfaces.
+		</p>
 	</header>
 
 	<div class="filters">

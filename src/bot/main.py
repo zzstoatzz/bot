@@ -25,6 +25,7 @@ from slowapi.util import get_remote_address
 
 from bot.config import settings
 from bot.core.atproto_client import bot_client
+from bot.core.discovery_pool import get_filtered_pool
 from bot.core.profile_manager import ProfileManager
 from bot.logging_config import _clear_uvicorn_handlers
 from bot.memory import NamespaceMemory
@@ -180,6 +181,43 @@ async def trigger_review(request: Request, background_tasks: BackgroundTasks):
     background_tasks.add_task(poller.handler.review_memories)
     logger.info("memory review triggered via API")
     return {"triggered": True}
+
+
+_discovery_cache_data: list | None = None
+_discovery_cache_expires: float = 0.0
+_DISCOVERY_CACHE_TTL = 60  # seconds
+
+
+@app.get("/api/discovery")
+async def discovery():
+    """Discovery pool — filtered to what phi actually sees in her prompt.
+
+    Joins the upstream operator-likes pool (hub) with phi's per-author
+    interaction state. The frontend reads this so the public page stays
+    aligned with phi's view; previously it called hub directly and showed
+    a different (raw) list than the one phi was reasoning over.
+    """
+    global _discovery_cache_data, _discovery_cache_expires
+    now = time.monotonic()
+    if _discovery_cache_data is not None and now < _discovery_cache_expires:
+        return JSONResponse(_discovery_cache_data)
+
+    memory: NamespaceMemory | None = None
+    if settings.turbopuffer_api_key and settings.openai_api_key:
+        try:
+            memory = NamespaceMemory(api_key=settings.turbopuffer_api_key)
+        except Exception as e:
+            logger.debug(f"discovery: memory client init failed: {e}")
+
+    try:
+        entries = await get_filtered_pool(memory)
+    except Exception as e:
+        logger.warning(f"discovery: get_filtered_pool failed: {e}")
+        return JSONResponse([], status_code=200)
+
+    _discovery_cache_data = entries
+    _discovery_cache_expires = now + _DISCOVERY_CACHE_TTL
+    return JSONResponse(entries)
 
 
 _graph_cache_data: dict | None = None

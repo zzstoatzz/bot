@@ -17,7 +17,6 @@ import type {
 export const PHI_DID = 'did:plc:65sucjiel52gefhcdcypynsr';
 export const PHI_HANDLE = 'phi.zzstoatzz.io';
 export const OWNER_HANDLE = 'zzstoatzz.io';
-export const HUB_URL = 'https://hub.waow.tech';
 
 const BSKY_PUBLIC = 'https://public.api.bsky.app';
 const PDS_HOST = 'https://bsky.social';
@@ -139,12 +138,16 @@ export async function getBskyFeed(limit = 20): Promise<BskyFeedItem[]> {
 	return data.feed;
 }
 
-// --- hub discovery pool ---
+// --- discovery pool ---
+//
+// frontend calls the bot's /api/discovery (NOT hub directly), so the public
+// page reflects the same filtered list phi sees in her prompt — operator
+// likes minus handles phi has already exchanged with. single source of
+// truth lives in bot/core/discovery_pool.py:get_filtered_pool.
 
-export async function getDiscoveryPool(maxAuthors = 30): Promise<DiscoveryEntry[]> {
-	const url = `${HUB_URL}/api/agents/discovery-pool?max_authors=${maxAuthors}`;
+export async function getDiscoveryPool(): Promise<DiscoveryEntry[]> {
 	try {
-		const res = await fetch(url);
+		const res = await fetch('/api/discovery');
 		if (!res.ok) return [];
 		return await res.json();
 	} catch {

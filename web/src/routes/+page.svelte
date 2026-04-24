@@ -74,7 +74,7 @@
 	<section>
 		<div class="section-header">
 			<h2>recent activity</h2>
-			<a href="/feed" class="more">see all →</a>
+			<a href="/activity" class="more">see all →</a>
 		</div>
 		{#if !loaded}
 			<p class="faint">loading…</p>
