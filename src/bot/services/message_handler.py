@@ -358,9 +358,9 @@ class MessageHandler:
             except Exception as e:
                 logger.exception(f"relay check failed: {e}")
 
-    async def check_flows(self):
-        """Run a scheduled prefect flow check — same shape as relay check."""
-        with logfire.span("flow check"):
+    async def check_prefect(self):
+        """Scheduled look at the operator's prefect instance — same shape as relay check."""
+        with logfire.span("prefect check"):
             recent_posts: list[str] = []
             try:
                 feed = await self.client.get_own_posts(limit=10)
@@ -368,15 +368,15 @@ class MessageHandler:
                     if hasattr(item.post.record, "text"):
                         recent_posts.append(item.post.record.text)
             except Exception as e:
-                logger.warning(f"failed to fetch recent posts for flow check: {e}")
+                logger.warning(f"failed to fetch recent posts for prefect check: {e}")
 
             try:
-                summary = await self.agent.process_flow_check(
+                summary = await self.agent.process_prefect_check(
                     recent_posts=recent_posts or None,
                 )
-                logger.info(f"flow check: {summary[:200]}")
+                logger.info(f"prefect check: {summary[:200]}")
             except Exception as e:
-                logger.exception(f"flow check failed: {e}")
+                logger.exception(f"prefect check failed: {e}")
 
     async def review_memories(self):
         """Run the dream/distill pass — review observations with distance."""

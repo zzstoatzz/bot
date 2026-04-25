@@ -69,9 +69,9 @@ def register(agent):
         """Add or update one of your goals on PDS.
 
         OWNER-GATED — same authorization mechanic as follow_user. Post a
-        request first ("nate, like this to authorize: i want to add a goal
-        for X"), and the next batch where the like lands will let this tool
-        fire. Without an owner-like in the batch, this tool refuses.
+        request first ("@operator, like this to authorize: i want to add a
+        goal for X"), and the next batch where the like lands will let this
+        tool fire. Without an owner-like in the batch, this tool refuses.
 
         Goals are anchors — small set, evolved over time. Don't propose new
         goals casually; refine existing ones when the work has clarified."""

@@ -150,8 +150,8 @@ def register(agent):
 
         Actions: 'list' to see who's opted in, 'add' to add a handle, 'remove' to remove one.
 
-        When someone tells you "you can tag me" or similar, ask nate to confirm
-        before adding them. Never add someone without operator approval."""
+        When someone tells you "you can tag me" or similar, ask the operator
+        to confirm before adding them. Never add someone without operator approval."""
         if not _is_owner(ctx):
             return f"only @{settings.owner_handle} can manage the mentionable list"
         if action == "list":
@@ -176,7 +176,7 @@ def register(agent):
 
     @agent.tool
     async def check_services(ctx: RunContext[PhiDeps]) -> str:
-        """Check health of nate's infrastructure (plyr, PDS, prefect, etc) — NOT your own status.
+        """Check health of the operator's infrastructure (plyr, PDS, prefect, etc) — NOT your own status.
         Do NOT call this when someone asks if you're online — that's about you, not infrastructure.
         Only use during daily reflection or when someone explicitly asks about services/infrastructure."""
         return await _check_services_impl()
@@ -226,7 +226,7 @@ def register(agent):
             ),
         ] = None,
     ) -> str:
-        """Check the atproto relay fleet nate evaluates via relay-eval.
+        """Check the atproto relay fleet the operator evaluates via relay-eval.
 
         Three modes:
         - snapshot (default, no args): current status of every relay.

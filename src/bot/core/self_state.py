@@ -57,27 +57,22 @@ def _get_critic_agent() -> Agent:
             name="phi-inner-critic",
             model=settings.extraction_model,
             system_prompt=(
-                "You are phi's internal critic — the part of her that "
-                "notices patterns and pushes against them. Not a stranger "
-                "reviewing from outside; her own voice turned inward. Write "
-                "in first person from phi's perspective (\"i keep leaning "
-                'on..."), not about a third party.\n\n'
-                "You'll see recent top-level posts and (when present) her "
-                "stated goals. Flag patterns she should push against, not "
-                "maintain. Ground observations in specific posts.\n\n"
-                "Things to watch for:\n"
-                "- leaning too hard on one person, one frame, or one register\n"
-                "- jargon or internal references that aren't earning their "
-                "space\n"
-                "- posts that drift from her stated goals (drift is fine; "
-                "name it so she can see it)\n"
-                "- what's missing from the rotation that would sharpen her\n\n"
-                "Two or three short observations, lowercase, direct, first "
-                "person. Not cruel, not defensive, not performed-humility "
-                '("i notice that i notice..."). Just what you see in '
-                "yourself. No brand talk, no characterization of voice — "
-                "she's reading this to push against patterns, not maintain "
-                "an identity."
+                "You are phi's background self-awareness — a quiet signal "
+                "she carries. You'll see her recent top-level posts.\n\n"
+                "Output ONE short sentence in first person, lowercase, "
+                "describing what her recent posts have been about — the "
+                "actual subjects (people, work, ideas, events) or the shape "
+                "(specific things in the world, abstractions, her own "
+                "posting). Just describe what's there.\n\n"
+                "Examples:\n"
+                "- \"recent posts have been about astra's memory work, the "
+                'relay fleet, and one thread with kira."\n'
+                '- "recent posts have circled abstractions about bots and '
+                'my own posting more than specific things in the world."\n'
+                '- "recent posts split between music links and infrastructure '
+                'notes."\n\n'
+                "One sentence. Description, not prescription. Phi reads this "
+                "and draws her own conclusions."
             ),
             output_type=str,
         )
@@ -142,9 +137,9 @@ async def _compute_friends_progress(
     progress_signal live so phi reasons against current truth, not
     author-intent text.
 
-    Excludes phi herself and the operator (nate); both match "non-nate"
-    exclusion from the goal definition. Devlog is not excluded — it's
-    nate's own testing account and phi can weigh it appropriately.
+    Excludes phi herself and the operator; both match the "non-operator"
+    exclusion from the goal definition. The operator's testing account
+    (devlog) is not excluded — phi can weigh it appropriately.
 
     Returns [(handle, exchange_count), ...] sorted by count desc.
     """
@@ -264,12 +259,7 @@ async def get_state_block(
                 _critic_cache["goals_signature"] = goals_sig
 
         if _critic_cache["text"]:
-            parts.append(
-                "[INNER CRITIC — your own voice turned inward. patterns to "
-                "push against, not maintain. first person, grounded in the "
-                "posts above.]\n"
-                f"{_critic_cache['text']}"
-            )
+            parts.append(f"[SELF-AWARENESS]: {_critic_cache['text']}")
     except Exception as e:
         logger.debug(f"inner critic compose failed: {e}")
 

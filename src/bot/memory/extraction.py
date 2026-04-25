@@ -93,9 +93,9 @@ observations: [{"content": "learning rust for systems programming", "tags": ["ru
 reason: the user stated something about themselves directly.
 </example>
 <example>
-user: my name isn't zoë, it's nate.
-bot: sorry about that — you're nate. bad breadcrumb on my end.
-observations: [{"content": "name is nate (corrected from previous error)", "tags": ["correction"]}]
+user: my name isn't zoë, it's sam.
+bot: sorry about that — you're sam. bad breadcrumb on my end.
+observations: [{"content": "name is sam (corrected from previous error)", "tags": ["correction"]}]
 reason: the user explicitly corrected a factual error. corrections are high-value observations.
 </example>
 <example>
@@ -122,7 +122,7 @@ Decide one action:
 - DELETE: the existing observation is wrong, outdated, or fully redundant given the new one. the new one will be stored separately.
 - NOOP: the new observation adds nothing beyond what already exists. discard it.
 
-Corrections (e.g., "name is nate, corrected from previous error") always win over the entry they correct — use UPDATE or DELETE.
+Corrections (e.g., "name is sam, corrected from previous error") always win over the entry they correct — use UPDATE or DELETE.
 When in doubt between ADD and NOOP, prefer NOOP. memory should be lean."""
 
 _reconciliation_agent: Agent[None, ReconciliationResult] | None = None

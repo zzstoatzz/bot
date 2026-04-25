@@ -35,7 +35,7 @@ class NotificationPoller:
         # scheduled monitor check state (relay + prefect flows are
         # independently scheduled — different cadences, different sources)
         self._polls_since_last_monitor_check: int = 0
-        self._polls_since_last_flow_check: int = 0
+        self._polls_since_last_prefect_check: int = 0
 
     async def start(self) -> asyncio.Task:
         """Start polling for notifications."""
@@ -126,7 +126,7 @@ class NotificationPoller:
 
         while self._running:
             self._polls_since_last_monitor_check += 1
-            self._polls_since_last_flow_check += 1
+            self._polls_since_last_prefect_check += 1
 
             try:
                 await self._check_notifications()
@@ -161,12 +161,12 @@ class NotificationPoller:
                 logger.error(f"monitor check error: {e}", exc_info=settings.debug)
 
             try:
-                if self._should_check_flows():
-                    task = asyncio.create_task(self._maybe_check_flows())
+                if self._should_check_prefect():
+                    task = asyncio.create_task(self._maybe_check_prefect())
                     self._background_tasks.add(task)
                     task.add_done_callback(self._background_tasks.discard)
             except Exception as e:
-                logger.error(f"flow check error: {e}", exc_info=settings.debug)
+                logger.error(f"prefect check error: {e}", exc_info=settings.debug)
 
             try:
                 await asyncio.sleep(settings.notification_poll_interval)
@@ -322,23 +322,23 @@ class NotificationPoller:
         except Exception as e:
             logger.error(f"monitor check error: {e}", exc_info=settings.debug)
 
-    # --- scheduled prefect flow check ---
+    # --- scheduled prefect check ---
 
-    def _should_check_flows(self) -> bool:
-        """Check if it's time for a scheduled prefect flow check."""
+    def _should_check_prefect(self) -> bool:
+        """Check if it's time for a scheduled look at the operator's prefect instance."""
         if bot_status.paused:
             return False
         if not settings.prefect_api_auth_string:
             return False  # no creds, no check
-        if self._polls_since_last_flow_check < settings.flow_check_interval_polls:
+        if self._polls_since_last_prefect_check < settings.prefect_check_interval_polls:
             return False
         return True
 
-    async def _maybe_check_flows(self):
-        """Run a scheduled prefect flow check."""
-        self._polls_since_last_flow_check = 0
-        logger.info("triggering flow check")
+    async def _maybe_check_prefect(self):
+        """Run a scheduled look at the operator's prefect instance."""
+        self._polls_since_last_prefect_check = 0
+        logger.info("triggering prefect check")
         try:
-            await self.handler.check_flows()
+            await self.handler.check_prefect()
         except Exception as e:
-            logger.error(f"flow check error: {e}", exc_info=settings.debug)
+            logger.error(f"prefect check error: {e}", exc_info=settings.debug)

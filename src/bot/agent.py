@@ -17,6 +17,8 @@ from bot.core.discovery_pool import get_discovery_pool_block
 from bot.core.goals import list_goals as list_goal_records
 from bot.core.graze_client import GrazeClient
 from bot.core.observations import list_active as list_active_observations
+from bot.core.operator import get_operator_profile
+from bot.core.owned_feeds import get_owned_feeds_block
 from bot.core.recent_operations import get_operations_block
 from bot.core.self_state import get_state_block
 from bot.memory.extraction import EXTRACTION_SYSTEM_PROMPT, ExtractionResult
@@ -179,6 +181,17 @@ class PhiAgent:
             return await get_identity_block()
 
         @self.agent.system_prompt(dynamic=True)
+        async def inject_operator() -> str:
+            """[OPERATOR] — resolved profile of the bot's owner."""
+            profile = await get_operator_profile()
+            if not profile:
+                return ""
+            name = profile["display_name"]
+            handle = profile["handle"]
+            did = profile["did"]
+            return f"[OPERATOR]: {name} (@{handle}, {did})"
+
+        @self.agent.system_prompt(dynamic=True)
         def inject_today() -> str:
             now = datetime.now(UTC)
             return f"[NOW]: {now.strftime('%Y-%m-%d %H:%M UTC')}"
@@ -331,6 +344,15 @@ class PhiAgent:
             if not lookups:
                 return ""
             return "\n\n".join(lookups.values())
+
+        @self.agent.system_prompt(dynamic=True)
+        async def inject_owned_feeds() -> str:
+            """[OWNED FEEDS] — phi's curated graze feeds, surfaced by name."""
+            try:
+                return await get_owned_feeds_block(self.graze_client)
+            except Exception as e:
+                logger.debug(f"owned feeds inject failed: {e}")
+                return ""
 
         @self.agent.system_prompt(dynamic=True)
         async def inject_public_memory() -> str:
@@ -631,11 +653,13 @@ class PhiAgent:
         )
 
         musing_task = (
-            "you have a moment. post something if you want to, or don't. "
-            "your recent posts are in [YOUR RECENT POSTS] — don't repeat yourself. "
-            "if you're riffing on something specific, include the link so readers "
-            "can find it — a post that references something without linking to it "
-            "is vague."
+            "you have a moment. look around — your owned feeds, the "
+            "discovery pool, the timeline, the network, the open web. "
+            "find something specific that's caught your interest: a post, "
+            "a paper, a track, a thread, a piece of writing, something "
+            "the operator or someone you watch is engaged with. post about "
+            "it in your voice, with a link so others can find it. silence "
+            "is fine."
         )
 
         toolsets = self._mcp_toolsets()
@@ -684,7 +708,8 @@ class PhiAgent:
             "one as it happens.\n\n"
             f"only post immediately (and tag @{settings.owner_handle}) in "
             "either of these cases: (1) any *.waow.tech relay is degraded "
-            "or worse — those are nate's own, he needs to know now; (2) "
+            "or worse — those are the operator's own, they need to know "
+            "now; (2) "
             "the whole fleet is degraded or worse — that's fleet-wide and "
             "needs immediate visibility. write the post in your voice with "
             "the factual change, group multiple transitions into one post.\n\n"
@@ -707,17 +732,14 @@ class PhiAgent:
         logger.info(f"relay check finished: {summary[:200]}")
         return summary
 
-    async def process_flow_check(self, recent_posts: list[str] | None = None) -> str:
-        """Scheduled prefect flow check. Same pattern as relay check.
+    async def process_prefect_check(self, recent_posts: list[str] | None = None) -> str:
+        """Scheduled look at the operator's prefect instance.
 
-        Uses the prefect MCP tools to see recent flow run states. Observes
-        failures into the active attention pool on first sight; only posts +
-        tags @owner when a given flow has failed repeatedly. The active-
-        observations block in phi's prompt naturally does the de-dup: first
-        failure = silently noticed; same flow failing again = persistent
-        problem worth raising.
+        The operator runs their automation in prefect and wants to know when
+        something they care about is persistently broken. Phi has read
+        access; she decides what to look at and what's worth saying.
         """
-        logger.info("processing flow check")
+        logger.info("processing prefect check")
 
         recent_activity = ""
         if recent_posts:
@@ -730,22 +752,15 @@ class PhiAgent:
             recent_activity=recent_activity,
         )
 
-        flow_task = (
-            "scheduled prefect flow check. call prefect_get_flow_runs with "
-            "a filter for state.type in [FAILED, CRASHED] and start_time "
-            "after the last hour or so, to see what's broken recently.\n\n"
-            "for each failed flow you see, check your [ACTIVE OBSERVATIONS] "
-            "block first. if you already have an active observation for the "
-            "same flow failing, that means it's failed at least twice in a "
-            "row — post in your voice with the flow name, failure count, "
-            f"and a short snippet of the last error, and tag @{settings.owner_handle}. "
-            "pull the error with prefect_get_flow_run_logs if you need it.\n\n"
-            "if the failure is NEW (not already in your active observations), "
-            "just call observe() with the flow name + state + the error "
-            "message. don't post yet — one-off failures happen. the next "
-            "flow check will see it in your active pool and know to escalate "
-            "if it happens again.\n\n"
-            "if nothing's failing, silent is fine. nothing to do."
+        task = (
+            "you have a moment. you have read access to the operator's "
+            "prefect instance — that's where their automation runs and they "
+            "want to know when something they care about is persistently "
+            "broken.\n\n"
+            "transient hiccups that already self-resolved aren't news. "
+            "persistent breakage with no path to fixing itself is — tag "
+            f"@{settings.owner_handle} in that case. silence is the right "
+            "answer most of the time."
         )
 
         toolsets = self._mcp_toolsets()
@@ -753,14 +768,14 @@ class PhiAgent:
             async with contextlib.AsyncExitStack() as stack:
                 for ts in toolsets:
                     await stack.enter_async_context(ts)
-                result = await self.agent.run(flow_task, deps=deps, toolsets=toolsets)
+                result = await self.agent.run(task, deps=deps, toolsets=toolsets)
         except Exception as e:
             err_type = type(e).__name__
-            logger.exception(f"agent.run failed during flow check: {err_type}")
-            return f"flow check failed: {err_type}: {str(e)[:200]}"
+            logger.exception(f"agent.run failed during prefect check: {err_type}")
+            return f"prefect check failed: {err_type}: {str(e)[:200]}"
 
         summary = result.output or ""
-        logger.info(f"flow check finished: {summary[:200]}")
+        logger.info(f"prefect check finished: {summary[:200]}")
         return summary
 
     async def process_extraction(self) -> int:

@@ -1,5 +1,6 @@
 from typing import Literal, Self
 
+from atproto_client.models.string_formats import Did, Handle
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -126,10 +127,11 @@ class Settings(BaseSettings):
         default=None, description="Bearer token for /api/control endpoints"
     )
 
-    # Owner identity (for permission-gated tools)
-    owner_handle: str = Field(
+    # Owner identity — handle or DID. Resolved to a profile (with display
+    # name) at runtime via the atproto SDK; see core.operator.
+    owner_handle: Handle | Did = Field(
         default="zzstoatzz.io",
-        description="Handle of the bot's owner (for permission-gated tools)",
+        description="Handle or DID of the bot's owner (permission-gated tools)",
     )
 
     # Relay fleet monitoring — phi polls relay-eval on a schedule and
@@ -163,9 +165,9 @@ class Settings(BaseSettings):
             "x-prefect-api-auth-string header. Set via fly secret."
         ),
     )
-    flow_check_interval_polls: int = Field(
+    prefect_check_interval_polls: int = Field(
         default=360,  # 360 polls * 10s = 3600s = 1h
-        description="Min polls between scheduled prefect flow checks (~1h)",
+        description="Min polls between scheduled prefect checks (~1h)",
     )
 
     # Discovery pool — generic agents endpoint serving authors the operator
