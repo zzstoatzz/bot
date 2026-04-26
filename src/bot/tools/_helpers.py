@@ -25,18 +25,12 @@ class PhiDeps:
     memory: NamespaceMemory | None = None
     thread_uri: str | None = None
     thread_context: str | None = None
-    last_post_text: str | None = None
-    recent_activity: str | None = None
-    service_health: str | None = None
     # batch-of-notifications context: maps notification post URI -> per-notif data
     # populated by the message handler before calling agent.run; consumed by the
     # trusted posting tools (reply_to / like_post / repost_post) to look up cids,
     # parent/root refs, author handles, post text, etc, and by the dynamic system
     # prompts to format the notifications block + per-author memory blocks.
     notifications_context: dict | None = None
-    # pre-fetched stranger lookups, keyed by author handle. populated eagerly
-    # for any unfamiliar authors in the current notifications batch.
-    author_lookups: dict[str, str] | None = None
 
 
 def _is_owner(ctx: RunContext[PhiDeps]) -> bool:

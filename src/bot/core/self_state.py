@@ -76,7 +76,9 @@ def _get_critic_agent() -> Agent:
             ),
             output_type=str,
         )
-    return _critic_agent
+    agent = _critic_agent
+    assert agent is not None
+    return agent
 
 
 def _goals_signature(goals: list[dict]) -> str:

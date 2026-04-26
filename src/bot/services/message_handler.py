@@ -310,73 +310,26 @@ class MessageHandler:
                 logger.exception(f"batch handler error: {e}")
                 bot_status.record_error()
 
+    async def _run_scheduled(self, span_name: str, call):
+        """Common wrapper for scheduled agent paths."""
+        with logfire.span(span_name):
+            try:
+                summary = await call()
+                logger.info(f"{span_name}: {summary[:200]}")
+            except Exception as e:
+                logger.exception(f"{span_name} failed: {e}")
+
     async def original_thought(self):
-        """Generate and post an original thought if phi has something to say.
-
-        The agent uses the `post` tool inside its run if it decides to post.
-        """
-        with logfire.span("original thought"):
-            recent_posts: list[str] = []
-            try:
-                # Pull 10 recent top-level posts so the musing agent can scan
-                # for duplication across a real history window, not just the
-                # last few posts.
-                feed = await self.client.get_own_posts(limit=10)
-                for item in feed:
-                    if hasattr(item.post.record, "text"):
-                        recent_posts.append(item.post.record.text)
-            except Exception as e:
-                logger.warning(f"failed to fetch recent posts for musing: {e}")
-
-            try:
-                summary = await self.agent.process_musing(
-                    recent_posts=recent_posts or None,
-                )
-                logger.info(f"original thought: {summary[:200]}")
-            except Exception as e:
-                logger.exception(f"original thought failed: {e}")
+        """Generate and post an original thought if phi has something to say."""
+        await self._run_scheduled("original thought", self.agent.process_musing)
 
     async def check_relays(self):
         """Run a scheduled relay-fleet check and let phi decide whether to post."""
-        with logfire.span("relay check"):
-            recent_posts: list[str] = []
-            try:
-                # Pass phi's recent posts so the agent can avoid restating
-                # what it already reported.
-                feed = await self.client.get_own_posts(limit=10)
-                for item in feed:
-                    if hasattr(item.post.record, "text"):
-                        recent_posts.append(item.post.record.text)
-            except Exception as e:
-                logger.warning(f"failed to fetch recent posts for relay check: {e}")
-
-            try:
-                summary = await self.agent.process_relay_check(
-                    recent_posts=recent_posts or None,
-                )
-                logger.info(f"relay check: {summary[:200]}")
-            except Exception as e:
-                logger.exception(f"relay check failed: {e}")
+        await self._run_scheduled("relay check", self.agent.process_relay_check)
 
     async def check_prefect(self):
-        """Scheduled look at the operator's prefect instance — same shape as relay check."""
-        with logfire.span("prefect check"):
-            recent_posts: list[str] = []
-            try:
-                feed = await self.client.get_own_posts(limit=10)
-                for item in feed:
-                    if hasattr(item.post.record, "text"):
-                        recent_posts.append(item.post.record.text)
-            except Exception as e:
-                logger.warning(f"failed to fetch recent posts for prefect check: {e}")
-
-            try:
-                summary = await self.agent.process_prefect_check(
-                    recent_posts=recent_posts or None,
-                )
-                logger.info(f"prefect check: {summary[:200]}")
-            except Exception as e:
-                logger.exception(f"prefect check failed: {e}")
+        """Scheduled look at the operator's prefect instance."""
+        await self._run_scheduled("prefect check", self.agent.process_prefect_check)
 
     async def review_memories(self):
         """Run the dream/distill pass — review observations with distance."""
@@ -401,23 +354,8 @@ class MessageHandler:
             except Exception as e:
                 logger.warning(f"extraction during reflection failed: {e}")
 
-            # Fetch the last 10 top-level posts so the reflection agent can
-            # scan ALL of them for duplication, not just the most recent one.
-            # Earlier this fetched limit=1, which let phi correctly avoid
-            # duplicating her newest post but blindly duplicate older ones.
-            recent_posts: list[str] = []
             try:
-                feed = await self.client.get_own_posts(limit=10)
-                for item in feed:
-                    if hasattr(item.post.record, "text"):
-                        recent_posts.append(item.post.record.text)
-            except Exception as e:
-                logger.warning(f"failed to fetch recent posts for reflection: {e}")
-
-            try:
-                summary = await self.agent.process_reflection(
-                    recent_posts=recent_posts or None
-                )
+                summary = await self.agent.process_reflection()
                 logger.info(f"daily reflection: {summary[:200]}")
             except Exception as e:
                 logger.exception(f"daily reflection failed: {e}")

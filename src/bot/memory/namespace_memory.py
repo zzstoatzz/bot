@@ -143,7 +143,9 @@ def _get_episodic_synth_agent() -> Agent:
             ),
             output_type=str,
         )
-    return _episodic_synth_agent
+    agent = _episodic_synth_agent
+    assert agent is not None
+    return agent
 
 
 async def _synthesize_episodic(

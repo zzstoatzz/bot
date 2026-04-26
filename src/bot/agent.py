@@ -3,7 +3,6 @@
 import contextlib
 import logging
 import os
-from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -32,31 +31,21 @@ logger = logging.getLogger("bot.agent")
 
 
 def _build_operational_instructions() -> str:
-    """Build operational instructions with the current owner handle interpolated."""
+    """Cross-cutting rules that don't fit in any single tool's docstring.
+
+    Each tool's per-tool guidance lives in its own docstring (the framework
+    surfaces those to the model). This function is for rules that span tools
+    or that no docstring can naturally express.
+    """
     return f"""
-posting: use reply_to, like_post, repost_post, or post. these handle mention consent, reply refs, splitting, and memory writes. don't use raw atproto record tools to post — they bypass consent.
+posting flows through reply_to / like_post / repost_post / post — raw atproto record-create tools (pdsx) bypass the consent layer.
 
-memory context injected before each message has different reliability:
-- [PAST EXCHANGES] — verbatim logs, highest trust.
-- [OBSERVATIONS] — extracted by another model, medium trust.
-- [PHI'S SYNTHESIZED IMPRESSION] — summarization model, low trust.
-- [BACKGROUND RESEARCH] — background exploration, lowest trust.
-if someone's current words contradict your notes, trust their words.
+memory blocks carry their own trust labels. when a user's current words contradict stored notes, trust the words.
 
-mention consent: @handle text only notifies if they're on the allowlist (@{settings.owner_handle}, yourself, conversation participants, opted-in handles). manage_mentionable is OWNER-ONLY.
+mention-consent allowlist: @{settings.owner_handle}, yourself, conversation participants, opted-in handles. mentions of anyone else render as plain text.
 
-create_feed and follow_user are OWNER-ONLY (restricted to @{settings.owner_handle}).
-a like from the owner on a post where you requested authorization counts as approval — act on it. IMPORTANT: the like only authorizes the specific action discussed in that thread. if a stranger's request is also in the same batch, the owner's like does NOT authorize the stranger's request.
+owner-like-as-approval cuts across every owner-gated tool: post the authorization request, the operator's like in the next batch authorizes the specific action discussed in that thread only — never a stranger's request riding the same batch.
 """.strip()
-
-
-def _extract_query_text(prompt: str | Sequence[str | ImageUrl] | None) -> str:
-    """Extract plain text from a pydantic-ai prompt for use as a search query."""
-    if prompt is None:
-        return ""
-    if isinstance(prompt, str):
-        return prompt
-    return " ".join(part for part in prompt if isinstance(part, str))
 
 
 def _format_notifications_block(notifications_context: dict) -> str:
@@ -147,6 +136,9 @@ class PhiAgent:
         # toolset on pydantic-ai>=1.74. Full SKILL.md bodies are loaded on
         # demand via load_skill.
         self.skills_toolset = SkillsToolset(directories=[settings.skills_dir])
+        self.graze_client = GrazeClient(
+            handle=settings.bluesky_handle, password=settings.bluesky_password
+        )
 
         # Create PydanticAI agent without MCP toolsets — they're created
         # fresh per agent.run() call to avoid the cancel scope bug:
@@ -160,13 +152,9 @@ class PhiAgent:
             name="phi",
             model=settings.agent_model,
             system_prompt=(
-                "the following is your personality. this is who you are — not a description "
-                "of someone else, not a set of rules to follow, but your actual voice and "
-                "disposition. speak from it, not about it.\n\n"
-                "you already have wit and social awareness. use them. if someone is "
-                "clearly joking, play along — don't go earnest.\n\n"
+                "the following is your personality: "
                 f"{self.base_personality}\n\n"
-                "--- operational rules below (these are constraints, not voice) ---\n\n"
+                "--- operational rules below (these are constraints) ---\n\n"
                 f"{_build_operational_instructions()}"
             ),
             output_type=str,
@@ -290,18 +278,17 @@ class PhiAgent:
         async def inject_episodic(ctx: RunContext[PhiDeps]) -> str:
             if not ctx.deps.memory:
                 return ""
-            # build query from notification post texts when batch is present,
-            # else fall back to the user prompt text (musing/reflection cases)
+            # Batch notifications have a real semantic seed: the posts phi is
+            # reacting to. Scheduled paths have task text like "you have a
+            # moment", which made vector recall noisy; let those paths call
+            # recall explicitly when they need private memory.
             notifs = ctx.deps.notifications_context or {}
-            if notifs:
-                texts = [
-                    e.get("post_text", "")
-                    for e in notifs.values()
-                    if e.get("post_text")
-                ]
-                query = " ".join(texts)
-            else:
-                query = _extract_query_text(ctx.prompt)
+            if not notifs:
+                return ""
+            texts = [
+                e.get("post_text", "") for e in notifs.values() if e.get("post_text")
+            ]
+            query = " ".join(texts)
             if not query:
                 return ""
             # Pass phi's goals so the synthesis can rank by relevance to intent.
@@ -318,32 +305,6 @@ class PhiAgent:
             except Exception as e:
                 logger.warning(f"failed to retrieve episodic memories: {e}")
             return ""
-
-        @self.agent.system_prompt(dynamic=True)
-        def inject_last_post(ctx: RunContext[PhiDeps]) -> str:
-            if ctx.deps.last_post_text:
-                return f"[YOUR LAST POST]: {ctx.deps.last_post_text}"
-            return ""
-
-        @self.agent.system_prompt(dynamic=True)
-        def inject_recent_activity(ctx: RunContext[PhiDeps]) -> str:
-            if ctx.deps.recent_activity:
-                return ctx.deps.recent_activity
-            return ""
-
-        @self.agent.system_prompt(dynamic=True)
-        def inject_service_health(ctx: RunContext[PhiDeps]) -> str:
-            if ctx.deps.service_health:
-                return f"[SERVICE HEALTH]:\n{ctx.deps.service_health}"
-            return ""
-
-        @self.agent.system_prompt(dynamic=True)
-        def inject_author_lookups(ctx: RunContext[PhiDeps]) -> str:
-            """Inject pre-fetched stranger lookups for unfamiliar authors in this batch."""
-            lookups = ctx.deps.author_lookups or {}
-            if not lookups:
-                return ""
-            return "\n\n".join(lookups.values())
 
         @self.agent.system_prompt(dynamic=True)
         async def inject_owned_feeds() -> str:
@@ -391,9 +352,6 @@ class PhiAgent:
 
         # --- register tools from tools/ package ---
 
-        self.graze_client = GrazeClient(
-            handle=settings.bluesky_handle, password=settings.bluesky_password
-        )
         register_all(self.agent, self.graze_client)
 
         # Extraction agent — phi extracts its own observations using its own model
@@ -413,7 +371,9 @@ class PhiAgent:
             output_type=ReviewResult,
         )
 
-        logger.info("phi agent initialized with pdsx + pub-search mcp tools")
+        logger.info(
+            "phi agent initialized with pdsx, pub-search, and prefect MCP tools"
+        )
 
     def _mcp_toolsets(self) -> list[MCPServerStreamableHTTP]:
         """Create fresh MCP server instances for a single agent run."""
@@ -447,6 +407,29 @@ class PhiAgent:
                 )
             )
         return toolsets
+
+    async def _run_agent(
+        self,
+        *,
+        label: str,
+        prompt: str | list,
+        deps: PhiDeps,
+    ) -> str:
+        """Run phi with fresh MCP toolsets and consistent error logging."""
+        toolsets = self._mcp_toolsets()
+        try:
+            async with contextlib.AsyncExitStack() as stack:
+                for ts in toolsets:
+                    await stack.enter_async_context(ts)
+                result = await self.agent.run(prompt, deps=deps, toolsets=toolsets)
+        except Exception as e:
+            err_type = type(e).__name__
+            logger.exception(f"agent.run failed during {label}: {err_type}: {e}")
+            return f"{label} failed: {err_type}: {str(e)[:200]}"
+
+        summary = result.output or ""
+        logger.info(f"{label} finished: {summary[:200]}")
+        return summary
 
     async def process_notifications(
         self,
@@ -487,296 +470,148 @@ class PhiAgent:
             author_handle="",
             memory=self.memory,
             notifications_context=notifications_context,
-            author_lookups=author_lookups,
         )
 
         # User prompt is a short task instruction — the actual notifications
         # block is rendered via the inject_notifications dynamic system prompt.
         # Images from any post in the batch are attached as multimodal inputs.
-        user_prompt: str | list = (
+        prompt_text = (
             "process your new notifications batch. look at the [NEW NOTIFICATIONS] "
             "block in your context, decide what to do, and use the trusted posting "
             "tools to act. you don't have to act on every item — silence is fine."
         )
+        if author_lookups:
+            prompt_text += "\n\n" + "\n\n".join(author_lookups.values())
+
+        user_prompt: str | list = prompt_text
         all_image_urls: list[str] = []
         if image_urls_by_uri:
             for urls in image_urls_by_uri.values():
                 all_image_urls.extend(urls)
         if all_image_urls:
-            user_prompt = [user_prompt] + [ImageUrl(url=u) for u in all_image_urls]
+            user_prompt = [prompt_text] + [ImageUrl(url=u) for u in all_image_urls]
             logger.info(f"including {len(all_image_urls)} images in batch prompt")
 
-        toolsets = self._mcp_toolsets()
+        return await self._run_agent(
+            label="batch processing",
+            prompt=user_prompt,
+            deps=deps,
+        )
+
+    async def _recent_conversations_block(self, top_k: int = 10) -> str:
+        """Render recent interactions once for scheduled paths that need texture."""
+        if not self.memory:
+            return ""
         try:
-            async with contextlib.AsyncExitStack() as stack:
-                for ts in toolsets:
-                    await stack.enter_async_context(ts)
-                result = await self.agent.run(user_prompt, deps=deps, toolsets=toolsets)
+            recent = await self.memory.get_recent_interactions(top_k=top_k)
         except Exception as e:
-            # Don't go silent on tool/agent failures. The batch path can't easily
-            # post a reply to a specific notification on failure (we don't know
-            # which one would have been the target), so we log loudly and let
-            # the operator notice via metrics / status. The previous fallback
-            # of "post a tagged reply" doesn't fit a multi-target batch.
-            err_type = type(e).__name__
-            logger.exception(
-                f"agent.run failed during batch processing: {err_type}: {e}"
-            )
-            return f"batch failed: {err_type}: {str(e)[:200]}"
+            logger.warning(f"failed to get recent interactions: {e}")
+            return ""
+        if not recent:
+            return "[RECENT CONVERSATIONS]: no recent interactions"
 
-        summary = result.output or ""
-        logger.info(f"batch run finished: {summary[:200]}")
-        return summary
+        unique_handles = {i["handle"] for i in recent}
+        lines = [
+            f"[RECENT CONVERSATIONS]: {len(recent)} interactions with "
+            f"{len(unique_handles)} people recently"
+        ]
+        for i in recent[:5]:
+            lines.append(f"- with @{i['handle']}: {i['content'][:150]}")
+        return "\n".join(lines)
 
-    async def process_reflection(self, recent_posts: list[str] | None = None) -> str:
-        """Generate a daily reflection post from recent memory.
+    async def _run_scheduled(
+        self,
+        *,
+        name: str,
+        task: str,
+        context_blocks: list[str] | None = None,
+    ) -> str:
+        """Run a scheduled cognitive pass with path-specific context in the prompt."""
+        logger.info(f"processing {name}")
+        prompt = task
+        blocks = [b for b in (context_blocks or []) if b]
+        if blocks:
+            prompt += "\n\n" + "\n\n".join(blocks)
+        return await self._run_agent(
+            label=name,
+            prompt=prompt,
+            deps=PhiDeps(author_handle="", memory=self.memory),
+        )
 
-        Side effects (posting) happen via the `post` tool inside the agent run.
-        Return value is just a summary string for logging.
-
-        recent_posts is phi's recent top-level posts (most recent first), used
-        by the agent to avoid duplicating themes she's already covered today.
-        """
-        logger.info("processing daily reflection")
-
-        # Pre-fetch context that doesn't benefit from semantic search against the prompt
-        recent_activity_parts: list[str] = []
-
-        # Phi's recent top-level posts — to avoid duplicating themes she's
-        # already covered today. Show as a list so the model can scan for
-        # both the most recent post AND older posts in the same window.
-        if recent_posts:
-            posts_block = "\n".join(f"- {p[:300]}" for p in recent_posts)
-            recent_activity_parts.append(
-                "[YOUR RECENT TOP-LEVEL POSTS — do not repeat any of these themes]:\n"
-                f"{posts_block}"
-            )
-
-        if self.memory:
-            try:
-                recent_interactions = await self.memory.get_recent_interactions(
-                    top_k=10
-                )
-                logger.info(
-                    f"reflection: {len(recent_interactions)} recent interactions"
-                )
-                if recent_interactions:
-                    unique_handles = {i["handle"] for i in recent_interactions}
-                    lines = [
-                        f"[RECENT ACTIVITY]: {len(recent_interactions)} interactions "
-                        f"with {len(unique_handles)} people in the last day"
-                    ]
-                    exchange_lines = []
-                    for i in recent_interactions[:5]:
-                        exchange_lines.append(
-                            f"- with @{i['handle']}: {i['content'][:150]}"
-                        )
-                    lines.append("[SAMPLE EXCHANGES]:\n" + "\n".join(exchange_lines))
-                    recent_activity_parts.append("\n\n".join(lines))
-                else:
-                    recent_activity_parts.append(
-                        "[RECENT ACTIVITY]: no interactions in the last day"
-                    )
-            except Exception as e:
-                logger.warning(f"failed to get recent interactions for reflection: {e}")
-
-        recent_activity = "\n\n".join(recent_activity_parts)
-
-        service_health = ""
+    async def process_reflection(self) -> str:
+        """Generate a daily reflection post from recent memory."""
+        context_blocks = [await self._recent_conversations_block()]
         try:
             service_health = await _check_services_impl()
         except Exception:
-            pass
+            service_health = ""
+        if service_health:
+            context_blocks.append(f"[SERVICE HEALTH]:\n{service_health}")
 
-        deps = PhiDeps(
-            author_handle="",
-            memory=self.memory,
-            recent_activity=recent_activity,
-            service_health=service_health,
+        return await self._run_scheduled(
+            name="daily reflection",
+            task=(
+                "end of day. post a reflection if you have one, or don't. "
+                "use [RECENT OPERATIONS] to avoid repeating what you've "
+                "already posted."
+            ),
+            context_blocks=context_blocks,
         )
 
-        reflection_task = (
-            "end of day. post a reflection if you have one, or don't. "
-            "your recent posts are in [YOUR RECENT TOP-LEVEL POSTS] — don't repeat yourself."
+    async def process_musing(self) -> str:
+        """Generate an original thought post from memory, reading, patterns noticed."""
+        return await self._run_scheduled(
+            name="musing",
+            task=(
+                "you have a moment. look around — your owned feeds, the "
+                "discovery pool, the timeline, the network, the open web. "
+                "find something specific that's caught your interest: a post, "
+                "a paper, a track, a thread, a piece of writing, something "
+                "the operator or someone you watch is engaged with. post about "
+                "it in your voice, with a link so others can find it. silence "
+                "is fine."
+            ),
+            context_blocks=[await self._recent_conversations_block(top_k=5)],
         )
 
-        toolsets = self._mcp_toolsets()
-        try:
-            async with contextlib.AsyncExitStack() as stack:
-                for ts in toolsets:
-                    await stack.enter_async_context(ts)
-                result = await self.agent.run(
-                    reflection_task, deps=deps, toolsets=toolsets
-                )
-        except Exception as e:
-            err_type = type(e).__name__
-            logger.exception(f"agent.run failed during reflection: {err_type}")
-            return f"reflection failed: {err_type}: {str(e)[:200]}"
-
-        summary = result.output or ""
-        logger.info(f"reflection finished: {summary[:200]}")
-        return summary
-
-    async def process_musing(self, recent_posts: list[str] | None = None) -> str:
-        """Generate an original thought post from memory, reading, patterns noticed.
-
-        Side effects (posting) happen via the `post` tool inside the agent run.
-        Return value is just a summary string for logging.
-        """
-        logger.info("processing musing")
-
-        # Build context about what phi has posted recently to avoid repetition
-        recent_activity = ""
-        if recent_posts:
-            posts_text = "\n".join(f"- {p[:200]}" for p in recent_posts)
-            recent_activity = f"[YOUR RECENT POSTS]:\n{posts_text}"
-
-        # Fetch episodic memory for interesting observations
-        if self.memory:
-            try:
-                episodic = await self.memory.get_recent_interactions(top_k=5)
-                if episodic:
-                    lines = [
-                        f"- with @{i['handle']}: {i['content'][:150]}"
-                        for i in episodic[:5]
-                    ]
-                    if recent_activity:
-                        recent_activity += "\n\n"
-                    recent_activity += "[RECENT CONVERSATIONS]:\n" + "\n".join(lines)
-            except Exception as e:
-                logger.warning(f"failed to get recent interactions for musing: {e}")
-
-        deps = PhiDeps(
-            author_handle="",
-            memory=self.memory,
-            recent_activity=recent_activity,
+    async def process_relay_check(self) -> str:
+        """Scheduled relay-fleet check. Posts about transitions if notable."""
+        return await self._run_scheduled(
+            name="relay check",
+            task=(
+                "scheduled relay check. call check_relays to see current relay "
+                "status. for any relay that's transitioned to degraded or "
+                "critical recently, call observe() with the factual change in "
+                "your voice — what dropped, by how much, baseline. no theories "
+                "about cause. observations sit in your active pool and the "
+                "next musing or reflection will see them; don't post about each "
+                "one as it happens.\n\n"
+                "only post immediately and tag the operator in either of these "
+                "cases: (1) any *.waow.tech relay is degraded or worse — those "
+                "are the operator's own, they need to know now; (2) the whole "
+                "fleet is degraded or worse — that's fleet-wide and needs "
+                "immediate visibility. write the post in your voice with the "
+                "factual change, group multiple transitions into one post.\n\n"
+                "otherwise: silent on the timeline, observe everything, let the "
+                "digest happen later."
+            ),
         )
 
-        musing_task = (
-            "you have a moment. look around — your owned feeds, the "
-            "discovery pool, the timeline, the network, the open web. "
-            "find something specific that's caught your interest: a post, "
-            "a paper, a track, a thread, a piece of writing, something "
-            "the operator or someone you watch is engaged with. post about "
-            "it in your voice, with a link so others can find it. silence "
-            "is fine."
+    async def process_prefect_check(self) -> str:
+        """Scheduled look at the operator's prefect instance."""
+        return await self._run_scheduled(
+            name="prefect check",
+            task=(
+                "you have a moment. you have read access to the operator's "
+                "prefect instance — that's where their automation runs and they "
+                "want to know when something they care about is persistently "
+                "broken.\n\n"
+                "transient hiccups that already self-resolved aren't news. "
+                "persistent breakage with no path to fixing itself is — tag "
+                "the operator in that case. silence is the right answer most "
+                "of the time."
+            ),
         )
-
-        toolsets = self._mcp_toolsets()
-        try:
-            async with contextlib.AsyncExitStack() as stack:
-                for ts in toolsets:
-                    await stack.enter_async_context(ts)
-                result = await self.agent.run(musing_task, deps=deps, toolsets=toolsets)
-        except Exception as e:
-            err_type = type(e).__name__
-            logger.exception(f"agent.run failed during musing: {err_type}")
-            return f"musing failed: {err_type}: {str(e)[:200]}"
-
-        summary = result.output or ""
-        logger.info(f"musing finished: {summary[:200]}")
-        return summary
-
-    async def process_relay_check(self, recent_posts: list[str] | None = None) -> str:
-        """Scheduled relay-fleet check. Posts about transitions if notable.
-
-        Uses the check_relays tool to fetch current state. The tool returns
-        status-grouped headlines that phi should report verbatim — no theories
-        about cause, just observation. Stays silent if nothing's changed or
-        the change is already reflected in recent posts.
-        """
-        logger.info("processing relay check")
-
-        recent_activity = ""
-        if recent_posts:
-            posts_text = "\n".join(f"- {p[:200]}" for p in recent_posts)
-            recent_activity = f"[YOUR RECENT POSTS — avoid repeating]:\n{posts_text}"
-
-        deps = PhiDeps(
-            author_handle="",
-            memory=self.memory,
-            recent_activity=recent_activity,
-        )
-
-        relay_task = (
-            "scheduled relay check. call check_relays to see current relay "
-            "status. for any relay that's transitioned to degraded or "
-            "critical recently, call observe() with the factual change in "
-            "your voice — what dropped, by how much, baseline. no theories "
-            "about cause. observations sit in your active pool and the "
-            "next musing or reflection will see them; don't post about each "
-            "one as it happens.\n\n"
-            f"only post immediately (and tag @{settings.owner_handle}) in "
-            "either of these cases: (1) any *.waow.tech relay is degraded "
-            "or worse — those are the operator's own, they need to know "
-            "now; (2) "
-            "the whole fleet is degraded or worse — that's fleet-wide and "
-            "needs immediate visibility. write the post in your voice with "
-            "the factual change, group multiple transitions into one post.\n\n"
-            "otherwise: silent on the timeline, observe everything, let the "
-            "digest happen later."
-        )
-
-        toolsets = self._mcp_toolsets()
-        try:
-            async with contextlib.AsyncExitStack() as stack:
-                for ts in toolsets:
-                    await stack.enter_async_context(ts)
-                result = await self.agent.run(relay_task, deps=deps, toolsets=toolsets)
-        except Exception as e:
-            err_type = type(e).__name__
-            logger.exception(f"agent.run failed during relay check: {err_type}")
-            return f"relay check failed: {err_type}: {str(e)[:200]}"
-
-        summary = result.output or ""
-        logger.info(f"relay check finished: {summary[:200]}")
-        return summary
-
-    async def process_prefect_check(self, recent_posts: list[str] | None = None) -> str:
-        """Scheduled look at the operator's prefect instance.
-
-        The operator runs their automation in prefect and wants to know when
-        something they care about is persistently broken. Phi has read
-        access; she decides what to look at and what's worth saying.
-        """
-        logger.info("processing prefect check")
-
-        recent_activity = ""
-        if recent_posts:
-            posts_text = "\n".join(f"- {p[:200]}" for p in recent_posts)
-            recent_activity = f"[YOUR RECENT POSTS — avoid repeating]:\n{posts_text}"
-
-        deps = PhiDeps(
-            author_handle="",
-            memory=self.memory,
-            recent_activity=recent_activity,
-        )
-
-        task = (
-            "you have a moment. you have read access to the operator's "
-            "prefect instance — that's where their automation runs and they "
-            "want to know when something they care about is persistently "
-            "broken.\n\n"
-            "transient hiccups that already self-resolved aren't news. "
-            "persistent breakage with no path to fixing itself is — tag "
-            f"@{settings.owner_handle} in that case. silence is the right "
-            "answer most of the time."
-        )
-
-        toolsets = self._mcp_toolsets()
-        try:
-            async with contextlib.AsyncExitStack() as stack:
-                for ts in toolsets:
-                    await stack.enter_async_context(ts)
-                result = await self.agent.run(task, deps=deps, toolsets=toolsets)
-        except Exception as e:
-            err_type = type(e).__name__
-            logger.exception(f"agent.run failed during prefect check: {err_type}")
-            return f"prefect check failed: {err_type}: {str(e)[:200]}"
-
-        summary = result.output or ""
-        logger.info(f"prefect check finished: {summary[:200]}")
-        return summary
 
     async def process_extraction(self) -> int:
         """Review recent unprocessed interactions and extract observations. Returns count stored."""
