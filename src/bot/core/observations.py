@@ -18,16 +18,12 @@ Reasoning is optional but encouraged at write time — what made phi notice
 this, what might compose with it, why it's worth attention.
 """
 
-from __future__ import annotations
-
 import logging
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, TypedDict
+from typing import TypedDict
 
 from bot.core.atproto_client import BotClient
-
-if TYPE_CHECKING:
-    from bot.memory import NamespaceMemory
+from bot.memory import NamespaceMemory
 
 logger = logging.getLogger("bot.observations")
 

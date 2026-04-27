@@ -10,18 +10,14 @@ model and refresh, phi owns the per-consumer filter. Renderer is split
 from fetch+filter so a future templating swap only touches `_render`.
 """
 
-from __future__ import annotations
-
 import logging
 import time
-from typing import TYPE_CHECKING, TypedDict
+from typing import TypedDict
 
 import httpx
 
 from bot.config import settings
-
-if TYPE_CHECKING:
-    from bot.memory import NamespaceMemory
+from bot.memory import NamespaceMemory
 
 logger = logging.getLogger("bot.discovery_pool")
 

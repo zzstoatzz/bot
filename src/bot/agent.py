@@ -20,6 +20,7 @@ from bot.core.operator import get_operator_profile
 from bot.core.owned_feeds import get_owned_feeds_block
 from bot.core.recent_operations import get_operations_block
 from bot.core.self_state import get_state_block
+from bot.core.workflow_state import get_workflow_state_block
 from bot.memory.extraction import EXTRACTION_SYSTEM_PROMPT, ExtractionResult
 from bot.memory.namespace_memory import InteractionRow
 from bot.memory.review import REVIEW_SYSTEM_PROMPT, ReviewResult
@@ -598,19 +599,22 @@ class PhiAgent:
         )
 
     async def process_prefect_check(self) -> str:
-        """Scheduled look at the operator's prefect instance."""
+        """Scheduled look at the operator's workflow automation.
+
+        [WORKFLOW STATE] is pre-synthesized from raw run history so phi
+        starts from a correct per-deployment health summary anchored to
+        [NOW]. She can still call prefect_* tools for detail.
+        """
+        workflow_block = await get_workflow_state_block()
         return await self._run_scheduled(
             name="prefect check",
             task=(
-                "you have a moment. you have read access to the operator's "
-                "prefect instance — that's where their automation runs and they "
-                "want to know when something they care about is persistently "
-                "broken.\n\n"
-                "transient hiccups that already self-resolved aren't news. "
-                "persistent breakage with no path to fixing itself is — tag "
-                "the operator in that case. silence is the right answer most "
-                "of the time."
+                "review [WORKFLOW STATE]. anything currently broken or stuck "
+                "with no path to fixing itself? tag the operator in that "
+                "case. for detail you can call the prefect_* tools. silence "
+                "is the right answer most of the time."
             ),
+            context_blocks=[workflow_block] if workflow_block else None,
         )
 
     async def process_extraction(self) -> int:

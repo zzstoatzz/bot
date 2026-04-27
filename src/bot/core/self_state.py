@@ -13,21 +13,16 @@ whole compose is also block-cached at 5min so notification polls (10s)
 don't hammer PDS.
 """
 
-from __future__ import annotations
-
 import logging
 import time
-from typing import TYPE_CHECKING
 
 from pydantic_ai import Agent
 
 from bot.config import settings
 from bot.core.atproto_client import BotClient
 from bot.core.goals import list_goals as list_goal_records
+from bot.memory import NamespaceMemory
 from bot.utils.time import relative_when
-
-if TYPE_CHECKING:
-    from bot.memory import NamespaceMemory
 
 logger = logging.getLogger("bot.self_state")
 
