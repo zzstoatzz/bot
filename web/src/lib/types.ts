@@ -94,6 +94,14 @@ export interface Capability {
 	operator_only: boolean;
 }
 
+// --- /api/skills ---
+
+export interface Skill {
+	name: string;
+	description: string;
+	resources: string[];
+}
+
 // --- /api/users/{handle} ---
 
 export interface UserViewObservation {

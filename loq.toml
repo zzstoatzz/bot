@@ -30,3 +30,7 @@ max_lines = 600
 [[rules]]
 path = "web/src/lib/components/Logbook.svelte"
 max_lines = 650
+
+[[rules]]
+path = "web/src/routes/capabilities/+page.svelte"
+max_lines = 700

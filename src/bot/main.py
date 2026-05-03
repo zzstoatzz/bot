@@ -210,6 +210,66 @@ async def abilities():
         return JSONResponse({"error": str(e)}, status_code=500)
 
 
+_skills_cache: list | None = None
+
+
+@app.get("/api/skills")
+async def skills():
+    """Phi's installed skill packages — load-on-demand domain knowledge.
+
+    Walks `settings.skills_dir`, parses each `SKILL.md`'s frontmatter for
+    name + description, lists sibling `.md` files as resources. Cached for
+    process lifetime; skills register at startup like tools.
+
+    See bot/SKILLS-API.md for the rationale and the UI consumer plan.
+    """
+    global _skills_cache
+    if _skills_cache is not None:
+        return JSONResponse(_skills_cache)
+    import re
+
+    base = Path(settings.skills_dir)
+    if not base.exists():
+        _skills_cache = []
+        return JSONResponse(_skills_cache)
+
+    out: list[dict] = []
+    front_re = re.compile(r"^---\n(.*?)\n---", re.DOTALL)
+    name_re = re.compile(r"^name:\s*(.+?)\s*$", re.MULTILINE)
+    desc_re = re.compile(
+        r"^description:\s*(.+?)(?=\n\w+:|\Z)", re.MULTILINE | re.DOTALL
+    )
+
+    for entry in sorted(base.iterdir()):
+        if not entry.is_dir():
+            continue
+        skill_md = entry / "SKILL.md"
+        if not skill_md.exists():
+            continue
+        try:
+            content = skill_md.read_text()
+        except Exception:
+            continue
+        m = front_re.match(content)
+        if not m:
+            continue
+        front = m.group(1)
+        name_m = name_re.search(front)
+        desc_m = desc_re.search(front)
+        name = name_m.group(1).strip() if name_m else entry.name
+        description = " ".join(desc_m.group(1).split()).strip() if desc_m else ""
+        resources = sorted(p.name for p in entry.iterdir() if p.suffix == ".md")
+        out.append(
+            {
+                "name": name,
+                "description": description,
+                "resources": resources,
+            }
+        )
+    _skills_cache = out
+    return JSONResponse(out)
+
+
 _user_view_cache: dict[str, tuple[float, dict]] = {}
 _USER_VIEW_TTL = 60  # seconds
 

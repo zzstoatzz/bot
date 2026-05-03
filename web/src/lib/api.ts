@@ -13,6 +13,7 @@ import type {
 	GraphData,
 	HealthInfo,
 	Observation,
+	Skill,
 	UserView
 } from './types';
 
@@ -133,6 +134,12 @@ export async function getHealth(): Promise<HealthInfo> {
 export async function getCapabilities(): Promise<Capability[]> {
 	const res = await fetch('/api/abilities');
 	if (!res.ok) throw new Error(`abilities: ${res.status}`);
+	return await res.json();
+}
+
+export async function getSkills(): Promise<Skill[]> {
+	const res = await fetch('/api/skills');
+	if (!res.ok) throw new Error(`skills: ${res.status}`);
 	return await res.json();
 }
 

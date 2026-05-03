@@ -1,21 +1,55 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { getCapabilities } from '$lib/api';
-	import type { Capability } from '$lib/types';
+	import { getCapabilities, getSkills } from '$lib/api';
+	import type { Capability, Skill } from '$lib/types';
+
+	type RowKind = 'skill' | 'tool';
+	interface Row {
+		kind: RowKind;
+		idx: number; // index within its kind list
+		name: string;
+		operator_only?: boolean;
+	}
 
 	let caps = $state<Capability[]>([]);
-	let selectedIdx = $state(0);
+	let skills = $state<Skill[]>([]);
 	let loaded = $state(false);
 	let err = $state<string | null>(null);
 
-	const sorted = $derived([...caps].sort((a, b) => a.name.localeCompare(b.name)));
-	const total = $derived(sorted.length);
-	const opCount = $derived(sorted.filter((c) => c.operator_only).length);
-	const selected = $derived(sorted[selectedIdx] ?? null);
+	const sortedCaps = $derived([...caps].sort((a, b) => a.name.localeCompare(b.name)));
+	const sortedSkills = $derived([...skills].sort((a, b) => a.name.localeCompare(b.name)));
+
+	const rows = $derived<Row[]>([
+		...sortedSkills.map((s, i) => ({
+			kind: 'skill' as const,
+			idx: i,
+			name: s.name
+		})),
+		...sortedCaps.map((c, i) => ({
+			kind: 'tool' as const,
+			idx: i,
+			name: c.name,
+			operator_only: c.operator_only
+		}))
+	]);
+
+	let selectedIdx = $state(0);
+	const selected = $derived<{ row: Row; skill?: Skill; tool?: Capability } | null>(
+		(() => {
+			const r = rows[selectedIdx];
+			if (!r) return null;
+			if (r.kind === 'skill') return { row: r, skill: sortedSkills[r.idx] };
+			return { row: r, tool: sortedCaps[r.idx] };
+		})()
+	);
+
+	const opCount = $derived(sortedCaps.filter((c) => c.operator_only).length);
 
 	onMount(async () => {
 		try {
-			caps = await getCapabilities();
+			const [c, s] = await Promise.allSettled([getCapabilities(), getSkills()]);
+			if (c.status === 'fulfilled') caps = c.value;
+			if (s.status === 'fulfilled') skills = s.value;
 			selectedIdx = 0;
 		} catch (e) {
 			err = (e as Error).message;
@@ -29,7 +63,7 @@
 	}
 
 	function onListKey(e: KeyboardEvent) {
-		if (e.key === 'ArrowDown' && selectedIdx < total - 1) {
+		if (e.key === 'ArrowDown' && selectedIdx < rows.length - 1) {
 			e.preventDefault();
 			selectedIdx++;
 		} else if (e.key === 'ArrowUp' && selectedIdx > 0) {
@@ -41,6 +75,9 @@
 	function pad(n: number, w = 2): string {
 		return String(n + 1).padStart(w, '0');
 	}
+
+	const skillsCount = $derived(sortedSkills.length);
+	const toolsCount = $derived(sortedCaps.length);
 </script>
 
 <svelte:head>
@@ -54,8 +91,11 @@
 				<span class="head-tag chrome">phi · capabilities</span>
 				<span class="head-status chrome">
 					{#if loaded && !err}
-						<span class="num mono">{pad(total - 1)}</span>
-						<span class="dim">entries</span>
+						<span class="num mono">{pad(skillsCount - 1)}</span>
+						<span class="dim">skills</span>
+						<span class="seg"></span>
+						<span class="num mono">{pad(toolsCount - 1)}</span>
+						<span class="dim">tools</span>
 						{#if opCount > 0}
 							<span class="seg"></span>
 							<span class="num mono">{pad(opCount - 1)}</span>
@@ -72,14 +112,13 @@
 		</header>
 
 		<div class="panes">
-			<!-- list pane -->
 			<aside class="list-pane">
 				<div class="pane-rule chrome">capabilities</div>
 				{#if !loaded}
 					<div class="empty chrome muted">acquiring…</div>
 				{:else if err}
 					<div class="empty chrome muted">unreachable · {err}</div>
-				{:else if sorted.length === 0}
+				{:else if rows.length === 0}
 					<div class="empty chrome muted">none registered</div>
 				{:else}
 					<ul
@@ -89,19 +128,32 @@
 						aria-label="capabilities"
 						onkeydown={onListKey}
 					>
-						{#each sorted as cap, i (cap.name)}
+						{#if sortedSkills.length > 0}
+							<li class="section">
+								<span class="section-tag chrome">skills</span>
+								<span class="section-meta chrome faint">load on demand</span>
+							</li>
+						{/if}
+						{#each rows as row, i (row.kind + ':' + row.name)}
+							{#if i === sortedSkills.length && sortedCaps.length > 0}
+								<li class="section">
+									<span class="section-tag chrome">tools</span>
+									<span class="section-meta chrome faint">always available</span>
+								</li>
+							{/if}
 							<li>
 								<button
 									class="row"
 									class:active={i === selectedIdx}
+									class:row-skill={row.kind === 'skill'}
 									role="option"
 									aria-selected={i === selectedIdx}
 									onclick={() => pick(i)}
 								>
 									<span class="bar" aria-hidden="true"></span>
 									<span class="idx mono">{pad(i)}</span>
-									<span class="name mono">{cap.name}</span>
-									{#if cap.operator_only}
+									<span class="name mono">{row.name}</span>
+									{#if row.operator_only}
 										<span class="op-dot" title="requires nate's authorization"></span>
 									{/if}
 								</button>
@@ -111,28 +163,58 @@
 				{/if}
 			</aside>
 
-			<!-- detail pane -->
 			<section class="detail-pane">
 				<div class="pane-rule chrome">readout</div>
-				{#if selected}
+				{#if selected?.skill}
+					{@const sk = selected.skill}
 					<div class="detail scroll">
 						<div class="d-head">
-							<div class="d-name mono">{selected.name}</div>
+							<div class="d-name mono">{sk.name}</div>
 							<div class="d-meta chrome">
-								<span class="dim">entry</span>
-								<span class="num mono">{pad(selectedIdx)}</span>
-								<span class="dim">of</span>
-								<span class="num mono">{pad(total - 1)}</span>
-								{#if selected.operator_only}
+								<span class="d-kind skill-kind">skill</span>
+								<span class="seg"></span>
+								<span class="dim">load on demand</span>
+								<span class="seg"></span>
+								<span class="num mono">{sk.resources.length}</span>
+								<span class="dim">resource{sk.resources.length === 1 ? '' : 's'}</span>
+							</div>
+						</div>
+						<div class="d-rule"></div>
+						{#if sk.description}
+							<div class="d-body">
+								<p>{sk.description}</p>
+							</div>
+						{/if}
+						{#if sk.resources.length > 0}
+							<div class="d-block">
+								<div class="d-block-label chrome">resources</div>
+								<ul class="res-list">
+									{#each sk.resources as r (r)}
+										<li class="mono">{r}</li>
+									{/each}
+								</ul>
+							</div>
+						{/if}
+					</div>
+				{:else if selected?.tool}
+					{@const tl = selected.tool}
+					<div class="detail scroll">
+						<div class="d-head">
+							<div class="d-name mono">{tl.name}</div>
+							<div class="d-meta chrome">
+								<span class="d-kind tool-kind">tool</span>
+								<span class="seg"></span>
+								<span class="dim">always available</span>
+								{#if tl.operator_only}
 									<span class="seg"></span>
 									<span class="op-tag chrome">operator-gated</span>
 								{/if}
 							</div>
 						</div>
 						<div class="d-rule"></div>
-						{#if selected.description}
+						{#if tl.description}
 							<div class="d-body">
-								{#each selected.description.split(/\n\s*\n/) as para, i (i)}
+								{#each tl.description.split(/\n\s*\n/) as para, i (i)}
 									<p>{para}</p>
 								{/each}
 							</div>
@@ -184,7 +266,6 @@
 			inset 1px 0 0 rgba(184, 107, 58, 0.05);
 	}
 
-	/* anchored corner brackets */
 	.frame-wrap::before,
 	.frame-wrap::after {
 		content: '';
@@ -324,6 +405,30 @@
 		box-shadow: inset 0 0 0 1px var(--hud-mid);
 	}
 
+	.section {
+		display: flex;
+		justify-content: space-between;
+		align-items: baseline;
+		padding: 10px 12px 4px 12px;
+		border-bottom: 1px dashed var(--line-dim);
+		margin: 0 8px 4px;
+	}
+
+	.section:not(:first-child) {
+		margin-top: 14px;
+	}
+
+	.section-tag {
+		font-size: 10px;
+		color: var(--hud-hot);
+		letter-spacing: 0.22em;
+	}
+
+	.section-meta {
+		font-size: 8px;
+		letter-spacing: 0.18em;
+	}
+
 	.row {
 		display: flex;
 		align-items: center;
@@ -372,6 +477,15 @@
 	.row.active .bar {
 		background: var(--hud-hot);
 		box-shadow: 0 0 6px rgba(224, 144, 96, 0.6);
+	}
+
+	.row-skill .name {
+		color: var(--warn-hot);
+	}
+
+	.row-skill.active .bar {
+		background: var(--warn);
+		box-shadow: 0 0 6px rgba(201, 160, 90, 0.6);
 	}
 
 	.idx {
@@ -436,6 +550,21 @@
 		color: var(--text-dim);
 	}
 
+	.d-kind {
+		font-size: 9px;
+		letter-spacing: 0.22em;
+		padding: 2px 6px;
+		border: 1px solid currentColor;
+	}
+
+	.d-kind.skill-kind {
+		color: var(--warn-hot);
+	}
+
+	.d-kind.tool-kind {
+		color: var(--scan-mid);
+	}
+
 	.op-tag {
 		color: var(--warn);
 		font-size: 9px;
@@ -467,6 +596,33 @@
 
 	.d-body p:last-child {
 		margin-bottom: 0;
+	}
+
+	.d-block {
+		margin-top: 4px;
+	}
+
+	.d-block-label {
+		font-size: 9px;
+		color: var(--text-dim);
+		letter-spacing: 0.22em;
+		margin-bottom: 6px;
+	}
+
+	.res-list {
+		list-style: none;
+		padding: 0;
+		margin: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+		border-left: 2px solid var(--line-mid);
+	}
+
+	.res-list li {
+		font-size: 12px;
+		color: var(--text-mid);
+		padding: 2px 12px;
 	}
 
 	/* ---------- mobile ---------- */
