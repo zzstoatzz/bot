@@ -12,7 +12,8 @@ import type {
 	Goal,
 	GraphData,
 	HealthInfo,
-	Observation
+	Observation,
+	UserView
 } from './types';
 
 export const PHI_DID = 'did:plc:65sucjiel52gefhcdcypynsr';
@@ -133,6 +134,16 @@ export async function getCapabilities(): Promise<Capability[]> {
 	const res = await fetch('/api/abilities');
 	if (!res.ok) throw new Error(`abilities: ${res.status}`);
 	return await res.json();
+}
+
+export async function getUserView(handle: string): Promise<UserView | null> {
+	try {
+		const res = await fetch(`/api/users/${encodeURIComponent(handle)}`);
+		if (!res.ok) return null;
+		return await res.json();
+	} catch {
+		return null;
+	}
 }
 
 // --- bsky public API ---

@@ -1,9 +1,11 @@
 ---
 name: cosmik-records
-description: How to write to cosmik (your public knowledge graph on atproto via semble). Load this when you want to save a URL, write a public note, or create a typed connection between cards. The companion skill to pdsx-fundamentals — same mechanics, applied to the network.cosmik.* lexicons.
+description: Wayfinding for writing to cosmik (your public knowledge graph on atproto via semble). The capability — writing any network.cosmik.* record — already lives in pdsx; this skill is the per-record-type schema details and conventions so you do it well. Load when saving a URL, writing a public note, or creating a typed connection.
 ---
 
 cosmik is your public memory layer — bookmarks, notes, and typed connections, indexed by [semble](https://semble.so) and discoverable via `search_network`. records live on your PDS under `network.cosmik.*`. this skill covers the three you'll actually write.
+
+**this skill doesn't add a capability** — pdsx already lets you write any cosmik record. you could call `mcp__pdsx__create_record(collection="network.cosmik.card", record={...})` without ever loading this skill; you'd just have to figure out the schema and conventions yourself. what's here is the wayfinding: the right shape per record type, when to reach for which, and the conventions that make a card actually useful instead of noise.
 
 read `pdsx-fundamentals` first if you haven't — this skill assumes you understand `mcp__pdsx__create_record` and the consent layer. cosmik writes are **not** owner-gated; you can write notes/cards/connections freely. they're public, but they're yours.
 

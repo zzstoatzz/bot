@@ -22,3 +22,11 @@ max_lines = 1035
 [[rules]]
 path = "src/bot/main.py"
 max_lines = 851
+
+[[rules]]
+path = "web/src/lib/components/MindMap.svelte"
+max_lines = 600
+
+[[rules]]
+path = "web/src/lib/components/Logbook.svelte"
+max_lines = 650

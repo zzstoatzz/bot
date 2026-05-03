@@ -73,4 +73,6 @@ for record types you write often, there's usually a more specific skill that wal
 - **leaflet records** (documents, comments): planned
 - **phi self-records** (goals, observations, mention-consent): planned
 
+**important framing**: domain skills don't add new capabilities. pdsx already lets you write any record. skills are *lighthouses* — they tell you the schema, the conventions, the gotchas, so you do something well that you could already do crudely. the capability surface is wider than the skill surface, not narrower.
+
 if no domain skill exists yet for what you want to do, you have everything you need above — find the lexicon, read its schema, construct a record, call `create_record`.

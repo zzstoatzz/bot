@@ -210,6 +210,145 @@ async def abilities():
         return JSONResponse({"error": str(e)}, status_code=500)
 
 
+_user_view_cache: dict[str, tuple[float, dict]] = {}
+_USER_VIEW_TTL = 60  # seconds
+
+
+@app.get("/api/users/{handle}")
+async def user_view(handle: str):
+    """What phi currently carries about a person — pure read of state.
+
+    Joins per-kind counts, the synthesized relationship summary (written by
+    the compact flow in my-prefect-server), and the most recent atomic
+    observations. No embedding, no LLM, no fabrication — every field is a
+    direct read of rows in the user's tpuf namespace.
+
+    See bot/USER-VIEW.md for the rationale and the UI consumer plan.
+    """
+    now = time.monotonic()
+    cached = _user_view_cache.get(handle)
+    if cached and now < cached[0]:
+        return JSONResponse(cached[1])
+
+    poller: NotificationPoller | None = getattr(app.state, "poller", None)
+    if poller is None:
+        return JSONResponse({"error": "agent not ready"}, status_code=503)
+    memory = poller.handler.agent.memory
+    if memory is None:
+        return JSONResponse({"error": "memory not configured"}, status_code=503)
+
+    # Resolve DID — best effort; not all handles resolve (deleted accounts,
+    # bridged-from-mastodon, etc). Endpoint still returns useful state without it.
+    did: str | None = None
+    try:
+        await bot_client.authenticate()
+        profile = bot_client.client.app.bsky.actor.get_profile(params={"actor": handle})
+        did = profile.did
+    except Exception:
+        pass
+
+    user_ns = memory.get_user_namespace(handle)
+
+    # Per-kind counts. top_k=200 is enough margin for the UI signal —
+    # most users have far fewer of each kind, and >200 of any one kind
+    # renders the same way visually anyway.
+    counts: dict[str, int] = {"observation": 0, "interaction": 0, "summary": 0}
+    for kind in counts:
+        active_filter = (
+            ["And", [["kind", "Eq", kind], ["status", "NotEq", "superseded"]]]
+            if kind == "observation"
+            else {"kind": ["Eq", kind]}
+        )
+        try:
+            resp = user_ns.query(
+                rank_by=("created_at", "desc"),
+                top_k=200,
+                filters=active_filter,
+                include_attributes=["kind"],
+            )
+            counts[kind] = len(resp.rows or [])
+        except Exception:
+            pass  # namespace may not exist yet; counts stay 0
+
+    # first_seen / last_seen across all kinds.
+    first_seen: str | None = None
+    last_seen: str | None = None
+    try:
+        latest = user_ns.query(
+            rank_by=("created_at", "desc"),
+            top_k=1,
+            include_attributes=["created_at"],
+        )
+        if latest.rows:
+            last_seen = getattr(latest.rows[0], "created_at", None)
+        earliest = user_ns.query(
+            rank_by=("created_at", "asc"),
+            top_k=1,
+            include_attributes=["created_at"],
+        )
+        if earliest.rows:
+            first_seen = getattr(earliest.rows[0], "created_at", None)
+    except Exception:
+        pass
+
+    # Summary — text + its created_at (one query, since we want both).
+    summary_obj: dict | None = None
+    try:
+        summary_resp = user_ns.query(
+            rank_by=("created_at", "desc"),
+            top_k=1,
+            filters={"kind": ["Eq", "summary"]},
+            include_attributes=["content", "created_at"],
+        )
+        if summary_resp.rows:
+            row = summary_resp.rows[0]
+            summary_obj = {
+                "content": getattr(row, "content", ""),
+                "created_at": getattr(row, "created_at", None),
+            }
+    except Exception:
+        pass
+
+    # Recent observations — content, tags, created_at, source_uris.
+    recent_observations: list[dict] = []
+    try:
+        obs_resp = user_ns.query(
+            rank_by=("created_at", "desc"),
+            top_k=5,
+            filters=[
+                "And",
+                [["kind", "Eq", "observation"], ["status", "NotEq", "superseded"]],
+            ],
+            include_attributes=["content", "tags", "created_at", "source_uris"],
+        )
+        for row in obs_resp.rows or []:
+            recent_observations.append(
+                {
+                    "content": getattr(row, "content", ""),
+                    "tags": getattr(row, "tags", []) or [],
+                    "created_at": getattr(row, "created_at", None),
+                    "source_uris": getattr(row, "source_uris", []) or [],
+                }
+            )
+    except Exception:
+        pass
+
+    is_stranger = await memory.is_stranger(handle)
+
+    payload = {
+        "handle": handle,
+        "did": did,
+        "is_stranger": is_stranger,
+        "counts": counts,
+        "first_seen": first_seen,
+        "last_seen": last_seen,
+        "summary": summary_obj,
+        "recent_observations": recent_observations,
+    }
+    _user_view_cache[handle] = (now + _USER_VIEW_TTL, payload)
+    return JSONResponse(payload)
+
+
 _discovery_cache_data: list | None = None
 _discovery_cache_expires: float = 0.0
 _DISCOVERY_CACHE_TTL = 60  # seconds

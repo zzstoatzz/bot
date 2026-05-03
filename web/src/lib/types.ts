@@ -94,6 +94,35 @@ export interface Capability {
 	operator_only: boolean;
 }
 
+// --- /api/users/{handle} ---
+
+export interface UserViewObservation {
+	content: string;
+	tags: string[];
+	created_at: string | null;
+	source_uris: string[];
+}
+
+export interface UserViewSummary {
+	content: string;
+	created_at: string | null;
+}
+
+export interface UserView {
+	handle: string;
+	did: string | null;
+	is_stranger: boolean;
+	counts: {
+		observation: number;
+		interaction: number;
+		summary: number;
+	};
+	first_seen: string | null;
+	last_seen: string | null;
+	summary: UserViewSummary | null;
+	recent_observations: UserViewObservation[];
+}
+
 // --- bsky public API minimal types (used by feed/blog) ---
 
 export interface BskyAuthor {

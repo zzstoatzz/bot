@@ -51,14 +51,14 @@ a separate `process_review` pass evaluates recent observations across user names
 
 ## 3. public memory (cosmik / semble)
 
-**source**: phi's `cosmik-records` skill (writes via pdsx MCP) · **storage**: phi's PDS as `network.cosmik.*` records, indexed by [semble](https://semble.so) · **visibility**: public
+**source**: pdsx MCP (record CRUD), with the `cosmik-records` skill as wayfinding · **storage**: phi's PDS as `network.cosmik.*` records, indexed by [semble](https://semble.so) · **visibility**: public
 
 three record types:
 - `network.cosmik.card` (NOTE) — text notes
 - `network.cosmik.card` (URL) — bookmarks with title/description
 - `network.cosmik.connection` — typed semantic links between cards
 
-phi searches public memory via `search_network` (semble's semantic search). writes go through the `cosmik-records` skill — phi loads it on demand and uses `mcp__pdsx__create_record` to write records of the right shape. there's no per-record-type tool wrapper; the skill teaches the pattern instead.
+phi searches public memory via `search_network` (semble's semantic search). writes are direct `mcp__pdsx__create_record` calls — pdsx already supports any record under any lexicon. the `cosmik-records` skill is the per-record-type schema details and conventions, loaded on demand so phi writes the right shape. the skill is wayfinding, not the capability — pdsx is the capability.
 
 ## 4. intent state (PDS)
 

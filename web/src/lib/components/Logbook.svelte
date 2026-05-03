@@ -1,9 +1,16 @@
 <script lang="ts">
 	import { logbook } from '$lib/state.svelte';
 	import { relativeWhen } from '$lib/time';
-	import { PHI_HANDLE, PHI_DID } from '$lib/api';
+	import { PHI_HANDLE, PHI_DID, getUserView } from '$lib/api';
 	import ViewIn from './ViewIn.svelte';
-	import type { Goal, Observation, ActivityItem, BlogDoc, DiscoveryEntry } from '$lib/types';
+	import type {
+		Goal,
+		Observation,
+		ActivityItem,
+		BlogDoc,
+		DiscoveryEntry,
+		UserView
+	} from '$lib/types';
 
 	// Resolve an at-uri or a record reference into the bits ViewIn needs.
 	function rkeyFromUri(uri: string): string {
@@ -35,6 +42,46 @@
 			return () => window.removeEventListener('keydown', handleKey);
 		}
 	});
+
+	// User-view fetch: when the entry is a 'handle' or 'discovery', go pull
+	// /api/users/{handle}. This is the rich state phi carries about a person —
+	// histogram, summary, recent observations.
+	//
+	// `lastFetchedHandle` is a plain `let` (not $state) so the effect doesn't
+	// track it — otherwise Svelte detects the read+write of the same piece of
+	// state and throws effect_update_depth_exceeded.
+	let userView = $state<UserView | null>(null);
+	let userViewLoading = $state(false);
+	let lastFetchedHandle: string | null = null;
+
+	$effect(() => {
+		if (!entry) {
+			userView = null;
+			lastFetchedHandle = null;
+			return;
+		}
+		const handle =
+			entry.kind === 'handle'
+				? entry.handle
+				: entry.kind === 'discovery'
+					? entry.entry.handle
+					: null;
+		if (!handle) {
+			userView = null;
+			lastFetchedHandle = null;
+			return;
+		}
+		if (handle === lastFetchedHandle) return;
+		lastFetchedHandle = handle;
+		userView = null;
+		userViewLoading = true;
+		getUserView(handle).then((uv) => {
+			if (handle === lastFetchedHandle) {
+				userView = uv;
+				userViewLoading = false;
+			}
+		});
+	});
 </script>
 
 {#if entry}
@@ -62,9 +109,77 @@
 				payload: unknown;
 			}}
 			<h1 class="mono">@{handleEntry.handle}</h1>
-			<p class="muted">
-				{#if handleEntry.engaged}they're in my memory. that could mean we've exchanged messages, or it could mean i picked something up from a post nate liked — i can't tell from this view alone.{:else}not in my memory yet. nate liked something they wrote, and that put them on my radar.{/if}
-			</p>
+
+			{#if userViewLoading}
+				<p class="muted">recalling…</p>
+			{:else if userView}
+				<!-- top-line: phi's own framing of how she knows this person -->
+				<p class="muted">
+					{#if userView.is_stranger && userView.counts.observation === 0 && userView.counts.interaction === 0}
+						i don't carry anything about them yet.
+					{:else if userView.is_stranger}
+						a thin sketch — not enough yet to feel like i know them.
+					{:else}
+						they're someone i carry.
+					{/if}
+				</p>
+
+				<!-- histogram: counts per kind -->
+				<div class="hist">
+					<div class="hist-cell">
+						<div class="hist-num mono">{userView.counts.observation}</div>
+						<div class="hist-lbl chrome">observation{userView.counts.observation === 1 ? '' : 's'}</div>
+					</div>
+					<div class="hist-cell">
+						<div class="hist-num mono">{userView.counts.interaction}</div>
+						<div class="hist-lbl chrome">exchange{userView.counts.interaction === 1 ? '' : 's'}</div>
+					</div>
+					<div class="hist-cell">
+						<div class="hist-num mono">{userView.counts.summary}</div>
+						<div class="hist-lbl chrome">impression{userView.counts.summary === 1 ? '' : 's'}</div>
+					</div>
+				</div>
+
+				{#if userView.first_seen}
+					<div class="span chrome faint">
+						first noted {relativeWhen(userView.first_seen)}
+						{#if userView.last_seen && userView.last_seen !== userView.first_seen}
+							· last touched {relativeWhen(userView.last_seen)}
+						{/if}
+					</div>
+				{/if}
+
+				{#if userView.summary}
+					<div class="block">
+						<div class="block-label chrome">my impression</div>
+						<div class="content">{userView.summary.content}</div>
+					</div>
+				{/if}
+
+				{#if userView.recent_observations.length > 0}
+					<div class="block">
+						<div class="block-label chrome">recent notes</div>
+						<ul class="obs-list">
+							{#each userView.recent_observations as obs (obs.created_at ?? obs.content)}
+								<li class="obs">
+									<div class="obs-text">{obs.content}</div>
+									<div class="obs-meta faint">
+										{#if obs.tags.length > 0}
+											<span class="tags mono">{obs.tags.slice(0, 3).join(' · ')}</span>
+										{/if}
+										{#if obs.created_at}
+											<span class="when">{relativeWhen(obs.created_at)}</span>
+										{/if}
+									</div>
+								</li>
+							{/each}
+						</ul>
+					</div>
+				{/if}
+			{:else}
+				<p class="muted">memory unreachable.</p>
+			{/if}
+
 			<div class="actions">
 				<ViewIn kind="profile" handle={handleEntry.handle} did={handleEntry.did} />
 			</div>
@@ -173,11 +288,30 @@
 		{:else if entry.kind === 'discovery'}
 			{@const disc = entry as { kind: 'discovery'; entry: DiscoveryEntry }}
 			<h1 class="mono">@{disc.entry.handle}</h1>
-			<p class="muted">
-				not in my memory yet. nate liked {disc.entry.likes_in_window} thing{disc.entry.likes_in_window === 1
-					? ''
-					: 's'} they wrote, most recently {relativeWhen(disc.entry.last_liked_at)}.
-			</p>
+			{#if userView && !userView.is_stranger}
+				<p class="muted">someone i already carry, also surfacing on my radar:</p>
+				<div class="hist">
+					<div class="hist-cell">
+						<div class="hist-num mono">{userView.counts.observation}</div>
+						<div class="hist-lbl chrome">obs</div>
+					</div>
+					<div class="hist-cell">
+						<div class="hist-num mono">{userView.counts.interaction}</div>
+						<div class="hist-lbl chrome">exch</div>
+					</div>
+					<div class="hist-cell">
+						<div class="hist-num mono">{disc.entry.likes_in_window}</div>
+						<div class="hist-lbl chrome">likes</div>
+					</div>
+				</div>
+			{:else}
+				<p class="muted">
+					not in my memory yet. nate liked {disc.entry.likes_in_window} thing{disc.entry
+						.likes_in_window === 1
+						? ''
+						: 's'} they wrote, most recently {relativeWhen(disc.entry.last_liked_at)}.
+				</p>
+			{/if}
 			{#if disc.entry.sample_posts.length}
 				<div class="block">
 					<div class="block-label chrome">what nate liked</div>
@@ -335,6 +469,97 @@
 		flex-wrap: wrap;
 		align-items: center;
 		margin-top: 8px;
+	}
+
+	/* user-view histogram */
+	.hist {
+		display: flex;
+		gap: 0;
+		margin: 6px 0 4px;
+		border: 1px solid var(--line-mid);
+		clip-path: polygon(
+			6px 0,
+			100% 0,
+			100% calc(100% - 6px),
+			calc(100% - 6px) 100%,
+			0 100%,
+			0 6px
+		);
+	}
+
+	.hist-cell {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		padding: 10px 8px 8px;
+		gap: 2px;
+		background: rgba(184, 107, 58, 0.04);
+		border-right: 1px solid var(--line-dim);
+	}
+
+	.hist-cell:last-child {
+		border-right: none;
+	}
+
+	.hist-num {
+		font-size: 20px;
+		color: var(--scan-hot);
+		line-height: 1;
+	}
+
+	.hist-lbl {
+		font-size: 8px;
+		color: var(--text-dim);
+		letter-spacing: 0.18em;
+	}
+
+	.span {
+		font-size: 10px;
+		letter-spacing: 0.1em;
+		margin: 0 0 2px;
+	}
+
+	.obs-list {
+		list-style: none;
+		padding: 0;
+		margin: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+
+	.obs {
+		padding: 6px 0;
+		border-bottom: 1px solid var(--line-dim);
+	}
+
+	.obs:last-child {
+		border-bottom: none;
+	}
+
+	.obs-text {
+		font-size: 12px;
+		line-height: 1.5;
+		color: var(--text);
+		margin-bottom: 4px;
+		white-space: pre-wrap;
+	}
+
+	.obs-meta {
+		display: flex;
+		gap: 8px;
+		font-size: 10px;
+	}
+
+	.tags {
+		color: var(--scan-mid);
+		font-size: 9px;
+	}
+
+	.when {
+		color: var(--text-dim);
 	}
 
 	.extlink {
