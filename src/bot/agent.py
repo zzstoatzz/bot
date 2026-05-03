@@ -188,11 +188,12 @@ class PhiAgent:
 
         @self.agent.system_prompt(dynamic=True)
         def inject_pause_history() -> str:
-            """[OPERATIONAL HISTORY] — most recent pause cycle, when relevant.
+            """[OPERATIONAL HISTORY] — most recent pause cycle.
 
-            Surfaced only if she was actually offline for a meaningful window
-            (>10min) and we resumed within the last 24h. Phi reasons about
-            whether this batch is catchup; we don't prescribe behavior.
+            Renders whenever a complete pause/resume cycle exists and the
+            resume was within the last 24h. Duration isn't filtered — phi
+            sees whatever happened and decides what (if anything) it means
+            for this batch.
             """
             paused_at = bot_status.paused_at
             resumed_at = bot_status.resumed_at
@@ -200,12 +201,10 @@ class PhiAgent:
                 return ""
             if resumed_at <= paused_at:
                 return ""  # currently paused, or never resumed since this pause
-            offline = resumed_at - paused_at
             since_resume = datetime.now(UTC) - resumed_at
-            if offline < timedelta(minutes=10):
-                return ""  # too brief to matter
             if since_resume > timedelta(hours=24):
                 return ""  # ancient history; the catchup is over
+            offline = resumed_at - paused_at
             return (
                 "[OPERATIONAL HISTORY]: paused "
                 f"{paused_at.strftime('%Y-%m-%d %H:%M UTC')}, resumed "
