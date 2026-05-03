@@ -3,7 +3,7 @@
 import contextlib
 import logging
 import os
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from pydantic_ai import Agent, ImageUrl, RunContext
@@ -24,9 +24,10 @@ from bot.core.workflow_state import get_workflow_state_block
 from bot.memory.extraction import EXTRACTION_SYSTEM_PROMPT, ExtractionResult
 from bot.memory.namespace_memory import InteractionRow
 from bot.memory.review import REVIEW_SYSTEM_PROMPT, ReviewResult
+from bot.status import bot_status
 from bot.tools import PhiDeps, _check_services_impl, register_all
 from bot.tools.bluesky import fetch_relay_names
-from bot.utils.time import relative_when
+from bot.utils.time import humanize_duration, relative_when
 
 logger = logging.getLogger("bot.agent")
 
@@ -184,6 +185,33 @@ class PhiAgent:
         def inject_today() -> str:
             now = datetime.now(UTC)
             return f"[NOW]: {now.strftime('%Y-%m-%d %H:%M UTC')}"
+
+        @self.agent.system_prompt(dynamic=True)
+        def inject_pause_history() -> str:
+            """[OPERATIONAL HISTORY] — most recent pause cycle, when relevant.
+
+            Surfaced only if she was actually offline for a meaningful window
+            (>10min) and we resumed within the last 24h. Phi reasons about
+            whether this batch is catchup; we don't prescribe behavior.
+            """
+            paused_at = bot_status.paused_at
+            resumed_at = bot_status.resumed_at
+            if not paused_at or not resumed_at:
+                return ""
+            if resumed_at <= paused_at:
+                return ""  # currently paused, or never resumed since this pause
+            offline = resumed_at - paused_at
+            since_resume = datetime.now(UTC) - resumed_at
+            if offline < timedelta(minutes=10):
+                return ""  # too brief to matter
+            if since_resume > timedelta(hours=24):
+                return ""  # ancient history; the catchup is over
+            return (
+                "[OPERATIONAL HISTORY]: paused "
+                f"{paused_at.strftime('%Y-%m-%d %H:%M UTC')}, resumed "
+                f"{resumed_at.strftime('%Y-%m-%d %H:%M UTC')} "
+                f"(offline {humanize_duration(offline)})."
+            )
 
         @self.agent.system_prompt(dynamic=True)
         async def inject_known_relays() -> str:

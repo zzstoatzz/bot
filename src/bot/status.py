@@ -3,7 +3,7 @@
 import json
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 logger = logging.getLogger("bot.status")
@@ -24,6 +24,10 @@ class BotStatus:
     ai_enabled: bool = False
     polling_active: bool = False
     paused: bool = False
+    # Most recent pause/resume timestamps (UTC). Surfaced to phi so she
+    # knows when she was offline — informs how to handle a catchup batch.
+    paused_at: datetime | None = None
+    resumed_at: datetime | None = None
 
     @property
     def uptime_seconds(self) -> float:
@@ -62,6 +66,16 @@ class BotStatus:
         self.errors += 1
         self._save()
 
+    def record_paused(self):
+        self.paused = True
+        self.paused_at = datetime.now(UTC)
+        self._save()
+
+    def record_resumed(self):
+        self.paused = False
+        self.resumed_at = datetime.now(UTC)
+        self._save()
+
     def _save(self):
         """Persist counters to disk."""
         if not STATUS_FILE.parent.exists():
@@ -77,6 +91,8 @@ class BotStatus:
                 "last_response_time": self.last_response_time.isoformat()
                 if self.last_response_time
                 else None,
+                "paused_at": self.paused_at.isoformat() if self.paused_at else None,
+                "resumed_at": self.resumed_at.isoformat() if self.resumed_at else None,
             }
             STATUS_FILE.write_text(json.dumps(data))
         except Exception as e:
@@ -99,6 +115,10 @@ class BotStatus:
                 self.last_response_time = datetime.fromisoformat(
                     data["last_response_time"]
                 )
+            if data.get("paused_at"):
+                self.paused_at = datetime.fromisoformat(data["paused_at"])
+            if data.get("resumed_at"):
+                self.resumed_at = datetime.fromisoformat(data["resumed_at"])
             logger.info(
                 f"restored status: {self.mentions_received} mentions, {self.responses_sent} responses"
             )

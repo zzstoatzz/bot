@@ -7,7 +7,31 @@ interaction render. Granularity is fine enough for continuity signals
 helper in `tools/_helpers.py:_relative_age` for that — different shape).
 """
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
+
+
+def humanize_duration(delta: timedelta) -> str:
+    """Render a timedelta compactly: '3d 20h', '45m', '12s', etc.
+
+    For positive deltas only. Drops zero-leading units. Returns '0s' for
+    zero or negative.
+    """
+    seconds = int(delta.total_seconds())
+    if seconds <= 0:
+        return "0s"
+    days, seconds = divmod(seconds, 86400)
+    hours, seconds = divmod(seconds, 3600)
+    minutes, seconds = divmod(seconds, 60)
+    parts: list[str] = []
+    if days:
+        parts.append(f"{days}d")
+    if hours:
+        parts.append(f"{hours}h")
+    if minutes and not days:
+        parts.append(f"{minutes}m")
+    if seconds and not (days or hours):
+        parts.append(f"{seconds}s")
+    return " ".join(parts) or f"{seconds}s"
 
 
 def relative_when(iso_ts: str) -> str:

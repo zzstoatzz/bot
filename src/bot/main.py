@@ -138,7 +138,7 @@ async def pause(request: Request):
     """Pause notification processing. Unread notifications accumulate until resumed."""
     if err := _check_control_token(request):
         return err
-    bot_status.paused = True
+    bot_status.record_paused()
     logger.info("paused via API")
     if pm := getattr(app.state, "profile_manager", None):
         await pm.set_online_status(False)
@@ -150,7 +150,7 @@ async def resume(request: Request):
     """Resume notification processing. Queued notifications will be processed on next poll."""
     if err := _check_control_token(request):
         return err
-    bot_status.paused = False
+    bot_status.record_resumed()
     logger.info("resumed via API")
     if pm := getattr(app.state, "profile_manager", None):
         await pm.set_online_status(True)
