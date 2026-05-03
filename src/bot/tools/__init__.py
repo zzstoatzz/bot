@@ -9,7 +9,6 @@ def register_all(agent, graze_client: GrazeClient):
     from bot.tools import (
         blog,
         bluesky,
-        cosmik,
         feeds,
         goals,
         memory,
@@ -20,7 +19,6 @@ def register_all(agent, graze_client: GrazeClient):
 
     memory.register(agent)
     search.register(agent)
-    cosmik.register(agent)
     feeds.register(agent, graze_client)
     bluesky.register(agent)
     blog.register(agent)

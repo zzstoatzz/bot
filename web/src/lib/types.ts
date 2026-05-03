@@ -86,6 +86,14 @@ export interface HealthInfo {
 	paused: boolean;
 }
 
+// --- /api/abilities ---
+
+export interface Capability {
+	name: string;
+	description: string;
+	operator_only: boolean;
+}
+
 // --- bsky public API minimal types (used by feed/blog) ---
 
 export interface BskyAuthor {
@@ -118,3 +126,40 @@ export interface BskyFeedItem {
 	post: BskyPost;
 	reply?: { parent?: { author?: BskyAuthor; record?: BskyPostRecord; uri?: string } };
 }
+
+// --- cockpit / hud ---
+
+/**
+ * AtlasPoint is the unifying primitive across the mind lens. Every "object of
+ * phi's attention" — concept-shaped (observation, goal) and people-shaped
+ * (engaged, candidate) — becomes a point with a kind, a position, and a
+ * payload that becomes the logbook entry on click.
+ */
+export type AtlasKind =
+	| 'phi'
+	| 'handle-engaged'
+	| 'handle-candidate'
+	| 'observation'
+	| 'goal';
+
+export interface AtlasPoint {
+	id: string;
+	kind: AtlasKind;
+	label: string; // 1-line for hover readout
+	x: number; // normalized -1..1 (canvas scales)
+	y: number; // normalized -1..1
+	avatar?: string | null;
+	payload: unknown; // pulled from the underlying record; logbook renders it
+}
+
+/**
+ * Logbook entries are what slide in from the right when you click a thing.
+ * The kind drives the renderer; the payload is the matching record shape.
+ */
+export type LogbookEntry =
+	| { kind: 'handle'; handle: string; did?: string; engaged: boolean; payload: unknown }
+	| { kind: 'observation'; observation: Observation }
+	| { kind: 'goal'; goal: Goal }
+	| { kind: 'activity'; item: ActivityItem }
+	| { kind: 'blog'; doc: BlogDoc }
+	| { kind: 'discovery'; entry: DiscoveryEntry };

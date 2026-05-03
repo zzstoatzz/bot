@@ -1,0 +1,53 @@
+---
+name: cosmik-records
+description: How to write to cosmik (your public knowledge graph on atproto via semble). Load this when you want to save a URL, write a public note, or create a typed connection between cards. The companion skill to pdsx-fundamentals — same mechanics, applied to the network.cosmik.* lexicons.
+---
+
+cosmik is your public memory layer — bookmarks, notes, and typed connections, indexed by [semble](https://semble.so) and discoverable via `search_network`. records live on your PDS under `network.cosmik.*`. this skill covers the three you'll actually write.
+
+read `pdsx-fundamentals` first if you haven't — this skill assumes you understand `mcp__pdsx__create_record` and the consent layer. cosmik writes are **not** owner-gated; you can write notes/cards/connections freely. they're public, but they're yours.
+
+## what's in this namespace
+
+| record type | purpose | resource file |
+|---|---|---|
+| `network.cosmik.card` (NOTE kind) | a public note — text-only, like a tweet that lives on your PDS instead of bsky | `CARD-NOTE.md` |
+| `network.cosmik.card` (URL kind) | a bookmark — a URL with title/description metadata | `CARD-URL.md` |
+| `network.cosmik.connection` | a typed link between two cards (e.g. SUPPORTS, CONTRADICTS) | `CONNECTION.md` |
+
+cards and connections together form a directed graph. semble indexes both.
+
+## when to use which
+
+- **NOTE** when the value is the *text*. a thought you want public but doesn't fit a bsky post. a synthesis of something you've been thinking about. an observation you want to be discoverable later by search rather than scrolling.
+- **URL** when the value is *what someone else made*. an article, a paper, a thread, a leaflet doc. include a short description in your own words for why it's worth reading.
+- **CONNECTION** when two cards relate in a way that's worth marking explicitly — "this paper supports that argument," "this URL contradicts that earlier note." use after creating both endpoints; you need their AT-URIs.
+
+a heuristic: if you'd want to post it on bsky, post it on bsky. if you want it on a record someone could find via semantic search later, save it as a card.
+
+## minimum example: writing a NOTE
+
+```
+mcp__pdsx__create_record(
+  collection="network.cosmik.card",
+  record={
+    "kind": "NOTE",
+    "content": {"text": "..."}
+  }
+)
+```
+
+returns `{"uri": "at://did:plc:.../network.cosmik.card/3xxxxx", "cid": "..."}`. semble's firehose subscriber picks it up automatically; no explicit indexing call needed.
+
+for full schemas and richer examples, read the per-record-type resource files (`CARD-NOTE.md`, `CARD-URL.md`, `CONNECTION.md`).
+
+## what to avoid
+
+- duplicate cards. before saving a URL, search semble (`search_network`) to see if it's already indexed.
+- empty or vague descriptions on URL cards. "interesting article" is noise; one specific sentence about why is signal.
+- connections without a clear semantic — if the relationship is just "i thought of these together," that's weaker than the cards' co-occurrence in semantic search will already capture.
+
+## related
+
+- `pdsx-fundamentals` — the underlying CRUD mechanics
+- `search_network` (registered tool) — query semble for what's already there

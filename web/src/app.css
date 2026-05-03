@@ -1,18 +1,61 @@
-/* base styles — dark, github-ish, matching the existing site palette */
+/*
+ * phi cockpit — metroid prime 1 inspired hud
+ *
+ * palette: deep blue-black ambient, warm clay-orange chrome (the "phi color"),
+ * muted scan-cyan for data readouts, amber for warnings. heavy desaturation —
+ * this is an instrument, not a brochure.
+ *
+ * type: tall narrow geometric for chrome (uppercase tracked), inter for content,
+ * jetbrains mono for ids/timestamps.
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@300;400;500;600&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@300;400&display=swap');
 
 :root {
-	--bg: #0d1117;
-	--bg-elev: #161b22;
-	--border: #30363d;
-	--border-dim: #21262d;
-	--text: #c9d1d9;
-	--text-muted: #8b949e;
-	--text-faint: #484f58;
-	--accent-blue: #58a6ff;
-	--accent-green: #2ea043;
-	--accent-red: #da3633;
-	--accent-purple: #a371f7;
-	--accent-yellow: #d29922;
+	/* ambient — never pure black, slight blue */
+	--bg-void: #07090f;
+	--bg-deep: #0d1119;
+	--bg-elev: #141a26;
+	--bg-panel: rgba(20, 26, 38, 0.85);
+
+	/* hud — warm clay orange, the phi color */
+	--hud-dim: #4d2c14;
+	--hud-mid: #b86b3a;
+	--hud-hot: #e09060;
+	--hud-glow: rgba(184, 107, 58, 0.35);
+
+	/* scan visor — muted cyan/teal for data */
+	--scan-dim: #2a4a55;
+	--scan-mid: #4a8b9a;
+	--scan-hot: #7ec0d4;
+
+	/* warn amber — sparingly */
+	--warn: #c9a05a;
+	--warn-hot: #e0bb6a;
+
+	/* danger red — only for actual problems */
+	--danger: #a04848;
+
+	/* text */
+	--text: #d6d2c9;
+	--text-mid: #8c8579;
+	--text-dim: #5a554a;
+
+	/* lines — orange at low/med alpha */
+	/* --grid: very faint, only for background scaffolding (concentric circles, crosshairs) */
+	/* --line-dim: data edges (graph connections, time-trails) — must be readable */
+	/* --line-mid: panel borders */
+	/* --line-hot: active/hovered borders */
+	--grid: rgba(184, 107, 58, 0.05);
+	--line-dim: rgba(184, 107, 58, 0.22);
+	--line-mid: rgba(184, 107, 58, 0.32);
+	--line-hot: rgba(184, 107, 58, 0.6);
+	--line-scan: rgba(74, 139, 154, 0.3);
+
+	/* chrome typefaces */
+	--font-chrome: 'Saira Condensed', 'Barlow Condensed', system-ui, sans-serif;
+	--font-content: 'Inter', system-ui, sans-serif;
+	--font-mono: 'JetBrains Mono', 'SF Mono', 'Cascadia Code', Menlo, monospace;
 }
 
 * {
@@ -23,102 +66,361 @@ html,
 body {
 	margin: 0;
 	padding: 0;
-	background: var(--bg);
+	background: var(--bg-void);
 	color: var(--text);
-	font-family:
-		-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
-	font-size: 14px;
+	font-family: var(--font-content);
+	font-size: 13px;
 	line-height: 1.5;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+	overflow: hidden;
+	height: 100vh;
+}
+
+#svelte,
+body > div {
+	height: 100%;
+}
+
+/* ambient hexagonal grid + scanlines + vignette layered on the void */
+body::before {
+	content: '';
+	position: fixed;
+	inset: 0;
+	pointer-events: none;
+	z-index: 0;
+	background:
+		/* very faint hex pattern — chozo terminal feel */
+		url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='56' height='64' viewBox='0 0 56 64'><g fill='none' stroke='%23b86b3a' stroke-width='0.6' opacity='0.08'><polygon points='14,2 42,2 56,18 42,34 14,34 0,18'/><polygon points='14,34 42,34 56,50 42,66 14,66 0,50'/></g></svg>"),
+		/* horizontal scanlines */
+		repeating-linear-gradient(
+			0deg,
+			rgba(255, 255, 255, 0.012) 0px,
+			rgba(255, 255, 255, 0.012) 1px,
+			transparent 1px,
+			transparent 3px
+		);
+	background-size:
+		56px 64px,
+		auto;
+}
+
+/* radial vignette */
+body::after {
+	content: '';
+	position: fixed;
+	inset: 0;
+	pointer-events: none;
+	z-index: 0;
+	background: radial-gradient(
+		ellipse at center,
+		transparent 0%,
+		transparent 55%,
+		rgba(0, 0, 0, 0.35) 100%
+	);
+}
+
+/* ---------- typography ---------- */
+
+.chrome {
+	font-family: var(--font-chrome);
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	font-weight: 400;
+}
+
+.mono {
+	font-family: var(--font-mono);
+	font-size: 0.92em;
 }
 
 a {
-	color: var(--accent-blue);
+	color: var(--scan-mid);
 	text-decoration: none;
 }
 
 a:hover {
-	text-decoration: underline;
+	color: var(--scan-hot);
 }
 
-code,
-.mono {
-	font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', Menlo, monospace;
-	font-size: 0.92em;
+/* ---------- cockpit layout primitives ---------- */
+
+.cockpit {
+	position: fixed;
+	inset: 0;
+	display: grid;
+	grid-template-rows: 1fr;
+	z-index: 1;
 }
 
-h1,
-h2,
-h3 {
-	font-weight: 400;
-	margin: 0 0 12px 0;
+.viewport {
+	position: relative;
+	width: 100%;
+	height: 100%;
+	overflow: hidden;
 }
 
-h1 {
-	font-size: 28px;
-}
-h2 {
-	font-size: 20px;
-	color: var(--text-muted);
-}
-h3 {
-	font-size: 15px;
-	color: var(--text-muted);
+/* hud overlays — fixed, on top of viewport */
+.hud {
+	position: fixed;
+	z-index: 10;
+	pointer-events: none;
 }
 
-.container {
-	max-width: 760px;
-	margin: 0 auto;
-	padding: 24px 20px 80px;
+.hud > * {
+	pointer-events: auto;
 }
 
-.muted {
-	color: var(--text-muted);
+.hud-tl {
+	top: 18px;
+	left: 22px;
 }
 
-.faint {
-	color: var(--text-faint);
+.hud-tr {
+	top: 18px;
+	right: 22px;
 }
 
-.card {
-	background: var(--bg-elev);
-	border-radius: 8px;
-	padding: 14px 16px;
-	border-left: 3px solid var(--border);
-	margin-bottom: 10px;
+.hud-bl {
+	bottom: 16px;
+	left: 22px;
 }
 
-.card pre,
-.card .body {
-	white-space: pre-wrap;
-	word-break: break-word;
+.hud-br {
+	bottom: 16px;
+	right: 22px;
 }
 
-.kv {
-	display: flex;
-	gap: 12px;
-	flex-wrap: wrap;
-	font-size: 13px;
-	color: var(--text-muted);
+/* ---------- mobile: corner-hud collapses into header + footer strips ---------- */
+
+@media (max-width: 640px) {
+	.hud-tl {
+		top: 0;
+		left: 0;
+		right: 0;
+		padding: 8px 10px;
+		background: linear-gradient(to bottom, var(--bg-deep) 0%, transparent 100%);
+		border-bottom: 1px solid var(--line-dim);
+	}
+
+	.hud-tr {
+		top: 8px;
+		right: 8px;
+	}
+
+	.hud-bl {
+		bottom: 0;
+		left: 0;
+		right: 0;
+		padding: 6px 10px;
+		background: linear-gradient(to top, var(--bg-deep) 0%, transparent 100%);
+		border-top: 1px solid var(--line-dim);
+	}
+
+	.hud-br {
+		display: none;
+	}
 }
 
-.kv > div > span:first-child {
-	display: block;
-	color: var(--text);
-	font-size: 16px;
-	margin-bottom: 2px;
+/* ---------- chozo-terminal frame (corner brackets, hud-style) ---------- */
+/*
+ * .frame wraps any block in 4 small L-shaped corner brackets that suggest
+ * a mounted hud panel. drop on cards, drawers, hero strips, etc.
+ */
+
+.frame {
+	position: relative;
 }
+
+.frame::before,
+.frame::after,
+.frame > .frame-c1,
+.frame > .frame-c2 {
+	content: '';
+	position: absolute;
+	width: 10px;
+	height: 10px;
+	border-color: var(--hud-mid);
+	border-style: solid;
+	border-width: 0;
+	pointer-events: none;
+}
+
+.frame::before {
+	top: -1px;
+	left: -1px;
+	border-top-width: 1px;
+	border-left-width: 1px;
+}
+
+.frame::after {
+	top: -1px;
+	right: -1px;
+	border-top-width: 1px;
+	border-right-width: 1px;
+}
+
+.frame > .frame-c1 {
+	bottom: -1px;
+	left: -1px;
+	border-bottom-width: 1px;
+	border-left-width: 1px;
+}
+
+.frame > .frame-c2 {
+	bottom: -1px;
+	right: -1px;
+	border-bottom-width: 1px;
+	border-right-width: 1px;
+}
+
+/* ---------- diagonal-cut panel (chozo terminal aesthetic) ---------- */
+/*
+ * snipped corners on opposing sides — the MP1 hud panel signature.
+ * use .cut for a 10px snip on top-left and bottom-right.
+ */
+
+.cut {
+	clip-path: polygon(
+		10px 0,
+		100% 0,
+		100% calc(100% - 10px),
+		calc(100% - 10px) 100%,
+		0 100%,
+		0 10px
+	);
+}
+
+/* ---------- segmented divider — that hud-readout dashed line ---------- */
+
+.seg-divider {
+	height: 1px;
+	background: repeating-linear-gradient(
+		90deg,
+		var(--line-mid) 0px,
+		var(--line-mid) 6px,
+		transparent 6px,
+		transparent 10px
+	);
+	margin: 12px 0;
+}
+
+/* ---------- hexagonal bullet ---------- */
+
+.hex {
+	display: inline-block;
+	width: 7px;
+	height: 8px;
+	background: currentColor;
+	clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+	flex-shrink: 0;
+}
+
+.hex.ring {
+	background: transparent;
+	box-shadow: inset 0 0 0 1px currentColor;
+}
+
+/* ---------- panel ---------- */
+
+.panel {
+	background: var(--bg-panel);
+	border: 1px solid var(--line-mid);
+	backdrop-filter: blur(8px);
+	-webkit-backdrop-filter: blur(8px);
+	padding: 12px 14px;
+}
+
+/* ---------- buttons ---------- */
 
 button {
-	background: var(--bg-elev);
+	background: transparent;
 	color: var(--text);
-	border: 1px solid var(--border);
-	border-radius: 6px;
+	border: 1px solid var(--line-mid);
 	padding: 6px 12px;
-	font-size: 13px;
+	font-family: var(--font-chrome);
+	font-size: 11px;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
 	cursor: pointer;
-	font-family: inherit;
+	transition:
+		color 0.12s,
+		border-color 0.12s,
+		background 0.12s;
 }
 
 button:hover {
-	background: #1c2128;
+	color: var(--hud-hot);
+	border-color: var(--hud-mid);
+	background: rgba(184, 107, 58, 0.05);
+}
+
+button.active {
+	color: var(--hud-hot);
+	border-color: var(--hud-mid);
+	background: rgba(184, 107, 58, 0.1);
+}
+
+/* ---------- pulse animation ---------- */
+
+@keyframes pulse {
+	0%,
+	100% {
+		opacity: 0.55;
+		filter: drop-shadow(0 0 0 currentColor);
+	}
+	50% {
+		opacity: 1;
+		filter: drop-shadow(0 0 4px currentColor);
+	}
+}
+
+.pulse {
+	animation: pulse 2.4s ease-in-out infinite;
+}
+
+/* ---------- utility text ---------- */
+
+.muted {
+	color: var(--text-mid);
+}
+
+.faint {
+	color: var(--text-dim);
+}
+
+.hot {
+	color: var(--hud-hot);
+}
+
+.scan {
+	color: var(--scan-mid);
+}
+
+/* ---------- scrollable surfaces ---------- */
+
+.scroll {
+	overflow-y: auto;
+	scrollbar-width: thin;
+	scrollbar-color: var(--line-mid) transparent;
+}
+
+.scroll::-webkit-scrollbar {
+	width: 6px;
+}
+
+.scroll::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+.scroll::-webkit-scrollbar-thumb {
+	background: var(--line-mid);
+	border-radius: 3px;
+}
+
+/* ---------- focus ring ---------- */
+
+*:focus-visible {
+	outline: 1px solid var(--hud-mid);
+	outline-offset: 2px;
 }

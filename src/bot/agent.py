@@ -12,6 +12,7 @@ from pydantic_ai_skills import SkillsToolset
 
 from bot.config import settings
 from bot.core.atproto_client import bot_client, get_identity_block
+from bot.core.cosmik import create_cosmik_record
 from bot.core.discovery_pool import get_discovery_pool_block
 from bot.core.goals import list_goals as list_goal_records
 from bot.core.graze_client import GrazeClient
@@ -27,6 +28,7 @@ from bot.memory.review import REVIEW_SYSTEM_PROMPT, ReviewResult
 from bot.status import bot_status
 from bot.tools import PhiDeps, _check_services_impl, register_all
 from bot.tools.bluesky import fetch_relay_names
+from bot.types import CosmikNoteCard, NoteContent
 from bot.utils.time import humanize_duration, relative_when
 
 logger = logging.getLogger("bot.agent")
@@ -373,7 +375,7 @@ class PhiAgent:
                 nc = len(cols.records) if cols.records else 0
                 nk = len(cards.records) if cards.records else 0
                 if nc or nk:
-                    return f"[SEMBLE]: you have {nc} public collections and {nk} cards on semble. use search_network to browse, save_url/create_connection to add."
+                    return f"[SEMBLE]: {nc} public collections, {nk} cards."
             except Exception as e:
                 logger.debug(f"failed to fetch cosmik counts: {e}")
             return ""
@@ -402,6 +404,53 @@ class PhiAgent:
         logger.info(
             "phi agent initialized with pdsx, pub-search, and prefect MCP tools"
         )
+
+    def get_capabilities(self) -> list[dict]:
+        """Plain-data introspection of phi's registered function-tools.
+
+        Reads from `self.agent._function_toolset.tools` (where pydantic-ai
+        stores the registered `@agent.tool` callables). Returns one entry
+        per tool with:
+          - name: the registered tool name
+          - description: the tool's docstring (what gets sent to the LLM)
+          - operator_only: heuristic — true if the tool is gated to the
+            bot's owner. Detected via either an `_is_owner(` source-call
+            or owner-restriction phrasing in the docstring. When an
+            explicit owner-gating attribute lands on `Tool`, swap this
+            heuristic for a direct read.
+
+        Surfaced via /api/abilities so the cockpit UI can render real
+        names + real docstrings instead of inventing them.
+        """
+        import inspect
+
+        tools = self.agent._function_toolset.tools
+        out: list[dict] = []
+        for name in sorted(tools.keys()):
+            t = tools[name]
+            try:
+                src = inspect.getsource(t.function)
+            except (OSError, TypeError):
+                src = ""
+            doc = (t.description or "").strip()
+            doc_lower = doc.lower()
+            operator_only = "_is_owner(" in src or any(
+                marker in doc_lower
+                for marker in (
+                    "owner-only",
+                    "only the bot's owner",
+                    "operator-only",
+                    "only @",
+                )
+            )
+            out.append(
+                {
+                    "name": name,
+                    "description": doc,
+                    "operator_only": operator_only,
+                }
+            )
+        return out
 
     def _mcp_toolsets(self) -> list[MCPServerStreamableHTTP]:
         """Create fresh MCP server instances for a single agent run."""
@@ -789,15 +838,12 @@ class PhiAgent:
 
             elif decision.action == "promote" and decision.card_title:
                 try:
-                    from bot.tools._helpers import _create_cosmik_record
-                    from bot.types import CosmikNoteCard, NoteContent
-
                     card = CosmikNoteCard(
                         content=NoteContent(
                             text=decision.card_description or obs["content"]
                         )
                     )
-                    uri = await _create_cosmik_record(
+                    uri = await create_cosmik_record(
                         "network.cosmik.card", card.to_record()
                     )
                     promoted += 1

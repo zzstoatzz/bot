@@ -7,6 +7,7 @@ import type {
 	ActivityItem,
 	BlogDoc,
 	BskyFeedItem,
+	Capability,
 	DiscoveryEntry,
 	Goal,
 	GraphData,
@@ -125,6 +126,12 @@ export async function getMemoryGraph(): Promise<GraphData> {
 export async function getHealth(): Promise<HealthInfo> {
 	const res = await fetch('/health');
 	if (!res.ok) throw new Error(`health: ${res.status}`);
+	return await res.json();
+}
+
+export async function getCapabilities(): Promise<Capability[]> {
+	const res = await fetch('/api/abilities');
+	if (!res.ok) throw new Error(`abilities: ${res.status}`);
 	return await res.json();
 }
 

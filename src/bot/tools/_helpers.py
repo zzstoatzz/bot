@@ -8,7 +8,6 @@ import httpx
 from pydantic_ai import RunContext
 
 from bot.config import settings
-from bot.core.atproto_client import bot_client
 from bot.memory import NamespaceMemory
 
 logger = logging.getLogger("bot.tools")
@@ -162,23 +161,6 @@ def _format_unified_results(results: list[dict], handle: str) -> list[str]:
         else:
             parts.append(f"[note]{tag_str}{date_str} {content}")
     return parts
-
-
-# --- record creation ---
-
-
-async def _create_cosmik_record(collection: str, record: dict) -> str:
-    """Write a cosmik record to phi's PDS. Returns the AT URI."""
-    await bot_client.authenticate()
-    assert bot_client.client.me is not None
-    result = bot_client.client.com.atproto.repo.create_record(
-        data={
-            "repo": bot_client.client.me.did,
-            "collection": collection,
-            "record": record,
-        }
-    )
-    return result.uri
 
 
 # --- infrastructure ---

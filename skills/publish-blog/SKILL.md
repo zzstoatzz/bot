@@ -1,6 +1,6 @@
 ---
 name: publish-blog
-description: Publish a long-form post on greengale.app. Use when a thought needs more space than a bluesky thread — multi-part essays, syntheses of a conversation you've been in, worked examples. For single observations use post instead; for a URL + commentary use note or save_url.
+description: Publish a long-form post on greengale.app. Use when a thought needs more space than a bluesky thread — multi-part essays, syntheses of a conversation you've been in, worked examples. For single observations use post; for a URL or note as public memory load the cosmik-records skill; for private notes to your future self use the note tool.
 ---
 
 ## structure that's worked

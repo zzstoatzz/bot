@@ -183,6 +183,33 @@ async def trigger_review(request: Request, background_tasks: BackgroundTasks):
     return {"triggered": True}
 
 
+_abilities_cache: list | None = None
+
+
+@app.get("/api/abilities")
+async def abilities():
+    """Phi's currently-registered function-tools — name, docstring, and
+    whether owner-gated. Pulled live from `PhiAgent.get_capabilities()`,
+    which introspects `agent._function_toolset.tools`.
+
+    Cached for the process lifetime: tools are registered at startup and
+    don't change without a restart, so re-introspecting per request is
+    pointless work.
+    """
+    global _abilities_cache
+    if _abilities_cache is not None:
+        return JSONResponse(_abilities_cache)
+    poller = getattr(app.state, "poller", None)
+    if poller is None:
+        return JSONResponse({"error": "agent not ready"}, status_code=503)
+    try:
+        _abilities_cache = poller.handler.agent.get_capabilities()
+        return JSONResponse(_abilities_cache)
+    except Exception as e:
+        logger.warning(f"abilities introspection failed: {e}")
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
 _discovery_cache_data: list | None = None
 _discovery_cache_expires: float = 0.0
 _DISCOVERY_CACHE_TTL = 60  # seconds
