@@ -1,4 +1,4 @@
-"""Memory tools — private recall and note-taking."""
+"""Memory tools — private recall (read) and remember (write)."""
 
 from pydantic_ai import RunContext
 
@@ -12,9 +12,9 @@ from bot.tools._helpers import (
 def register(agent):
     @agent.tool
     async def recall(ctx: RunContext[PhiDeps], query: str, about: str = "") -> str:
-        """Search your private memory. Use to remember past conversations and what you know about specific people.
+        """Search your private memory. Use to find past conversations and what you know about specific people.
         Pass about="@handle" to search a specific user, or leave empty for general private recall.
-        For public network knowledge, use search_network instead."""
+        For public network knowledge, use search_network instead. The write-side companion is `remember`."""
         if not ctx.deps.memory:
             return "memory not available"
 
@@ -40,22 +40,28 @@ def register(agent):
         return "\n".join(_format_user_results(results, about))
 
     @agent.tool
-    async def note(
+    async def remember(
         ctx: RunContext[PhiDeps],
         content: str,
         tags: list[str],
         source_uri: str = "",
     ) -> str:
-        """Leave a note for your future self. Stored privately for fast vector recall.
+        """Save something to your private memory for future semantic recall.
 
-        Pass source_uri when the note is grounded in a specific post, thread,
-        or card you can cite — it makes the note checkable later. Empty is
-        allowed when the thought is purely your own, but cite when you can.
+        Writes to your private vector store (turbopuffer episodic namespace)
+        — searchable later via `recall`, never surfaces back to you on its
+        own. Distinct from `observe`, which puts something in your bounded
+        active-attention pool that re-surfaces in [ACTIVE OBSERVATIONS].
+
+        Pass source_uri when the memory is grounded in a specific post,
+        thread, or card you can cite — it makes it checkable later. Empty
+        is allowed when the thought is purely your own, but cite when you
+        can.
         """
         if ctx.deps.memory:
             sources = [source_uri] if source_uri else None
             await ctx.deps.memory.store_episodic_memory(
                 content, tags, source="tool", source_uris=sources
             )
-            return f"noted — {content[:100]}"
+            return f"remembered — {content[:100]}"
         return "private memory not available"

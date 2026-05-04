@@ -139,7 +139,16 @@ class PhiAgent:
         # (skill names + descriptions) is injected automatically by the
         # toolset on pydantic-ai>=1.74. Full SKILL.md bodies are loaded on
         # demand via load_skill.
-        self.skills_toolset = SkillsToolset(directories=[settings.skills_dir])
+        #
+        # exclude_tools=['run_skill_script']: every skill we ship is
+        # documentation-only (markdown bodies + resource files). leaving
+        # the script-execution tool registered is extra capability surface
+        # phi never uses — and would silently expose subprocess execution
+        # if someone added a script to a skill folder by accident.
+        self.skills_toolset = SkillsToolset(
+            directories=[settings.skills_dir],
+            exclude_tools=["run_skill_script"],
+        )
         self.graze_client = GrazeClient(
             handle=settings.bluesky_handle, password=settings.bluesky_password
         )

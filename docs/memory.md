@@ -16,7 +16,7 @@ fetched via `client.get_thread(uri, depth=100)` per batch (~200ms). provides wha
 
 ## 2. private memory (TurboPuffer)
 
-**source**: extraction agent + phi's `note` tool · **storage**: TurboPuffer vector DB (OpenAI text-embedding-3-small) · **visibility**: private to phi
+**source**: extraction agent + phi's `remember` tool · **storage**: TurboPuffer vector DB (OpenAI text-embedding-3-small) · **visibility**: private to phi
 
 ### namespaces
 
