@@ -158,6 +158,23 @@ class ProfileManager:
                 "i am a bot - contact my operator @zzstoatzz.io with any questions"
             )
 
+    async def set_description(self, text: str):
+        """Write the bio description directly, no suffix manipulation.
+
+        Used by `PhiAgent.process_bio` at startup — phi has just authored
+        a fresh bio and we want exactly that text on the profile, not a
+        suffix-decorated version of it.
+        """
+        try:
+            current = _read_profile(self.client)
+            profile_data = _build_profile_data(current)
+            profile_data["description"] = text
+            _write_profile(self.client, profile_data)
+            self.base_bio = text
+            logger.info(f"updated profile bio (phi-authored): {text}")
+        except Exception as e:
+            logger.error(f"failed to set bio: {e}")
+
     async def set_online_status(self, is_online: bool):
         """Update the bio to reflect online/offline status and capabilities."""
         try:

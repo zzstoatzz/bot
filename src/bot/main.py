@@ -66,15 +66,25 @@ async def lifespan(app: FastAPI):
 
     await bot_client.authenticate()
 
-    # Set online status
     profile_manager = ProfileManager(bot_client.client)
-    await profile_manager.set_online_status(True)
+    await profile_manager.initialize()
     app.state.profile_manager = profile_manager
 
-    # Start notification polling
+    # Start notification polling — needed before the bio rewrite because the
+    # poller owns the PhiAgent instance we call process_bio on.
     poller = NotificationPoller(bot_client)
     app.state.poller = poller
     await poller.start()
+
+    # Phi rewrites her own bio at every startup. Best-effort — if the bio
+    # call fails (rate limit, model error, etc), fall back to the existing
+    # online-suffix flow rather than blocking startup on it.
+    try:
+        bio = await poller.handler.agent.process_bio()
+        await profile_manager.set_description(bio.text)
+    except Exception as e:
+        logger.warning(f"bio rewrite at startup failed: {e}; falling back to suffix")
+        await profile_manager.set_online_status(True)
 
     logger.info("phi is online, listening for mentions")
 

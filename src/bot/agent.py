@@ -28,7 +28,7 @@ from bot.memory.review import REVIEW_SYSTEM_PROMPT, ReviewResult
 from bot.status import bot_status
 from bot.tools import PhiDeps, _check_services_impl, register_all
 from bot.tools.bluesky import fetch_relay_names
-from bot.types import CosmikNoteCard, NoteContent
+from bot.types import Bio, CosmikNoteCard, NoteContent
 from bot.utils.time import humanize_duration, relative_when
 
 logger = logging.getLogger("bot.agent")
@@ -410,6 +410,23 @@ class PhiAgent:
             output_type=ReviewResult,
         )
 
+        # Bio agent — phi rewrites her bsky bio at every startup. Personality-
+        # scoped (no per-batch dynamic context — bio is identity, not moment).
+        self._bio_agent = Agent[None, Bio](
+            name="phi-bio-writer",
+            model=settings.agent_model,
+            system_prompt=(
+                f"{self.base_personality}\n\n"
+                "You're rewriting your bsky profile bio. The Bio.text field "
+                "is capped at 256 characters by structural validation — write "
+                "to that limit, not beyond. Communicate what you are, your "
+                "capabilities, who your operator is. In your voice. Include "
+                "a 🟢 somewhere if you want the operator's pause/resume "
+                "system to be able to swap it to 🔴 on shutdown."
+            ),
+            output_type=Bio,
+        )
+
         logger.info(
             "phi agent initialized with pdsx, pub-search, and prefect MCP tools"
         )
@@ -754,6 +771,21 @@ class PhiAgent:
                 logger.warning(f"extraction failed for @{handle}: {e}")
 
         return total_stored
+
+    async def process_bio(self) -> Bio:
+        """Generate a fresh bsky bio for phi to publish at startup.
+
+        Runs the dedicated bio agent (personality-scoped) with structured
+        output enforcement (`Bio.text` is `max_length=256`). Caller writes
+        the returned text via `ProfileManager.set_description`.
+        """
+        logger.info("processing bio rewrite")
+        result = await self._bio_agent.run(
+            "rewrite your bsky bio. structural max is 256 characters."
+        )
+        bio = result.output
+        logger.info(f"bio agent returned {len(bio.text)} chars: {bio.text}")
+        return bio
 
     async def process_review(self) -> str:
         """Review recent observations with distance. The dream/distill pass.

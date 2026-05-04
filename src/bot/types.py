@@ -9,6 +9,27 @@ from pydantic import AfterValidator, BaseModel, Field
 _TID_CHARSET = "234567abcdefghijklmnopqrstuvwxyz"
 
 
+class Bio(BaseModel):
+    """Structured output for phi's bsky profile bio.
+
+    Bsky's `app.bsky.actor.profile.description` field is capped at 256
+    graphemes — pydantic's max_length here treats it as 256 chars, which
+    is the conservative reading. Phi writes a fresh bio at every startup
+    via `PhiAgent.process_bio`.
+    """
+
+    text: str = Field(
+        ...,
+        max_length=256,
+        description=(
+            "The new bio text. Communicate what you are, your capabilities, "
+            "and who your operator is. Plain text. Include a 🟢 somewhere "
+            "if you want the operator's pause/resume system to be able to "
+            "swap it to 🔴 on shutdown."
+        ),
+    )
+
+
 def generate_tid() -> str:
     """Generate an AT Protocol TID (timestamp identifier).
 

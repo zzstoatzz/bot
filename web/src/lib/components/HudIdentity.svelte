@@ -32,9 +32,41 @@
 </script>
 
 <div class="ident">
-	<div class="glyph-wrap" style="color: {status.color}">
-		<div class="glyph-bg"></div>
-		<div class="glyph" class:pulse={status.pulse}>⌬</div>
+	<div class="glyph-wrap" style="color: {status.color}" class:pulse={status.pulse}>
+		<svg
+			class="logo"
+			viewBox="0 0 32 32"
+			aria-hidden="true"
+			xmlns="http://www.w3.org/2000/svg"
+		>
+			<!-- outer hex frame -->
+			<polygon
+				points="16,3 27,9 27,23 16,29 5,23 5,9"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="1.6"
+				stroke-linejoin="round"
+			/>
+			<!-- phi sigil — vertical stem + circle, classic lowercase φ -->
+			<line
+				x1="16"
+				y1="7.5"
+				x2="16"
+				y2="24.5"
+				stroke="currentColor"
+				stroke-width="1.6"
+				stroke-linecap="round"
+			/>
+			<ellipse
+				cx="16"
+				cy="16"
+				rx="4.6"
+				ry="5.6"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="1.6"
+			/>
+		</svg>
 	</div>
 	<div class="meta">
 		<div class="name chrome">phi</div>
@@ -57,45 +89,42 @@
 	}
 
 	.glyph-wrap {
-		position: relative;
 		width: 32px;
 		height: 32px;
 		display: flex;
 		align-items: center;
 		justify-content: center;
+		flex-shrink: 0;
 	}
 
-	.glyph-bg {
-		position: absolute;
-		inset: 0;
-		background: currentColor;
-		opacity: 0.08;
-		clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+	.logo {
+		width: 100%;
+		height: 100%;
+		display: block;
+		filter: drop-shadow(0 0 0 currentColor);
+		transition: filter 0.4s ease-out;
 	}
 
-	.glyph-wrap::before {
-		content: '';
-		position: absolute;
-		inset: 1px;
-		clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-		box-shadow: inset 0 0 0 1px currentColor;
-		opacity: 0.4;
+	.glyph-wrap.pulse .logo {
+		animation: logo-pulse 2.4s ease-in-out infinite;
 	}
 
-	.glyph {
-		font-size: 18px;
-		line-height: 1;
-		position: relative;
-		z-index: 1;
+	@keyframes logo-pulse {
+		0%,
+		100% {
+			filter: drop-shadow(0 0 0 currentColor);
+			opacity: 0.85;
+		}
+		50% {
+			filter: drop-shadow(0 0 4px currentColor);
+			opacity: 1;
+		}
 	}
 
 	@media (max-width: 640px) {
 		.glyph-wrap {
 			width: 26px;
 			height: 26px;
-		}
-		.glyph {
-			font-size: 14px;
 		}
 		.name {
 			font-size: 12px;
