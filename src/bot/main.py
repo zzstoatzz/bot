@@ -26,7 +26,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
 from bot.config import settings
-from bot.core import ops_log, prior_coverage
+from bot.core import ops_log, prior_coverage, watchdog
 from bot.core.alert_watch import fold_firing, parse_webhook
 from bot.core.atlas import get_atlas
 from bot.core.atproto_client import bot_client
@@ -83,6 +83,7 @@ async def lifespan(app: FastAPI):
     poller = NotificationPoller(bot_client)
     app.state.poller = poller
     await poller.start()
+    watchdog_task = asyncio.create_task(watchdog.run(), name="watchdog")
 
     # Tail phi's own repo commits from jetstream: [RECENT OPERATIONS] renders
     # from this event log (deletes and edits are invisible to listRecords),
@@ -145,6 +146,7 @@ async def lifespan(app: FastAPI):
     yield
 
     logger.info("shutting down phi")
+    watchdog_task.cancel()
     if backfill_task:
         backfill_task.cancel()
     if ops_consumer:
@@ -193,12 +195,26 @@ app.include_router(activity_router)
 @app.get("/health")
 @limiter.exempt
 async def health():
-    """Health check endpoint — also consumed by the frontend's status pill."""
-    return {
-        "status": "healthy",
+    """Health check endpoint — fly's liveness probe and the frontend's status pill.
+
+    503 when the poller is not running (and was not deliberately paused) or
+    when no poll iteration has completed within ``health_stale_after``.
+    The poller swallows most exceptions, so a wedged loop still says
+    ``polling_active: true``; the heartbeat is the signal it cannot fake.
+    A failing check only stops fly routing to the machine; the watchdog
+    task (core/watchdog.py) applies the same decision and exits the
+    process so fly restarts it.
+    """
+    age = bot_status.last_tick_age_s
+    reason = watchdog.stale_reason(bot_status, settings.health_stale_after)
+    body = {
+        "status": "unhealthy" if reason else "healthy",
         "polling_active": bot_status.polling_active,
         "paused": bot_status.paused,
+        "last_tick_age_s": None if age is None else round(age, 1),
+        "reason": reason,
     }
+    return JSONResponse(body, status_code=503 if reason else 200)
 
 
 def _check_control_token(request: Request):

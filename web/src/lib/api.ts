@@ -117,7 +117,7 @@ export async function getMemoryGraph(): Promise<GraphData> {
 
 export async function getHealth(): Promise<HealthInfo> {
 	const res = await fetch('/health');
-	if (!res.ok) throw new Error(`health: ${res.status}`);
+	if (!res.ok && res.status !== 503) throw new Error(`health: ${res.status}`);
 	return await res.json();
 }
 

@@ -5,6 +5,26 @@ record *why* a change happened — the part that isn't reconstructable from the
 diff. Durable design principles live in `docs/`; this file is the record of
 what moved and what it cost to find out.
 
+## 2026-08-23
+
+- **fix**: `/health` tells the truth. It returned 200 unconditionally, even
+  with `polling_active: false`, and the poll loop swallows exceptions at
+  every site, so a wedged phi passed fly's check indefinitely. The poller
+  now stamps a monotonic heartbeat only after a poll iteration completes
+  its notification check — a swallowed failure does not bump it — and
+  `/health` returns 503 with a `reason` when the poller is stopped without
+  being paused or the heartbeat is older than `health_stale_after` (default
+  30x the poll interval, since the loop awaits relay-alert agent runs
+  inline). Paused stays 200. A failing check only stops fly routing to
+  the machine — fly restarts a machine when its process exits — so
+  `core/watchdog.py` applies the same decision every 15s and exits the
+  process non-zero; `[[restart]] policy = "on-failure"` is now explicit in
+  fly.toml (it was already the machine's effective policy). Fly's check
+  `grace_period` went from 15s to 60s (fly's cap): startup was observed at
+  ~56s, so the old grace counted failures against every boot. Also closed a
+  hot loop: a failing notification fetch used to `continue` past the sleep
+  and retry immediately.
+
 ## 2026-08-21
 
 - **personality**: `personalities/phi.md` is 512 characters — down from

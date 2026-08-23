@@ -2,6 +2,7 @@
 
 import json
 import logging
+import time
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -24,6 +25,9 @@ class BotStatus:
     ai_enabled: bool = False
     polling_active: bool = False
     paused: bool = False
+    # monotonic clock reading from the last poll iteration that did its
+    # work. never persisted: it is a liveness signal for this process only.
+    last_tick: float | None = None
     # Most recent pause/resume timestamps (UTC). Surfaced to phi so she
     # knows when she was offline — informs how to handle a catchup batch.
     paused_at: datetime | None = None
@@ -55,6 +59,15 @@ class BotStatus:
         parts.append(f"{secs}s")
 
         return " ".join(parts)
+
+    @property
+    def last_tick_age_s(self) -> float | None:
+        if self.last_tick is None:
+            return None
+        return time.monotonic() - self.last_tick
+
+    def record_tick(self):
+        self.last_tick = time.monotonic()
 
     def record_mention(self):
         self.mentions_received += 1

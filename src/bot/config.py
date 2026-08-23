@@ -118,6 +118,16 @@ class Settings(BaseSettings):
     notification_poll_interval: int = Field(
         default=10, description="The interval for polling for notifications"
     )
+    health_stale_after: int = Field(
+        default=0,
+        description=(
+            "Seconds without a completed notification poll before /health "
+            "reports 503 and fly restarts the machine. Defaults to 30x "
+            "notification_poll_interval: the poll loop awaits agent runs "
+            "inline (relay alerts), so a few intervals would flap on a "
+            "long run rather than catch a wedge."
+        ),
+    )
     alert_poll_interval: int = Field(
         default=3600,
         description="Seconds between logfire alert-state reconciliation "
@@ -332,6 +342,12 @@ class Settings(BaseSettings):
 
     # Logfire
     logfire: LogfireSettings = Field(default_factory=LogfireSettings)
+
+    @model_validator(mode="after")
+    def derive_health_stale_after(self) -> Self:
+        if self.health_stale_after <= 0:
+            self.health_stale_after = 30 * self.notification_poll_interval
+        return self
 
     @model_validator(mode="after")
     def configure_logging(self) -> Self:

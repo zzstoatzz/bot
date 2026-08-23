@@ -62,6 +62,7 @@ class NotificationPoller:
         """Start polling for notifications."""
         self._running = True
         bot_status.polling_active = True
+        bot_status.record_tick()
         self._task = asyncio.create_task(self._poll_loop())
         return self._task
 
@@ -153,7 +154,9 @@ class NotificationPoller:
             except Exception as e:
                 logger.error(f"notification poll error: {e}", exc_info=settings.debug)
                 bot_status.record_error()
+                await asyncio.sleep(settings.notification_poll_interval)
                 continue
+            bot_status.record_tick()
 
             try:
                 if self._should_do_daily_post():

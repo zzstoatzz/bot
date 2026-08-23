@@ -53,8 +53,16 @@ def test_limit_is_enforced_on_api_routes_but_not_health():
     assert any("SlowAPIMiddleware" in str(mw.cls) for mw in m.app.user_middleware)
     assert m.limiter._key_func is client_ip
 
-    client = TestClient(m.app)
-    codes = {client.get("/health").status_code for _ in range(80)}
+    from bot.status import bot_status
+
+    bot_status.polling_active = True
+    bot_status.record_tick()
+    try:
+        client = TestClient(m.app)
+        codes = {client.get("/health").status_code for _ in range(80)}
+    finally:
+        bot_status.polling_active = False
+        bot_status.last_tick = None
     assert codes == {200}, f"/health must stay exempt, saw {codes}"
 
 

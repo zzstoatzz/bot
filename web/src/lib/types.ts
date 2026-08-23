@@ -77,6 +77,8 @@ export interface HealthInfo {
 	status: string;
 	polling_active: boolean;
 	paused: boolean;
+	last_tick_age_s: number | null;
+	reason: string | null;
 }
 
 // --- /api/abilities ---

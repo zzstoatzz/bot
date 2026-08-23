@@ -2,7 +2,7 @@ phi — a bluesky bot. python + pydantic-ai + atproto + turbopuffer + cosmik/sem
 
 ## development
 
-- `just run` / `just dev` (hot-reload) / `just deploy` (fly.io — the only deploy path)
+- `just run` / `just dev` (hot-reload) / `just deploy` (manual fly.io deploy — CI deploys on push to main, see deployment)
 - `just check` — lint + typecheck + test
 - `just evals` — behavioral tests (llm-as-judge)
 - `just loq-relax <file>` — relax line limit for a file. never edit loq.toml manually or compress code to fit
@@ -91,9 +91,18 @@ they got that way. Neither should be a status report.
 this repo lives at `tangled.org/zzstoatzz.io/bot`. phi reads her own source
 through the tangled MCP, so update any hardcoded repo references if it moves.
 
-fly.io app `zzstoatzz-phi`. `just deploy` is the only deploy path — there is no
-deploy CI. run it yourself after pushing and expect a couple of minutes. push to
-both `origin` (tangled) and the `github` mirror; the mirror is what phi's
-`changelog` tool reads.
+fly.io app `zzstoatzz-phi`. CI deploys on every push to main
+(`.tangled/workflows/deploy.yml`: tests, then `flyctl deploy`). `just deploy` is
+the manual fallback when CI is unavailable. push to both `origin` (tangled) and
+the `github` mirror; the mirror is what phi's `changelog` tool reads.
+
+`/health` returns 503 when the poller is stopped without being paused or when
+no poll iteration has completed in `health_stale_after` seconds (default 30x
+`notification_poll_interval`). fly's http check (30s) only stops routing to a
+failing machine; fly restarts a machine when its process exits (`[[restart]]`
+policy `on-failure`). so `core/watchdog.py` applies the same decision every 15s
+and exits the process non-zero. the check's `grace_period` covers startup (auth,
+schedule seeding, bio rewrite — about a minute observed; 60s is fly's cap) so a booting machine
+is not marked failing.
 
 secrets via `fly secrets set` or `fly secrets import` (pipe `grep ^KEY .env` into it to keep values off the terminal).

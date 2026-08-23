@@ -7,6 +7,10 @@ primary_region = "ord"
 [deploy]
   strategy = "rolling"
 
+[[restart]]
+  policy = "on-failure"
+  retries = 10
+
 [mounts]
   source = "phi_data"
   destination = "/data"
@@ -36,7 +40,7 @@ primary_region = "ord"
 
   [[http_service.checks]]
     interval = "30s"
-    grace_period = "15s"
+    grace_period = "60s"
     method = "GET"
     path = "/health"
     protocol = "http"

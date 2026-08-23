@@ -35,6 +35,8 @@
 
 	const status = $derived.by(() => {
 		if (!health) return { color: 'var(--danger)', label: 'offline', pulse: false };
+		if (health.status !== 'healthy')
+			return { color: 'var(--danger)', label: 'stalled', pulse: false };
 		if (health.paused) return { color: 'var(--warn)', label: 'paused', pulse: true };
 		if (health.polling_active) return { color: 'var(--hud-hot)', label: 'online', pulse: true };
 		return { color: 'var(--text-dim)', label: 'idle', pulse: false };
