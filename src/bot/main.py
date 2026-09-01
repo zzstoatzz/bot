@@ -264,7 +264,12 @@ _TRIGGER_SLOTS = {
     "editorial": lambda handler: handler.editorial,
     "character-retro": lambda handler: handler.character_retro,
     "likes-review": lambda handler: handler.likes_review,
+    "pull-review": lambda handler: handler.pull_review,
 }
+
+# slots that are about a specific thing rather than a clock: the JSON body's
+# `material` is what woke phi, and it is required
+_MATERIAL_SLOTS = {"pull-review"}
 
 
 @app.post("/api/control/trigger/{slot}")
@@ -278,10 +283,24 @@ async def trigger_slot(slot: str, request: Request, background_tasks: Background
             {"error": f"unknown slot {slot!r}", "slots": sorted(_TRIGGER_SLOTS)},
             status_code=404,
         )
+    material = ""
+    if slot in _MATERIAL_SLOTS:
+        try:
+            material = str((await request.json()).get("material") or "")
+        except Exception:
+            material = ""
+        if not material:
+            return JSONResponse(
+                {"error": f"slot {slot!r} needs a JSON body with `material`"},
+                status_code=400,
+            )
     poller: NotificationPoller | None = getattr(app.state, "poller", None)
     if not poller:
         return JSONResponse({"error": "poller not available"}, status_code=503)
-    background_tasks.add_task(slot_fn(poller.handler))
+    if material:
+        background_tasks.add_task(slot_fn(poller.handler), material)
+    else:
+        background_tasks.add_task(slot_fn(poller.handler))
     logger.info(f"{slot} triggered via API")
     return {"triggered": slot}
 

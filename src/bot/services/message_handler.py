@@ -366,6 +366,13 @@ class MessageHandler:
             "pull request comment", lambda: self.agent.process_pull_comment(material)
         )
 
+    async def pull_review(self, material: str):
+        """A pull request on the operator's repo wants phi's review — see
+        :meth:`PhiAgent.process_pull_review`."""
+        await self._run_scheduled(
+            "pull request review", lambda: self.agent.process_pull_review(material)
+        )
+
     async def chicken_precheck(self):
         """Pre-lock market check — see :meth:`PhiAgent.process_chicken_precheck`."""
         await self._run_scheduled(

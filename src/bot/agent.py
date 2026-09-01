@@ -1177,6 +1177,50 @@ class PhiAgent:
             ),
         )
 
+    async def process_pull_review(self, material: str = "") -> str:
+        """Review a pull request someone else opened on the operator's repo.
+
+        Stage one of handing review off to phi: she is a reviewer, never a
+        merger. gardener (the operator's maintenance identity) opens the
+        pull, phi reads the whole change and says what she thinks on the
+        pull, and the operator merges. Her verdict is the first line of
+        the comment so tooling can read it without parsing prose.
+        """
+        return await self._run_agent(
+            label="pull request review",
+            prompt=(
+                "a pull request was opened on the operator's repository and "
+                "you are its reviewer. the pull, verbatim:\n\n[PULL REQUEST]\n"
+                f"{material}\n\n"
+                "read the pull (tangled_get_pull) and the whole change "
+                "(tangled_get_pull_patch — the format-patch of the latest "
+                "round). for context on a touched file read it as the pull "
+                "leaves it (tangled_get_pull_file) and on the target branch "
+                "(tangled_read_file); the repo's CLAUDE.md holds its "
+                "conventions. judge whether the change does what its body "
+                "claims, whether it is the smallest change that does, and "
+                "whether it breaks anything you can see.\n\n"
+                "then post exactly one comment with tangled_comment_on_pull. "
+                "its first line is the verdict, one of:\n"
+                "VERDICT: approve\n"
+                "VERDICT: request-changes\n"
+                "VERDICT: escalate\n"
+                "followed by your reasoning — specific, cite file and line, "
+                "short. approve means you would merge it; request-changes "
+                "means you want something concrete changed (say what); "
+                "escalate means a person has to decide (say why). this pull "
+                "is not yours: do not push rounds to it, do not close it, "
+                "and never merge anything — the operator merges. this "
+                "conversation lives on tangled; do not post about it on "
+                "bluesky."
+            ),
+            deps=PhiDeps(
+                author_handle="",
+                memory=self.memory,
+                event_material=material,
+            ),
+        )
+
     async def process_people(self) -> str:
         """A pass pointed at people rather than systems.
 
