@@ -16,6 +16,8 @@
 	let data = $state<CacheStability | null>(null);
 	let loaded = $state(false);
 	let expanded = $state<string | null>(null);
+	// the per-run list is the evidence, not the reading — closed until asked for
+	let showRuns = $state(false);
 
 	onMount(async () => {
 		data = await getCacheStability();
@@ -96,6 +98,10 @@
 			</div>
 		</div>
 
+		<button class="runs-toggle" onclick={() => (showRuns = !showRuns)} aria-expanded={showRuns}>
+			{showRuns ? 'hide' : 'show'} the last {data.runs.length} runs
+		</button>
+		{#if showRuns}
 		<div class="legend">
 			<span title="billed at {data.prices.read}× the base input rate"
 				><i class="sw sw-read"></i>reused · {data.prices.read}×</span
@@ -197,10 +203,21 @@
 				</li>
 			{/each}
 		</ul>
+		{/if}
 	{/if}
 </section>
 
 <style>
+	.runs-toggle {
+		background: none;
+		border: 1px solid var(--line-mid);
+		color: var(--text-mid);
+		font-family: var(--font-mono);
+		font-size: 0.78rem;
+		padding: 0.15rem 0.6rem;
+		cursor: pointer;
+		margin-top: 0.5rem;
+	}
 	.cache {
 		margin-top: 3rem;
 		border-top: 1px solid var(--line-dim);
