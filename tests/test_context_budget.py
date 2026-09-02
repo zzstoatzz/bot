@@ -151,3 +151,39 @@ def test_tool_section_carries_the_schema_the_model_sees():
     assert '"q"' in s.text and s.chars == len(s.text)
     assert s.as_dict()["origin"] == "mcp:pdsx"
     assert "text" not in s.as_dict()
+
+
+async def test_tool_listing_walks_function_and_skills_toolsets(monkeypatch):
+    """the listing must hand toolsets a real RunContext — they `replace()`
+    it per tool and read `retries` (2026-09-02: a namespace stand-in
+    500ed the endpoint in prod)."""
+    from pydantic_ai import Agent
+    from pydantic_ai.models.test import TestModel
+    from pydantic_ai.toolsets import FunctionToolset
+
+    from bot.agent import PhiAgent
+
+    phi = PhiAgent.__new__(PhiAgent)
+    phi.memory = None
+    phi.agent = Agent(model=TestModel())
+
+    @phi.agent.tool_plain
+    def post(text: str) -> str:
+        """say it"""
+        return text
+
+    skills = FunctionToolset()
+
+    @skills.tool_plain
+    def read_skill(name: str) -> str:
+        """read one"""
+        return name
+
+    phi.skills_toolset = skills
+    monkeypatch.setattr(phi, "_mcp_toolsets", lambda run_label="": [])
+
+    listed = await phi.list_tool_definitions()
+    assert [(o, t.name) for o, t in listed] == [
+        ("function", "post"),
+        ("skills", "read_skill"),
+    ]

@@ -1568,13 +1568,12 @@ class PhiAgent:
         for the skills toolset, ``mcp:<prefix>`` per MCP server. MCP servers
         are connected the same way a run connects them and released after
         listing; one that is down costs its tools, not the listing."""
-        from types import SimpleNamespace
-        from typing import cast as _cast
+        from pydantic_ai.usage import RunUsage
 
+        # a real RunContext: toolsets `replace()` it per tool and read
+        # `retries`, so a stand-in namespace is not enough here
         deps = PhiDeps(author_handle="", memory=self.memory)
-        ctx = _cast(
-            RunContext[PhiDeps], SimpleNamespace(deps=deps, retry=0, tool_name=None)
-        )
+        ctx = RunContext[PhiDeps](deps=deps, model=self.agent.model, usage=RunUsage())
         out: list[tuple[str, ToolDefinition]] = []
         for name in sorted(self.agent._function_toolset.tools):
             out.append(("function", self.agent._function_toolset.tools[name].tool_def))
