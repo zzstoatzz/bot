@@ -84,10 +84,11 @@ def estimate_tokens(chars: int) -> int:
 # probe carries is a single period; the baseline probe measures it and
 # section counts are the difference
 PROBE_FRAME = "."
-# the smallest tool a provider accepts; its marginal cost is the tool-use
-# preamble plus a few tokens for itself
-PROBE_TOOL = ToolDefinition(name="noop", description="")
-PROBE_TOOL_2 = ToolDefinition(name="noop2", description="")
+# two minimal tools with same-length names: the second's marginal cost is
+# what a minimal tool costs by itself, so the first's marginal cost minus
+# that is the provider's tool-use preamble alone
+PROBE_TOOL = ToolDefinition(name="probe_a", description="")
+PROBE_TOOL_2 = ToolDefinition(name="probe_b", description="")
 
 
 def _probe_message(text: str = "") -> list[ModelMessage]:
