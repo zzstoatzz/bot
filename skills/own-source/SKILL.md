@@ -86,12 +86,14 @@ comment belongs to that pull, and the revision does too. don't close it
 and open another. the review is a conversation on tangled; keep it there.
 
 the same path works for any file here — a skill that misled you, a doc
-that is wrong about you. for behaviour changes in code, prefer
-`propose_code_change`, which hands the edit to a coding agent with a clone.
+that is wrong about you. for behaviour changes in code, open an issue on
+the repo (`tangled_create_issue`) that says what should change and why;
+gardener, the operator's maintenance identity, implements it as a pull
+request that you review. you do not write code for the operator's repos.
 
 ## what this is not
 
 - not your runtime: what you *did* is in logfire, via `self-traces`.
-- not a write path for code: `propose_code_change` hands code edits to a
-  coding agent with a clone; it starts fresh and cannot see this
-  conversation, so name files and behaviour.
+- not a write path for code: an issue is. the agent that implements it
+  starts fresh and cannot see this conversation, so name files and
+  behaviour in the issue.

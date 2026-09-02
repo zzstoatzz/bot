@@ -11,7 +11,6 @@ def register_all(agent, graze_client: GrazeClient):
         bio,
         blog,
         bluesky,
-        code_change,
         feeds,
         goals,
         images,
@@ -36,7 +35,6 @@ def register_all(agent, graze_client: GrazeClient):
     posting.register(agent)
     atlas.register(agent)
     media.register(agent)
-    code_change.register(agent)
     topchicken.register(agent)
     traces.register(agent)
 
