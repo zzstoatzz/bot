@@ -5,6 +5,7 @@
 	import { initOAuth, OVERRIDE_COLLECTION } from '$lib/operator/oauth';
 	import { fetchOverride, OPERATOR_DID, type Override } from '$lib/operator/override';
 	import CachePanel from '$lib/components/CachePanel.svelte';
+	import ContextBudget from '$lib/components/ContextBudget.svelte';
 
 	let oauth = $state<Awaited<ReturnType<typeof initOAuth>> | null>(null);
 	let session = $state<OAuthSession | null>(null);
@@ -153,6 +154,7 @@
 			<div class="status">{status}</div>
 		{/if}
 
+		<ContextBudget />
 		<CachePanel />
 	</div>
 </main>

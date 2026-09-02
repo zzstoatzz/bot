@@ -10,6 +10,7 @@ import type {
 	BskyFeedItem,
 	CacheStability,
 	Capability,
+	ContextBudget,
 	ContextPreview,
 	ChickenResultRound,
 	ChickenRound,
@@ -250,6 +251,16 @@ export async function getCacheStability(): Promise<CacheStability | null> {
 // every prompt block rendered as a fresh scheduled run would compose it
 // right now. stateless on the backend; slow-ish (several blocks hit the
 // network), so callers should show a loading state.
+
+export async function getContextBudget(): Promise<ContextBudget | null> {
+	try {
+		const res = await fetch('/api/context/budget');
+		if (!res.ok) return null;
+		return await res.json();
+	} catch {
+		return null;
+	}
+}
 
 export async function getContextPreview(): Promise<ContextPreview | null> {
 	try {

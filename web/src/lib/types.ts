@@ -399,3 +399,57 @@ export interface ContextPreview {
 	total_chars: number;
 	blocks: ContextBlock[];
 }
+
+// --- /api/context/budget: the next run's context, weighed against the window ---
+
+export type ContextSectionKind = 'static' | 'block' | 'tool';
+
+export interface ContextSection {
+	kind: ContextSectionKind;
+	name: string;
+	chars: number;
+	tokens: number;
+	ms: number;
+	error: string | null;
+	// 'function' | 'skills' | 'mcp:<prefix>' for tools; empty for prompt sections
+	origin: string;
+}
+
+export interface ContextModelLimits {
+	spec: string;
+	provider: string;
+	name: string;
+	// null when the catalog does not list the model — render "unknown", never a guess
+	max_input_tokens: number | null;
+	max_output_tokens: number | null;
+	input_cost_per_token: number | null;
+	output_cost_per_token: number | null;
+	cache_read_cost_per_token: number | null;
+	cache_write_cost_per_token: number | null;
+	source: string;
+}
+
+export interface ContextRequestUsage {
+	input_tokens: number;
+	cache_read: number;
+	cache_write: number;
+	billed_prefix: number;
+}
+
+export interface ContextLastRun {
+	label: string;
+	started_at: string;
+	model: string;
+	trace_url: string | null;
+	requests: ContextRequestUsage[];
+}
+
+export interface ContextBudget {
+	generated_at: string;
+	path: string;
+	model: ContextModelLimits;
+	counting: 'exact' | 'estimated';
+	sections: ContextSection[];
+	totals: { static: number; blocks: number; tools: number; prompt: number };
+	last_run: ContextLastRun | null;
+}

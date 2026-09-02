@@ -14,6 +14,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from pydantic_ai import Agent, ImageUrl, RunContext
 from pydantic_ai.mcp import MCPServerStdio, MCPServerStreamableHTTP
 from pydantic_ai.models.anthropic import AnthropicModelSettings
+from pydantic_ai.tools import ToolDefinition
 from pydantic_ai.toolsets import AbstractToolset
 from pydantic_ai_skills import SkillsToolset
 
@@ -1560,6 +1561,103 @@ class PhiAgent:
                 }
             )
         return blocks
+
+    async def list_tool_definitions(self) -> list[tuple[str, ToolDefinition]]:
+        """every tool definition the next run would send, tagged with where
+        it comes from: ``function`` for @agent.tool registrations, ``skills``
+        for the skills toolset, ``mcp:<prefix>`` per MCP server. MCP servers
+        are connected the same way a run connects them and released after
+        listing; one that is down costs its tools, not the listing."""
+        from types import SimpleNamespace
+        from typing import cast as _cast
+
+        deps = PhiDeps(author_handle="", memory=self.memory)
+        ctx = _cast(
+            RunContext[PhiDeps], SimpleNamespace(deps=deps, retry=0, tool_name=None)
+        )
+        out: list[tuple[str, ToolDefinition]] = []
+        for name in sorted(self.agent._function_toolset.tools):
+            out.append(("function", self.agent._function_toolset.tools[name].tool_def))
+        for name, tool in sorted((await self.skills_toolset.get_tools(ctx)).items()):
+            out.append(("skills", tool.tool_def))
+        for ts in self._mcp_toolsets(run_label="context-budget"):
+            origin = f"mcp:{getattr(ts, 'tool_prefix', None) or ts.label}"
+            try:
+                async with ts:
+                    for name, tool in sorted((await ts.get_tools(ctx)).items()):
+                        out.append((origin, tool.tool_def))
+            except Exception as e:
+                logger.warning(
+                    f"{origin} unavailable for the context budget: {type(e).__name__}: {str(e)[:120]}"
+                )
+        return out
+
+    async def render_context_budget(self) -> dict:
+        """what the next scheduled run would send, weighed: the model and its
+        window from the catalog, every section with a token count, and the
+        provider's own numbers from the last real run for comparison. the
+        operator page's context panel reads this."""
+        from datetime import UTC, datetime
+
+        from bot.core.cache_stability import cache_monitor
+        from bot.core.context_tokens import (
+            ContextSection,
+            count_context_tokens,
+            tool_section,
+        )
+        from bot.core.model_catalog import lookup_model_limits
+
+        blocks = await self.render_context_preview()
+        sections: list[ContextSection] = []
+        for b in blocks:
+            sections.append(
+                ContextSection(
+                    kind="static" if b["name"] == "static_instructions" else "block",
+                    name=b["name"],
+                    chars=b["chars"],
+                    ms=b["ms"],
+                    error=b["error"],
+                    text=b["text"],
+                )
+            )
+        for origin, tool_def in await self.list_tool_definitions():
+            sections.append(tool_section(tool_def, origin))
+
+        model = self.agent.model if not isinstance(self.agent.model, str) else None
+        counting, prompt_total = await count_context_tokens(model, sections)
+        limits = await lookup_model_limits(settings.agent_model)
+        totals = {
+            "static": sum(s.tokens for s in sections if s.kind == "static"),
+            "blocks": sum(s.tokens for s in sections if s.kind == "block"),
+            "tools": sum(s.tokens for s in sections if s.kind == "tool"),
+            "prompt": prompt_total,
+        }
+        last = next((r for r in reversed(cache_monitor.runs) if r.samples), None)
+        return {
+            "generated_at": datetime.now(UTC).isoformat(),
+            "path": "scheduled (no notifications batch)",
+            "model": limits.as_dict(),
+            "counting": counting,
+            "sections": [s.as_dict() for s in sections],
+            "totals": totals,
+            "last_run": None
+            if last is None
+            else {
+                "label": last.label,
+                "started_at": last.started_at.isoformat(),
+                "model": last.samples[0].model,
+                "trace_url": last.as_dict()["trace_url"],
+                "requests": [
+                    {
+                        "input_tokens": r.input_tokens,
+                        "cache_read": r.cache_read,
+                        "cache_write": r.cache_write,
+                        "billed_prefix": r.billed_prefix,
+                    }
+                    for r in last.samples
+                ],
+            },
+        }
 
     async def process_bio(self) -> str:
         """Ask phi to rewrite her bsky bio via the main-agent write_bio tool.

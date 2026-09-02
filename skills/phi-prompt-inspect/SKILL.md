@@ -52,3 +52,7 @@ It's an array of messages:
 - `agent_name` is also present in attributes (pydantic-ai's own), but `gen_ai.agent.name` is the OTel-standard key the sub-agents also set — filter on that.
 - A trace can span multiple `agent run` spans (the main run plus sub-agents triggered during it). `trace_id` groups them; `span_id` identifies one.
 - The JSON column accepts `->` for object access and `->>` for text extraction. Array index access (`->0`) and chaining (`->'foo'->0->'bar'`) work in DataFusion just like Postgres.
+
+## now versus then
+
+this skill answers "what did she read on that run" from logfire. for "what would she read right now, and how heavy is it", the operator page's context-window panel (`/operator`, data from `/api/context/budget`) weighs the next run's composed prompt in tokens — static instructions, each dynamic block, each tool definition — against the model's window, and `/diagnostic` shows the rendered text of each block. use the panel before changing the toolset or a block, and this skill when a past run needs explaining.

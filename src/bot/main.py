@@ -746,6 +746,22 @@ async def diagnostic_context(request: Request):
     )
 
 
+@app.get("/api/context/budget")
+@limiter.limit("3/minute")
+async def context_budget(request: Request):
+    """The next run's context, weighed: model and window, every section
+    with a token count, and the last real run's provider-reported usage.
+
+    Heavier than /api/diagnostic/context — it connects the MCP servers to
+    list their tools and, when the model counts tokens, makes one counting
+    request per section — so it is rate limited harder.
+    """
+    poller = getattr(app.state, "poller", None)
+    if poller is None:
+        return JSONResponse({"error": "agent not started"}, status_code=503)
+    return JSONResponse(await poller.handler.agent.render_context_budget())
+
+
 _graph_cache_data: dict | None = None
 _graph_cache_expires: float = 0.0
 _GRAPH_CACHE_TTL = 60  # seconds
