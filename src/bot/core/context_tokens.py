@@ -80,10 +80,14 @@ def estimate_tokens(chars: int) -> int:
     return -(-chars // CHARS_PER_TOKEN) if chars else 0
 
 
+# providers reject whitespace-only text blocks, so the constant frame every
+# probe carries is a single period; the baseline probe measures it and
+# section counts are the difference
+PROBE_FRAME = "."
+
+
 def _probe_message(text: str = "") -> list[ModelMessage]:
-    """a one-part user request; the leading space is the constant frame
-    the baseline probe measures, so section counts are the difference."""
-    return [ModelRequest(parts=[UserPromptPart(content=" " + text)])]
+    return [ModelRequest(parts=[UserPromptPart(content=PROBE_FRAME + text)])]
 
 
 async def _exact(
@@ -103,7 +107,7 @@ def prompt_messages(sections: list[ContextSection]) -> list[ModelMessage]:
         for s in sections
         if s.kind != "tool" and s.text
     ]
-    return [ModelRequest(parts=[*parts, UserPromptPart(content=" ")])]
+    return [ModelRequest(parts=[*parts, UserPromptPart(content=PROBE_FRAME)])]
 
 
 async def count_context_tokens(

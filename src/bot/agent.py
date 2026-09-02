@@ -268,6 +268,18 @@ def _clip(text: str, n: int) -> str:
     return text if len(text) <= n else text[: n - 1] + "…"
 
 
+def _mcp_origin(ts: AbstractToolset) -> str:
+    """a short name for where a tool came from: the tool prefix when the
+    server has one, else the host's first label or the stdio command."""
+    if prefix := getattr(ts, "tool_prefix", None):
+        return str(prefix)
+    if url := getattr(ts, "url", None):
+        return str(url).split("//", 1)[-1].split("/", 1)[0].split(".", 1)[0]
+    if args := getattr(ts, "args", None):
+        return str(list(args)[-1]).rsplit("/", 2)[-2] if args else "stdio"
+    return ts.label
+
+
 class PhiAgent:
     """phi - bluesky bot with structured memory and MCP tools."""
 
@@ -1580,7 +1592,7 @@ class PhiAgent:
         for name, tool in sorted((await self.skills_toolset.get_tools(ctx)).items()):
             out.append(("skills", tool.tool_def))
         for ts in self._mcp_toolsets(run_label="context-budget"):
-            origin = f"mcp:{getattr(ts, 'tool_prefix', None) or ts.label}"
+            origin = f"mcp:{_mcp_origin(ts)}"
             try:
                 async with ts:
                     for name, tool in sorted((await ts.get_tools(ctx)).items()):
