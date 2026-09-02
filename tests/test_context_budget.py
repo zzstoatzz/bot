@@ -197,7 +197,7 @@ def test_budget_endpoint_serves_the_snapshot_and_recomputes_only_on_refresh(
     monkeypatch,
 ):
     """the page must never trigger a composition by loading; the server
-    keeps a snapshot and only ?refresh=1 (or the schedule) recomposes."""
+    keeps a snapshot and only POST /refresh (or the schedule) recomposes."""
     from unittest.mock import AsyncMock, Mock
 
     from starlette.testclient import TestClient
@@ -216,7 +216,7 @@ def test_budget_endpoint_serves_the_snapshot_and_recomputes_only_on_refresh(
     assert client.get("/api/context/budget").status_code == 202
     assert agent.render_context_budget.await_count == 0
 
-    assert client.get("/api/context/budget?refresh=1").json() == {
+    assert client.post("/api/context/budget/refresh").json() == {
         "totals": {"prompt": 1}
     }
     assert agent.render_context_budget.await_count == 1

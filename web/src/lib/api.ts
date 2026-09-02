@@ -256,7 +256,9 @@ export async function getCacheStability(): Promise<CacheStability | null> {
 export type ContextBudgetReply = { kind: 'ready'; budget: ContextBudget } | { kind: 'computing' } | { kind: 'unavailable' };
 export async function getContextBudget(refresh = false): Promise<ContextBudgetReply> {
 	try {
-		const res = await fetch(refresh ? '/api/context/budget?refresh=1' : '/api/context/budget');
+		const res = refresh
+			? await fetch('/api/context/budget/refresh', { method: 'POST' })
+			: await fetch('/api/context/budget');
 		if (res.status === 202) return { kind: 'computing' };
 		if (!res.ok) return { kind: 'unavailable' };
 		return { kind: 'ready', budget: await res.json() };

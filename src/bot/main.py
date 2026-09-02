@@ -777,24 +777,32 @@ async def context_budget_loop() -> None:
         await asyncio.sleep(CONTEXT_BUDGET_INTERVAL)
 
 
-@app.get("/api/context/budget")
-@limiter.limit("6/minute")
-async def context_budget(request: Request):
-    """The next run's context, weighed: model and window, every section
-    with a token count, and the last real run's provider-reported usage.
+def _budget_response(budget: dict | None) -> JSONResponse:
+    if budget is not None:
+        return JSONResponse(budget)
+    if getattr(app.state, "poller", None) is None:
+        return JSONResponse({"error": "agent not started"}, status_code=503)
+    return JSONResponse({"status": "computing"}, status_code=202)
 
-    Serves the last snapshot instantly. ``?refresh=1`` recomputes and waits
-    for it; before the first composition finishes, 202 with ``computing``.
+
+@app.get("/api/context/budget")
+async def context_budget():
+    """The last snapshot of the next run's context, weighed: model and
+    window, every section with a token count, and the last real run's
+    provider-reported usage. Cheap — a dict in memory. 202 ``computing``
+    until the first composition after a restart lands.
     """
-    if request.query_params.get("refresh"):
-        budget = await refresh_context_budget()
-    else:
-        budget = _context_budget
-    if budget is None:
-        if getattr(app.state, "poller", None) is None:
-            return JSONResponse({"error": "agent not started"}, status_code=503)
-        return JSONResponse({"status": "computing"}, status_code=202)
-    return JSONResponse(budget)
+    return _budget_response(_context_budget)
+
+
+@app.post("/api/context/budget/refresh")
+@limiter.limit("3/minute")
+async def context_budget_refresh(request: Request):
+    """Recompose and recount now, then answer with the new snapshot. This
+    is the expensive path (every block, every MCP server, ~120 counting
+    requests), so it is rate limited on its own.
+    """
+    return _budget_response(await refresh_context_budget())
 
 
 _graph_cache_data: dict | None = None
