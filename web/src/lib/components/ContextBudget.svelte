@@ -111,6 +111,14 @@
 		return sortBy === 'tokens' ? [...data.sections].sort((a, b) => b.tokens - a.tokens) : data.sections;
 	});
 	const originLabel = (s: ContextSection) => (s.kind === 'tool' ? s.origin : s.kind);
+
+	// the meter reads the provider's numbers: what a run actually started
+	// at and what a typical request weighed, over the recent runs. the
+	// composed snapshot is drawn on it too, so the gap between "what we can
+	// compose" and "what really gets sent" is visible rather than implied.
+	const recent = $derived(data?.recent ?? null);
+	const freeTypical = $derived(window !== null && recent ? 100 - pct(recent.p50, window) : null);
+	const unseen = $derived(recent ? Math.max(recent.first_mean - prompt, 0) : 0);
 </script>
 
 <section class="ctx">
@@ -143,6 +151,39 @@
 				· <span class="faint">not in the model catalog, so there is no ceiling to measure against</span>
 			{/if}
 		</p>
+
+		{#if window !== null}
+			<div class="meter-block">
+				{#if recent && freeTypical !== null}
+					<p class="free">
+						<span class="free-n">{freeTypical.toFixed(0)}% free</span>
+						<span class="free-t">on a typical request — measured over her last {recent.runs} runs ({recent.requests} requests)</span>
+					</p>
+				{/if}
+				<div class="meter" role="img" aria-label="window usage">
+					<div class="m-fill m-composed" style:width="{pct(prompt, window)}%" title="composed snapshot: {num(prompt)} tokens"></div>
+					{#if recent}
+						<div class="m-fill m-start" style:width="{pct(Math.max(recent.first_mean - prompt, 0), window)}%" title="what a run actually starts at: {num(recent.first_mean)} tokens on average — the task prompt and per-run blocks the snapshot cannot compose"></div>
+						<div class="m-fill m-typical" style:width="{pct(Math.max(recent.p50 - recent.first_mean, 0), window)}%" title="typical request: {num(recent.p50)} tokens (median)"></div>
+						<div class="m-fill m-peak" style:width="{pct(Math.max(recent.max - recent.p50, 0), window)}%" title="largest request seen: {num(recent.max)} tokens"></div>
+					{/if}
+				</div>
+				<div class="m-legend">
+					<span><i class="sw m-composed"></i>composed <span class="mono">{tokens(prompt)}</span></span>
+					{#if recent}
+						<span><i class="sw m-start"></i>run starts at <span class="mono">{tokens(recent.first_mean)}</span></span>
+						<span><i class="sw m-typical"></i>typical request <span class="mono">{tokens(recent.p50)}</span></span>
+						<span><i class="sw m-peak"></i>largest <span class="mono">{tokens(recent.max)}</span> ({pctLabel(recent.max, window)})</span>
+					{/if}
+					<span class="faint">of <span class="mono">{tokens(window)}</span></span>
+				</div>
+				{#if unseen > 0}
+					<p class="faint unseen">
+						a real run begins about <span class="mono">{tokens(unseen)}</span> tokens above the composed snapshot: the task prompt and the per-run blocks (workflow state, recent conversations, per-author memory) only exist once there is a run to react to.
+					</p>
+				{/if}
+			</div>
+		{/if}
 
 		<div class="figure">
 			<svg viewBox="0 0 100 100" class="donut" role="img" aria-label="what the prompt is made of">
@@ -323,6 +364,67 @@
 		margin: 0.4rem 0 1.25rem;
 		color: var(--text-dim);
 		font-size: 0.85rem;
+	}
+	.meter-block {
+		margin: 0 0 1.5rem;
+	}
+	.free {
+		margin: 0 0 0.4rem;
+		display: flex;
+		align-items: baseline;
+		gap: 0.6rem;
+		flex-wrap: wrap;
+	}
+	.free-n {
+		font-family: var(--font-chrome);
+		font-size: 1.4rem;
+		color: #0ca30c;
+	}
+	.free-t {
+		color: var(--text-dim);
+		font-size: 0.8rem;
+	}
+	.meter {
+		display: flex;
+		height: 10px;
+		width: 100%;
+		background: var(--bg-elev);
+		border: 1px solid var(--line-mid);
+		overflow: hidden;
+	}
+	.m-fill {
+		height: 100%;
+		min-width: 1px;
+	}
+	.m-composed {
+		background: #3987e5;
+	}
+	.m-start {
+		background: #d95926;
+	}
+	.m-typical {
+		background: #c98500;
+	}
+	.m-peak {
+		background: #d55181;
+	}
+	.m-legend {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.4rem 1.25rem;
+		margin-top: 0.4rem;
+		font-size: 0.8rem;
+		color: var(--text-mid);
+	}
+	.m-legend .sw {
+		margin-right: 0.35rem;
+		vertical-align: -1px;
+	}
+	.unseen {
+		margin: 0.6rem 0 0;
+		font-size: 0.8rem;
+		line-height: 1.45;
+		max-width: 60ch;
 	}
 	.figure {
 		display: grid;

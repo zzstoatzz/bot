@@ -311,6 +311,31 @@ class CacheMonitor:
                 )
             )
 
+    def request_sizes(self) -> dict[str, Any] | None:
+        """How big real requests are, from the provider's own numbers: the
+        first request of each run (the prompt as actually sent, including
+        the per-run material a scheduled composition cannot see) and the
+        spread across every request in the window. None until a run has
+        been observed."""
+        runs = [r for r in self.runs if r.samples]
+        if not runs:
+            return None
+        every = sorted(s.billed_prefix for r in runs for s in r.samples)
+        firsts = [r.samples[0].billed_prefix for r in runs]
+
+        def pct(p: float) -> int:
+            return every[min(int(len(every) * p), len(every) - 1)]
+
+        return {
+            "runs": len(runs),
+            "requests": len(every),
+            "first_mean": sum(firsts) // len(firsts),
+            "first_max": max(firsts),
+            "p50": pct(0.5),
+            "p90": pct(0.9),
+            "max": every[-1],
+        }
+
     def summary(self) -> dict[str, Any]:
         """Rolling view for the operator cockpit."""
         runs = list(self.runs)

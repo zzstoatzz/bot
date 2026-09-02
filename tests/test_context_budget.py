@@ -223,3 +223,44 @@ def test_budget_endpoint_serves_the_snapshot_and_recomputes_only_on_refresh(
 
     assert client.get("/api/context/budget").json() == {"totals": {"prompt": 1}}
     assert agent.render_context_budget.await_count == 1
+
+
+def test_request_sizes_come_from_observed_runs():
+    from datetime import UTC, datetime
+
+    from bot.core.cache_stability import CacheMonitor, RequestSample, RunRecord
+
+    mon = CacheMonitor.__new__(CacheMonitor)
+    from collections import deque
+
+    mon.runs = deque()
+    assert mon.request_sizes() is None
+
+    def run(label, sizes):
+        r = RunRecord(label=label, started_at=datetime.now(UTC))
+        for n in sizes:
+            r.samples.append(
+                RequestSample(
+                    at=datetime.now(UTC),
+                    model="m",
+                    input_tokens=n,
+                    cache_read=0,
+                    cache_write=0,
+                    gap_seconds=None,
+                )
+            )
+        return r
+
+    mon.runs.append(run("a", [90, 120, 300]))
+    mon.runs.append(run("b", [80, 100]))
+    mon.runs.append(RunRecord(label="empty", started_at=datetime.now(UTC)))
+    sizes = mon.request_sizes()
+    assert sizes == {
+        "runs": 2,
+        "requests": 5,
+        "first_mean": 85,
+        "first_max": 90,
+        "p50": 100,
+        "p90": 300,
+        "max": 300,
+    }

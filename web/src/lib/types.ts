@@ -444,6 +444,17 @@ export interface ContextLastRun {
 	requests: ContextRequestUsage[];
 }
 
+// request sizes the provider reported over the recent runs — measured, not composed
+export interface ContextRecentRequests {
+	runs: number;
+	requests: number;
+	first_mean: number;
+	first_max: number;
+	p50: number;
+	p90: number;
+	max: number;
+}
+
 export interface ContextBudget {
 	generated_at: string;
 	path: string;
@@ -451,5 +462,6 @@ export interface ContextBudget {
 	counting: 'exact' | 'estimated';
 	sections: ContextSection[];
 	totals: { static: number; blocks: number; tools: number; prompt: number };
+	recent: ContextRecentRequests | null;
 	last_run: ContextLastRun | null;
 }

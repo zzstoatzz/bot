@@ -1653,6 +1653,7 @@ class PhiAgent:
             "counting": counting,
             "sections": [s.as_dict() for s in sections],
             "totals": totals,
+            "recent": cache_monitor.request_sizes(),
             "last_run": None
             if last is None
             else {
