@@ -276,7 +276,9 @@ def _mcp_origin(ts: AbstractToolset) -> str:
     if url := getattr(ts, "url", None):
         return str(url).split("//", 1)[-1].split("/", 1)[0].split(".", 1)[0]
     if args := getattr(ts, "args", None):
-        return str(list(args)[-1]).rsplit("/", 2)[-2] if args else "stdio"
+        parts = [p for p in str(list(args)[-1]).split("/") if p]
+        named = [p for p in parts if p not in ("dist", "build", "bin", "opt", "app")]
+        return named[-2] if len(named) > 1 else (named[0] if named else "stdio")
     return ts.label
 
 

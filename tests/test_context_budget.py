@@ -88,7 +88,9 @@ class CountingModel:
         tools = sum(
             len(t.name) + len(t.description or "") for t in params.function_tools
         )
-        return RequestUsage(input_tokens=10 + len(text) + tools)
+        # a provider charges a fixed preamble whenever any tool is present
+        framing = 100 if params.function_tools else 0
+        return RequestUsage(input_tokens=10 + len(text) + tools + framing)
 
 
 class SilentModel:
@@ -107,7 +109,7 @@ def _sections() -> list[ContextSection]:
     ]
 
 
-async def test_exact_counting_subtracts_framing_and_totals_the_whole_prompt():
+async def test_exact_counting_is_marginal_and_sums_to_the_total():
     sections = _sections()
     counting, total = await count_context_tokens(CountingModel(), sections)
     assert counting == "exact"
@@ -115,9 +117,11 @@ async def test_exact_counting_subtracts_framing_and_totals_the_whole_prompt():
     assert by_name["static_instructions"] == 40
     assert by_name["inject_now"] == 8
     assert by_name["inject_silent"] == 0
+    # the tool pays for itself; the provider's preamble is its own row
     assert by_name["post"] == len("post") + len("say it")
-    # the whole-prompt count is one request carrying every section
-    assert total == 10 + 40 + 8 + 1 + len("post") + len("say it")
+    assert by_name["tool-use framing"] == 100
+    assert sum(s.tokens for s in sections) == total - (10 + 1)
+    assert total == 10 + 1 + 40 + 8 + len("post") + len("say it") + 100
 
 
 async def test_estimate_when_the_model_cannot_count():

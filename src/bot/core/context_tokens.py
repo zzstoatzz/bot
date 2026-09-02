@@ -84,6 +84,10 @@ def estimate_tokens(chars: int) -> int:
 # probe carries is a single period; the baseline probe measures it and
 # section counts are the difference
 PROBE_FRAME = "."
+# the smallest tool a provider accepts; its marginal cost is the tool-use
+# preamble plus a few tokens for itself
+PROBE_TOOL = ToolDefinition(name="noop", description="")
+PROBE_TOOL_2 = ToolDefinition(name="noop2", description="")
 
 
 def _probe_message(text: str = "") -> list[ModelMessage]:
@@ -115,29 +119,56 @@ async def count_context_tokens(
 ) -> tuple[Counting, int]:
     """fill in ``tokens`` on every section; returns (counting, prompt_total).
 
-    exact counting costs one request per section plus one for the whole
-    prompt; on any provider error it degrades to the estimate for the rest
-    and reports ``estimated``.
+    exact counting is marginal: the request is built up in prompt order and
+    each section's weight is what it added, so sections sum to the total.
+    the provider's tool-use preamble — paid once when any tool is present —
+    lands in its own ``tool-use framing`` section rather than on whichever
+    tool happens to come first. one counting request per section plus two;
+    on any provider error it degrades to the estimate and says so.
     """
-    tools = [s.tool_def for s in sections if s.tool_def is not None]
     counting: Counting = "estimated"
     if model is not None:
         try:
-            baseline = await _exact(model, _probe_message(), [])
-            for s in sections:
-                if s.tool_def is not None:
-                    s.tokens = max(
-                        await _exact(model, _probe_message(), [s.tool_def]) - baseline,
-                        0,
-                    )
-                elif s.text:
-                    s.tokens = max(
-                        await _exact(model, _probe_message(s.text), []) - baseline, 0
-                    )
-                else:
+            text_sections = [s for s in sections if s.kind != "tool"]
+            tool_sections = [s for s in sections if s.tool_def is not None]
+            running = await _exact(model, _probe_message(), [])
+            for i, s in enumerate(text_sections):
+                if not s.text:
                     s.tokens = 0
-            total = await _exact(model, prompt_messages(sections), tools)
-            return "exact", total
+                    continue
+                now = await _exact(model, prompt_messages(text_sections[: i + 1]), [])
+                s.tokens, running = max(now - running, 0), now
+            framing = 0
+            if tool_sections:
+                # two minimal tools: the second's marginal cost is what a
+                # minimal tool costs by itself, so the first's marginal cost
+                # minus that is the preamble alone
+                one = await _exact(model, prompt_messages(text_sections), [PROBE_TOOL])
+                two = await _exact(
+                    model, prompt_messages(text_sections), [PROBE_TOOL, PROBE_TOOL_2]
+                )
+                framing = max((one - running) - (two - one), 0)
+            for i, s in enumerate(tool_sections):
+                now = await _exact(
+                    model,
+                    prompt_messages(text_sections),
+                    [t.tool_def for t in tool_sections[: i + 1] if t.tool_def],
+                )
+                s.tokens, running = (
+                    max(now - running - (framing if i == 0 else 0), 0),
+                    now,
+                )
+            if framing:
+                sections.append(
+                    ContextSection(
+                        kind="tool",
+                        name="tool-use framing",
+                        chars=0,
+                        tokens=framing,
+                        origin="provider",
+                    )
+                )
+            return "exact", running
         except NotImplementedError:
             logger.info(f"{type(model).__name__} does not count tokens; estimating")
         except Exception as e:
