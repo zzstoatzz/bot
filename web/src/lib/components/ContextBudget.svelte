@@ -23,18 +23,27 @@
 	let hovered = $state<string | null>(null);
 	let sortBy = $state<'tokens' | 'order'>('tokens');
 
-	async function load() {
+	// the page reads a server-side snapshot; only the refresh button asks
+	// for a recomposition. right after a restart the snapshot is still
+	// being built, so poll until it lands.
+	async function load(refresh = false) {
 		loading = true;
 		err = null;
-		const budget = await getContextBudget();
-		if (budget) {
-			data = budget;
+		let reply = await getContextBudget(refresh);
+		for (let tries = 0; reply.kind === 'computing' && tries < 12; tries++) {
+			await new Promise((r) => setTimeout(r, 5000));
+			reply = await getContextBudget();
+		}
+		if (reply.kind === 'ready') {
+			data = reply.budget;
+		} else if (reply.kind === 'computing') {
+			err = 'still composing after a restart — try again in a minute';
 		} else {
-			err = 'unavailable — rate limited, or phi is still starting';
+			err = 'unavailable — rate limited, or phi is not up';
 		}
 		loading = false;
 	}
-	onMount(load);
+	onMount(() => load());
 
 	const num = (n: number) => n.toLocaleString('en-US');
 	function tokens(n: number): string {
@@ -107,11 +116,11 @@
 <section class="ctx">
 	<div class="head">
 		<h2>context window</h2>
-		<button class="refresh" onclick={load} disabled={loading}>{loading ? 'weighing…' : 'refresh'}</button>
+		<button class="refresh" onclick={() => load(true)} disabled={loading} title="recompose the next run and count it again (takes a few seconds)">{loading ? 'weighing…' : 'recount'}</button>
 	</div>
 
 	{#if loading && !data}
-		<div class="status">composing the next run…</div>
+		<div class="status">reading the last snapshot…</div>
 	{:else if err && !data}
 		<div class="status">{err}</div>
 	{:else if data}
@@ -129,6 +138,7 @@
 			{#if window !== null}
 				· <span class="mono">{tokens(prompt)}</span> of <span class="mono">{tokens(window)}</span> tokens, {counted}
 				<span class="faint" title="window size comes from a public model catalog; no provider reports it">({data.model.source})</span>
+				· <span class="faint" title={whenTooltip(data.generated_at)}>composed {relativeWhen(data.generated_at)}</span>
 			{:else}
 				· <span class="faint">not in the model catalog, so there is no ceiling to measure against</span>
 			{/if}

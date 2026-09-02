@@ -191,3 +191,35 @@ async def test_tool_listing_walks_function_and_skills_toolsets(monkeypatch):
         ("function", "post"),
         ("skills", "read_skill"),
     ]
+
+
+def test_budget_endpoint_serves_the_snapshot_and_recomputes_only_on_refresh(
+    monkeypatch,
+):
+    """the page must never trigger a composition by loading; the server
+    keeps a snapshot and only ?refresh=1 (or the schedule) recomposes."""
+    from unittest.mock import AsyncMock, Mock
+
+    from starlette.testclient import TestClient
+
+    import bot.main as m
+
+    client = TestClient(m.app)
+    agent = Mock()
+    agent.render_context_budget = AsyncMock(return_value={"totals": {"prompt": 1}})
+    poller = Mock()
+    poller.handler = Mock()
+    poller.handler.agent = agent
+    monkeypatch.setattr(m.app.state, "poller", poller, raising=False)
+    monkeypatch.setattr(m, "_context_budget", None)
+
+    assert client.get("/api/context/budget").status_code == 202
+    assert agent.render_context_budget.await_count == 0
+
+    assert client.get("/api/context/budget?refresh=1").json() == {
+        "totals": {"prompt": 1}
+    }
+    assert agent.render_context_budget.await_count == 1
+
+    assert client.get("/api/context/budget").json() == {"totals": {"prompt": 1}}
+    assert agent.render_context_budget.await_count == 1

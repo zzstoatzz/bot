@@ -252,13 +252,16 @@ export async function getCacheStability(): Promise<CacheStability | null> {
 // right now. stateless on the backend; slow-ish (several blocks hit the
 // network), so callers should show a loading state.
 
-export async function getContextBudget(): Promise<ContextBudget | null> {
+// the server keeps a snapshot; `refresh` asks it to recompose (slow, seconds)
+export type ContextBudgetReply = { kind: 'ready'; budget: ContextBudget } | { kind: 'computing' } | { kind: 'unavailable' };
+export async function getContextBudget(refresh = false): Promise<ContextBudgetReply> {
 	try {
-		const res = await fetch('/api/context/budget');
-		if (!res.ok) return null;
-		return await res.json();
+		const res = await fetch(refresh ? '/api/context/budget?refresh=1' : '/api/context/budget');
+		if (res.status === 202) return { kind: 'computing' };
+		if (!res.ok) return { kind: 'unavailable' };
+		return { kind: 'ready', budget: await res.json() };
 	} catch {
-		return null;
+		return { kind: 'unavailable' };
 	}
 }
 

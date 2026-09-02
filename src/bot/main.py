@@ -84,6 +84,7 @@ async def lifespan(app: FastAPI):
     app.state.poller = poller
     await poller.start()
     watchdog_task = asyncio.create_task(watchdog.run(), name="watchdog")
+    budget_task = asyncio.create_task(context_budget_loop(), name="context-budget")
 
     # Tail phi's own repo commits from jetstream: [RECENT OPERATIONS] renders
     # from this event log (deletes and edits are invisible to listRecords),
@@ -147,6 +148,7 @@ async def lifespan(app: FastAPI):
 
     logger.info("shutting down phi")
     watchdog_task.cancel()
+    budget_task.cancel()
     if backfill_task:
         backfill_task.cancel()
     if ops_consumer:
@@ -746,20 +748,53 @@ async def diagnostic_context(request: Request):
     )
 
 
+# the context budget is expensive to compose — every block renders (with
+# their network fetches), every MCP server is connected to list tools, and
+# the model is asked to count ~120 sections — so it is computed here on a
+# schedule and the page reads the snapshot. only an explicit refresh
+# recomputes, and only one composition runs at a time.
+CONTEXT_BUDGET_INTERVAL = 30 * 60
+_context_budget: dict | None = None
+_context_budget_lock = asyncio.Lock()
+
+
+async def refresh_context_budget() -> dict | None:
+    global _context_budget
+    poller = getattr(app.state, "poller", None)
+    if poller is None:
+        return None
+    async with _context_budget_lock:
+        try:
+            _context_budget = await poller.handler.agent.render_context_budget()
+        except Exception as e:
+            logger.warning(f"context budget failed: {type(e).__name__}: {e}")
+        return _context_budget
+
+
+async def context_budget_loop() -> None:
+    while True:
+        await refresh_context_budget()
+        await asyncio.sleep(CONTEXT_BUDGET_INTERVAL)
+
+
 @app.get("/api/context/budget")
-@limiter.limit("3/minute")
+@limiter.limit("6/minute")
 async def context_budget(request: Request):
     """The next run's context, weighed: model and window, every section
     with a token count, and the last real run's provider-reported usage.
 
-    Heavier than /api/diagnostic/context — it connects the MCP servers to
-    list their tools and, when the model counts tokens, makes one counting
-    request per section — so it is rate limited harder.
+    Serves the last snapshot instantly. ``?refresh=1`` recomputes and waits
+    for it; before the first composition finishes, 202 with ``computing``.
     """
-    poller = getattr(app.state, "poller", None)
-    if poller is None:
-        return JSONResponse({"error": "agent not started"}, status_code=503)
-    return JSONResponse(await poller.handler.agent.render_context_budget())
+    if request.query_params.get("refresh"):
+        budget = await refresh_context_budget()
+    else:
+        budget = _context_budget
+    if budget is None:
+        if getattr(app.state, "poller", None) is None:
+            return JSONResponse({"error": "agent not started"}, status_code=503)
+        return JSONResponse({"status": "computing"}, status_code=202)
+    return JSONResponse(budget)
 
 
 _graph_cache_data: dict | None = None
