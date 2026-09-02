@@ -95,7 +95,7 @@ and their `RISK` entries.
 
 ## how to redo this
 
-the procedure is the `agent-toolset-audit` skill (zzstoatzz.io/skills). the
+the procedure is the `toolset-audit` project skill (`.claude/skills/toolset-audit`). the
 three inputs are `/api/context/budget` (weight), the logfire query in that skill
 (usage), and `git log` (age). rerun it after any change to the toolset; the
 panel on `/operator` shows the weight immediately and usage needs a month.
