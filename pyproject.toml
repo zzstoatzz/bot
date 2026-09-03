@@ -7,7 +7,7 @@ requires-python = ">=3.12"
 dynamic = ["version"]
 dependencies = [
     "anthropic",
-    "atproto@git+https://github.com/MarshalX/atproto.git@refs/pull/605/head",
+    "atproto>=0.0.71",
     "fastapi",
     "logfire[fastapi]",
     "numpy>=2.4.4",
