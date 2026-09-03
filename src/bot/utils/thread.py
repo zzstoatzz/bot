@@ -257,3 +257,26 @@ def build_thread_context(thread_node) -> str:
 
     messages = [describe_post(post) for post in posts]
     return "\n".join(messages)
+
+
+def thread_root_view(thread_node, root_uri: str) -> tuple[str, str]:
+    """``(author_handle, text)`` of the thread's root post, or ``("", "")``.
+
+    The root is the post whose uri is ``root_uri``; when the fetched thread
+    does not reach it, the earliest post stands in. A reply's context used
+    to be a flat list where the root was only the first line — nothing
+    said whose thread it was, which is the first thing a person tagged into
+    a thread looks at (the marble-cake replies, 2026-09-02).
+    """
+    posts = extract_posts_chronological(thread_node) if thread_node else []
+    if not posts:
+        return "", ""
+    root = next((p for p in posts if getattr(p, "uri", "") == root_uri), posts[0])
+    handle = getattr(getattr(root, "author", None), "handle", "") or ""
+    record = getattr(root, "record", None)
+    text = (
+        resolve_facet_links(record)
+        if record is not None and hasattr(record, "text")
+        else ""
+    )
+    return handle, text

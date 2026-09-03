@@ -148,6 +148,35 @@ pass target URIs verbatim (from notifications, recent operations, get_own_posts,
 """.strip()
 
 
+def _thread_frame(root_uri: str, entries: list[dict]) -> str:
+    """One line saying whose thread this is and who brought phi into it.
+
+    A person tagged into a thread reads the top first: who started it and
+    what it is for. The flat context that follows has the root as its first
+    line and nothing else marks it, which is how a request for a cake
+    recipe got answered in a thread about agents on atproto (2026-09-02).
+    Says nothing when the notification is itself the root or the root is
+    unknown; the judgment about whether a reply belongs stays phi's.
+    """
+    root_author = (entries[0].get("root_author_handle") or "").strip()
+    root_text = (entries[0].get("root_text") or "").replace("\n", " ").strip()
+    if not root_author:
+        return ""
+    if all(e.get("uri") == root_uri for e in entries):
+        return ""
+    quoted = f' "{root_text[:160]}"' if root_text else ""
+    who = sorted(
+        {e.get("author_handle", "") for e in entries if e.get("author_handle")}
+    )
+    if who == [root_author]:
+        return f"thread by @{root_author}, their own:{quoted}"
+    others = ", ".join(f"@{h}" for h in who if h != root_author)
+    return (
+        f"thread by @{root_author}:{quoted} — {others} brought you in; "
+        f"the thread is @{root_author}'s, not theirs."
+    )
+
+
 def _format_notifications_block(notifications_context: dict) -> str:
     """Format the notifications batch as a readable [NEW NOTIFICATIONS] block.
 
@@ -193,6 +222,9 @@ def _format_notifications_block(notifications_context: dict) -> str:
         thread_ctx = entries[0].get("thread_context", "") or ""
 
         lines.append("")
+        frame = _thread_frame(root_uri, entries)
+        if frame:
+            lines.append(frame)
         if thread_ctx and thread_ctx != "No previous messages in this thread.":
             lines.append(thread_ctx)
             lines.append("")

@@ -31,6 +31,7 @@ from bot.utils.thread import (
     describe_embed,
     extract_image_urls,
     resolve_facet_links,
+    thread_root_view,
 )
 
 logger = logging.getLogger("bot.handler")
@@ -104,9 +105,13 @@ class MessageHandler:
 
         # Fetch thread context for the conversation
         thread_context = "No previous messages in this thread."
+        root_author_handle, root_text = "", ""
         try:
             thread_data = await self.client.get_thread(thread_uri, depth=100)
             thread_context = build_thread_context(thread_data.thread)
+            root_author_handle, root_text = thread_root_view(
+                thread_data.thread, root_uri
+            )
         except Exception as e:
             logger.warning(f"failed to fetch thread context for {thread_uri}: {e}")
 
@@ -123,6 +128,8 @@ class MessageHandler:
             "image_urls": image_urls,
             "root_uri": root_uri,
             "root_cid": root_cid,
+            "root_author_handle": root_author_handle,
+            "root_text": root_text,
             "thread_uri": thread_uri,
             "thread_context": thread_context,
             "indexed_at": getattr(post, "indexed_at", "") or "",
