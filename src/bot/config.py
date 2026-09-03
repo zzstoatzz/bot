@@ -239,6 +239,17 @@ class Settings(BaseSettings):
             "phi's pull requests — the authoritative path; jetstream is the fast one."
         ),
     )
+    operator_dids: tuple[Did, ...] = Field(
+        default=(
+            "did:plc:xbtmt2zjwlrfegqvch7fboei",  # zzstoatzz.io
+            "did:plc:o53crari67ge7bvbv273lxln",  # zzstoatzzdevlog.bsky.social
+        ),
+        description=(
+            "DIDs that speak as the operator in a notifications batch. A post "
+            "from one of these that points phi at another post is direction, "
+            "and the policy judge treats it as authorization for the reply."
+        ),
+    )
     reviewer_dids: tuple[Did, ...] = Field(
         default=(
             "did:plc:xbtmt2zjwlrfegqvch7fboei",  # zzstoatzz.io

@@ -101,10 +101,29 @@ def _operator_authorization_note(ctx_notifs: dict) -> str:
     return ""
 
 
-def _reply_provenance(uri: str, ctx_notifs: dict) -> str:
+def _operator_direction(uri: str, root_uri: str, ctx_notifs: dict) -> str:
+    """The operator's post in this batch that points at the reply target,
+    or "". Direction is a URI, a bsky.app link, or the bare rkey of the
+    target or of its thread root appearing in an operator post's text."""
+    keys = {k for k in (uri, root_uri) if k}
+    for k in list(keys):
+        keys.add(k.rsplit("/", 1)[-1])
+    for entry in ctx_notifs.values():
+        if entry.get("author_did") not in settings.operator_dids:
+            continue
+        text = entry.get("post_text") or ""
+        if any(k in text for k in keys):
+            return text
+    return ""
+
+
+def _reply_provenance(uri: str, ctx_notifs: dict, root_uri: str = "") -> str:
     """Describe how phi came to hold this reply target — the single input
     the judge weighs most. Invited (in the notification batch), self
-    (threading), operator, or uninvited stranger."""
+    (threading), the operator's own post, operator-directed (an operator
+    post in the batch points at it), or not in the batch at all. The last
+    is stated as what it is: the judge is not told where the target came
+    from when nothing here knows."""
     entry = ctx_notifs.get(uri)
     if entry is not None:
         author = entry.get("author_handle", "") or "unknown"
@@ -128,10 +147,17 @@ def _reply_provenance(uri: str, ctx_notifs: dict) -> str:
     who = f"@{handle}" if handle else f"did {did or 'unknown'}"
     if handle and handle == settings.owner_handle:
         return f"reply target is a post by {who} — the operator."
+    direction = _operator_direction(uri, root_uri, ctx_notifs)
+    if direction:
+        return (
+            f"reply target is a post by {who}, not in the notification batch, "
+            "but the operator's own post in this batch points phi at it: "
+            f"{direction[:240]!r}. the operator directed this reply."
+        )
     return (
-        f"reply target is a post by {who}, found outside the notification "
-        "batch (via timeline/search/feeds/discovery). nobody invited phi "
-        "into this thread — this reply is unprompted."
+        f"reply target is a post by {who}, not in the notification batch and "
+        "not referenced by anything in it. nobody invited phi into this "
+        "thread — this reply is unprompted."
     )
 
 
@@ -348,7 +374,9 @@ def register(agent):
             f"reply to {in_reply_to}"
             + (f" (by @{author_handle})" if author_handle else "")
             + f": {text}",
-            _reply_provenance(in_reply_to, ctx.deps.notifications_context or {})
+            _reply_provenance(
+                in_reply_to, ctx.deps.notifications_context or {}, root_uri
+            )
             + _operator_authorization_note(ctx.deps.notifications_context or {}),
             unprompted=unprompted,
         )

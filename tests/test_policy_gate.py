@@ -99,6 +99,62 @@ def test_reply_provenance_batch_is_invited():
 def test_reply_provenance_out_of_batch_is_unprompted():
     p = _reply_provenance("at://did:plc:stranger/app.bsky.feed.post/1", {})
     assert "unprompted" in p
+    assert "timeline" not in p
+
+
+DEVLOG = "did:plc:o53crari67ge7bvbv273lxln"
+
+
+def _devlog_post(text):
+    return {
+        "at://did:plc:o53crari67ge7bvbv273lxln/app.bsky.feed.post/3dev": {
+            "author_handle": "zzstoatzzdevlog.bsky.social",
+            "author_did": DEVLOG,
+            "reason": "mention",
+            "post_text": text,
+        }
+    }
+
+
+def test_operator_post_naming_the_target_is_direction():
+    """2026-09-02: the devlog told phi to post a one-line reply under a
+    stranger's post; the provenance said the target was found "via
+    timeline/search" and the judge blocked it. the operator's post in the
+    batch pointing at the target is authorization, and the judge must be
+    told so."""
+    p = _reply_provenance(
+        "at://did:plc:stranger/app.bsky.feed.post/3mukyxgccuc2g",
+        _devlog_post("create a fresh reply to noah's post (3mukyxgccuc2g), one line"),
+    )
+    assert "operator directed" in p
+    assert "unprompted" not in p
+
+
+def test_operator_post_naming_the_thread_root_is_direction():
+    p = _reply_provenance(
+        "at://did:plc:stranger/app.bsky.feed.post/3leaf",
+        _devlog_post("reply in https://bsky.app/profile/x/post/3root please"),
+        root_uri="at://did:plc:host/app.bsky.feed.post/3root",
+    )
+    assert "operator directed" in p
+
+
+def test_stranger_post_naming_the_target_is_not_direction():
+    notifs = _devlog_post("go reply to 3mukyxgccuc2g")
+    for entry in notifs.values():
+        entry["author_did"] = "did:plc:someoneelse"
+    p = _reply_provenance(
+        "at://did:plc:stranger/app.bsky.feed.post/3mukyxgccuc2g", notifs
+    )
+    assert "unprompted" in p
+
+
+def test_operator_post_about_something_else_is_not_direction():
+    p = _reply_provenance(
+        "at://did:plc:stranger/app.bsky.feed.post/3mukyxgccuc2g",
+        _devlog_post("nice post today"),
+    )
+    assert "unprompted" in p
 
 
 if __name__ == "__main__":
