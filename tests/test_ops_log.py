@@ -24,13 +24,15 @@ def _tmp_log(tmp_path, monkeypatch):
     ops_log._local_writes.clear()
 
 
-def _event(op, nsid="app.bsky.feed.post", rkey="3abc", record=None, time_us=None):
+def _event(
+    op, nsid="app.bsky.feed.post", rkey="3abc", record=None, time_us=None, rev="r"
+):
     return {
         "did": "did:plc:x",
         "kind": "commit",
         "time_us": time_us or int(time.time() * 1_000_000),
         "commit": {
-            "rev": "r",
+            "rev": rev,
             "operation": op,
             "collection": nsid,
             "rkey": rkey,
@@ -124,7 +126,76 @@ def _op(op, rkey, nsid="network.cosmik.card", record=None, offset_s=0):
         rkey=rkey,
         local=False,
         record=record,
+        rev=f"rev-{rkey}-{op}-{t}",
     )
+
+
+def test_replayed_commit_from_another_instance_reads_once():
+    """time_us is the jetstream instance's clock, not the commit's: a
+    rotation to another instance re-emits the same commit under a new
+    stamp, and the 2026-09-02 log held one post 352 times. the commit
+    rev is what identifies a write."""
+    base = int(time.time() * 1_000_000)
+    first = ops_log.event_to_row(
+        _event("create", record={"text": "once"}, time_us=base, rev="rev1")
+    )
+    replay = ops_log.event_to_row(
+        _event("create", record={"text": "once"}, time_us=base + 4_281, rev="rev1")
+    )
+    assert first and replay
+    ops_log.append_op(first)
+    ops_log.append_op(replay)
+    rows = ops_log.read_ops(48)
+    assert len(rows) == 1
+
+
+def test_distinct_revs_on_one_rkey_stay_distinct():
+    base = int(time.time() * 1_000_000)
+    a = ops_log.event_to_row(
+        _event(
+            "update",
+            nsid="io.zzstoatzz.phi.goal",
+            rkey="self",
+            record={"n": 1},
+            time_us=base,
+            rev="a",
+        )
+    )
+    b = ops_log.event_to_row(
+        _event(
+            "update",
+            nsid="io.zzstoatzz.phi.goal",
+            rkey="self",
+            record={"n": 2},
+            time_us=base + 1,
+            rev="b",
+        )
+    )
+    assert a and b
+    ops_log.append_op(a)
+    ops_log.append_op(b)
+    assert len(ops_log.read_ops(48)) == 2
+
+
+def test_legacy_rows_without_rev_collapse_on_identical_body():
+    base = int(time.time() * 1_000_000)
+    with open(ops_log.settings.ops_log_path, "a") as f:
+        for offset in (0, 5_000):
+            f.write(
+                json.dumps(
+                    {
+                        "time_us": base + offset,
+                        "at": ops_log._iso_from_us(base + offset),
+                        "op": "create",
+                        "nsid": "app.bsky.feed.post",
+                        "rkey": "3legacy",
+                        "local": False,
+                        "record": {"text": "same"},
+                    }
+                )
+                + "\n"
+            )
+    assert len(ops_log.read_ops(48)) == 1
 
 
 def test_external_delete_is_visible_and_flagged():

@@ -66,6 +66,7 @@ class OpRow(TypedDict):
     rkey: str
     local: bool  # written by this process (best-effort attribution)
     record: dict[str, Any] | None
+    rev: str  # the PDS commit revision; stable across jetstream instances
 
 
 def record_local_write(uri: str) -> None:
@@ -100,9 +101,39 @@ def append_op(row: OpRow) -> None:
         f.write(json.dumps(row, separators=(",", ":")) + "\n")
 
 
+def _dedupe_key(row: dict[str, Any]) -> tuple:
+    """Identity of a repo operation, independent of which jetstream
+    instance delivered it. ``time_us`` is the instance's emission clock,
+    so the same commit replayed after a rotation or a cursor rewind lands
+    with a fresh stamp; the commit ``rev`` does not move. Rows written
+    before ``rev`` was logged fall back to the record body (an identical
+    body is the same write) and, for bodiless ops, to the second."""
+    rev = row.get("rev")
+    if rev:
+        return (row.get("nsid"), row.get("rkey"), row.get("op"), rev)
+    record = row.get("record")
+    if record:
+        return (
+            row.get("nsid"),
+            row.get("rkey"),
+            row.get("op"),
+            json.dumps(record, sort_keys=True, separators=(",", ":")),
+        )
+    return (
+        row.get("nsid"),
+        row.get("rkey"),
+        row.get("op"),
+        row.get("time_us", 0) // 1_000_000,
+    )
+
+
 def read_ops(window_hours: float = 48.0) -> list[OpRow]:
     """Ops within the wall-clock window, oldest first. Tolerates a missing
-    or partially-corrupt file (a torn tail write loses one row, not the log)."""
+    or partially-corrupt file (a torn tail write loses one row, not the log).
+
+    Replays are collapsed here: every reconnect rewinds the cursor, and a
+    rotation to another jetstream instance re-emits the same commits under
+    that instance's clock, so one write can be appended many times."""
     path = _log_path()
     if not path.exists():
         return []
@@ -117,9 +148,7 @@ def read_ops(window_hours: float = 48.0) -> list[OpRow]:
                 continue
             if row.get("time_us", 0) < cutoff_us:
                 continue
-            # reconnects rewind the cursor 5s so a crash can't skip ops;
-            # the price is replayed appends, deduped here at read time.
-            key = (row.get("time_us"), row.get("nsid"), row.get("rkey"), row.get("op"))
+            key = _dedupe_key(row)
             if key in seen:
                 continue
             seen.add(key)
@@ -182,6 +211,7 @@ def event_to_row(event: dict[str, Any]) -> OpRow | None:
         rkey=rkey,
         local=(nsid, rkey) in _local_writes,
         record=record,
+        rev=str(commit.get("rev") or ""),
     )
 
 
@@ -320,9 +350,7 @@ class OpsLogConsumer:
         cursor = resume_cursor_us()
         if cursor:
             # rewind 5s so a crash between receive and append can't skip ops;
-            # append is keyed by time_us so replays are visible but harmless
-            # (read_ops callers dedupe by (time_us, nsid, rkey) implicitly
-            # via identical rows).
+            # the replayed appends are collapsed by read_ops on commit rev.
             url += f"&cursor={cursor - 5_000_000}"
         return url
 

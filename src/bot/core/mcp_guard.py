@@ -168,6 +168,8 @@ _CORRECTABLE_SIGNATURES = (
     "missing",
     "invalidrequest",
     "unexpected keyword",
+    "recordnotfound",
+    "could not locate record",
 )
 
 

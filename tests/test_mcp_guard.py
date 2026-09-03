@@ -427,3 +427,15 @@ async def test_guard_skips_coverage_for_small_or_memoryless(monkeypatch):
 
     assert await guard(None, call_tool_big, "list_records", {}) == "y" * 500
     note.assert_not_awaited()
+
+
+def test_a_missing_record_is_correctable_not_an_outage():
+    """a deleted post came back as "pdsx is unavailable right now … mention
+    the outage" on 2026-09-02; a 400 RecordNotFound is a fact about the
+    argument, not the server."""
+    from bot.core.mcp_guard import _is_correctable
+
+    assert _is_correctable(
+        "Error calling tool 'get_record': Response(success=False, status_code=400, "
+        "content=XrpcError(error='RecordNotFound', message='Could not locate record'))"
+    )
