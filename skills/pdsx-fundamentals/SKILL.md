@@ -32,6 +32,27 @@ target one of: `repo=` (a handle/DID → routes to that user's PDS), `host=` (a 
 
 note on direction: `resolveHandle` only goes handle→DID. to go the other way (DID→handle), use `getProfile` — it returns the handle.
 
+## reading many references at once
+
+records that point at posts — likes, reposts, bookmarks, list items,
+notification subjects — carry a `subject.uri`, not the text. do not fetch
+them one `get_record` at a time. `app.bsky.feed.getPosts` takes up to 25
+uris per call and `query` passes a list straight through:
+
+```
+mcp__pdsx__query("app.bsky.feed.getPosts", params={"uris": [uri1, uri2, ...]})
+```
+
+so "what did nate like two weeks ago that said X" is a loop, not a grind:
+`list_records(collection="app.bsky.feed.like", repo="zzstoatzz.io", limit=100, cursor=...)`
+walks his likes newest-first (about 80 a day); each page is four `getPosts`
+calls; filter the hydrated text, or group by `embed.record.uri` when the
+thing being remembered is "everyone quote-posting one post". two weeks is
+roughly 13 pages and 50 hydration calls — minutes, and measured 2026-09-03
+at 1,300 likes back to 08-14. narrow first when you can: `search_posts`
+takes `author`, `since`, `until`, `sort=latest` and a `cursor`, and often
+gets you the post before the walk does.
+
 ## finding the right lexicon
 
 three ways, in order of effort:

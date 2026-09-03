@@ -21,40 +21,77 @@ from bot.tools._helpers import PhiDeps, _relative_age
 CORAL_BASE = "https://coral.fly.dev"
 
 
+def _day_bound(day: str) -> str:
+    """YYYY-MM-DD -> the ISO instant searchPosts wants; full timestamps pass through."""
+    return f"{day}T00:00:00Z" if len(day) == 10 else day
+
+
+def render_posts(posts: list[dict], today: date) -> str:
+    """one line per post from appview JSON: handle, likes, age, text."""
+    lines = []
+    for post in posts:
+        text = (post.get("record") or {}).get("text", "")
+        handle = (post.get("author") or {}).get("handle", "?")
+        likes = post.get("likeCount") or 0
+        age = _relative_age(post.get("indexedAt") or "", today)
+        age_str = f", {age}" if age else ""
+        lines.append(
+            f"@{handle} [{post.get('uri', '')}] ({likes} likes{age_str}): {text[:200]}"
+        )
+    return "\n\n".join(lines)
+
+
 def register(agent):
     @agent.tool
     async def search_posts(
-        ctx: RunContext[PhiDeps], query: str, limit: int = 10
+        ctx: RunContext[PhiDeps],
+        query: str,
+        limit: int = 10,
+        author: Annotated[
+            str | None,
+            Field(description="only posts by this handle or did."),
+        ] = None,
+        since: Annotated[
+            str | None,
+            Field(description="only posts on or after this date, YYYY-MM-DD."),
+        ] = None,
+        until: Annotated[
+            str | None,
+            Field(description="only posts before this date, YYYY-MM-DD."),
+        ] = None,
+        sort: Literal["top", "latest"] = "top",
+        cursor: Annotated[
+            str | None,
+            Field(
+                description="continue a previous search from the cursor it returned."
+            ),
+        ] = None,
     ) -> str:
-        """Search Bluesky posts by keyword. Use this to find what people are saying about a topic."""
+        """Search Bluesky posts by keyword. author/since/until narrow the search the way the network's own search does; use them before paging through a feed by hand. Up to 100 results per call, and a cursor when there are more."""
+        params: dict = {"q": query, "limit": max(1, min(limit, 100)), "sort": sort}
+        if cursor:
+            params["cursor"] = cursor
+        if author:
+            params["author"] = author.lstrip("@")
+        if since:
+            params["since"] = _day_bound(since)
+        if until:
+            params["until"] = _day_bound(until)
         try:
-            response = bot_client.client.app.bsky.feed.search_posts(
-                params={"q": query, "limit": min(limit, 25), "sort": "top"}
-            )
-            if not response.posts:
-                return f"no posts found for '{query}'"
-
-            today = date.today()
-            lines = []
-            for post in response.posts:
-                text = post.record.text if hasattr(post.record, "text") else ""
-                handle = post.author.handle
-                likes = post.like_count or 0
-                age = (
-                    _relative_age(post.indexed_at, today)
-                    if hasattr(post, "indexed_at") and post.indexed_at
-                    else ""
-                )
-                age_str = f", {age}" if age else ""
-                lines.append(f"@{handle} ({likes} likes{age_str}): {text[:200]}")
-            result = "\n\n".join(lines)
-            # perception-keyed recall: seeing material triggers memory of
-            # having covered it, before any decision to post is made.
-            if note := await coverage_note(ctx.deps.memory, result):
-                result += f"\n\n{note}"
-            return result
+            page = await bot_client.search_posts_raw(params)
         except Exception as e:
             return f"search failed: {e}"
+        posts = page.get("posts") or []
+        if not posts:
+            return f"no posts found for '{query}'"
+        result = render_posts(posts, date.today())
+        if page.get("cursor"):
+            result += f"\n\ncursor: {page['cursor']}"
+        # perception-keyed recall: seeing material triggers memory of
+        # having covered it, before any decision to post is made.
+        if note := await coverage_note(ctx.deps.memory, result):
+            result += f"\n\n{note}"
+        return result
 
     @agent.tool
     async def web_search(

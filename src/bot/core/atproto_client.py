@@ -243,14 +243,18 @@ class BotClient:
         )
         return response.feed
 
-    async def get_own_likes(self, limit: int = 25):
-        """Fetch posts the bot has liked, newest first. Auth-only: the
-        appview restricts getActorLikes to the requesting account."""
+    async def search_posts_raw(self, params: dict) -> dict:
+        """searchPosts as the appview's JSON, unmodelled. the SDK's response
+        model rejects any embed type newer than its lexicons (gallery embeds
+        broke every search that hit one on 2026-09-03); a dict never does."""
         await self.authenticate()
-        response = self.client.app.bsky.feed.get_actor_likes(
-            params={"actor": self.client.me.did, "limit": limit}
+        model = models.AppBskyFeedSearchPosts.Params(**params)
+        response = self.client.invoke_query(
+            "app.bsky.feed.searchPosts",
+            params=model,
+            output_encoding="application/json",
         )
-        return response.feed
+        return response.content
 
     async def get_timeline(self, limit: int = 25):
         """Fetch the 'following' timeline feed."""
