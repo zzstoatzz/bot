@@ -660,10 +660,21 @@ class NamespaceMemory:
         if action == "NOOP":
             existing_sources = list(best.get("source_uris") or [])
             sources = list(dict.fromkeys(existing_sources + list(source_uris or [])))
-            if sources != existing_sources:
-                self.namespaces["episodic"].write(
-                    patch_rows=[{"id": best["id"], "source_uris": sources}],
+            previously_submitted = (
+                best.get("submitted_source_uris", [])
+                if best.get("source_provenance_version") == 1
+                else []
+            )
+            new_submission = set(source_uris or []) - set(previously_submitted)
+            if sources != existing_sources or new_submission:
+                saved = await self._write_episodic(
+                    best["content"], best["tags"], source, sources,
+                    await self._get_embedding(best["content"]),
+                    supersedes=best["id"],
+                    submitted_source_uris=list(source_uris or []),
                 )
+                saved["action"] = "UPDATE"
+                return saved
             logger.info(
                 f"episodic NOOP [{source}]: '{content[:60]}' ({decision.reason})"
             )
@@ -693,6 +704,7 @@ class NamespaceMemory:
                     unioned,
                     merged_embedding,
                     supersedes=best["id"],
+                    submitted_source_uris=list(source_uris or []),
                 )
                 logger.info(
                     f"episodic UPDATE [{source}]: '{best['content'][:40]}' -> "
@@ -728,6 +740,7 @@ class NamespaceMemory:
         source_uris: list[str] | None,
         embedding: list[float],
         supersedes: str = "",
+        submitted_source_uris: list[str] | None = None,
     ) -> EpisodicWriteResult:
         entry_id = self._generate_id("episodic", source, content)
         self.namespaces["episodic"].write(
@@ -739,6 +752,12 @@ class NamespaceMemory:
                     "tags": tags,
                     "source": source,
                     "source_uris": list(source_uris or []),
+                    "source_provenance_version": 1,
+                    "submitted_source_uris": list(dict.fromkeys(
+                        (source_uris or [])
+                        if submitted_source_uris is None
+                        else submitted_source_uris
+                    )),
                     "created_at": datetime.now().isoformat(),
                     "status": "active",
                     "supersedes": supersedes,
@@ -782,6 +801,12 @@ class NamespaceMemory:
                     "content": row.content,
                     "tags": getattr(row, "tags", []) or [],
                     "source_uris": list(getattr(row, "source_uris", []) or []),
+                    "source_provenance_version": getattr(
+                        row, "source_provenance_version", None
+                    ),
+                    "submitted_source_uris": list(
+                        getattr(row, "submitted_source_uris", []) or []
+                    ),
                 }
             )
         return rows[:top_k]

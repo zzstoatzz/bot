@@ -147,6 +147,8 @@ EPISODIC_SCHEMA = {
     "tags": {"type": "[]string", "filterable": True},
     "source": {"type": "string", "filterable": True},  # "tool", "run:<label>", ...
     "source_uris": {"type": "[]string"},  # AT-URIs backing this memory (optional)
+    "source_provenance_version": {"type": "uint"},
+    "submitted_source_uris": {"type": "[]string"},
     "created_at": {"type": "string"},
     "status": {"type": "string", "filterable": True},  # active, superseded
     "supersedes": {"type": "string"},  # id of the episodic row this replaces

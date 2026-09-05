@@ -1,5 +1,14 @@
 # changelog
 
+## 2026-09-05 — Preserve citation provenance across memory versions
+
+Two malformed references supplied by Phi survived multiple corrections through
+automatic citation inheritance. New episodic versions now record which URIs
+the current write submitted, and exact reads distinguish inherited references
+from those submissions. Legacy provenance remains unknown. Citation changes
+create successor versions instead of modifying old evidence lists. This retains
+the historical record; it does not verify references or repair old claims.
+
 ## 2026-09-05 — Preserve accounts during ambient recall
 
 A recall recap dropped “against the correction note” from a saved regression

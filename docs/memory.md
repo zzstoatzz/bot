@@ -194,3 +194,12 @@ action after a successful write (or the retained note on NOOP). Explicit notes p
 relationship to older versions without rewriting their text. Automatic run
 summaries retain text consolidation.
 The saved account and its citations remain claims, not independent verification.
+
+New episodic versions separately retain the current write's submitted source
+URIs. Exact `read_memory` results distinguish those from references inherited
+from the previous version; legacy rows report unknown provenance. Existing
+search readers retain the combined citation list. Adding a citation or explicitly
+submitting a previously inherited reference creates a successor even when the
+text is unchanged. An identical repeated submission remains a NOOP. Earlier
+versions keep their wording and references. Storage does not resolve these
+URIs or verify the claims they accompany.

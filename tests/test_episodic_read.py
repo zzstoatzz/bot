@@ -10,9 +10,10 @@ from turbopuffer import Turbopuffer
 from bot.tools import memory as memory_tools
 
 
+@pytest.mark.parametrize("provenance_known", [False, True])
 @pytest.mark.parametrize("stored_status", ["active", "superseded", None])
 async def test_exact_reader_opens_version_without_rewriting_or_returning_vector(
-    stored_status,
+    stored_status, provenance_known,
 ):
     text = "Only in that page.\n“Not exhaustive.”"
     row = {
@@ -23,6 +24,9 @@ async def test_exact_reader_opens_version_without_rewriting_or_returning_vector(
         "supersedes": "version-0",
         "created_at": "2026-09-05T12:00:00Z",
     }
+    if provenance_known:
+        row["source_provenance_version"] = 1
+        row["submitted_source_uris"] = []
     if stored_status:
         row["status"] = stored_status
     calls = []
@@ -56,6 +60,11 @@ async def test_exact_reader_opens_version_without_rewriting_or_returning_vector(
     assert result["note"]["status"] == stored_status
     assert result["note"]["supersedes"] == "version-0"
     assert result["note"]["source_uris"] == row["source_uris"]
+    provenance = result["note"]["source_provenance"]
+    assert provenance["status"] == ("recorded" if provenance_known else "unknown_legacy")
+    assert provenance["submitted"] == ([] if provenance_known else None)
+    assert provenance["inherited"] == (row["source_uris"] if provenance_known else None)
+    assert provenance["verification"] == "not_performed_by_memory_storage"
     assert "vector" not in result["note"]
 
 

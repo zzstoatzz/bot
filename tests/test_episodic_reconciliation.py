@@ -88,7 +88,7 @@ async def test_noop_writes_nothing():
     ns.write.assert_not_called()
 
 
-async def test_noop_preserves_new_citation_without_rewriting_note():
+async def test_new_citation_versions_note_without_rewriting_or_losing_old_sources():
     mem, ns = _memory_with_episodic_ns()
     existing = dict(SIMILAR[0], source_uris=["at://phi/app.bsky.feed.post/wrong"])
     mem._find_similar_episodic = AsyncMock(return_value=[existing])
@@ -101,9 +101,14 @@ async def test_noop_preserves_new_citation_without_rewriting_note():
             existing["content"], ["correction"], source_uris=[corrected, corrected]
         )
         sources = [*existing["source_uris"], corrected]
-        assert _patched_rows(ns) == [{"id": existing["id"], "source_uris": sources}]
-        assert not _upserted_rows(ns)
-        existing["source_uris"] = sources
+        assert _patched_rows(ns) == [{"id": existing["id"], "status": "superseded"}]
+        stored = _upserted_rows(ns)[0]
+        assert stored["source_uris"] == sources
+        assert stored["submitted_source_uris"] == [corrected]
+        assert stored["content"] == existing["content"]
+        assert stored["supersedes"] == existing["id"]
+        assert existing["source_uris"] != sources
+        existing.update(stored)
         ns.write.reset_mock()
         await mem.store_episodic_memory(
             existing["content"], ["correction"], source_uris=[corrected]
@@ -133,6 +138,39 @@ async def test_update_supersedes_and_merges():
     assert rows[0]["content"].startswith("plyr archaeology")
     assert rows[0]["supersedes"] == "old-row"
     assert rows[0]["source_uris"] == ["at://old/post", "at://new/post"]
+    assert rows[0]["submitted_source_uris"] == ["at://new/post"]
+    assert rows[0]["source_provenance_version"] == 1
+
+
+@pytest.mark.parametrize("legacy", [False, True])
+async def test_explicitly_submitting_inherited_reference_is_recorded_once(legacy):
+    mem, ns = _memory_with_episodic_ns()
+    old = dict(SIMILAR[0])
+    if not legacy:
+        old.update(source_provenance_version=1, submitted_source_uris=[])
+    ns.query.return_value = SimpleNamespace(rows=[SimpleNamespace(**old)])
+    with patch(
+        "bot.memory.namespace_memory.get_reconciliation_agent",
+        return_value=_decision("NOOP"),
+    ):
+        saved = await mem.store_episodic_memory(
+            old["content"], old["tags"], source_uris=old["source_uris"],
+            preserve_text=True,
+        )
+        assert saved["action"] == "UPDATE"
+        row = _upserted_rows(ns)[0]
+        assert row["source_uris"] == old["source_uris"]
+        assert row["submitted_source_uris"] == old["source_uris"]
+        assert row["supersedes"] == old["id"]
+        ns.query.return_value = SimpleNamespace(rows=[SimpleNamespace(**row)])
+        ns.write.reset_mock()
+        repeated = await mem.store_episodic_memory(
+            old["content"], old["tags"], source_uris=old["source_uris"],
+            preserve_text=True,
+        )
+        assert repeated["action"] == "NOOP"
+        assert repeated["id"] == row["id"]
+        ns.write.assert_not_called()
 
 
 async def test_reconciler_outage_degrades_to_add():
@@ -266,7 +304,9 @@ async def test_save_returns_resulting_note_instead_of_candidate(action):
             "candidate account", ["t"], source_uris=["at://new/post"]
         )
     if action == "NOOP":
-        expected = {**SIMILAR[0], "source_uris": ["at://old/post", "at://new/post"]}
+        expected = _upserted_rows(ns)[0]
+        assert expected["content"] == SIMILAR[0]["content"]
+        action = "UPDATE"
     else:
         expected = _upserted_rows(ns)[0]
     assert result == {
@@ -308,19 +348,24 @@ async def test_authored_qualification_survives_noop_classification():
     assert saved["content"] == "no reply among the 48 returned records"
     assert saved["action"] == "UPDATE"
     assert _upserted_rows(ns)[0]["supersedes"] == previous["id"]
+    assert _upserted_rows(ns)[0]["submitted_source_uris"] == []
+    assert _upserted_rows(ns)[0]["source_uris"] == previous["source_uris"]
     assert _patched_rows(ns) == [{"id": previous["id"], "status": "superseded"}]
 
 
-async def test_replacement_embedding_failure_keeps_previous_note_active():
+@pytest.mark.parametrize("action", ["UPDATE", "NOOP"])
+async def test_replacement_embedding_failure_keeps_previous_note_active(action):
     mem, ns = _memory_with_episodic_ns()
     mem._find_similar_episodic = AsyncMock(return_value=SIMILAR)
     mem._get_embedding.side_effect = [[0.1] * 8, RuntimeError("embedding unavailable")]
     with patch(
         "bot.memory.namespace_memory.get_reconciliation_agent",
-        return_value=_decision("UPDATE", new_content="replacement", new_tags=["t"]),
+        return_value=_decision(action, new_content="replacement", new_tags=["t"]),
     ):
         with pytest.raises(RuntimeError, match="embedding unavailable"):
-            await mem.store_episodic_memory("new account", ["t"])
+            await mem.store_episodic_memory(
+                "new account", ["t"], source_uris=["at://new/post"]
+            )
     ns.write.assert_not_called()
 
 
