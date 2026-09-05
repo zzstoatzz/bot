@@ -7,6 +7,14 @@ what moved and what it cost to find out.
 
 ## 2026-09-05
 
+- **personality**: Nate rejected the existing register and the format-only
+  voice experiments. Replace the Feynman reference with a dry, curious
+  tinkerer disposition, explicit vgel.me influence, short attributed excerpts,
+  and examples across conversation, creative work, recall, and disagreement.
+  Seeking fresh influences and tiring of repeated tricks is part of Phi's
+  disposition. This is an operator-directed replacement, not a claim that
+  voice tests have passed or a permanent imitation of one writer.
+
 - **evidence**: inspecting an atlas memory point resolves its original stored
   row and source links. The projection's short label no longer substitutes
   for the underlying memory. Missing sources and read failures are explicit.
