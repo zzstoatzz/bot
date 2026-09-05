@@ -5,6 +5,7 @@ import {
 	parseMarket,
 	seasonSeries,
 	nearestObservation,
+	observationSegments,
 	money,
 	price
 } from '../../web/src/lib/chicken';
@@ -118,4 +119,19 @@ test('chart inspection follows time spacing rather than evenly spaced sample ind
 		),
 		2
 	);
+});
+
+test('missing history stays disconnected, including a freshly checked wallet', () => {
+	const samples: [number, number][] = [
+		[0, 10_000_000],
+		[100_000, 9_900_000],
+		[100_600, 10_100_000],
+		[400_000, 11_000_000]
+	];
+	assert.deepEqual(observationSegments(samples), [
+		[samples[0]],
+		[samples[1], samples[2]],
+		[samples[3]]
+	]);
+	assert.deepEqual(observationSegments([]), []);
 });

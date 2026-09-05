@@ -1,27 +1,50 @@
 <script lang="ts">
-	import { money, nearestObservation } from '$lib/chicken';
-	let { series }: { series: [number, number][] } = $props();
+	import { money, nearestObservation, observationSegments } from '$lib/chicken';
+	let {
+		series,
+		current,
+		seasonStart
+	}: { series: [number, number][]; current: [number, number] | null; seasonStart: number } =
+		$props();
+	let view = $state('season');
+	const segments = $derived(observationSegments(series));
+	const activity = $derived(segments.find((segment) => segment.length > 1) ?? series);
+	const samples = $derived(
+		view === 'history'
+			? series.filter(([t]) => t >= (activity[0]?.[0] ?? seasonStart))
+			: current
+				? [...series, current]
+				: series
+	);
 	let selected = $state<number | null>(null);
 	let dragging = false;
-	const index = $derived(Math.min(selected ?? series.length - 1, series.length - 1));
-	const point = $derived(series[index]);
+	const index = $derived(Math.min(selected ?? samples.length - 1, samples.length - 1));
+	const point = $derived(samples[index]);
 	const chart = $derived.by(() => {
-		const first = series[0],
-			last = series[series.length - 1];
+		const first = samples[0],
+			last = samples[samples.length - 1];
 		if (!first || !last) return null;
-		const low = Math.min(10_000_000, ...series.map((p) => p[1]));
-		const high = Math.max(10_000_000, ...series.map((p) => p[1]));
+		const low = Math.min(10_000_000, ...samples.map((p) => p[1]));
+		const high = Math.max(10_000_000, ...samples.map((p) => p[1]));
 		const spread = Math.max(high - low, 100_000);
 		const y = (v: number) => 210 - ((v - low + spread * 0.15) / (spread * 1.3)) * 185;
 		const x = (t: number) => 12 + ((t - first[0]) / Math.max(1, last[0] - first[0])) * 676;
-		const coords = series.map(([t, v]) => `${x(t)},${y(v)}`).join(' ');
+		const paths = observationSegments(samples).map((segment) => ({
+			points: segment.map(([t, v]) => `${x(t)},${y(v)}`).join(' '),
+			area: `${x(segment[0][0])},230 ${segment.map(([t, v]) => `${x(t)},${y(v)}`).join(' ')} ${x(segment[segment.length - 1][0])},230`
+		}));
+		const gaps = samples
+			.slice(1)
+			.flatMap((p, i) =>
+				p[0] - samples[i][0] > 3600 ? [{ start: x(samples[i][0]), end: x(p[0]) }] : []
+			);
 		return {
 			first,
 			last,
 			x,
 			y,
-			line: coords,
-			area: `12,230 ${coords} ${x(last[0])},230`,
+			paths,
+			gaps,
 			low,
 			high,
 			baseline: y(10_000_000)
@@ -49,7 +72,7 @@
 			Math.min(1, (((e.clientX - rect.left) / rect.width) * 700 - 12) / 676)
 		);
 		selected = nearestObservation(
-			series,
+			samples,
 			chart.first[0] + ratio * (chart.last[0] - chart.first[0])
 		);
 	}
@@ -74,19 +97,41 @@
 			ArrowRight: index + 1,
 			ArrowUp: index + 1,
 			Home: 0,
-			End: series.length - 1
+			End: samples.length - 1
 		};
 		if (!(e.key in changes)) return;
 		e.preventDefault();
-		selected = Math.max(0, Math.min(series.length - 1, changes[e.key]));
+		selected = Math.max(0, Math.min(samples.length - 1, changes[e.key]));
 	}
 </script>
 
+<div class="chart-views" aria-label="Chart period">
+	<button
+		class:active={view === 'season'}
+		onclick={() => {
+			view = 'season';
+			selected = null;
+		}}>Season to today</button
+	>
+	<button
+		class:active={view === 'history'}
+		onclick={() => {
+			view = 'history';
+			selected = null;
+		}}>Recorded activity</button
+	>
+</div>
+{#if series.length}<p class="plot-note">
+		Recorded history ends {date(series[series.length - 1][0], true)}. {#if current}Wallet checked {date(
+				current[0],
+				true
+			)}.{/if}
+	</p>{/if}
 {#if chart && point}
 	<div class="plot-readout">
-		<strong>{money(point[1])}</strong><time datetime={new Date(point[0] * 1000).toISOString()}
-			>{date(point[0], true)}</time
-		>
+		<strong>{money(point[1])}</strong><span class="point-label"
+			>{current && point === current ? 'Current wallet' : 'Historical observation'}</span
+		><time datetime={new Date(point[0] * 1000).toISOString()}>{date(point[0], true)}</time>
 	</div>
 	<div
 		class="plot"
@@ -95,7 +140,7 @@
 		aria-label="Season net worth timeline"
 		aria-orientation="horizontal"
 		aria-valuemin="0"
-		aria-valuemax={series.length - 1}
+		aria-valuemax={samples.length - 1}
 		aria-valuenow={index}
 		aria-valuetext={`${date(point[0], true)}, ${money(point[1])}`}
 		onpointerdown={down}
@@ -122,12 +167,26 @@
 					class="grid"
 				/>{/each}
 			{#each [35, 95, 155, 215] as y}<line x1="12" x2="688" y1={y} y2={y} class="grid" />{/each}
-			<polygon points={chart.area} fill="url(#market-fill)" />
+			{#each chart.gaps as gap}<rect
+					x={gap.start}
+					y="12"
+					width={gap.end - gap.start}
+					height="218"
+					fill="#e9af7a"
+					opacity=".045"
+				/>{/each}
+			{#each chart.paths as path}<polygon points={path.area} fill="url(#market-fill)" />{/each}
 			<line x1="12" x2="688" y1={chart.baseline} y2={chart.baseline} class="baseline" />
-			<polyline points={chart.line} class="trace-glow" /><polyline
-				points={chart.line}
-				class="trace"
-			/>
+			{#each chart.paths as path}<polyline points={path.points} class="trace-glow" /><polyline
+					points={path.points}
+					class="trace"
+				/>{/each}
+			{#each samples as sample}<circle
+					cx={chart.x(sample[0])}
+					cy={chart.y(sample[1])}
+					r="1.5"
+					fill="#9cdeed"
+				/>{/each}
 			<line x1={chart.x(point[0])} x2={chart.x(point[0])} y1="12" y2="230" class="crosshair" />
 			<line
 				x1="12"
@@ -142,16 +201,60 @@
 			style:left={`${chart.x(point[0]) / 7}%`}
 			style:top={`${chart.y(point[1]) / 2.4}%`}
 		></span>
+		{#each chart.gaps as gap}{#if gap.end - gap.start > 85}<span
+					class="gap-label"
+					style:left={`${(gap.start + gap.end) / 14}%`}>No observations</span
+				>{/if}{/each}
 		<span class="plot-ceiling">{money(chart.high)}</span>
 	</div>
 	<div class="plot-axis">
 		<span>{date(chart.first[0])}</span><span>Drag to inspect</span><span>{date(chart.last[0])}</span
 		>
 	</div>
-	<p class="plot-note">Dashed line: $1,000 season start. Focus the chart to use arrow keys.</p>
+	<p class="plot-note">
+		Gaps have no recorded observations; no value is inferred between them. Dashed line: $1,000
+		starting balance. Arrow keys also inspect the chart.
+	</p>
 {:else}<p class="plot-note">No net-worth observations since this wallet reset.</p>{/if}
 
 <style>
+	.chart-views {
+		display: flex;
+		gap: 8px;
+		margin-top: 16px;
+		flex-wrap: wrap;
+	}
+	.chart-views button {
+		min-height: 44px;
+		padding: 8px 14px;
+		font: 16px var(--font-chrome);
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		border: 1px solid var(--scan-hot);
+		color: var(--text-mid);
+		background: transparent;
+	}
+	.chart-views button.active {
+		color: #eff9f6;
+		background: #224450;
+		box-shadow: inset 0 -2px var(--scan-hot);
+	}
+	.gap-label {
+		position: absolute;
+		top: 45%;
+		transform: translateX(-50%);
+		font: 12px var(--font-chrome);
+		text-transform: uppercase;
+		color: var(--text-mid);
+		pointer-events: none;
+		white-space: nowrap;
+	}
+	.point-label {
+		font: 13px var(--font-chrome);
+		text-transform: uppercase;
+		color: var(--text-mid);
+	}
+
 	.plot-readout {
 		display: flex;
 		flex-wrap: wrap;

@@ -654,7 +654,7 @@ _CHICKEN_PATHS = {
 
 
 @app.get("/api/chicken/{name}")
-async def chicken(name: str):
+async def chicken(name: str, refresh: bool = False):
     """Read-only proxy for phi's top chicken market surface.
 
     topchicken.cee.wtf serves no CORS headers, so the /market page can't
@@ -670,12 +670,14 @@ async def chicken(name: str):
 
     now = time.monotonic()
     cached = _chicken_cache.get(name)
-    if cached and now < cached[0]:
-        return JSONResponse(cached[1])
+    if cached and now < cached[0] and not refresh:
+        return JSONResponse(cached[1], headers={"Cache-Control": "no-store"})
 
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
-            res = await client.get(f"{_CHICKEN_API}/{path}")
+            res = await client.get(
+                f"{_CHICKEN_API}/{path}", headers={"Cache-Control": "no-cache"}
+            )
             res.raise_for_status()
             data = res.json()
     except httpx.HTTPStatusError as e:
@@ -685,7 +687,7 @@ async def chicken(name: str):
         return JSONResponse({"error": "unreachable"}, status_code=502)
 
     _chicken_cache[name] = (now + _CHICKEN_CACHE_TTL, data)
-    return JSONResponse(data)
+    return JSONResponse(data, headers={"Cache-Control": "no-store"})
 
 
 @app.get("/api/atlas")

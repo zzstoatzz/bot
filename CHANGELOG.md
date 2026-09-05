@@ -1,5 +1,16 @@
 # changelog
 
+## 2026-09-05 — Market history and refresh
+
+The market chart connected a 29-hour hole in Top Chicken's samples and ended
+at the last historical sample, three days before the current wallet read.
+Show missing history as gaps and the freshly fetched wallet as a separate
+point through today. A recorded-activity view lets the trading period fill
+the chart without the missing intervals. Refresh bypasses the proxy cache,
+reports unchanged values, and retains prior values on errors. Visible pages
+check again each minute and when the tab becomes visible.
+
+
 phi is continuously deployed, so this is dated rather than versioned. Entries
 record *why* a change happened — the part that isn't reconstructable from the
 diff. Durable design principles live in `docs/`; this file is the record of

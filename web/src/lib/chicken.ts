@@ -149,3 +149,16 @@ export function nearestObservation(series: [number, number][], timestamp: number
 	}
 	return nearest;
 }
+
+// Samples normally arrive about ten minutes apart. A gap over an hour is
+// missing history, not evidence that the wallet held a constant value.
+export function observationSegments(series: [number, number][]): [number, number][][] {
+	const segments: [number, number][][] = [];
+	for (const point of series) {
+		const segment = segments[segments.length - 1];
+		const previous = segment?.[segment.length - 1];
+		if (!segment || !previous || point[0] - previous[0] > 3600) segments.push([point]);
+		else segment.push(point);
+	}
+	return segments;
+}

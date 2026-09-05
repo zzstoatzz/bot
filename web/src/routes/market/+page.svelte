@@ -12,29 +12,49 @@
 	let errors = $state<string[]>([]);
 	let updated = $state<Date | null>(null);
 	let scope = $state('season');
+	let refreshMessage = $state('');
 	let side = $state('all');
-	async function refresh() {
+	let inFlight = false;
+	async function refresh(force = false) {
+		if (inFlight) return;
+		inFlight = true;
+		const previous = trader;
 		loading = true;
 		errors = [];
 		const reads = await Promise.allSettled([
-			getChickenTrader(),
-			getChickenMarket(),
-			getChickenResults()
+			getChickenTrader(force),
+			getChickenMarket(force),
+			getChickenResults(force)
 		]);
 		const [wallet, season, rounds] = reads;
-		trader = wallet.status === 'fulfilled' ? wallet.value : null;
-		market = season.status === 'fulfilled' ? season.value : null;
-		results = rounds.status === 'fulfilled' ? rounds.value : [];
+		if (wallet.status === 'fulfilled') trader = wallet.value;
+		if (season.status === 'fulfilled') market = season.value;
+		if (rounds.status === 'fulfilled') results = rounds.value;
 		errors = reads.flatMap((r) =>
 			r.status === 'rejected'
 				? [r.reason instanceof Error ? r.reason.message : 'Market data unavailable']
 				: []
 		);
-		updated = new Date();
+		if (wallet.status === 'fulfilled') updated = new Date();
+		refreshMessage = errors.length
+			? 'Refresh incomplete. Previously loaded values remain visible.'
+			: previous && trader && JSON.stringify(previous) === JSON.stringify(trader)
+				? 'Checked Top Chicken. Wallet and recorded history are unchanged.'
+				: 'Loaded the latest wallet and available history.';
 		loading = false;
+		inFlight = false;
 	}
 	onMount(() => {
-		void refresh();
+		void refresh(true);
+		const checkVisible = () => {
+			if (document.visibilityState === 'visible') void refresh(true);
+		};
+		const timer = setInterval(checkVisible, 60_000);
+		document.addEventListener('visibilitychange', checkVisible);
+		return () => {
+			clearInterval(timer);
+			document.removeEventListener('visibilitychange', checkVisible);
+		};
 	});
 	function date(ts: number, time = false) {
 		return new Date(ts * 1000).toLocaleString(
@@ -86,8 +106,14 @@
 				<p class="eyebrow">Top Chicken · Play money</p>
 				<h1>Market</h1>
 			</div>
-			<button onclick={refresh} disabled={loading}>{loading ? 'Refreshing…' : 'Refresh'}</button>
+			<button onclick={() => refresh(true)} disabled={loading}
+				>{loading ? 'Refreshing…' : 'Refresh'}</button
+			>
 		</header>
+		<p class="muted" role="status" aria-live="polite">
+			{loading ? 'Checking Top Chicken…' : refreshMessage}{#if updated}
+				Checked {date(updated.getTime() / 1000, true)}.{/if}
+		</p>
 		{#if errors.length}<div class="notice" role="alert">
 				{errors.join('. ')}. Refresh to try again.
 			</div>{/if}
@@ -139,7 +165,11 @@
 					<h3>Net worth this season</h3>
 					<span class="muted">Wallet reset {date(trader.season_start)}</span>
 				</div>
-				<MarketChart {series} />
+				<MarketChart
+					{series}
+					current={updated ? [updated.getTime() / 1000, trader.networth_subc] : null}
+					seasonStart={trader.season_start}
+				/>
 				<p class="footnote">Earlier seasons are shown separately below.</p>
 			</section>
 			<section>
@@ -250,7 +280,8 @@
 				<p>
 					{updated
 						? `Fetched ${updated.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}.`
-						: ''} Market data can be cached for up to a minute.
+						: ''} Refresh checks Top Chicken directly. Historical samples may end before the current wallet
+					check.
 				</p>
 			</footer>
 		{:else if !errors.length}<p class="empty">Phi does not have a trading wallet yet.</p>{/if}

@@ -237,21 +237,27 @@ export async function getDiscoveryPool(): Promise<DiscoveryEntry[]> {
 // bot's /api/chicken/* proxy (60s server-side cache; trader is pinned to
 // phi's DID there).
 
-export async function getChickenTrader(): Promise<ChickenTrader | null> {
-	const res = await fetch('/api/chicken/trader');
+export async function getChickenTrader(refresh = false): Promise<ChickenTrader | null> {
+	const res = await fetch(`/api/chicken/trader?refresh=${refresh}`, {
+		cache: 'no-store'
+	});
 	if (res.status === 404) return null;
 	if (!res.ok) throw new Error(`Wallet unavailable (${res.status})`);
 	return parseTrader(await res.json());
 }
 
-export async function getChickenMarket(): Promise<ChickenMarket> {
-	const res = await fetch('/api/chicken/market');
+export async function getChickenMarket(refresh = false): Promise<ChickenMarket> {
+	const res = await fetch(`/api/chicken/market?refresh=${refresh}`, {
+		cache: 'no-store'
+	});
 	if (!res.ok) throw new Error(`Season unavailable (${res.status})`);
 	return parseMarket(await res.json());
 }
 
-export async function getChickenResults(): Promise<ChickenResultRound[]> {
-	const res = await fetch('/api/chicken/results');
+export async function getChickenResults(refresh = false): Promise<ChickenResultRound[]> {
+	const res = await fetch(`/api/chicken/results?refresh=${refresh}`, {
+		cache: 'no-store'
+	});
 	if (!res.ok) throw new Error(`Round results unavailable (${res.status})`);
 	return parseResults(await res.json());
 }
