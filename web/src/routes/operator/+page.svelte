@@ -304,7 +304,7 @@
 		overflow-x: auto;
 	}
 	@media (max-width: 760px) {
-		.page-heading {
+		.operator-page .page-heading {
 			align-items: start;
 			flex-direction: column;
 			gap: 12px;
