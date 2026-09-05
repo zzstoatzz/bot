@@ -125,7 +125,11 @@ async def test_guard_blocks_feed_post_create():
     call_tool.assert_not_called()
 
 
-async def test_guard_passes_non_feed_collections():
+async def test_guard_passes_non_feed_collections(monkeypatch):
+    monkeypatch.setattr(
+        "bot.core.mcp_guard.get_override",
+        AsyncMock(return_value={"active": False, "message": ""}),
+    )
     call_tool = AsyncMock(return_value={"uri": "at://..."})
     result = await make_mcp_guard("pdsx")(
         None,
