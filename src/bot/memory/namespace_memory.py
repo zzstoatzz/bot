@@ -655,7 +655,9 @@ class NamespaceMemory:
             action = "ADD"
 
         if preserve_text and action == "NOOP" and content != best["content"]:
-            action = "UPDATE"
+            # Retain the submitted wording without displacing the account that
+            # reconciliation says already contains its information.
+            action = "ADD"
 
         if action == "NOOP":
             existing_sources = list(best.get("source_uris") or [])
