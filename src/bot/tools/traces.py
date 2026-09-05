@@ -67,18 +67,13 @@ def register(agent):
             Field(description="ISO 8601 end of the window. Defaults to now."),
         ] = None,
     ) -> str:
-        """Query your own execution traces — the ground truth of what you did.
+        """Read Logfire execution records for behavior audits and incident analysis.
 
-        Every run of you leaves spans: `span_name = 'running tool'` rows carry
-        `attributes->>'gen_ai.tool.name'` and `attributes->>'tool_arguments'`;
-        `is_exception = true` rows are errors, many of which were swallowed so
-        the run could continue — you never saw them at the time. Load the
-        self-traces skill for the span shapes, recipes, and discipline before
-        first use in a run.
-
-        This is for postmortems, retro receipts, and audits ("what did I
-        actually do", "what failed on me", "is this claim about myself
-        true") — not an input for deciding what to post.
+        Use self-traces for tool-call and error queries, or phi-prompt-inspect
+        for recorded prompts. Bound the time window, select only needed fields,
+        and include LIMIT. Output is capped at 6,000 characters; large fields
+        need SQL substring slices. Redacted or missing telemetry is incomplete
+        evidence, not proof that an event did not occur.
         """
         token = settings.logfire.read_token
         if not token:

@@ -279,29 +279,20 @@ def register(agent):
             ),
         ] = None,
     ) -> str:
-        """Check the operator's infrastructure — NOT your own status.
+        """Read app health, bot commits, or relay coverage.
 
-        Do NOT call this when someone asks if you're online; that's about you.
+        services: health of the operator's apps; this does not check Phi's status.
+        changelog: bot commits and full messages from the GitHub mirror. Bound
+        the result with count and since/until.
+        relays: fleet snapshot by default; name selects one relay's history;
+        transitions=True returns status changes, optionally filtered by name.
+        Use since/until or limit to bound history.
 
-        aspect='services': health checks for the operator's apps.
-        aspect='changelog': your own recent deploys (github mirror of the bot
-        repo; origin is tangled.org/zzstoatzz.io/bot) — what changed and when.
-        aspect='relays': the relay fleet via relay-eval, in three modes:
-        - snapshot (default, no relay params): current status of every relay,
-          plus the network-absolute behind-lately verdict (a relay is "behind"
-          when it carried <85% of what at least two relays saw; "behind lately"
-          when that held in a third of the recent runs — one bad run doesn't
-          flag, one good run doesn't clear).
-        - history (name=<host>): coverage timeseries for one relay. Bound
-          with since/until for a precise window, or use limit for recent-N.
-        - transitions (transitions=True): status-change events across the
-          fleet. Answers "when did X happen." Optionally filter by name.
-        HOW TO READ TIMESTAMPS: relay-eval checks the whole fleet in one
-        batched run every ~30 minutes, so transitions for different relays
-        sharing a timestamp means they were observed in the same run — it is
-        NOT evidence the relays failed at the same moment. to test actual
-        synchrony, compare their coverage histories point by point.
-        Report relay headlines verbatim — the service owns interpretation."""
+        Relay timestamps record observations in a shared polling run, not exact
+        failure times. Matching transition timestamps do not prove simultaneous
+        failures; compare coverage histories. Use the service's relay headlines
+        verbatim: relay-eval owns the behind-lately interpretation.
+        """
         if aspect == "services":
             return await _check_services_impl()
 

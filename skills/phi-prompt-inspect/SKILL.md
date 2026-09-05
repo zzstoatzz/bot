@@ -1,58 +1,60 @@
 ---
 name: phi-prompt-inspect
-description: Pull the exact rendered system + user prompts phi worked from on a past agent run, via the logfire MCP. Use when investigating phi's behavior — why she said that, what her context actually contained, is a block stale or feedback-looping. Read-only, no PDS writes.
+description: Inspect what a past run actually received—its instructions, task, tools, and tool results—using query_traces. Use to explain behavior or investigate stale, missing, or repetitive context.
 ---
 
-phi is instrumented by pydantic-ai → logfire. every `agent.run()` writes an `agent run` span whose `attributes.pydantic_ai.all_messages` carries the full conversation as sent to the model: system prompt with each dynamic block as a separate `text` part, then user / assistant / tool turns.
+Use `query_traces(sql, start, end)` with a narrow ISO 8601 time window and a
+LIMIT. The tool caps output at 6,000 characters. Inspect one field in slices;
+requesting an entire conversation or all attributes will truncate it.
 
-## the two queries
+Find the trace behind the behavior using `self-traces` if its identity is
+unknown. Polling does not imply an agent run occurred. A trace may contain
+Phi and several supporting agents; identify the model request you intend to
+inspect rather than assuming the first span belongs to Phi.
 
-Both run via `mcp__logfire__query_run(project="phi", query=..., start_timestamp=..., end_timestamp=...)`. Project is always required. Default window is 30min; max 14d. Narrow it aggressively — phi fires an `agent run` every ~10s (notification poll), so data is dense.
-
-**Step 1 — find the span behind a specific behavior.** `final_result` is phi's own brief string summary of what she did on that run; that's the easiest way to pick the right one out of a dense window:
-
-```sql
-SELECT span_id, trace_id, start_timestamp,
-       attributes->>'final_result' AS final_result
-FROM records
-WHERE span_name = 'agent run'
-  AND attributes->>'gen_ai.agent.name' = 'phi'
-ORDER BY start_timestamp DESC
-LIMIT 5
-```
-
-Filter on `gen_ai.agent.name = 'phi'` to exclude sub-agents — `phi-inner-critic`, `phi-extractor`, `observation-reconciler` each fire their own `agent run` spans with short purpose-built prompts. Useful when you want them, distracting when you don't.
-
-**Step 2 — pull the rendered prompt** once you have a span_id:
+For a known trace, list model requests:
 
 ```sql
-SELECT attributes->'pydantic_ai.all_messages' AS messages
+SELECT start_timestamp, span_id, span_name,
+       attributes->>'gen_ai.usage.input_tokens' AS input_tokens
 FROM records
-WHERE span_id = '<span_id>'
-LIMIT 1
+WHERE trace_id = '<trace_id>' AND span_name LIKE 'chat %'
+ORDER BY start_timestamp LIMIT 30
 ```
 
-## structure of `pydantic_ai.all_messages`
+For the chosen span, measure the logged fields before reading them:
 
-It's an array of messages:
+```sql
+SELECT length(attributes->>'gen_ai.system_instructions') AS instruction_chars,
+       length(attributes->>'gen_ai.input.messages') AS input_chars,
+       length(attributes->>'gen_ai.tool.definitions') AS tool_chars
+FROM records WHERE span_id = '<span_id>' LIMIT 1
+```
 
-- **`[0]`** = system — `parts` is the array of dynamic blocks in registration order. `parts[0]` is the **static base** (`personalities/phi.md` + cross-cutting operational rules); the rest are the dynamic blocks: `[YOUR INFRASTRUCTURE]`, `[OPERATOR]`, `[NOW]`, `[OPERATIONAL HISTORY]`, `[KNOWN RELAYS]`, `[GOALS AND INTERESTS]` + `[SELF-AWARENESS]` + `[SELF STATE]`, `[RECENT OPERATIONS]`, `[DISCOVERY POOL]`, `[NEW NOTIFICATIONS]`, per-author memory (`[PHI'S SYNTHESIZED IMPRESSION OF @h]` / `[OBSERVATIONS ABOUT @h]` / `[PAST EXCHANGES WITH @h]` / `[BACKGROUND RESEARCH ON @h]`), `[RELEVANT MEMORIES — synthesized for this query]`, `[ATLAS]`, `[DOCKET]`, `[OWNED FEEDS]`, `[SEMBLE]`. See `docs/system-prompt.md` for what each one is for.
-- **`[1]`** = user — the path-specific task prompt (notifications batch / cycle / reflection) plus any appended blocks: `[WORKFLOW STATE]`, `[RECENT FLOW MENTIONS]`, `[RECENT CONVERSATIONS]`, `[FIRST INTERACTION WITH @h]`, `[SERVICE HEALTH]`.
-- **`[2..]`** = assistant + tool roundtrips inside the agent loop. Inspect these to see which tools phi actually called and with what arguments.
+Read a bounded slice of one field; advance the offset only if needed:
 
-## what to look for
+```sql
+SELECT substring(attributes->>'gen_ai.system_instructions', 1, 3500) AS excerpt
+FROM records WHERE span_id = '<span_id>' LIMIT 1
+```
 
-- **Personality dilution.** `parts[0]` should contain `phi.md` verbatim. Compare against the file.
-- **Feedback loops.** Several dynamic blocks reflect phi's own past output back at her — `[SELF-AWARENESS]` (sub-agent description of recent posts), `[RECENT OPERATIONS]` (verbatim recent writes), `[DOCKET]` titles (often derived from past observations). If they're all in a register phi.md tells phi *not* to use, the model sees that register reinforced even when the constitution forbids it.
-- **Block bloat.** Compare token weight of abstract rules (top of `parts[0]`) against concrete current blocks. Concrete + current usually dominates abstract + general.
-- **Tool roundtrips in `[2..]`.** Watch for `recall` / `search_memory` calls and what was returned — sometimes phi's drift comes from what private memory surfaced.
+Use the same pattern for `gen_ai.input.messages` (task and preceding turns)
+and `gen_ai.tool.definitions` (exposed names, descriptions, schemas). Offsets
+start at 1. The text is serialized JSON; a slice can split a JSON value.
+Compare the first request with a later request when investigating tool-result
+growth. A listed tool was available; only a tool-call span proves it was called.
 
-## gotchas
+These fields were verified against September 2026 model-request spans. Older
+agent spans may use `pydantic_ai.all_messages`; inspect the actual shape rather
+than assuming fixed system/user array positions. Null fields mean absent
+telemetry, not absent instructions. Scrubbed values and truncated output limit
+what you can conclude. A trace summary is not proof a claimed write succeeded.
 
-- `agent_name` is also present in attributes (pydantic-ai's own), but `gen_ai.agent.name` is the OTel-standard key the sub-agents also set — filter on that.
-- A trace can span multiple `agent run` spans (the main run plus sub-agents triggered during it). `trace_id` groups them; `span_id` identifies one.
-- The JSON column accepts `->` for object access and `->>` for text extraction. Array index access (`->0`) and chaining (`->'foo'->0->'bar'`) work in DataFusion just like Postgres.
+Report the trace/span, relevant text, and the inference separately. Provider
+input totals include cached subsets; do not add cache reads/writes again.
 
-## now versus then
-
-this skill answers "what did she read on that run" from logfire. for "what would she read right now, and how heavy is it", the operator page's context-window panel (`/operator`, data from `/api/context/budget`) weighs the next run's composed prompt in tokens — static instructions, each dynamic block, each tool definition — against the model's window, and `/diagnostic` shows the rendered text of each block. use the panel before changing the toolset or a block, and this skill when a past run needs explaining.
+`/diagnostic` is a fresh scheduled-context preview. It omits the entry-point
+task, notification-specific material, and exposed tool schemas; it is useful
+for comparison but cannot reconstruct a past run. `docs/system-prompt.md`
+maps blocks to their producers. Inspect a suspicious producer or tool contract
+through `own-source` rather than turning a trace inference into a new rule.
