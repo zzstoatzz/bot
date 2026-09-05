@@ -8,11 +8,12 @@ enforceable without hard-coding them.
 """
 
 from typing import Literal
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
 from bot.core.policy import PolicySlug, PolicyVerdict
+from bot.memory.namespace_memory import NamespaceMemory
 from bot.tools import posting
 from bot.tools.posting import _policy_gate, _reply_provenance
 
@@ -230,8 +231,8 @@ class TestSelfRepeat:
                 return fn
 
         posting.register(FakeAgent())
-        memory = object()
-        ctx = type("Ctx", (), {"deps": PhiDeps(author_handle=None, memory=memory)})()
+        memory = Mock(spec=NamespaceMemory)
+        ctx = type("Ctx", (), {"deps": PhiDeps(author_handle="", memory=memory)})()
         draft = (
             "nick gerakines's point yesterday: removing someone doesn't revoke anything"
         )

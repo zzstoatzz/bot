@@ -8,6 +8,7 @@ always flagged), plus the section arithmetic the panel's bar relies on.
 """
 
 from pydantic_ai.models import ModelRequestParameters
+from pydantic_ai.models.test import TestModel
 from pydantic_ai.tools import ToolDefinition
 from pydantic_ai.usage import RequestUsage
 
@@ -73,7 +74,7 @@ async def test_catalog_falls_back_to_the_bundled_snapshot(monkeypatch):
     assert limits.max_input_tokens == 1_000_000
 
 
-class CountingModel:
+class CountingModel(TestModel):
     """counts like a provider would: characters, plus fixed framing."""
 
     calls = 0
@@ -93,7 +94,7 @@ class CountingModel:
         return RequestUsage(input_tokens=10 + len(text) + tools + framing)
 
 
-class SilentModel:
+class SilentModel(TestModel):
     async def count_tokens(self, messages, model_settings, params):
         raise NotImplementedError
 

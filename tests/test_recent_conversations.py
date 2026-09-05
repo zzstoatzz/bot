@@ -46,7 +46,7 @@ def test_user_namespace_ids_spans_every_page():
     mem.client.namespaces.assert_called_once_with(prefix=prefix)
 
 
-async def test_recent_interactions_sees_handles_past_the_first_page():
+async def test_recent_interactions_sees_handles_past_the_first_page(monkeypatch):
     prefix = f"{NamespaceMemory.NAMESPACES['users']}-"
     ids = [f"{prefix}a{i:03d}" for i in range(100)] + [f"{prefix}zzstoatzz_io"]
     mem = _mem_with_namespaces(ids)
@@ -68,7 +68,7 @@ async def test_recent_interactions_sees_handles_past_the_first_page():
         ns.query = Mock(return_value=SimpleNamespace(rows=rows))
         return ns
 
-    mem.client.namespace = namespace
+    monkeypatch.setattr(mem.client, "namespace", namespace)
     recent = await mem.get_recent_interactions(top_k=3)
     assert recent[0]["handle"] == "zzstoatzz.io"
     assert recent[0]["created_at"].startswith("2026-08-20")
