@@ -1696,7 +1696,7 @@ class PhiAgent:
                 "trace_url": last.as_dict()["trace_url"],
                 "requests": [
                     {
-                        "input_tokens": r.input_tokens,
+                        "input_tokens": r.uncached,  # Cockpit field means uncached input.
                         "cache_read": r.cache_read,
                         "cache_write": r.cache_write,
                         "billed_prefix": r.billed_prefix,

@@ -1,5 +1,7 @@
 """Cache-stability monitoring: collapse detection and run accounting."""
 
+import json
+
 from pydantic_ai.usage import RequestUsage
 
 from bot.core.cache_stability import (
@@ -8,9 +10,11 @@ from bot.core.cache_stability import (
 )
 
 
-def usage(*, input_tokens: int = 0, read: int = 0, write: int = 0) -> RequestUsage:
+def usage(*, uncached: int = 0, read: int = 0, write: int = 0) -> RequestUsage:
     return RequestUsage(
-        input_tokens=input_tokens, cache_read_tokens=read, cache_write_tokens=write
+        input_tokens=uncached + read + write,
+        cache_read_tokens=read,
+        cache_write_tokens=write,
     )
 
 
@@ -31,9 +35,9 @@ def observe(m: CacheMonitor, **kw) -> None:
 def test_healthy_run_records_no_collapse():
     m = monitor()
     m.begin_run("batch processing")
-    observe(m, input_tokens=800, write=12_000)
-    observe(m, input_tokens=200, read=12_000)
-    observe(m, input_tokens=150, read=12_200)
+    observe(m, uncached=800, write=12_000)
+    observe(m, uncached=200, read=12_000)
+    observe(m, uncached=150, read=12_200)
     m.end_run()
 
     (run,) = m.runs
@@ -48,9 +52,9 @@ def test_healthy_run_records_no_collapse():
 def test_collapse_detected_when_read_back_drops():
     m = monitor()
     m.begin_run("cycle")
-    observe(m, input_tokens=500, write=20_000)
-    observe(m, input_tokens=500, read=20_000)
-    observe(m, input_tokens=20_000, read=0)  # prefix moved — nothing read back
+    observe(m, uncached=500, write=20_000)
+    observe(m, uncached=500, read=20_000)
+    observe(m, uncached=20_000, read=0)  # prefix moved — nothing read back
     m.end_run()
 
     (run,) = m.runs
@@ -107,13 +111,13 @@ def test_warm_start_reflects_first_request_read_back():
     """The 1h tool+instruction TTL bridging two runs is the thing it proves."""
     cold = monitor()
     cold.begin_run("cycle")
-    observe(cold, input_tokens=14_000, write=14_000)
+    observe(cold, uncached=14_000, write=14_000)
     cold.end_run()
     assert cold.runs[0].warm_start is False
 
     warm = monitor()
     warm.begin_run("cycle")
-    observe(warm, input_tokens=300, read=14_000)
+    observe(warm, uncached=300, read=14_000)
     warm.end_run()
     assert warm.runs[0].warm_start is True
 
@@ -127,7 +131,7 @@ def test_marks_reset_between_runs():
     m.end_run()
 
     m.begin_run("second")
-    observe(m, input_tokens=20_000, read=0)  # cold start, not a collapse
+    observe(m, uncached=20_000, read=0)  # cold start, not a collapse
     m.end_run()
 
     assert m.runs[1].collapses == 0
@@ -143,10 +147,10 @@ def test_empty_run_is_not_recorded():
 def test_summary_aggregates_the_window():
     m = monitor()
     m.begin_run("a")
-    observe(m, input_tokens=1_000, write=10_000)
+    observe(m, uncached=1_000, write=10_000)
     m.end_run()
     m.begin_run("b")
-    observe(m, input_tokens=500, read=10_000)
+    observe(m, uncached=500, read=10_000)
     m.end_run()
 
     summary = m.summary()
@@ -190,7 +194,7 @@ def test_saving_is_measured_against_a_no_cache_bill():
     """
     m = monitor()
     m.begin_run("batch processing")
-    observe(m, input_tokens=10_000, read=80_000, write=10_000)
+    observe(m, uncached=10_000, read=80_000, write=10_000)
     m.end_run()
 
     (run,) = m.runs
@@ -203,7 +207,7 @@ def test_a_write_only_run_costs_more_than_no_cache_at_all():
     able to say so rather than always reporting a win."""
     m = monitor()
     m.begin_run("cold cycle")
-    observe(m, input_tokens=1_000, write=40_000)
+    observe(m, uncached=1_000, write=40_000)
     m.end_run()
 
     (run,) = m.runs
@@ -217,7 +221,7 @@ def test_summary_reports_the_live_strategy_not_a_copy():
 
     m = monitor()
     m.begin_run("a")
-    observe(m, input_tokens=100, read=5_000)
+    observe(m, uncached=100, read=5_000)
     m.end_run()
 
     summary = m.summary()
@@ -236,7 +240,7 @@ def test_trace_link_is_captured_from_the_model_request_not_begin_run():
     m = monitor()
     m.begin_run("cycle")  # deliberately OUTSIDE any span, as in production
     with tracer.start_as_current_span("chat claude-opus-5"):
-        observe(m, input_tokens=100, read=5_000)
+        observe(m, uncached=100, read=5_000)
     m.end_run()
 
     entry = m.summary()["runs"][0]
@@ -252,11 +256,11 @@ def test_trace_id_is_taken_from_the_first_request_only():
     m = monitor()
     m.begin_run("cycle")
     with tracer.start_as_current_span("chat 1"):
-        observe(m, input_tokens=100, write=5_000)
+        observe(m, uncached=100, write=5_000)
     assert m._current is not None
     first = m._current.trace_id
     with tracer.start_as_current_span("chat 2"):
-        observe(m, input_tokens=100, read=5_000)
+        observe(m, uncached=100, read=5_000)
     m.end_run()
 
     assert first and m.runs[0].trace_id == first
@@ -265,7 +269,45 @@ def test_trace_id_is_taken_from_the_first_request_only():
 def test_no_trace_link_outside_a_span():
     m = monitor()
     m.begin_run("cycle")
-    observe(m, input_tokens=100, read=5_000)
+    observe(m, uncached=100, read=5_000)
     m.end_run()
 
     assert m.summary()["runs"][0]["trace_url"] is None
+
+
+def test_provider_total_is_not_added_to_its_cached_subsets(tmp_path, monkeypatch):
+    """Recorded voice-run usage, through the actual Anthropic usage adapter."""
+    from bot.core import cache_stability
+
+    monkeypatch.setattr(cache_stability, "CACHE_FILE", tmp_path / "cache.json")
+    m = monitor()
+    m.begin_run("voice sample")
+    for raw, read, write in [(2, 0, 53_081), (354, 65_803, 0)]:
+        observed = RequestUsage.extract(
+            {
+                "model": "claude-sonnet-5",
+                "usage": {
+                    "input_tokens": raw,
+                    "cache_read_input_tokens": read,
+                    "cache_creation_input_tokens": write,
+                    "output_tokens": 10,
+                },
+            },
+            provider="anthropic",
+            provider_url="https://api.anthropic.com",
+            provider_fallback="anthropic",
+        )
+        m.observe(observed, model="claude-sonnet-5", provider="anthropic")
+    m.end_run()
+    assert [s.billed_prefix for s in m.runs[0].samples] == [53_083, 66_157]
+    assert m.summary()["uncached"] == 356
+    assert m.summary()["uncached_cost_tokens"] == 119_240
+    assert m.summary()["hit_rate"] == round(65_803 / 119_240, 4)
+    # Existing snapshots already store provider totals. Reload recomputes
+    # aggregates from those samples, ignoring previously inflated summaries.
+    saved = json.loads(cache_stability.CACHE_FILE.read_text())
+    saved["runs"][0]["uncached"] = 119_240
+    cache_stability.CACHE_FILE.write_text(json.dumps(saved))
+    restored = CacheMonitor()
+    assert restored.summary() == m.summary()
+    assert restored.request_sizes() == m.request_sizes()

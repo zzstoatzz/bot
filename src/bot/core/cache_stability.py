@@ -95,7 +95,7 @@ class RequestSample:
 
     at: datetime
     model: str
-    input_tokens: int
+    input_tokens: int  # Provider total, including cache reads and writes.
     cache_read: int
     cache_write: int
     gap_seconds: float | None
@@ -105,7 +105,12 @@ class RequestSample:
     @property
     def billed_prefix(self) -> int:
         """Every input token this request paid for, cached or not."""
-        return self.input_tokens + self.cache_read + self.cache_write
+        return self.input_tokens
+
+    @property
+    def uncached(self) -> int:
+        """Input outside the cached subsets of the provider total."""
+        return max(0, self.input_tokens - self.cache_read - self.cache_write)
 
 
 def cost_with_cache(read: int, write: int, uncached: int) -> float:
@@ -141,7 +146,7 @@ class RunRecord:
 
     @property
     def uncached(self) -> int:
-        return sum(s.input_tokens for s in self.samples)
+        return sum(s.uncached for s in self.samples)
 
     @property
     def collapses(self) -> int:
