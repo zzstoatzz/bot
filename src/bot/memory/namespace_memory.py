@@ -729,6 +729,12 @@ class NamespaceMemory:
             action = "ADD"
 
         if action == "NOOP":
+            existing_sources = list(best.get("source_uris") or [])
+            sources = list(dict.fromkeys(existing_sources + list(source_uris or [])))
+            if sources != existing_sources:
+                self.namespaces["episodic"].write(
+                    patch_rows=[{"id": best["id"], "source_uris": sources}],
+                )
             logger.info(
                 f"episodic NOOP [{source}]: '{content[:60]}' ({decision.reason})"
             )

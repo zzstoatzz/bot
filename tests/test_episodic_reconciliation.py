@@ -83,6 +83,29 @@ async def test_noop_writes_nothing():
     ns.write.assert_not_called()
 
 
+async def test_noop_preserves_new_citation_without_rewriting_note():
+    mem, ns = _memory_with_episodic_ns()
+    existing = dict(SIMILAR[0], source_uris=["at://phi/app.bsky.feed.post/wrong"])
+    mem._find_similar_episodic = AsyncMock(return_value=[existing])
+    corrected = "at://devlog/app.bsky.feed.post/correction"
+    with patch(
+        "bot.memory.namespace_memory.get_reconciliation_agent",
+        return_value=_decision("NOOP"),
+    ):
+        await mem.store_episodic_memory(
+            existing["content"], ["correction"], source_uris=[corrected, corrected]
+        )
+        sources = [*existing["source_uris"], corrected]
+        assert _patched_rows(ns) == [{"id": existing["id"], "source_uris": sources}]
+        assert not _upserted_rows(ns)
+        existing["source_uris"] = sources
+        ns.write.reset_mock()
+        await mem.store_episodic_memory(
+            existing["content"], ["correction"], source_uris=[corrected]
+        )
+    ns.write.assert_not_called()
+
+
 async def test_update_supersedes_and_merges():
     mem, ns = _memory_with_episodic_ns()
     mem._find_similar_episodic = AsyncMock(return_value=SIMILAR)

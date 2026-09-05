@@ -1,5 +1,14 @@
 # changelog
 
+## 2026-09-05 — Preserve citations on unchanged episodic notes
+
+Phi supplied a corrected citation while re-saving an existing note. The
+reconciler judged the text unchanged, and NOOP discarded the new reference.
+NOOP now adds previously unseen source URIs without rewriting or replacing
+the note; repeated citations cause no write. Existing references remain as
+provenance, not a claim that they were validated. A regression test covers
+the citation-only correction and its idempotent repeat.
+
 ## 2026-09-05 — Audit returned results, not just requests
 
 During the Ali correction, Phi followed self-traces’ request-list recipe and
