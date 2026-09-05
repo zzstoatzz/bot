@@ -1,5 +1,16 @@
 # changelog
 
+## 2026-09-05 — Audit returned results, not just requests
+
+During the Ali correction, Phi followed self-traces’ request-list recipe and
+used a limit=100 argument as support for a completed historical check. The
+returned result explicitly reported 48 shown of 100 fetched and truncation.
+The skill now distinguishes requests from results, supplies a compact query
+for page coverage, and explains how to inspect one result without losing it
+to the trace tool’s output cap. Tool-call counts are labeled activity totals.
+The coverage query was verified against the original failing production span.
+No saved memories or recall selection behavior are changed by this patch.
+
 ## 2026-09-05 — Received encounters and processing evidence
 
 A notification could disappear from recall because Phi only liked it, it was
