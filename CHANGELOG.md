@@ -1,5 +1,14 @@
 # changelog
 
+## 2026-09-05 — Keep cache estimates within their provider scope
+
+Record provider identity alongside observed token counts. Withhold the existing
+Anthropic cost estimate for other providers, mixed models, or legacy records
+without provider identity; retain their measured reuse. Restrict Anthropic
+collapse heuristics to Anthropic responses. The cockpit shows unavailable costs
+explicitly, labels supported savings as estimates, and labels per-request total
+input correctly instead of calling cached tokens full-price input.
+
 ## 2026-09-05 — Exclude superseded user accounts from search
 
 Scoped and current-author memory search returned replaced observations as ordinary
