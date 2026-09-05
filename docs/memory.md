@@ -42,6 +42,13 @@ per batch and never stored; the policy judge reads `phi-own-posts` and recent
 posts but writes nothing; logfire traces are what she *did* (`self-traces`
 skill), memory is what she chose to write down.
 
+Stored `source_uris` survive tool search (scoped, unified, and tagged),
+per-author observations and exchanges, and the recent-conversations view.
+Each reference is rendered as `source: <uri>` so Phi can fetch the underlying
+record. Legacy rows without references still render; no reference is inferred
+from a summary's text. Carrying a reference does not verify the claim attached
+to it. Search scope and automatic context selection are unchanged by this.
+
 ## how a reply becomes an observation
 
 ![interaction → high-water mark → extraction → reconciliation → recall](diagrams/memory-lifecycle.svg)

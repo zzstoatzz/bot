@@ -292,6 +292,7 @@ def render_recent_conversations(recent: list[dict], limit: int = 5) -> str:
         else:
             line += " — no reply recorded"
         lines.append(line)
+        lines.extend(f"  source: {uri}" for uri in i.get("source_uris", []))
     return "\n".join(lines)
 
 

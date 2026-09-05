@@ -50,15 +50,11 @@ class InteractionRow(TypedDict):
 
 
 class _InteractionDisplay(TypedDict):
-    """Minimal interaction shape used by build_user_context for render only.
-
-    The extraction pipeline uses InteractionRow (which carries the handle
-    and source_uris); the display path only needs content + age, so the
-    smaller shape avoids passing around fields the renderer doesn't use.
-    """
+    """An exchange and its evidence, rendered in per-person context."""
 
     content: str
     created_at: str
+    source_uris: list[str]
 
 
 def _source_role(uri: str, phi_did: str = "", owner_did: str = "") -> str:
@@ -590,6 +586,7 @@ class NamespaceMemory:
                         _InteractionDisplay(
                             content=row.content,
                             created_at=getattr(row, "created_at", "") or "",
+                            source_uris=list(getattr(row, "source_uris", []) or []),
                         )
                         for row in interaction_response.rows
                     ]
@@ -603,11 +600,15 @@ class NamespaceMemory:
                 response = user_ns.query(
                     rank_by=("vector", "ANN", query_embedding),
                     top_k=10,
-                    include_attributes=["content"],
+                    include_attributes=True,
                 )
                 if response.rows:
                     interactions = [
-                        _InteractionDisplay(content=row.content, created_at="")
+                        _InteractionDisplay(
+                            content=row.content,
+                            created_at=getattr(row, "created_at", "") or "",
+                            source_uris=list(getattr(row, "source_uris", []) or []),
+                        )
                         for row in response.rows
                     ]
 
@@ -620,6 +621,7 @@ class NamespaceMemory:
                         f"- {obs['content']}"
                         f"{_citation_tail(obs['source_uris'], obs['created_at'])}"
                     )
+                    parts.extend(f"  source: {uri}" for uri in obs["source_uris"])
 
             if interactions:
                 parts.append(
@@ -629,6 +631,9 @@ class NamespaceMemory:
                     age = relative_when(interaction["created_at"])
                     age_part = f" ({age})" if age else ""
                     parts.append(f"- {interaction['content']}{age_part}")
+                    parts.extend(
+                        f"  source: {uri}" for uri in interaction["source_uris"]
+                    )
 
             if not observations and not interactions:
                 parts.append(f"\n[USER CONTEXT - @{handle}]")
@@ -650,7 +655,8 @@ class NamespaceMemory:
             response = user_ns.query(
                 rank_by=("vector", "ANN", query_embedding),
                 top_k=top_k,
-                include_attributes=["content", "created_at"],
+                # Legacy namespaces may not declare source_uris yet.
+                include_attributes=True,
             )
             results = []
             if response.rows:
@@ -661,6 +667,7 @@ class NamespaceMemory:
                             "content": row.content,
                             "tags": getattr(row, "tags", []),
                             "created_at": getattr(row, "created_at", ""),
+                            "source_uris": list(getattr(row, "source_uris", []) or []),
                         }
                     )
             return results
@@ -852,6 +859,7 @@ class NamespaceMemory:
                             "tags": getattr(row, "tags", []),
                             "source": getattr(row, "source", "unknown"),
                             "created_at": created_at,
+                            "source_uris": list(getattr(row, "source_uris", []) or []),
                             "_score": (1.0 - row["$dist"])
                             * _recency_weight(created_at, getattr(row, "tags", [])),
                         }
@@ -904,7 +912,7 @@ class NamespaceMemory:
                     lambda: user_ns.query(
                         rank_by=("vector", "ANN", query_embedding),
                         top_k=top_k,
-                        include_attributes=["content", "kind", "tags", "created_at"],
+                        include_attributes=True,
                     ),
                 )
                 results = []
@@ -917,6 +925,9 @@ class NamespaceMemory:
                                 "tags": getattr(row, "tags", []),
                                 "created_at": getattr(row, "created_at", ""),
                                 "_source": "user",
+                                "source_uris": list(
+                                    getattr(row, "source_uris", []) or []
+                                ),
                             }
                         )
                 return results
@@ -951,6 +962,9 @@ class NamespaceMemory:
                                 "source": getattr(row, "source", "unknown"),
                                 "created_at": created_at,
                                 "_source": "episodic",
+                                "source_uris": list(
+                                    getattr(row, "source_uris", []) or []
+                                ),
                                 "_score": (1.0 - row["$dist"])
                                 * _recency_weight(created_at, getattr(row, "tags", [])),
                             }
@@ -1091,7 +1105,7 @@ class NamespaceMemory:
                         rank_by=("created_at", "desc"),
                         top_k=3,
                         filters={"kind": ["Eq", "interaction"]},
-                        include_attributes=["content", "created_at"],
+                        include_attributes=True,
                     )
                     if response.rows:
                         for row in response.rows:
@@ -1100,6 +1114,9 @@ class NamespaceMemory:
                                     "handle": handle,
                                     "content": row.content,
                                     "created_at": getattr(row, "created_at", ""),
+                                    "source_uris": list(
+                                        getattr(row, "source_uris", []) or []
+                                    ),
                                 }
                             )
                 except Exception:

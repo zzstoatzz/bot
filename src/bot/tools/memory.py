@@ -7,6 +7,7 @@ from pydantic_ai import RunContext
 
 from bot.tools._helpers import (
     PhiDeps,
+    _format_episodic_results,
     _format_unified_results,
     _format_user_results,
 )
@@ -42,6 +43,9 @@ def register(agent):
         """Search your private memory. Use to find past conversations and
         things you've explicitly saved.
 
+        Results include stored source URIs when available; open them to
+        inspect the original exchange or document.
+
         Without `about`: searches two places at once — your episodic notes
         (written via `save_memory`) and the current conversation author's
         namespace.
@@ -61,8 +65,6 @@ def register(agent):
             results = [r for r in results if tag in (r.get("tags") or [])][:10]
             if not results:
                 return f"no memories tagged '{tag}' match that query"
-            from bot.tools._helpers import _format_episodic_results
-
             return "\n".join(_format_episodic_results(results))
 
         if about.startswith("@"):

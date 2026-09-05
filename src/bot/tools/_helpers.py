@@ -149,6 +149,7 @@ def _format_user_results(results: list[dict], handle: str) -> list[str]:
         date = _short_date(r.get("created_at", ""))
         date_str = f" ({date})" if date else ""
         parts.append(f"[{kind}]{tag_str}{date_str} {content}")
+        parts.extend(f"  source: {uri}" for uri in r.get("source_uris", []))
     return parts
 
 
@@ -159,6 +160,7 @@ def _format_episodic_results(results: list[dict]) -> list[str]:
         date = _short_date(r.get("created_at", ""))
         date_str = f" ({date})" if date else ""
         parts.append(f"[note]{tags}{date_str} {r['content']}")
+        parts.extend(f"  source: {uri}" for uri in r.get("source_uris", []))
     return parts
 
 
@@ -176,6 +178,7 @@ def _format_unified_results(results: list[dict], handle: str) -> list[str]:
             parts.append(f"[@{handle} {kind}]{tag_str}{date_str} {content}")
         else:
             parts.append(f"[note]{tag_str}{date_str} {content}")
+        parts.extend(f"  source: {uri}" for uri in r.get("source_uris", []))
     return parts
 
 
