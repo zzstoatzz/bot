@@ -45,4 +45,8 @@ max_lines = 674
 
 [[rules]]
 path = "CHANGELOG.md"
-max_lines = 612
+max_lines = 621
+
+[[rules]]
+path = "src/bot/core/cache_stability.py"
+max_lines = 501

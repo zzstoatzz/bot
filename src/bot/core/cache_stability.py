@@ -102,6 +102,7 @@ class RequestSample:
     gap_seconds: float | None
     collapsed: bool = False
     maybe_expiry: bool = False
+    provider: str = "unknown"
 
     @property
     def billed_prefix(self) -> int:
@@ -112,6 +113,15 @@ class RequestSample:
     def uncached(self) -> int:
         """Input outside the cached subsets of the provider total."""
         return max(0, self.input_tokens - self.cache_read - self.cache_write)
+
+
+def supports_cost_estimate(samples: list[RequestSample]) -> bool:
+    """Rates here cover one Anthropic model, not mixed base input prices."""
+    return (
+        bool(samples)
+        and all(s.provider == "anthropic" for s in samples)
+        and len({s.model for s in samples}) == 1
+    )
 
 
 def cost_with_cache(read: int, write: int, uncached: int) -> float:
@@ -160,9 +170,11 @@ class RunRecord:
         return self.cache_read / total if total else 0.0
 
     @property
-    def saved(self) -> float:
+    def saved(self) -> float | None:
         """Fraction of the input bill caching removed. Negative means the
         write premium cost more than the reads saved."""
+        if not supports_cost_estimate(self.samples):
+            return None
         full = cost_without_cache(self.cache_read, self.cache_write, self.uncached)
         if not full:
             return 0.0
@@ -195,13 +207,14 @@ class RunRecord:
             "cache_write": self.cache_write,
             "uncached": self.uncached,
             "hit_rate": round(self.hit_rate, 4),
-            "saved": round(self.saved, 4),
+            "saved": round(self.saved, 4) if self.saved is not None else None,
             "collapses": self.collapses,
             "warm_start": self.warm_start,
             "samples": [
                 {
                     "at": s.at.isoformat(),
                     "model": s.model,
+                    "provider": s.provider,
                     "input_tokens": s.input_tokens,
                     "cache_read": s.cache_read,
                     "cache_write": s.cache_write,
@@ -250,8 +263,13 @@ class CacheMonitor:
             return
         self.runs.append(record)
         logger.info(
-            f"cache [{record.label}]: {record.saved:.0%} off the input bill "
-            f"({record.hit_rate:.0%} of "
+            f"cache [{record.label}]: "
+            + (
+                f"{record.saved:.0%} estimated input savings "
+                if record.saved is not None
+                else "cost estimate unavailable "
+            )
+            + f"({record.hit_rate:.0%} of "
             f"{record.cache_read + record.cache_write + record.uncached} tokens reused) "
             f"over {record.requests} requests"
             f"{', warm start' if record.warm_start else ', cold start'}"
@@ -273,7 +291,8 @@ class CacheMonitor:
         established = self._marks.get(key, 0)
 
         collapsed = (
-            established >= MIN_PREFIX_TOKENS
+            provider == "anthropic"
+            and established >= MIN_PREFIX_TOKENS
             and read < established * COLLAPSE_RATIO
             and key not in self._latched
         )
@@ -308,6 +327,7 @@ class CacheMonitor:
                 RequestSample(
                     at=now,
                     model=model,
+                    provider=provider,
                     input_tokens=usage.input_tokens,
                     cache_read=read,
                     cache_write=write,
@@ -349,21 +369,26 @@ class CacheMonitor:
         write = sum(r.cache_write for r in runs)
         uncached = sum(r.uncached for r in runs)
         total = read + write + uncached
-        billed = cost_with_cache(read, write, uncached)
+        supported = supports_cost_estimate([s for r in runs for s in r.samples])
+        billed = cost_with_cache(read, write, uncached) if supported else None
         return {
             # the strategy, read from the same dict the agent configures
             # from — so this can never describe a policy phi isn't running
-            "strategy": CACHE_TTLS,
-            "prices": {"read": PRICE["read"], "write": WRITE_PRICE, "uncached": 1.0},
+            "strategy": CACHE_TTLS if supported else None,
+            "prices": {"read": PRICE["read"], "write": WRITE_PRICE, "uncached": 1.0}
+            if supported
+            else None,
             "window_runs": len(runs),
             "cache_read": read,
             "cache_write": write,
             "uncached": uncached,
             "hit_rate": round(read / total, 4) if total else 0.0,
             # the verdict: what caching actually removed from the input bill
-            "billed_tokens": round(billed),
+            "billed_tokens": round(billed) if billed is not None else None,
             "uncached_cost_tokens": total,
-            "saved": round((total - billed) / total, 4) if total else 0.0,
+            "saved": round((total - billed) / total, 4)
+            if billed is not None and total
+            else None,
             "collapses": sum(r.collapses for r in runs),
             "warm_starts": sum(1 for r in runs if r.warm_start),
             "runs": [r.as_dict() for r in reversed(runs)],
@@ -395,6 +420,7 @@ class CacheMonitor:
                         RequestSample(
                             at=datetime.fromisoformat(s["at"]),
                             model=s["model"],
+                            provider=s.get("provider", "unknown"),
                             input_tokens=s["input_tokens"],
                             cache_read=s["cache_read"],
                             cache_write=s["cache_write"],

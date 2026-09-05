@@ -199,7 +199,9 @@ def test_saving_is_measured_against_a_no_cache_bill():
 
     (run,) = m.runs
     # no cache: 100k tokens at 1x. billed: 80k*0.1 + 10k*2 + 10k*1 = 38k
-    assert round(run.saved, 3) == 0.62
+    saved = run.saved
+    assert saved is not None
+    assert round(saved, 3) == 0.62
 
 
 def test_a_write_only_run_costs_more_than_no_cache_at_all():
@@ -211,7 +213,9 @@ def test_a_write_only_run_costs_more_than_no_cache_at_all():
     m.end_run()
 
     (run,) = m.runs
-    assert run.saved < 0
+    saved = run.saved
+    assert saved is not None
+    assert saved < 0
 
 
 def test_summary_reports_the_live_strategy_not_a_copy():
@@ -311,3 +315,51 @@ def test_provider_total_is_not_added_to_its_cached_subsets(tmp_path, monkeypatch
     restored = CacheMonitor()
     assert restored.summary() == m.summary()
     assert restored.request_sizes() == m.request_sizes()
+
+
+def test_other_provider_keeps_usage_without_anthropic_cost_or_collapse(
+    tmp_path, monkeypatch
+):
+    from bot.core import cache_stability
+
+    monkeypatch.setattr(cache_stability, "CACHE_FILE", tmp_path / "cache.json")
+    m = monitor()
+    m.begin_run("Terra trial")
+    m.observe(usage(uncached=100, read=2000), model="gpt-5.6-terra", provider="openai")
+    m.observe(usage(uncached=2100), model="gpt-5.6-terra", provider="openai")
+    m.end_run()
+    summary = m.summary()
+    assert summary["cache_read"] == 2000
+    assert summary["uncached"] == 2200
+    assert summary["saved"] is None
+    assert summary["prices"] is None
+    assert summary["strategy"] is None
+    assert summary["billed_tokens"] is None
+    assert summary["collapses"] == 0
+    loaded = CacheMonitor()
+    assert loaded.runs[0].samples[0].provider == "openai"
+    assert loaded.runs[0].saved is None
+    stored = json.loads(cache_stability.CACHE_FILE.read_text())
+    for sample in stored["runs"][0]["samples"]:
+        sample.pop("provider")
+    cache_stability.CACHE_FILE.write_text(json.dumps(stored))
+    legacy = CacheMonitor()
+    assert legacy.runs[0].samples[0].provider == "unknown"
+    assert legacy.summary()["cache_read"] == 2000
+    assert legacy.summary()["saved"] is None
+
+
+def test_mixed_anthropic_models_do_not_combine_different_base_prices(
+    tmp_path, monkeypatch
+):
+    from bot.core import cache_stability
+
+    monkeypatch.setattr(cache_stability, "CACHE_FILE", tmp_path / "cache.json")
+    m = monitor()
+    for model in ["claude-sonnet-5", "claude-opus-5"]:
+        m.begin_run(model)
+        m.observe(usage(uncached=100, read=2000), model=model, provider="anthropic")
+        m.end_run()
+    assert all(r.saved is not None for r in m.runs)
+    assert m.summary()["saved"] is None
+    assert m.summary()["cache_read"] == 4000
