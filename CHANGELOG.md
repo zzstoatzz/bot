@@ -7,6 +7,11 @@ what moved and what it cost to find out.
 
 ## 2026-09-05
 
+- **tool descriptions**: replace moralizing goal guidance with direct field and
+  evidence requirements. The wording was present in the recorded Ali test
+  request despite the new personality. Authorization, field caps, and goal
+  behavior are unchanged; this is not evidence of improved voice yet.
+
 - **cockpit**: carry the Metroid Prime visual treatment through Operator,
   Mind, and Market with readable selected navigation, shared panel framing,
   and mobile controls. Operator retains its OAuth and override semantics.

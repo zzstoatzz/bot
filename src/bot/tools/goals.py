@@ -46,25 +46,16 @@ def register(agent):
         ],
         description: Annotated[
             str,
-            Field(
-                description=(
-                    "What this goal concretely means — the work, the spirit, "
-                    "the boundary. A stranger should be able to read it and "
-                    "know what counts."
-                )
-            ),
+            Field(description=("Describe the work, scope, and completion criteria.")),
         ],
         metabolism: Annotated[
             str,
             Field(
                 description=(
-                    "The goal's metabolism — name all four or the goal is a "
-                    "wish: CLOCK (when attention fires — a schedule, a round, "
-                    "a recurring moment), ARENA (where the world pushes back "
-                    "— a market, a conversation, an index), ARTIFACT (what "
-                    "you own and revise — a doctrine, a record, a shelf), "
-                    "LEDGER (where results accrue publicly — P&L, blog "
-                    "reports, thread history)."
+                    "Include all four: CLOCK (when to work on it), ARENA "
+                    "(the market, conversations, or other setting), ARTIFACT "
+                    "(what you maintain or revise), and LEDGER (where public "
+                    "results accumulate, such as P&L, reports, or threads)."
                 )
             ),
         ],
@@ -72,8 +63,7 @@ def register(agent):
             Literal["goal", "interest"],
             Field(
                 description=(
-                    "'goal' (something you're for) or 'interest' (something "
-                    "you're drawn to)."
+                    "'goal' for an objective or 'interest' for an ongoing interest."
                 )
             ),
         ] = "goal",
@@ -94,14 +84,11 @@ def register(agent):
         goal for X"), and the next batch where the like lands will let this
         tool fire. Without an owner-like in the batch, this tool refuses.
 
-        Goals are anchors — small set, evolved over time. Don't propose new
-        goals casually; refine existing ones when the work has clarified.
+        Keep a small set of goals; revise existing ones as the work develops.
 
-        The operator gates DIRECTION (what you're for). The measure of
-        progress is yours: set progress_signal via update_goal_progress,
-        with receipts, and keep it reconciled with what you actually cite —
-        a measure nobody's job is to refresh will rot (yours went stale for
-        three months once and contradicted your own status lines)."""
+        The operator approves title, description, metabolism, and kind.
+        You can update progress_signal through update_goal_progress without
+        approval. Keep that measure consistent with the evidence you cite."""
         if not _is_owner(ctx):
             return (
                 f"only @{settings.owner_handle} can change goals — "
@@ -163,22 +150,17 @@ def register(agent):
             str | None,
             Field(
                 description=(
-                    "optional: revise what progress means AND where it "
-                    "stands — the measure is yours, not the operator's. "
-                    "state the honest number/claim with a receipt, and keep "
-                    "it consistent with what you cite elsewhere."
+                    "Optional: revise the progress measure and its current "
+                    "value, supported by evidence. No operator approval needed."
                 )
             ),
         ] = None,
     ) -> str:
         """Update your own progress on a goal or interest — NOT owner-gated.
 
-        Use this to keep [GOALS AND INTERESTS] honest: record what you just
-        did, where things stand, the next concrete step — and the measure
-        itself (progress_signal is YOURS; a measure that contradicts your
-        own status lines is an omission you're benefiting from). The
-        constitutional fields (title / description / metabolism / kind)
-        stay owner-gated via propose_goal_change.
+        Record the latest step, current state, next step, and progress measure.
+        Keep the measure consistent with cited evidence. Changes to title,
+        description, metabolism, or kind require propose_goal_change.
 
         These fields are states and steps, not journals — hard length caps
         are enforced. Reasoning, doctrine, and per-position math belong in
@@ -190,7 +172,11 @@ def register(agent):
                 ("current_state", current_state, FIELD_CAPS["current_state"]),
                 ("next_step", next_step, FIELD_CAPS["next_step"]),
                 ("last_step", last_step, FIELD_CAPS["last_step"]),
-                ("progress_signal", progress_signal or "", FIELD_CAPS["progress_signal"]),
+                (
+                    "progress_signal",
+                    progress_signal or "",
+                    FIELD_CAPS["progress_signal"],
+                ),
             )
             if len(value) > cap
         ]
