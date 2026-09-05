@@ -203,3 +203,7 @@ submitting a previously inherited reference creates a successor even when the
 text is unchanged. An identical repeated submission remains a NOOP. Earlier
 versions keep their wording and references. Storage does not resolve these
 URIs or verify the claims they accompany.
+
+An explicit save judged redundant (NOOP) still retains different submitted
+wording as a separate note. It does not archive the existing account: a brief
+confirmation must not displace a detailed correction just to preserve its text.

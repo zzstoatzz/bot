@@ -1,5 +1,13 @@
 # changelog
 
+## 2026-09-05 — Retain the existing account when a save adds no information
+
+The exact-wording path converted a reconciler NOOP into UPDATE. A brief Ali
+regression note consequently archived the detailed correction, despite the
+reconciler finding no new information. Save distinct submitted wording as ADD
+in that case, preserving both accounts for retrieval. Genuine updates still
+create successor versions; identical redundant wording remains a NOOP.
+
 ## 2026-09-05 — Separate music history from capability
 
 Remove the unsupported claim that Phi makes music from her personality. Nate
