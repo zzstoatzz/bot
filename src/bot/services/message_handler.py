@@ -14,6 +14,7 @@ all of them.
 """
 
 import logging
+from datetime import UTC, datetime
 
 import logfire
 from limits import parse as parse_limit
@@ -23,6 +24,12 @@ from limits.strategies import MovingWindowRateLimiter
 from bot.agent import PhiAgent
 from bot.config import settings
 from bot.core.atproto_client import BotClient
+from bot.memory.encounters import (
+    ENCOUNTER_NAMESPACE,
+    append_encounters,
+    notification_encounter,
+    notification_event_id,
+)
 from bot.status import bot_status
 from bot.utils.cited_posts import extract_cited_references, resolve_cited_entry
 from bot.utils.lookup import fetch_author_lookup
@@ -41,12 +48,53 @@ _limiter = MovingWindowRateLimiter(_storage)
 _user_limit = parse_limit("30/hour")
 
 
+def _delivered_post_entry(notification, status: str) -> dict:
+    """Original delivered content remains evidence when hydration is unavailable."""
+    record = notification.model_dump(mode="json", by_alias=True)["record"]
+    root = (record.get("reply") or {}).get("root") or {}
+    return {
+        "uri": notification.uri,
+        "encounter_id": notification_event_id(notification),
+        "reason": notification.reason,
+        "author_handle": notification.author.handle,
+        "author_did": notification.author.did,
+        "post_text": record.get("text") or "",
+        "root_uri": root.get("uri") or notification.uri,
+        "indexed_at": notification.indexed_at,
+        "hydration_status": status,
+    }
+
+
 class MessageHandler:
     """Handles incoming notifications using phi agent."""
 
     def __init__(self, client: BotClient):
         self.client = client
         self.agent = PhiAgent()
+        self._captured_versions: dict[str, None] = {}
+
+    async def capture_notifications(self, notifications: list) -> None:
+        """Persist delivered events before filtering, hydration, or generation."""
+        memory = self.agent.memory
+        if memory is None:
+            raise RuntimeError("notification capture requires memory storage")
+        captured_at = datetime.now(UTC)
+        encounters = [notification_encounter(n, captured_at) for n in notifications]
+        encounters = [e for e in encounters if e["id"] not in self._captured_versions]
+        if not encounters:
+            return
+        inserted = await append_encounters(
+            memory.client, ENCOUNTER_NAMESPACE, encounters
+        )
+        # Cache only successful writes. Eviction permits an idempotent storage
+        # retry; this cache never decides whether an event can trigger an action.
+        for encounter in encounters:
+            self._captured_versions[encounter["id"]] = None
+        while len(self._captured_versions) > 1000:
+            self._captured_versions.pop(next(iter(self._captured_versions)))
+        logger.info(
+            f"captured {inserted} new encounters from {len(notifications)} deliveries"
+        )
 
     async def _maybe_lookup_stranger(self, author_handle: str) -> str | None:
         """If author is unfamiliar to phi, fetch their profile + recent posts."""
@@ -78,10 +126,10 @@ class MessageHandler:
             posts_resp = await self.client.get_posts([post_uri])
         except Exception as e:
             logger.warning(f"failed to fetch post {post_uri}: {e}")
-            return None
+            return _delivered_post_entry(notification, "lookup failed")
         if not posts_resp.posts:
             logger.warning(f"could not find post {post_uri}")
-            return None
+            return _delivered_post_entry(notification, "not returned by lookup")
         post = posts_resp.posts[0]
 
         text = resolve_facet_links(post.record)
@@ -152,6 +200,7 @@ class MessageHandler:
         thread_uri = post_uri
         thread_context = ""
         cited_refs: list[dict] = []
+        post_author_handle = ""
         with logfire.span(
             "build engagement entry",
             post_uri=post_uri,
@@ -163,6 +212,7 @@ class MessageHandler:
                 posts_resp = await self.client.get_posts([post_uri])
                 if posts_resp.posts:
                     p = posts_resp.posts[0]
+                    post_author_handle = p.author.handle
                     post_text = resolve_facet_links(p.record)
                     cid = p.cid
                     root_cid = cid
@@ -204,6 +254,7 @@ class MessageHandler:
             "cid": cid,
             "reason": notification.reason,
             "author_handle": notification.author.handle,
+            "post_author_handle": post_author_handle,
             "author_did": getattr(notification.author, "did", ""),
             "post_text": post_text,
             "embed_desc": "",
@@ -266,6 +317,7 @@ class MessageHandler:
             try:
                 # Build notifications_context — one entry per notification
                 notifications_context: dict = {}
+                notification_events: list[dict] = []
                 image_urls_by_uri: dict[str, list[str]] = {}
 
                 for n in allowed_notifs:
@@ -285,14 +337,16 @@ class MessageHandler:
 
                     if entry is None:
                         continue
-                    notifications_context[entry["uri"]] = entry
+                    entry["event_uri"] = n.uri
+                    entry["event_cid"] = n.cid
+                    notification_events.append(entry)
+                    if not entry.get("hydration_status"):
+                        notifications_context[entry["uri"]] = entry
                     if entry.get("image_urls"):
                         image_urls_by_uri[entry["uri"]] = entry["image_urls"]
 
-                if not notifications_context:
-                    logger.info(
-                        "batch had no actionable notifications after building context"
-                    )
+                if not notification_events:
+                    logger.info("batch had no supported notification events")
                     return
 
                 # Expand cited posts: when a notification cites another post
@@ -314,7 +368,7 @@ class MessageHandler:
                 author_lookups: dict[str, str] = {}
                 unique_handles = {
                     e.get("author_handle")
-                    for e in notifications_context.values()
+                    for e in notification_events
                     if e.get("author_handle")
                 }
                 for handle in unique_handles:
@@ -332,6 +386,7 @@ class MessageHandler:
                 # Side effects happen via tool calls inside the run.
                 await self.agent.process_notifications(
                     notifications_context=notifications_context,
+                    notification_events=notification_events,
                     author_lookups=author_lookups,
                     image_urls_by_uri=image_urls_by_uri or None,
                 )

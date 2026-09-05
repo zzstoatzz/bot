@@ -130,11 +130,19 @@ class BotClient:
         """Get current user profile"""
         return self.client.me
 
-    async def get_notifications(self, limit: int = 50):
-        """Fetch unread notifications"""
+    async def get_notifications(
+        self,
+        limit: int = 50,
+        *,
+        cursor: str | None = None,
+        priority: bool | None = None,
+    ):
+        """Fetch a notification page, including read and unread events."""
         await self.authenticate()
         return self.client.app.bsky.notification.list_notifications(
-            params={"limit": limit}
+            params=models.AppBskyNotificationListNotifications.Params(
+                limit=limit, cursor=cursor, priority=priority
+            )
         )
 
     async def mark_notifications_seen(self, seen_at: str):

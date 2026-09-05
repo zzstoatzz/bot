@@ -43,10 +43,17 @@ from bot.core.recent_operations import get_operations_block
 from bot.core.self_record import get_self_block
 from bot.core.self_state import get_inventory_block, get_state_block
 from bot.core.workflow_state import get_workflow_state_block
+from bot.memory.encounters import (
+    ENCOUNTER_NAMESPACE,
+    read_recent_encounters,
+    render_recent_encounters,
+)
 from bot.memory.extraction import EXTRACTION_SYSTEM_PROMPT, ExtractionResult
 from bot.memory.namespace_memory import InteractionRow
+from bot.memory.run_evidence import RunEvidence, current_run, run_status
 from bot.status import bot_status
 from bot.tools import PhiDeps, _check_services_impl, register_all
+from bot.tools._helpers import notification_input
 from bot.tools.bluesky import fetch_relay_names
 from bot.utils.time import humanize_duration
 
@@ -235,6 +242,12 @@ def _format_notifications_block(notifications_context: dict) -> str:
             embed = e.get("embed_desc") or ""
             embed_part = f"\n  {embed}" if embed else ""
             lines.append(f"@{handle} [{uri}]: {text}{embed_part}")
+            if e.get("hydration_status"):
+                lines.append(
+                    f"  Delivered record cid={e['event_cid']}; indexed {e.get('indexed_at', 'unknown')}. "
+                    f"Current post {e['hydration_status']}; text above is the delivered version, "
+                    "not a verified current reply target."
+                )
             for cited in cited_by_source.get(uri, []):
                 lines.append(_format_cited(cited))
 
@@ -247,6 +260,10 @@ def _format_notifications_block(notifications_context: dict) -> str:
             target_text = e.get("post_text", "")
             target_part = f' — "{target_text[:120]}"' if target_text else ""
             thread_ctx = e.get("thread_context") or ""
+            if e.get("event_uri"):
+                lines.append(
+                    f"event [{e['event_uri']}] cid={e['event_cid']}; indexed {e.get('indexed_at', 'unknown')}"
+                )
             if reason == "follow":
                 lines.append(f"@{handle} followed you")
             else:
@@ -577,7 +594,7 @@ class PhiAgent:
             pool renders — see core/discovery_pool.py for why breadth
             belongs on the unprompted path.
             """
-            notifications = ctx.deps.notifications_context or {}
+            notifications = notification_input(ctx.deps)
             seed = " ".join(
                 (e.get("post_text") or "") for e in notifications.values()
             ).strip()
@@ -586,7 +603,30 @@ class PhiAgent:
         @_run_scoped
         def inject_notifications(ctx: RunContext[PhiDeps]) -> str:
             """Render the notifications batch as the [NEW NOTIFICATIONS] block."""
-            return _format_notifications_block(ctx.deps.notifications_context or {})
+            if evidence := current_run.get():
+                evidence.event_ids.update(
+                    entry["encounter_id"]
+                    for entry in (ctx.deps.notification_events or [])
+                    if entry.get("encounter_id")
+                )
+            return _format_notifications_block(notification_input(ctx.deps))
+
+        @_run_scoped
+        async def inject_recent_encounters(ctx: RunContext[PhiDeps]) -> str:
+            """Recent received events, fixed once per run across all entry points."""
+            if not ctx.deps.memory:
+                return "[RECENT ENCOUNTERS] storage unavailable."
+            until = datetime.now(UTC)
+            recent = await read_recent_encounters(
+                ctx.deps.memory.client,
+                ENCOUNTER_NAMESPACE,
+                since=until - timedelta(hours=48),
+                until=until,
+                limit=8,
+            )
+            if evidence := current_run.get():
+                evidence.event_ids.update(row["id"] for row in recent["rows"])
+            return render_recent_encounters(recent)
 
         @_run_scoped
         async def inject_user_memory(ctx: RunContext[PhiDeps]) -> str:
@@ -600,7 +640,7 @@ class PhiAgent:
             """
             if not ctx.deps.memory:
                 return ""
-            notifs = ctx.deps.notifications_context or {}
+            notifs = notification_input(ctx.deps)
             if not notifs:
                 return ""
 
@@ -640,7 +680,7 @@ class PhiAgent:
             material arrives. Feed/search tools carry the same recall for
             scheduled paths.
             """
-            notifs = ctx.deps.notifications_context or {}
+            notifs = notification_input(ctx.deps)
             material = " ".join(
                 e.get("post_text", "") for e in notifs.values() if e.get("post_text")
             )
@@ -663,7 +703,7 @@ class PhiAgent:
             # residue-seeded variant (2026-08-12, briefly) retrieved more of
             # whatever was already lingering — months-old prefect logs, the
             # same catalog itch every slot — memory as amplifier, not cue.
-            notifs = ctx.deps.notifications_context or {}
+            notifs = notification_input(ctx.deps)
             if notifs:
                 texts = [
                     e.get("post_text", "")
@@ -935,7 +975,13 @@ class PhiAgent:
         if deps is not None and isinstance(prompt, str):
             deps.run_prompt = prompt
         cache_monitor.begin_run(label)
+        evidence = (
+            RunEvidence(deps.memory.client, label) if deps and deps.memory else None
+        )
+        token = current_run.set(evidence)
         try:
+            if evidence:
+                await run_status(evidence, "started")
             async with contextlib.AsyncExitStack() as stack:
                 # a single unreachable MCP server (bad token, outage) must
                 # cost phi that toolset, not the whole run
@@ -952,13 +998,18 @@ class PhiAgent:
                     connected.append(ts)
                 result = await self.agent.run(prompt, deps=deps, toolsets=connected)
         except Exception as e:
+            if evidence:
+                await run_status(evidence, "failed")
             err_type = type(e).__name__
             logger.exception(f"agent.run failed during {label}: {err_type}: {e}")
             return f"{label} failed: {err_type}: {str(e)[:200]}"
         finally:
             # a failed run still spent (and may have cached) input tokens
             cache_monitor.end_run()
+            current_run.reset(token)
 
+        if evidence:
+            await run_status(evidence, "completed")
         summary = result.output or ""
         logger.info(f"{label} finished: {summary[:200]}")
         if label != "bio rewrite":
@@ -968,7 +1019,7 @@ class PhiAgent:
             # summary is written unconditionally so "have I done this" has an
             # answer. Batch runs are excluded: their material flows through
             # the extraction pipeline already.
-            if summary and deps and deps.memory and not deps.notifications_context:
+            if summary and deps and deps.memory and not notification_input(deps):
                 try:
                     await deps.memory.store_episodic_memory(
                         f"{label}: {summary[:1000]}",
@@ -982,6 +1033,7 @@ class PhiAgent:
     async def process_notifications(
         self,
         notifications_context: dict,
+        notification_events: list[dict] | None = None,
         author_lookups: dict[str, str] | None = None,
         image_urls_by_uri: dict[str, list[str]] | None = None,
     ) -> str:
@@ -998,14 +1050,18 @@ class PhiAgent:
         author_lookups: pre-fetched stranger lookups keyed by author handle.
         image_urls_by_uri: optional map of post URI -> image URLs for vision.
         """
-        if not notifications_context:
+        if not notifications_context and not notification_events:
             logger.info("process_notifications: empty batch, nothing to do")
             return ""
 
         author_count = len(
             {
                 e.get("author_handle")
-                for e in notifications_context.values()
+                for e in (
+                    notification_events
+                    if notification_events is not None
+                    else notifications_context.values()
+                )
                 if e.get("author_handle")
             }
         )
@@ -1018,6 +1074,7 @@ class PhiAgent:
             author_handle="",
             memory=self.memory,
             notifications_context=notifications_context,
+            notification_events=notification_events,
         )
 
         # User prompt is a short task instruction — the actual notifications
@@ -1053,17 +1110,6 @@ class PhiAgent:
             deps=deps,
         )
 
-    async def _recent_conversations_block(self, top_k: int = 10) -> str:
-        """Render recent interactions once for scheduled paths that need texture."""
-        if not self.memory:
-            return ""
-        try:
-            recent = await self.memory.get_recent_interactions(top_k=top_k)
-        except Exception as e:
-            logger.warning(f"failed to get recent interactions: {e}")
-            return ""
-        return render_recent_conversations(recent)
-
     async def _run_scheduled(
         self,
         *,
@@ -1085,7 +1131,7 @@ class PhiAgent:
 
     async def process_reflection(self) -> str:
         """Generate a daily reflection post from recent memory."""
-        context_blocks = [await self._recent_conversations_block()]
+        context_blocks: list[str] = []
         try:
             service_health = await _check_services_impl()
         except Exception:
@@ -1130,10 +1176,6 @@ class PhiAgent:
                 context_blocks.append(rfm)
         except Exception as e:
             logger.warning(f"recent flow mentions fetch failed: {e}")
-
-        convs = await self._recent_conversations_block(top_k=5)
-        if convs:
-            context_blocks.append(convs)
 
         task = (
             "you have a moment. what have you been thinking about?\n\n"
@@ -1303,7 +1345,7 @@ class PhiAgent:
                 "you have not met most of these people. don't perform "
                 "familiarity you haven't earned."
             ),
-            context_blocks=[await self._recent_conversations_block(top_k=5)],
+            context_blocks=[],
         )
 
     async def process_chicken_precheck(self) -> str:

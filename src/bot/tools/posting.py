@@ -37,7 +37,7 @@ from bot.core.override import get_override, refusal_text
 from bot.core.policy import check_action
 from bot.core.prior_coverage import coverage_note
 from bot.status import bot_status
-from bot.tools._helpers import PhiDeps
+from bot.tools._helpers import PhiDeps, notification_input
 
 logger = logging.getLogger("bot.tools.posting")
 
@@ -245,7 +245,7 @@ async def _resolve_post_ref(
             parent_cid,
             entry.get("root_uri") or uri,
             entry.get("root_cid") or parent_cid,
-            entry.get("author_handle", "") or "",
+            entry.get("post_author_handle", entry.get("author_handle", "")) or "",
             entry.get("post_text", "") or "",
         )
 
@@ -326,7 +326,7 @@ def register(agent):
             return refusal_text(override)
 
         notifs = ctx.deps.notifications_context or {}
-        unprompted = not notifs and not ctx.deps.author_handle
+        unprompted = not notification_input(ctx.deps) and not ctx.deps.author_handle
 
         if not in_reply_to:
             # the draft is the sharpest query there is for "have i said
@@ -377,7 +377,7 @@ def register(agent):
             _reply_provenance(
                 in_reply_to, ctx.deps.notifications_context or {}, root_uri
             )
-            + _operator_authorization_note(ctx.deps.notifications_context or {}),
+            + _operator_authorization_note(notification_input(ctx.deps)),
             unprompted=unprompted,
         )
         if refusal:

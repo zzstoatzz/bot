@@ -1,10 +1,15 @@
 """Memory tools — private search_memory (read) and save_memory (write)."""
 
+import json
 from typing import Annotated
 
 from pydantic import Field
 from pydantic_ai import RunContext
 
+from bot.memory.encounter_search import read_encounter as read_source_encounter
+from bot.memory.encounter_search import read_encounter_activity
+from bot.memory.encounter_search import search_encounters as search_source_encounters
+from bot.memory.encounters import ENCOUNTER_NAMESPACE
 from bot.memory.search_status import IncompleteMemorySearch
 from bot.tools._helpers import (
     PhiDeps,
@@ -15,6 +20,81 @@ from bot.tools._helpers import (
 
 
 def register(agent):
+    @agent.tool
+    async def search_encounters(
+        ctx: RunContext[PhiDeps],
+        query: Annotated[str, Field(description="words from the interaction to find")],
+    ) -> str:
+        """Search captured incoming notifications across people without a handle.
+
+        Results are received source events, not evidence of your response or
+        intent. Older uncaptured exchanges may exist in search_memory. Use
+        read_encounter with a result ID to retrieve its full stored record.
+        """
+        if not ctx.deps.memory:
+            return "Encounter storage is unavailable."
+        result = await search_source_encounters(
+            ctx.deps.memory.client, ENCOUNTER_NAMESPACE, query
+        )
+        if result["status"] != "ok":
+            return f"Encounter search {result['status']}; this does not establish absence of an interaction."
+        rows = [
+            {
+                **{
+                    key: row.get(key)
+                    for key in (
+                        "id",
+                        "actor_did",
+                        "actor_handle",
+                        "reason",
+                        "event_uri",
+                        "event_cid",
+                        "indexed_at",
+                        "captured_at",
+                        "source_uris",
+                    )
+                },
+                "excerpt": (row.get("content") or "")[:300],
+            }
+            for row in result["rows"]
+        ]
+        return json.dumps(
+            {
+                "coverage": "Captured incoming notifications only; text matches, not exhaustive history. Responses and decisions are not represented.",
+                "results": rows,
+                "has_more_matches": result["has_more"],
+            },
+            ensure_ascii=False,
+        )
+
+    @agent.tool
+    async def read_encounter(
+        ctx: RunContext[PhiDeps],
+        event_id: Annotated[
+            str, Field(description="encounter ID from search or recent context")
+        ],
+    ) -> str:
+        """Read a captured notification's original record and source references.
+
+        Its capture timestamp proves storage, not model exposure or a decision.
+        """
+        if not ctx.deps.memory:
+            return "Encounter storage is unavailable."
+        result = await read_source_encounter(
+            ctx.deps.memory.client, ENCOUNTER_NAMESPACE, event_id
+        )
+        activity = await read_encounter_activity(
+            ctx.deps.memory.client, ENCOUNTER_NAMESPACE, event_id
+        )
+        return json.dumps(
+            {
+                "source": result,
+                "processing_evidence": activity,
+                "meaning": "Prepared input does not prove delivery. A received response or completed run does not prove a public action or explain silence. Open the referenced execution traces for confirmed tool results and dated statements.",
+            },
+            ensure_ascii=False,
+        )
+
     @agent.tool
     async def search_memory(
         ctx: RunContext[PhiDeps],

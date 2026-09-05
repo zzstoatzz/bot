@@ -25,9 +25,11 @@ class PhiDeps:
     # batch-of-notifications context: maps notification post URI -> per-notif data
     # populated by the message handler before calling agent.run; consumed by the
     # trusted post tool and the reaction-record guard to look up cids,
-    # parent/root refs, author handles, post text, etc, and by the dynamic system
-    # prompts to format the notifications block + per-author memory blocks.
+    # parent/root refs, author handles, and post text. Dynamic system prompts
+    # use notification_input to preserve distinct event participants.
     notifications_context: dict | None = None
+    # Distinct received events; targets above remain keyed by replyable URI.
+    notification_events: list[dict] | None = None
     # per-run memo for the dynamic instruction blocks: pydantic-ai re-evaluates
     # @agent.instructions on every model request in the tool loop, but these
     # blocks must render once per run (stable text keeps the message-history
@@ -48,6 +50,22 @@ class PhiDeps:
     event_material: str = ""
 
 
+def notification_input(deps) -> dict:
+    """Render/recall every event while retaining separately expanded citations."""
+    targets = getattr(deps, "notifications_context", None) or {}
+    events = getattr(deps, "notification_events", None)
+    if events is None:
+        return targets
+    return {
+        **{f"event:{i}": event for i, event in enumerate(events)},
+        **{
+            uri: entry
+            for uri, entry in targets.items()
+            if entry.get("reason") == "cited"
+        },
+    }
+
+
 def _is_owner(ctx: RunContext[PhiDeps]) -> bool:
     """Check if the bot's owner is participating in this interaction.
 
@@ -63,10 +81,10 @@ def _is_owner(ctx: RunContext[PhiDeps]) -> bool:
     """
     if ctx.deps.author_handle == settings.owner_handle:
         return True
-    if not ctx.deps.notifications_context:
+    if not notification_input(ctx.deps):
         return False
 
-    authors = {e.get("author_handle") for e in ctx.deps.notifications_context.values()}
+    authors = {e.get("author_handle") for e in notification_input(ctx.deps).values()}
     # any author other than the owner or phi itself means batch is mixed
     if authors - {settings.owner_handle, settings.bluesky_handle}:
         return False
@@ -74,7 +92,7 @@ def _is_owner(ctx: RunContext[PhiDeps]) -> bool:
     return any(
         e.get("author_handle") == settings.owner_handle
         and e.get("reason") in ("like", "repost")
-        for e in ctx.deps.notifications_context.values()
+        for e in notification_input(ctx.deps).values()
     )
 
 

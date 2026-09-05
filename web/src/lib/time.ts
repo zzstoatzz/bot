@@ -9,11 +9,11 @@ const OPERATOR_TZ = 'America/Chicago';
 
 // Mirror of bot/utils/time.py:relative_when — same granularity slide.
 // Renders an ISO timestamp as 'Ns/m/h/d/mo/y ago'.
-export function relativeWhen(iso: string | null | undefined): string {
+export function relativeWhen(iso: string | null | undefined, now = Date.now()): string {
 	if (!iso) return '';
 	const ts = Date.parse(iso);
 	if (Number.isNaN(ts)) return '';
-	const delta = (Date.now() - ts) / 1000;
+	const delta = (now - ts) / 1000;
 	if (delta < 0) return '';
 	if (delta < 60) return `${Math.floor(delta)}s ago`;
 	if (delta < 3600) return `${Math.floor(delta / 60)}m ago`;
@@ -57,7 +57,10 @@ export function whenTooltip(iso: string | null | undefined): string {
 	if (!iso) return '';
 	const ts = Date.parse(iso);
 	if (Number.isNaN(ts)) return '';
-	const utc = new Date(ts).toISOString().replace('T', ' ').replace(/\.\d+Z$/, 'Z');
+	const utc = new Date(ts)
+		.toISOString()
+		.replace('T', ' ')
+		.replace(/\.\d+Z$/, 'Z');
 	return `${absoluteCT(iso)}\n(UTC: ${utc})`;
 }
 
@@ -76,11 +79,12 @@ export function operatorClock(now: Date = new Date()): string {
 		minute: '2-digit',
 		hour12: false
 	}).format(now);
-	const tz = new Intl.DateTimeFormat('en-US', {
-		timeZone: OPERATOR_TZ,
-		timeZoneName: 'short'
-	})
-		.formatToParts(now)
-		.find((p) => p.type === 'timeZoneName')?.value ?? 'CT';
+	const tz =
+		new Intl.DateTimeFormat('en-US', {
+			timeZone: OPERATOR_TZ,
+			timeZoneName: 'short'
+		})
+			.formatToParts(now)
+			.find((p) => p.type === 'timeZoneName')?.value ?? 'CT';
 	return `${wd} · ${hm} ${tz}`;
 }

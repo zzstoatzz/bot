@@ -34,7 +34,7 @@ from typing import Any
 
 from opentelemetry import trace
 from pydantic_ai._run_context import RunContext
-from pydantic_ai.messages import ModelMessage, ModelResponse
+from pydantic_ai.messages import InstructionPart, ModelMessage, ModelResponse
 from pydantic_ai.models import (
     Model,
     ModelRequestParameters,
@@ -45,6 +45,7 @@ from pydantic_ai.settings import ModelSettings
 from pydantic_ai.usage import RequestUsage
 
 from bot.config import settings
+from bot.memory.run_evidence import request_finished, request_prepared
 
 logger = logging.getLogger("bot.cache")
 
@@ -435,9 +436,18 @@ class CacheObservingModel(WrapperModel):
         model_settings: ModelSettings | None,
         model_request_parameters: ModelRequestParameters,
     ) -> ModelResponse:
-        response = await super().request(
-            messages, model_settings, model_request_parameters
+        receipt = await request_prepared(
+            self.wrapped.model_name,
+            InstructionPart.join(model_request_parameters.instruction_parts or []),
         )
+        try:
+            response = await super().request(
+                messages, model_settings, model_request_parameters
+            )
+        except BaseException:
+            await request_finished(receipt, "failed_or_interrupted")
+            raise
+        await request_finished(receipt, "response_received")
         self._observe(response.usage)
         return response
 
@@ -449,8 +459,17 @@ class CacheObservingModel(WrapperModel):
         model_request_parameters: ModelRequestParameters,
         run_context: RunContext[Any] | None = None,
     ) -> AsyncIterator[StreamedResponse]:
-        async with super().request_stream(
-            messages, model_settings, model_request_parameters, run_context
-        ) as stream:
-            yield stream
-            self._observe(stream.usage())
+        receipt = await request_prepared(
+            self.wrapped.model_name,
+            InstructionPart.join(model_request_parameters.instruction_parts or []),
+        )
+        try:
+            async with super().request_stream(
+                messages, model_settings, model_request_parameters, run_context
+            ) as stream:
+                yield stream
+                self._observe(stream.usage())
+        except BaseException:
+            await request_finished(receipt, "failed_or_interrupted")
+            raise
+        await request_finished(receipt, "response_received")

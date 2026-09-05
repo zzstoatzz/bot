@@ -15,13 +15,35 @@
 
 	let data = $state<CacheStability | null>(null);
 	let loaded = $state(false);
+	let now = $state(Date.now());
+	let inFlight = false;
 	let expanded = $state<string | null>(null);
 	// the per-run list is the evidence, not the reading — closed until asked for
 	let showRuns = $state(false);
 
-	onMount(async () => {
-		data = await getCacheStability();
+	async function load() {
+		if (inFlight) return;
+		inFlight = true;
+		const latest = await getCacheStability();
+		if (latest) data = latest;
 		loaded = true;
+		inFlight = false;
+	}
+	onMount(() => {
+		void load();
+		const clock = setInterval(() => {
+			now = Date.now();
+		}, 10_000);
+		const refreshVisible = () => {
+			if (document.visibilityState === 'visible') void load();
+		};
+		const poll = setInterval(refreshVisible, 60_000);
+		document.addEventListener('visibilitychange', refreshVisible);
+		return () => {
+			clearInterval(clock);
+			clearInterval(poll);
+			document.removeEventListener('visibilitychange', refreshVisible);
+		};
 	});
 
 	const pct = (n: number) => `${Math.round(n * 100)}%`;
@@ -39,8 +61,7 @@
 	// cost — the thing you actually want when you hover a colored bar
 	function segTitle(kind: 'reused' | 'stored' | 'full', part: number, r: CacheRun): string {
 		if (!data) return '';
-		const rate =
-			kind === 'reused' ? data.prices.read : kind === 'stored' ? data.prices.write : 1;
+		const rate = kind === 'reused' ? data.prices.read : kind === 'stored' ? data.prices.write : 1;
 		const what =
 			kind === 'reused'
 				? 'read back from cache'
@@ -85,8 +106,8 @@
 			<div class="fact">
 				<span class="fact-n">{data.warm_starts}<span class="of">/{data.window_runs}</span></span>
 				<span class="fact-t"
-					>runs began with a cache already warm — they reused the tool definitions and
-					instructions a previous run left behind, instead of paying to store them again</span
+					>runs began with a cache already warm — they reused the tool definitions and instructions
+					a previous run left behind, instead of paying to store them again</span
 				>
 			</div>
 			<div class="fact {data.collapses ? 'fact-bad' : ''}">
@@ -102,107 +123,107 @@
 			{showRuns ? 'hide' : 'show'} the last {data.runs.length} runs
 		</button>
 		{#if showRuns}
-		<div class="legend">
-			<span title="billed at {data.prices.read}× the base input rate"
-				><i class="sw sw-read"></i>reused · {data.prices.read}×</span
-			>
-			<span title="billed at {data.prices.write}× the base input rate"
-				><i class="sw sw-write"></i>stored · {data.prices.write}×</span
-			>
-			<span title="billed at the full base input rate"
-				><i class="sw sw-cold"></i>full price · 1×</span
-			>
-		</div>
+			<div class="legend">
+				<span title="billed at {data.prices.read}× the base input rate"
+					><i class="sw sw-read"></i>reused · {data.prices.read}×</span
+				>
+				<span title="billed at {data.prices.write}× the base input rate"
+					><i class="sw sw-write"></i>stored · {data.prices.write}×</span
+				>
+				<span title="billed at the full base input rate"
+					><i class="sw sw-cold"></i>full price · 1×</span
+				>
+			</div>
 
-		<ul class="runs">
-			{#each data.runs as run (runKey(run))}
-				<li class="run">
-					<div class="run-head">
-						<button
-							class="opener"
-							onclick={() => (expanded = expanded === runKey(run) ? null : runKey(run))}
-							title="show each model request in this run"
-						>
-							<span class="start" class:warm={run.warm_start}>
-								{run.warm_start ? 'warm' : 'cold'}
-							</span>
-							<span class="label">{run.label}</span>
-						</button>
-						<span class="when" title={whenTooltip(run.started_at)}
-							>{relativeWhen(run.started_at)}</span
-						>
-						<span class="reqs">{run.requests} req · {tokens(total(run))}</span>
-						<span class="saved" class:bad={run.saved < 0.2}>{pct(run.saved)} off</span>
-						{#if run.trace_url}
-							<a
-								class="trace"
-								href={run.trace_url}
-								target="_blank"
-								rel="noopener"
-								title="open this run's trace in logfire — every tool call it made">trace&nbsp;↗</a
+			<ul class="runs">
+				{#each data.runs as run (runKey(run))}
+					<li class="run">
+						<div class="run-head">
+							<button
+								class="opener"
+								onclick={() => (expanded = expanded === runKey(run) ? null : runKey(run))}
+								title="show each model request in this run"
 							>
-						{/if}
-					</div>
-
-					<div class="bar">
-						<span
-							class="seg seg-read"
-							style="width:{share(run.cache_read, run)}%"
-							title={segTitle('reused', run.cache_read, run)}
-						></span>
-						<span
-							class="seg seg-write"
-							style="width:{share(run.cache_write, run)}%"
-							title={segTitle('stored', run.cache_write, run)}
-						></span>
-						<span
-							class="seg seg-cold"
-							style="width:{share(run.uncached, run)}%"
-							title={segTitle('full', run.uncached, run)}
-						></span>
-					</div>
-
-					{#if run.collapses}
-						<div class="collapse-note">
-							lost the cache {run.collapses}
-							{run.collapses > 1 ? 'times' : 'time'} mid-run — the start of the prompt changed, or
-							the provider's copy expired underneath it
+								<span class="start" class:warm={run.warm_start}>
+									{run.warm_start ? 'warm' : 'cold'}
+								</span>
+								<span class="label">{run.label}</span>
+							</button>
+							<span class="when" title={whenTooltip(run.started_at)}
+								>{relativeWhen(run.started_at, now)}</span
+							>
+							<span class="reqs">{run.requests} req · {tokens(total(run))}</span>
+							<span class="saved" class:bad={run.saved < 0.2}>{pct(run.saved)} off</span>
+							{#if run.trace_url}
+								<a
+									class="trace"
+									href={run.trace_url}
+									target="_blank"
+									rel="noopener"
+									title="open this run's trace in logfire — every tool call it made">trace&nbsp;↗</a
+								>
+							{/if}
 						</div>
-					{/if}
 
-					{#if expanded === runKey(run)}
-						<table class="samples">
-							<thead>
-								<tr>
-									<th>request</th>
-									<th>reused</th>
-									<th>stored</th>
-									<th>full price</th>
-									<th>since last</th>
-									<th></th>
-								</tr>
-							</thead>
-							<tbody>
-								{#each run.samples as s, i (s.at + i)}
-									<tr class:collapsed={s.collapsed}>
-										<td>{i + 1}</td>
-										<td>{tokens(s.cache_read)}</td>
-										<td>{tokens(s.cache_write)}</td>
-										<td>{tokens(s.input_tokens)}</td>
-										<td>{s.gap_seconds === null ? 'first' : `${Math.round(s.gap_seconds)}s`}</td>
-										<td class="verdict-cell">
-											{#if s.collapsed}
-												{s.maybe_expiry ? 'lost the cache (probably expired)' : 'lost the cache'}
-											{/if}
-										</td>
+						<div class="bar">
+							<span
+								class="seg seg-read"
+								style="width:{share(run.cache_read, run)}%"
+								title={segTitle('reused', run.cache_read, run)}
+							></span>
+							<span
+								class="seg seg-write"
+								style="width:{share(run.cache_write, run)}%"
+								title={segTitle('stored', run.cache_write, run)}
+							></span>
+							<span
+								class="seg seg-cold"
+								style="width:{share(run.uncached, run)}%"
+								title={segTitle('full', run.uncached, run)}
+							></span>
+						</div>
+
+						{#if run.collapses}
+							<div class="collapse-note">
+								lost the cache {run.collapses}
+								{run.collapses > 1 ? 'times' : 'time'} mid-run — the start of the prompt changed, or the
+								provider's copy expired underneath it
+							</div>
+						{/if}
+
+						{#if expanded === runKey(run)}
+							<table class="samples">
+								<thead>
+									<tr>
+										<th>request</th>
+										<th>reused</th>
+										<th>stored</th>
+										<th>full price</th>
+										<th>since last</th>
+										<th></th>
 									</tr>
-								{/each}
-							</tbody>
-						</table>
-					{/if}
-				</li>
-			{/each}
-		</ul>
+								</thead>
+								<tbody>
+									{#each run.samples as s, i (s.at + i)}
+										<tr class:collapsed={s.collapsed}>
+											<td>{i + 1}</td>
+											<td>{tokens(s.cache_read)}</td>
+											<td>{tokens(s.cache_write)}</td>
+											<td>{tokens(s.input_tokens)}</td>
+											<td>{s.gap_seconds === null ? 'first' : `${Math.round(s.gap_seconds)}s`}</td>
+											<td class="verdict-cell">
+												{#if s.collapsed}
+													{s.maybe_expiry ? 'lost the cache (probably expired)' : 'lost the cache'}
+												{/if}
+											</td>
+										</tr>
+									{/each}
+								</tbody>
+							</table>
+						{/if}
+					</li>
+				{/each}
+			</ul>
 		{/if}
 	{/if}
 </section>

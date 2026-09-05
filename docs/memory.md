@@ -162,3 +162,27 @@ can be clarified in the conversation. Identity lookup does not establish a
 prior encounter and cannot search conversation topics. The tool reports an
 unavailable service separately from an empty candidate list. No structured
 elicitation transport or automatic choice of person is added.
+
+
+## Received encounters
+
+`phi-encounters` stores original notification versions before filtering or
+hydration. `(uri, cid, reason)` determines identity; replay preserves first
+capture time. Read flags are not evidence of capture. Startup and six-hourly
+recovery scans are bounded to twenty pages and do not dispatch actions. Scan
+receipts distinguish incomplete traversal from cursor exhaustion; exhaustion
+is not a claim about deleted or unavailable history.
+
+Every run receives up to eight captured events indexed in the preceding
+48 hours, replacing scheduled conversation replay. `search_encounters` searches
+captured text across people; `read_encounter` opens the stored source version
+and recent related processing receipts. Existing per-person and episodic
+memories remain accessible through `search_memory`.
+
+Run/request receipts record input preparation, provider response receipt, and
+run outcomes. Event capture alone does not prove model exposure. Completion
+does not establish a public action or a motive for silence. Confirmed tool
+results and dated statements remain in the linked execution traces.
+
+The public atlas still selects its existing per-person/episodic sources;
+encounter and processing records are not added to that publication.

@@ -12,7 +12,13 @@ from bot.config import settings
 from bot.core.alert_watch import fetch_alert_states, gate_scoped
 from bot.core.atproto_client import BotClient
 from bot.core.relay_watch import fetch_relay_states, is_relay_key, wake_material
+from bot.memory.encounters import ENCOUNTER_NAMESPACE
+from bot.services.encounter_recovery import recover_encounters
 from bot.services.message_handler import MessageHandler
+from bot.services.notification_history import (
+    IncompleteNotificationScan,
+    visible_unread_notifications,
+)
 from bot.status import bot_status
 
 logger = logging.getLogger("bot.poller")
@@ -46,6 +52,7 @@ class NotificationPoller:
         self.handler = MessageHandler(client)
         self._running = False
         self._task: asyncio.Task | None = None
+        self._recovery_task: asyncio.Task | None = None
         self._processed_uris: set[str] = set()
         self._first_poll = True
         self._last_daily_post: datetime | None = None
@@ -60,10 +67,12 @@ class NotificationPoller:
 
     async def start(self) -> asyncio.Task:
         """Start polling for notifications."""
+        await self.client.authenticate()
         self._running = True
         bot_status.polling_active = True
         bot_status.record_tick()
         self._task = asyncio.create_task(self._poll_loop())
+        self._recovery_task = asyncio.create_task(self._recovery_loop())
         return self._task
 
     async def stop(self):
@@ -76,8 +85,49 @@ class NotificationPoller:
                 await self._task
             except asyncio.CancelledError:
                 pass
+        recovery = getattr(self, "_recovery_task", None)
+        if recovery:
+            recovery.cancel()
+            try:
+                await recovery
+            except asyncio.CancelledError:
+                pass
         if self._background_tasks:
             await asyncio.gather(*self._background_tasks, return_exceptions=True)
+
+    async def _recovery_loop(self):
+        """Capture visible history independently of actions and UI read flags.
+
+        Five measured pages covered over two months on September 5. Limit each
+        traversal to twenty pages; exhaustion is recorded only if reached.
+        Transport/storage failures retry after five minutes. Structural bounds
+        remain visible as incomplete and wait until the next scheduled scan.
+        Recovered events never dispatch a backlog of public actions.
+        """
+        memory = self.handler.agent.memory
+        if memory is None:
+            logger.error("encounter recovery requires memory storage")
+            return
+        while self._running:
+            delay = 6 * 60 * 60
+            try:
+                receipt = await recover_encounters(
+                    self.client, memory.client, ENCOUNTER_NAMESPACE, max_pages=20
+                )
+                logger.info(
+                    "encounter recovery completed: %s pages, %s deliveries, scan %s",
+                    receipt["pages_captured"],
+                    receipt["deliveries_captured"],
+                    receipt["id"],
+                )
+            except asyncio.CancelledError:
+                raise
+            except IncompleteNotificationScan:
+                logger.exception("encounter recovery reached its traversal bound")
+            except Exception:
+                logger.exception("encounter recovery incomplete")
+                delay = 5 * 60
+            await asyncio.sleep(delay)
 
     async def _seed_schedule_from_history(self):
         """Seed scheduling state from phi's recent post history.
@@ -253,8 +303,9 @@ class NotificationPoller:
         check_time = self.client.client.get_current_time_iso()
 
         with logfire.span("fetch notifications", check_time=check_time) as fetch_span:
-            response = await self.client.get_notifications()
-            notifications = response.notifications
+            notifications = await visible_unread_notifications(
+                self.client, capture=self.handler.capture_notifications
+            )
 
             unread = [n for n in notifications if not n.is_read]
 
@@ -287,7 +338,7 @@ class NotificationPoller:
         elif unread:
             logger.info(f"{len(unread)} new notifications")
 
-        # When paused, don't process or mark as read — notifications accumulate
+        # Pausing actions does not stop recording received evidence.
         if bot_status.paused:
             if unread:
                 logger.debug(f"paused, skipping {len(unread)} unread notifications")

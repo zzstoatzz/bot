@@ -1,5 +1,27 @@
 # changelog
 
+## 2026-09-05 — Received encounters and processing evidence
+
+A notification could disappear from recall because Phi only liked it, it was
+already read, or another person reacted to the same post. Capture original
+record versions before read-state filtering and keep received events separate
+from hydrated reply targets. Recover visible history without replaying actions.
+The new private phi-encounters store preserves existing memories and remains
+outside the public atlas source selection.
+
+Recent incoming events now replace the scheduled-only conversation replay
+across entry points, once per run. Text search across captured people and
+exact source reads return stable IDs. Processing receipts distinguish prepared
+requests, received responses, and run outcomes; traces remain the evidence
+for actual tool actions and dated statements. No receipt implies why Phi was
+silent. Recovery is bounded to twenty pages every six hours; failures retain
+incomplete coverage. The initial verified scan captured 1,508 deliveries in
+sixteen pages and found Ali's later follow-up without a handle.
+
+Operator context/cache panels now reread snapshots every minute while visible
+and advance their age labels, so an open tab no longer looks perpetually fresh.
+
+
 ## 2026-09-05 — Market history and refresh
 
 The market chart connected a 29-hour hole in Top Chicken's samples and ended

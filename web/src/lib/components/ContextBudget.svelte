@@ -22,11 +22,15 @@
 	let showDetails = $state(false);
 	let hovered = $state<string | null>(null);
 	let sortBy = $state<'tokens' | 'order'>('tokens');
+	let now = $state(Date.now());
+	let inFlight = false;
 
 	// the page reads a server-side snapshot; only the refresh button asks
 	// for a recomposition. right after a restart the snapshot is still
 	// being built, so poll until it lands.
 	async function load(refresh = false) {
+		if (inFlight) return;
+		inFlight = true;
 		loading = true;
 		err = null;
 		let reply = await getContextBudget(refresh);
@@ -42,8 +46,24 @@
 			err = 'The snapshot could not be retrieved. Try refreshing again.';
 		}
 		loading = false;
+		inFlight = false;
 	}
-	onMount(() => load());
+	onMount(() => {
+		void load();
+		const clock = setInterval(() => {
+			now = Date.now();
+		}, 10_000);
+		const refreshVisible = () => {
+			if (document.visibilityState === 'visible') void load();
+		};
+		const poll = setInterval(refreshVisible, 60_000);
+		document.addEventListener('visibilitychange', refreshVisible);
+		return () => {
+			clearInterval(clock);
+			clearInterval(poll);
+			document.removeEventListener('visibilitychange', refreshVisible);
+		};
+	});
 
 	const num = (n: number) => n.toLocaleString('en-US');
 	function tokens(n: number): string {
@@ -80,7 +100,13 @@
 	const prompt = $derived(data?.totals.prompt ?? 0);
 	const counted = $derived(data?.counting === 'exact' ? 'counted' : 'estimated');
 	const sliceTotals = $derived.by(() => {
-		const totals: Record<SliceKey, number> = { static: 0, blocks: 0, function: 0, mcp: 0, other: 0 };
+		const totals: Record<SliceKey, number> = {
+			static: 0,
+			blocks: 0,
+			function: 0,
+			mcp: 0,
+			other: 0
+		};
 		for (const s of data?.sections ?? []) totals[sliceOf(s)] += s.tokens;
 		return totals;
 	});
@@ -108,7 +134,9 @@
 
 	const rows = $derived.by(() => {
 		if (!data) return [];
-		return sortBy === 'tokens' ? [...data.sections].sort((a, b) => b.tokens - a.tokens) : data.sections;
+		return sortBy === 'tokens'
+			? [...data.sections].sort((a, b) => b.tokens - a.tokens)
+			: data.sections;
 	});
 	const originLabel = (s: ContextSection) => (s.kind === 'tool' ? s.origin : s.kind);
 
@@ -124,7 +152,13 @@
 <section class="ctx">
 	<div class="head">
 		<h2>Context window</h2>
-		<button class="refresh" onclick={() => load(true)} disabled={loading} title="Recompose base context and refresh the usage snapshot">{loading ? 'Refreshing…' : 'Refresh snapshot'}</button>
+		<button
+			class="refresh"
+			onclick={() => load(true)}
+			disabled={loading}
+			title="Recompose base context and refresh the usage snapshot"
+			>{loading ? 'Refreshing…' : 'Refresh snapshot'}</button
+		>
 	</div>
 
 	{#if loading && !data}
@@ -147,11 +181,21 @@
 		<p class="sub">
 			<span class="mono">{data.model.spec}</span>
 			{#if window !== null}
-				· <span class="mono">{tokens(prompt)}</span> of <span class="mono">{tokens(window)}</span> tokens, {counted}
-				<span class="faint" title="window size comes from a public model catalog; no provider reports it">({data.model.source})</span>
-				· <span class="faint" title={whenTooltip(data.generated_at)}>composed {relativeWhen(data.generated_at)}</span>
+				· <span class="mono">{tokens(prompt)}</span> of <span class="mono">{tokens(window)}</span>
+				tokens, {counted}
+				<span
+					class="faint"
+					title="window size comes from a public model catalog; no provider reports it"
+					>({data.model.source})</span
+				>
+				·
+				<span class="faint" title={whenTooltip(data.generated_at)}
+					>composed {relativeWhen(data.generated_at, now)}</span
+				>
 			{:else}
-				· <span class="faint">not in the model catalog, so there is no ceiling to measure against</span>
+				· <span class="faint"
+					>not in the model catalog, so there is no ceiling to measure against</span
+				>
 			{/if}
 		</p>
 
@@ -160,29 +204,62 @@
 				{#if recent && freeTypical !== null}
 					<p class="free">
 						<span class="free-n">{freeTypical.toFixed(0)}% free</span>
-						<span class="free-t">on a typical request — measured over her last {recent.runs} runs ({recent.requests} requests)</span>
+						<span class="free-t"
+							>on a typical request — measured over her last {recent.runs} runs ({recent.requests} requests)</span
+						>
 					</p>
 				{/if}
 				<div class="meter" role="img" aria-label="window usage">
-					<div class="m-fill m-composed" style:width="{pct(prompt, window)}%" title="composed snapshot: {num(prompt)} tokens"></div>
+					<div
+						class="m-fill m-composed"
+						style:width="{pct(prompt, window)}%"
+						title="composed snapshot: {num(prompt)} tokens"
+					></div>
 					{#if recent}
-						<div class="m-fill m-start" style:width="{pct(Math.max(recent.first_mean - prompt, 0), window)}%" title="what a run actually starts at: {num(recent.first_mean)} tokens on average — the task prompt and per-run blocks the snapshot cannot compose"></div>
-						<div class="m-fill m-typical" style:width="{pct(Math.max(recent.p50 - recent.first_mean, 0), window)}%" title="typical request: {num(recent.p50)} tokens (median)"></div>
-						<div class="m-fill m-peak" style:width="{pct(Math.max(recent.max - recent.p50, 0), window)}%" title="largest request seen: {num(recent.max)} tokens"></div>
+						<div
+							class="m-fill m-start"
+							style:width="{pct(Math.max(recent.first_mean - prompt, 0), window)}%"
+							title="what a run actually starts at: {num(
+								recent.first_mean
+							)} tokens on average — the task prompt and per-run blocks the snapshot cannot compose"
+						></div>
+						<div
+							class="m-fill m-typical"
+							style:width="{pct(Math.max(recent.p50 - recent.first_mean, 0), window)}%"
+							title="typical request: {num(recent.p50)} tokens (median)"
+						></div>
+						<div
+							class="m-fill m-peak"
+							style:width="{pct(Math.max(recent.max - recent.p50, 0), window)}%"
+							title="largest request seen: {num(recent.max)} tokens"
+						></div>
 					{/if}
 				</div>
 				<div class="m-legend">
-					<span><i class="sw m-composed"></i>composed <span class="mono">{tokens(prompt)}</span></span>
+					<span
+						><i class="sw m-composed"></i>composed <span class="mono">{tokens(prompt)}</span></span
+					>
 					{#if recent}
-						<span><i class="sw m-start"></i>run starts at <span class="mono">{tokens(recent.first_mean)}</span></span>
-						<span><i class="sw m-typical"></i>typical request <span class="mono">{tokens(recent.p50)}</span></span>
-						<span><i class="sw m-peak"></i>largest <span class="mono">{tokens(recent.max)}</span> ({pctLabel(recent.max, window)})</span>
+						<span
+							><i class="sw m-start"></i>run starts at
+							<span class="mono">{tokens(recent.first_mean)}</span></span
+						>
+						<span
+							><i class="sw m-typical"></i>typical request
+							<span class="mono">{tokens(recent.p50)}</span></span
+						>
+						<span
+							><i class="sw m-peak"></i>largest <span class="mono">{tokens(recent.max)}</span>
+							({pctLabel(recent.max, window)})</span
+						>
 					{/if}
 					<span class="faint">of <span class="mono">{tokens(window)}</span></span>
 				</div>
 				{#if unseen > 0}
 					<p class="faint unseen">
-						a real run begins about <span class="mono">{tokens(unseen)}</span> tokens above the composed snapshot: the task prompt and the per-run blocks (workflow state, recent conversations, per-author memory) only exist once there is a run to react to.
+						a real run begins about <span class="mono">{tokens(unseen)}</span> tokens above the composed
+						snapshot: the task prompt and the per-run blocks (workflow state and per-author memory) only
+						exist once there is a run to react to.
 					</p>
 				{/if}
 			</div>
@@ -207,7 +284,9 @@
 						onmouseenter={() => (hovered = a.key)}
 						onmouseleave={() => (hovered = null)}
 					>
-						<title>{a.label}: {num(a.tokens)} tokens, {pctLabel(a.tokens, sliceSum)} of the prompt</title>
+						<title
+							>{a.label}: {num(a.tokens)} tokens, {pctLabel(a.tokens, sliceSum)} of the prompt</title
+						>
 					</circle>
 				{/each}
 				<text x="50" y="47" text-anchor="middle" class="center-n">
@@ -240,9 +319,10 @@
 					<span class="fact-n">{tokens(lastPeak)}</span>
 					<span class="fact-t">
 						the fullest request in this snapshot's latest run ({data.last_run.label},
-						<span title={whenTooltip(data.last_run.started_at)}>{relativeWhen(data.last_run.started_at)}</span>)
-						— measured by the provider, not composed here. the gap above the prompt is the conversation:
-						tool calls and their results piling up as the run went on
+						<span title={whenTooltip(data.last_run.started_at)}
+							>{relativeWhen(data.last_run.started_at, now)}</span
+						>) — measured by the provider, not composed here. the gap above the prompt is the
+						conversation: tool calls and their results piling up as the run went on
 					</span>
 				</div>
 				{#if window !== null}
@@ -254,7 +334,11 @@
 			</div>
 		{/if}
 
-		<button class="details-toggle" onclick={() => (showDetails = !showDetails)} aria-expanded={showDetails}>
+		<button
+			class="details-toggle"
+			onclick={() => (showDetails = !showDetails)}
+			aria-expanded={showDetails}
+		>
 			{showDetails ? 'hide' : 'show'} every section ({data.sections.length})
 		</button>
 
@@ -262,7 +346,10 @@
 			<div class="details">
 				<div class="controls">
 					<span class="faint">each row is one thing she reads, {counted} in tokens</span>
-					<button class="linkish" onclick={() => (sortBy = sortBy === 'tokens' ? 'order' : 'tokens')}>
+					<button
+						class="linkish"
+						onclick={() => (sortBy = sortBy === 'tokens' ? 'order' : 'tokens')}
+					>
 						sorted by {sortBy === 'tokens' ? 'weight' : 'prompt order'}
 					</button>
 				</div>
@@ -272,7 +359,13 @@
 							<i class="sw" style:background={SLICES.find((x) => x.key === sliceOf(s))?.color}></i>
 							<span class="origin mono faint">{originLabel(s)}</span>
 							<span class="name mono" title={s.error ?? ''}>{s.name}{s.error ? ' ⚠' : ''}</span>
-							<span class="weight"><i class="fill" style:width="{pct(s.tokens, prompt)}%" style:background={SLICES.find((x) => x.key === sliceOf(s))?.color}></i></span>
+							<span class="weight"
+								><i
+									class="fill"
+									style:width="{pct(s.tokens, prompt)}%"
+									style:background={SLICES.find((x) => x.key === sliceOf(s))?.color}
+								></i></span
+							>
 							<span class="tok mono">{s.tokens > 0 ? tokens(s.tokens) : '·'}</span>
 						</li>
 					{/each}
@@ -281,10 +374,18 @@
 					<div class="run faint">
 						last run's requests:
 						{#each data.last_run.requests as r, i (i)}
-							<span class="req mono" title="request {i + 1}: {num(r.billed_prefix)} tokens in — {num(r.cache_read)} read from cache, {num(r.cache_write)} written, {num(r.input_tokens)} uncached">{tokens(r.billed_prefix)}</span>
+							<span
+								class="req mono"
+								title="request {i + 1}: {num(r.billed_prefix)} tokens in — {num(
+									r.cache_read
+								)} read from cache, {num(r.cache_write)} written, {num(r.input_tokens)} uncached"
+								>{tokens(r.billed_prefix)}</span
+							>
 						{/each}
 						{#if data.last_run.trace_url}
-							<a class="linkish" href={data.last_run.trace_url} target="_blank" rel="noreferrer">trace ↗</a>
+							<a class="linkish" href={data.last_run.trace_url} target="_blank" rel="noreferrer"
+								>trace ↗</a
+							>
 						{/if}
 						· <a class="linkish" href="/diagnostic">read each block as phi would →</a>
 					</div>
@@ -446,7 +547,9 @@
 		height: 180px;
 	}
 	.donut circle {
-		transition: opacity 120ms ease, stroke-width 120ms ease;
+		transition:
+			opacity 120ms ease,
+			stroke-width 120ms ease;
 	}
 	.center-n {
 		font-family: var(--font-chrome);
