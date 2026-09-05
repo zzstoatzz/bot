@@ -1,57 +1,55 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import {
-		getGoals,
-		getActivity,
-		getMemoryGraph,
-		getDiscoveryPool
-	} from '$lib/api';
+	import { getGoals, getActivity, getMemoryGraph, getDocket } from '$lib/api';
 	import { mindCounts } from '$lib/state.svelte';
 
-	let counts = $state({
-		goals: 0,
-		out: 0,
-		ppl: 0,
-		cand: 0,
-		loaded: false
-	});
+	let goalsCount = $state<number | null>(null);
+	let outputCount = $state<number | null>(null);
+	let peopleCount = $state<number | null>(null);
+	let candidateCount = $state<number | null>(null);
 
-	const displayed = $derived(mindCounts.value.loaded ? mindCounts.value : counts);
+	const displayed = $derived(
+		mindCounts.value.loaded
+			? mindCounts.value
+			: {
+					goals: goalsCount,
+					out: outputCount,
+					ppl: peopleCount,
+					cand: candidateCount
+				}
+	);
 
 	onMount(async () => {
-		const [goals, activity, graph, disc] = await Promise.allSettled([
+		const [goals, activity, graph, docket] = await Promise.allSettled([
 			getGoals(),
 			getActivity(),
 			getMemoryGraph(),
-			getDiscoveryPool()
+			getDocket()
 		]);
-		if (!mindCounts.value.loaded) {
-			counts = {
-				goals: goals.status === 'fulfilled' ? goals.value.length : 0,
-				out: activity.status === 'fulfilled' ? activity.value.length : 0,
-				ppl:
-					graph.status === 'fulfilled'
-						? graph.value.nodes.filter((n) => n.type === 'user').length
-						: 0,
-				cand: disc.status === 'fulfilled' ? disc.value.length : 0,
-				loaded: true
-			};
-		}
+		goalsCount = goals.status === 'fulfilled' ? goals.value.length : null;
+		outputCount = activity.status === 'fulfilled' ? activity.value.length : null;
+		peopleCount =
+			graph.status === 'fulfilled'
+				? graph.value.nodes.filter((n) => n.type === 'user').length
+				: null;
+		candidateCount = docket.status === 'fulfilled' ? (docket.value?.candidates.length ?? 0) : null;
 	});
 </script>
 
-<div class="ticker">
+<div class="ticker" title="A dash means this count is loading or unavailable.">
 	<div class="row">
 		<span class="kv"
-			><span class="k chrome">goals</span><span class="v mono">{displayed.goals}</span></span
+			><span class="k chrome">goals</span><span class="v mono">{displayed.goals ?? '—'}</span></span
 		>
 		<span class="kv"
-			><span class="k chrome">people</span><span class="v mono">{displayed.ppl}</span></span
+			><span class="k chrome">people</span><span class="v mono">{displayed.ppl ?? '—'}</span></span
 		>
 		<span class="kv"
-			><span class="k chrome">cand</span><span class="v mono">{displayed.cand}</span></span
+			><span class="k chrome">cand</span><span class="v mono">{displayed.cand ?? '—'}</span></span
 		>
-		<span class="kv"><span class="k chrome">out</span><span class="v mono">{displayed.out}</span></span>
+		<span class="kv"
+			><span class="k chrome">out</span><span class="v mono">{displayed.out ?? '—'}</span></span
+		>
 	</div>
 </div>
 

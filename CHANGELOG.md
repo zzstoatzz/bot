@@ -1,5 +1,12 @@
 # changelog
 
+## 2026-09-05 — Show unknown cockpit counts honestly
+
+The footer showed zero goals, people, candidates, and outputs while its
+requests were pending, and kept zeros for failed reads. Unknown counts now
+render as dashes. Candidate counts use the public docket on every page,
+matching Mind instead of switching to discovery-pool size on other routes.
+
 ## 2026-09-05 — Return the resulting saved note
 
 During the Ali correction, reconciliation removed a page-limited qualifier
