@@ -5,6 +5,7 @@ from typing import Annotated
 from pydantic import Field
 from pydantic_ai import RunContext
 
+from bot.memory.search_status import IncompleteMemorySearch
 from bot.tools._helpers import (
     PhiDeps,
     _format_episodic_results,
@@ -57,36 +58,18 @@ def register(agent):
 
         For public network knowledge, use the semble tools instead.
         Write-side companion: `save_memory` (episodic notes)."""
-        if not ctx.deps.memory:
-            return "memory not available"
-
-        if tag:
-            results = await ctx.deps.memory.search_episodic(query, top_k=30)
-            results = [r for r in results if tag in (r.get("tags") or [])][:10]
-            if not results:
-                return f"no memories tagged '{tag}' match that query"
-            return "\n".join(_format_episodic_results(results))
-
-        if about.startswith("@"):
-            handle = about.lstrip("@")
-            results = await ctx.deps.memory.search(handle, query, top_k=10)
-            if not results:
-                return f"no memories found about @{handle}"
-            return "\n".join(_format_user_results(results, handle))
-
-        if about == "":
-            results = await ctx.deps.memory.search_unified(
-                ctx.deps.author_handle, query, top_k=8
+        try:
+            return await _search_private(ctx, query, about, tag)
+        except IncompleteMemorySearch as error:
+            partial = "\n".join(
+                _format_unified_results(error.results, ctx.deps.author_handle)
             )
-            if not results:
-                return "no relevant memories found"
-            return "\n".join(_format_unified_results(results, ctx.deps.author_handle))
-
-        # bare handle without @
-        results = await ctx.deps.memory.search(about, query, top_k=10)
-        if not results:
-            return f"no memories found about @{about}"
-        return "\n".join(_format_user_results(results, about))
+            return (
+                f"Memory search incomplete ({error}). This is not evidence of no prior encounter."
+                + (f"\nAvailable results:\n{partial}" if partial else "")
+            )
+        except Exception:
+            return "Memory search failed; history is unavailable for this query. This is not evidence of no prior encounter."
 
     @agent.tool
     async def save_memory(
@@ -136,3 +119,36 @@ def register(agent):
             )
             return f"saved to memory — {content[:100]}"
         return "private memory not available"
+
+
+async def _search_private(ctx, query: str, about: str, tag: str) -> str:
+    if not ctx.deps.memory:
+        return "memory not available"
+
+    if tag:
+        results = await ctx.deps.memory.search_episodic(query, top_k=30)
+        results = [r for r in results if tag in (r.get("tags") or [])][:10]
+        if not results:
+            return f"no memories tagged '{tag}' match that query"
+        return "\n".join(_format_episodic_results(results))
+
+    if about.startswith("@"):
+        handle = about.lstrip("@")
+        results = await ctx.deps.memory.search(handle, query, top_k=10)
+        if not results:
+            return f"no memories found about @{handle}"
+        return "\n".join(_format_user_results(results, handle))
+
+    if about == "":
+        results = await ctx.deps.memory.search_unified(
+            ctx.deps.author_handle, query, top_k=8
+        )
+        if not results:
+            return "no relevant memories found"
+        return "\n".join(_format_unified_results(results, ctx.deps.author_handle))
+
+    # bare handle without @
+    results = await ctx.deps.memory.search(about, query, top_k=10)
+    if not results:
+        return f"no memories found about @{about}"
+    return "\n".join(_format_user_results(results, about))

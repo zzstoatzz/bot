@@ -6,9 +6,11 @@ that honors attribute projection, so a renderer-only fix cannot pass.
 """
 
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 
+import httpx
 import pytest
+from turbopuffer import NotFoundError
 
 from bot.agent import render_recent_conversations
 from bot.memory.namespace_memory import NamespaceMemory
@@ -150,3 +152,57 @@ async def test_recent_context_keeps_evidence_through_reader(legacy, monkeypatch)
     assert 'you replied "the cap forces a choice"' in block
     assert (PARENT in block) is not legacy
     assert (REPLY in block) is not legacy
+
+
+@pytest.mark.parametrize("options", [{"about": ALI}, {"tag": "correction"}, {}])
+async def test_backend_failure_never_becomes_no_memories(options):
+    tool, ctx, memory = tool_with_memory()
+    ctx.deps.author_handle = ALI
+    broken = Mock()
+    broken.query.side_effect = RuntimeError("backend was not found in routing table")
+    memory.get_user_namespace = lambda _: broken
+    memory.namespaces["episodic"] = broken
+    result = await tool(ctx, query="ten votes", **options)
+    assert "incomplete" in result
+    assert "read failed" in result
+    assert "no memories" not in result
+    assert "routing table" not in result
+
+
+async def test_partial_search_preserves_available_evidence_and_names_missing_scope():
+    tool, ctx, memory = tool_with_memory()
+    ctx.deps.author_handle = ALI
+    broken = Mock()
+    broken.query.side_effect = RuntimeError("offline")
+    memory.namespaces["episodic"] = broken
+    result = await tool(ctx, query="ten votes")
+    assert "episodic: read failed" in result
+    assert PARENT in result and REPLY in result
+    assert "Available results" in result
+
+
+async def test_missing_namespace_and_successful_empty_search_are_distinct():
+    tool, ctx, memory = tool_with_memory()
+    memory.namespaces["episodic"] = Namespace([])
+    empty = await tool(ctx, query="ten votes")
+    assert empty == "no relevant memories found"
+    missing = Mock()
+    missing.query.side_effect = NotFoundError(
+        "namespace absent",
+        response=httpx.Response(
+            404, request=httpx.Request("POST", "https://memory.test/query")
+        ),
+        body=None,
+    )
+    memory.namespaces["episodic"] = missing
+    result = await tool(ctx, query="ten votes")
+    assert "episodic: namespace missing" in result
+    assert "no relevant memories found" not in result
+
+
+async def test_embedding_failure_is_reported_without_backend_error_text():
+    tool, ctx, memory = tool_with_memory()
+    memory._get_embedding.side_effect = RuntimeError("provider credentials unavailable")
+    result = await tool(ctx, query="ten votes")
+    assert "Memory search failed" in result
+    assert "credentials" not in result

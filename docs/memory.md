@@ -147,3 +147,10 @@ contribute.
 
 see [system-prompt.md](system-prompt.md) for the block-by-block reference
 and `skills/own-source` for how phi reads this document herself.
+
+Explicit `search_memory` reports incomplete retrieval separately from an empty
+successful search. Missing namespaces are identified; backend or embedding
+failures are not evidence that no encounter occurred. Unified search retains
+successful results and their citations when the other namespace fails. With
+no current author, it queries episodic memory only rather than a blank-handle
+user namespace. This does not provide cross-person search.

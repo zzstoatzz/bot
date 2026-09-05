@@ -10,7 +10,7 @@ from atproto_core.exceptions import InvalidAtUriError
 from atproto_core.uri import AtUri
 from openai import AsyncOpenAI
 from pydantic_ai import Agent
-from turbopuffer import Turbopuffer
+from turbopuffer import NotFoundError, Turbopuffer
 
 from bot.config import settings
 from bot.memory.extraction import (
@@ -19,6 +19,7 @@ from bot.memory.extraction import (
     Observation,
     get_reconciliation_agent,
 )
+from bot.memory.search_status import IncompleteMemorySearch
 from bot.utils.time import relative_when
 
 
@@ -672,9 +673,10 @@ class NamespaceMemory:
                     )
             return results
         except Exception as e:
-            if "was not found" in str(e):
-                return []
-            raise
+            status = (
+                "namespace missing" if isinstance(e, NotFoundError) else "read failed"
+            )
+            raise IncompleteMemorySearch([f"@{handle}" + ": " + status], []) from e
 
     # --- episodic memory (phi's own world knowledge) ---
 
@@ -869,9 +871,10 @@ class NamespaceMemory:
                 del r["_score"]
             return results[:top_k]
         except Exception as e:
-            if "was not found" in str(e):
-                return []
-            raise
+            status = (
+                "namespace missing" if isinstance(e, NotFoundError) else "read failed"
+            )
+            raise IncompleteMemorySearch(["episodic" + ": " + status], []) from e
 
     async def get_episodic_context(
         self,
@@ -901,11 +904,14 @@ class NamespaceMemory:
     ) -> list[dict]:
         """Search both user namespace and episodic namespace concurrently."""
         query_embedding = await self._get_embedding(query)
+        unavailable: list[str] = []
 
         user_ns = self.get_user_namespace(handle)
         loop = asyncio.get_event_loop()
 
         async def _search_user() -> list[dict]:
+            if not handle:
+                return []
             try:
                 response = await loop.run_in_executor(
                     None,
@@ -932,8 +938,11 @@ class NamespaceMemory:
                         )
                 return results
             except Exception as e:
-                if "was not found" in str(e):
-                    return []
+                unavailable.append(
+                    f"@{handle}: namespace missing"
+                    if isinstance(e, NotFoundError)
+                    else f"@{handle}: read failed"
+                )
                 logger.warning(
                     f"unified search user namespace failed for @{handle}: {e}"
                 )
@@ -974,15 +983,21 @@ class NamespaceMemory:
                     del r["_score"]
                 return results[:top_k]
             except Exception as e:
-                if "was not found" in str(e):
-                    return []
+                unavailable.append(
+                    "episodic: namespace missing"
+                    if isinstance(e, NotFoundError)
+                    else "episodic: read failed"
+                )
                 logger.warning(f"unified search episodic namespace failed: {e}")
                 return []
 
         user_results, episodic_results = await asyncio.gather(
             _search_user(), _search_episodic()
         )
-        return user_results + episodic_results
+        results = user_results + episodic_results
+        if unavailable:
+            raise IncompleteMemorySearch(sorted(unavailable), results)
+        return results
 
     @staticmethod
     def _project_2d(
