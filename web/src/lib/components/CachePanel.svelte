@@ -60,7 +60,7 @@
 	// each segment says what it is, how much of the run it was, and what it
 	// cost — the thing you actually want when you hover a colored bar
 	function segTitle(kind: 'reused' | 'stored' | 'full', part: number, r: CacheRun): string {
-		if (!data) return '';
+		if (!data?.prices || r.saved === null) return `${num(part)} tokens · ${Math.round(share(part, r))}% of this run; cost estimate unavailable`;
 		const rate = kind === 'reused' ? data.prices.read : kind === 'stored' ? data.prices.write : 1;
 		const what =
 			kind === 'reused'
@@ -82,6 +82,7 @@
 	{:else if !data || !data.runs.length}
 		<div class="status">no runs recorded yet</div>
 	{:else}
+		{#if data.strategy}
 		<p class="strategy">
 			caching what phi re-sends every request:
 			{#each Object.entries(data.strategy) as [what, ttl], i (what)}<span class="ttl"
@@ -89,16 +90,23 @@
 				>{i < Object.entries(data.strategy).length - 1 ? ' · ' : ''}{/each}
 		</p>
 
+		{/if}
 		<div class="headline">
 			<div class="verdict">
+				{#if data.saved !== null && data.billed_tokens !== null}
 				<span class="big">{pct(data.saved)}</span>
-				<span class="big-label">off the input bill</span>
+				<span class="big-label">estimated input savings</span>
 				<span class="sub">
 					{tokens(data.uncached_cost_tokens)} tokens of context, billed as
 					{tokens(data.billed_tokens)} — across {data.window_runs} run{data.window_runs === 1
 						? ''
 						: 's'}
 				</span>
+                {:else}
+                    <span class="big">{pct(data.hit_rate)}</span>
+                    <span class="big-label">input served from cache</span>
+                    <span class="sub">Cost estimate unavailable for mixed models, other providers, or older records without provider metadata.</span>
+                {/if}
 			</div>
 		</div>
 
@@ -106,15 +114,13 @@
 			<div class="fact">
 				<span class="fact-n">{data.warm_starts}<span class="of">/{data.window_runs}</span></span>
 				<span class="fact-t"
-					>runs began with a cache already warm — they reused the tool definitions and instructions
-					a previous run left behind, instead of paying to store them again</span
+					>runs reused at least 1,024 input tokens on their first request</span
 				>
 			</div>
 			<div class="fact {data.collapses ? 'fact-bad' : ''}">
 				<span class="fact-n">{data.collapses}</span>
 				<span class="fact-t"
-					>requests lost the cache mid-run — something changed the start of the prompt, so the
-					provider had to re-read the whole thing. zero is the healthy number</span
+					>Anthropic requests showed a large drop in cache reads; a changed prefix or expiry may explain it</span
 				>
 			</div>
 		</div>
@@ -124,16 +130,10 @@
 		</button>
 		{#if showRuns}
 			<div class="legend">
-				<span title="billed at {data.prices.read}× the base input rate"
-					><i class="sw sw-read"></i>reused · {data.prices.read}×</span
-				>
-				<span title="billed at {data.prices.write}× the base input rate"
-					><i class="sw sw-write"></i>stored · {data.prices.write}×</span
-				>
-				<span title="billed at the full base input rate"
-					><i class="sw sw-cold"></i>full price · 1×</span
-				>
-			</div>
+                <span><i class="sw sw-read"></i>reused</span>
+                <span><i class="sw sw-write"></i>stored</span>
+                <span><i class="sw sw-cold"></i>uncached</span>
+            </div>
 
 			<ul class="runs">
 				{#each data.runs as run (runKey(run))}
@@ -153,7 +153,7 @@
 								>{relativeWhen(run.started_at, now)}</span
 							>
 							<span class="reqs">{run.requests} req · {tokens(total(run))}</span>
-							<span class="saved" class:bad={run.saved < 0.2}>{pct(run.saved)} off</span>
+							{#if run.saved !== null}<span class="saved" class:bad={run.saved < 0.2}>{pct(run.saved)} estimated savings</span>{:else}<span class="saved">cost unavailable</span>{/if}
 							{#if run.trace_url}
 								<a
 									class="trace"
@@ -198,7 +198,7 @@
 										<th>request</th>
 										<th>reused</th>
 										<th>stored</th>
-										<th>full price</th>
+										<th>total input</th>
 										<th>since last</th>
 										<th></th>
 									</tr>

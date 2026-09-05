@@ -351,6 +351,7 @@ export interface ChickenResultRound {
 export interface CacheSample {
 	at: string;
 	model: string;
+	provider: string;
 	input_tokens: number;
 	cache_read: number;
 	cache_write: number;
@@ -369,7 +370,7 @@ export interface CacheRun {
 	cache_write: number;
 	uncached: number;
 	hit_rate: number;
-	saved: number;
+	saved: number | null;
 	collapses: number;
 	warm_start: boolean;
 	samples: CacheSample[];
@@ -377,17 +378,17 @@ export interface CacheRun {
 
 export interface CacheStability {
 	// the live TTLs, read from the same dict agent.py configures from
-	strategy: Record<string, string>;
+	strategy: Record<string, string> | null;
 	// input-token prices as multiples of the base rate
-	prices: { read: number; write: number; uncached: number };
+	prices: { read: number; write: number; uncached: number } | null;
 	window_runs: number;
 	cache_read: number;
 	cache_write: number;
 	uncached: number;
 	hit_rate: number;
-	billed_tokens: number;
+	billed_tokens: number | null;
 	uncached_cost_tokens: number;
-	saved: number;
+	saved: number | null;
 	collapses: number;
 	warm_starts: number;
 	runs: CacheRun[];
