@@ -1,5 +1,13 @@
 # changelog
 
+## 2026-09-05 — Retain generated images before publication
+
+The first live image-reply test hit a PDS limitation: newly uploaded blobs
+could not be fetched before a record referenced them. Keep the exact upload
+bytes on Phi’s volume, bounded to 64 images, and use those bytes for pre-post
+review. Published older blobs can still be fetched from the PDS. A regression
+test makes the PDS read fail while the cached-image posting preparation succeeds.
+
 ## 2026-09-05 — Attach images through post
 
 Phi could generate images but could not attach them through the guarded

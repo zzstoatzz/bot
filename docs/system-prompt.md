@@ -101,8 +101,10 @@ assert the post was deleted or treat that version as a verified reply target.
 ## Image posts
 
 `generate_image` returns an uploaded blob. `post` accepts up to four image
-attachments with alt text, for top-level posts or replies. It reads the actual
-blobs from Phi's PDS and sends the pixels and descriptions to the existing
+attachments with alt text, for top-level posts or replies. Generated upload
+bytes are retained on the volume (latest 64 images), since unreferenced blobs
+may not yet be readable from the PDS. post uses these bytes, falling back to
+the PDS for older published blobs, and sends pixels and descriptions to the existing
 policy judge. The usual override, provenance, and judge-outage behavior apply.
 Text splitting attaches images only to the first post. Image descriptions and
 blob IDs accompany stored reply text; the source post record retains the embed.

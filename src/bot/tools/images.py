@@ -17,6 +17,7 @@ from pydantic import Field
 
 from bot.config import settings
 from bot.core.atproto_client import bot_client
+from bot.core.generated_images import remember_image
 
 logger = logging.getLogger("bot.tools.images")
 
@@ -107,6 +108,7 @@ def register(agent):
             await bot_client.authenticate()
             resp = bot_client.client.upload_blob(data)
             blob = resp.blob.model_dump(mode="json", by_alias=True)
+            remember_image(blob["ref"]["$link"], data)
         except Exception as e:
             logger.exception(f"blob upload failed: {e}")
             return (

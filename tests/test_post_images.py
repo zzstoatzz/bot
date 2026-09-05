@@ -175,3 +175,35 @@ async def test_split_thread_attaches_image_only_to_first_post(reply):
     assert all("embed" not in c.kwargs for c in calls[1:])
     expected_root = URI if reply else f"at://{DID}/app.bsky.feed.post/0"
     assert all(c.kwargs["reply_to"].root.uri == expected_root for c in calls[1:])
+
+
+async def test_unreferenced_generated_blob_uses_durable_bytes(monkeypatch, tmp_path):
+    from bot.core import generated_images
+
+    data, image = picture()
+    monkeypatch.setattr(generated_images, "cache_directory", lambda: tmp_path)
+    generated_images.remember_image(CID, data)
+    with patch.object(
+        post_images,
+        "fetch_blob_bytes",
+        AsyncMock(side_effect=RuntimeError("PDS cannot serve unreferenced blobs")),
+    ) as fetch:
+        embed, pixels, _ = await prepare_images(DID, [image])
+    fetch.assert_not_called()
+    assert pixels[0].data == data
+    assert embed.images[0].image == image.blob
+    # Reading it again uses disk, without a generation response in memory.
+    assert generated_images.recalled_image(CID) == data
+
+
+def test_generated_image_cache_is_bounded(monkeypatch, tmp_path):
+    from bot.core import generated_images
+
+    monkeypatch.setattr(generated_images, "cache_directory", lambda: tmp_path)
+    monkeypatch.setattr(generated_images, "MAX_FILES", 2)
+    for cid in ["baaa", "baab", "baac"]:
+        generated_images.remember_image(cid, b"bytes")
+    assert len(list(tmp_path.glob("*.blob"))) == 2
+    assert generated_images.recalled_image("baac") == b"bytes"
+    with pytest.raises(ValueError):
+        generated_images.recalled_image("../outside")

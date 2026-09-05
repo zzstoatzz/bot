@@ -9,6 +9,7 @@ from PIL import Image
 from pydantic import BaseModel, Field
 from pydantic_ai import BinaryContent
 
+from bot.core.generated_images import recalled_image
 from bot.core.media import fetch_blob_bytes
 
 MAX_IMAGE_BYTES = 1_000_000
@@ -45,7 +46,9 @@ async def prepare_images(did: str, images: list[PostImage]):
                 "use the original blob reference returned by generate_image"
             )
         cid = ref["$link"]
-        data = await fetch_blob_bytes(did, cid, max_bytes=MAX_IMAGE_BYTES)
+        data = recalled_image(cid)
+        if data is None:
+            data = await fetch_blob_bytes(did, cid, max_bytes=MAX_IMAGE_BYTES)
         if len(data) != blob.size:
             raise ValueError("image size does not match the blob reference")
         with Image.open(io.BytesIO(data)) as image:
