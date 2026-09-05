@@ -5,6 +5,20 @@ record *why* a change happened — the part that isn't reconstructable from the
 diff. Durable design principles live in `docs/`; this file is the record of
 what moved and what it cost to find out.
 
+## 2026-09-05
+
+- **fix**: memory search and automatic per-person/recent-exchange context
+  retain stored source URIs. The Ali exchange was stored with its original
+  post references, but retrieval discarded them before Phi could use them.
+  Legacy rows without citations remain readable. This restores access to
+  evidence; it does not expand search across people or capture silent
+  encounters. References add prompt text and must be included in context
+  cost measurements.
+- **fix**: restore the authenticated `get_own_likes` reader accidentally
+  replaced by the September 3 raw-search change. Both readers now coexist;
+  regression tests exercise the registered bookmark tool and retain support
+  for search results containing embed types newer than the SDK.
+
 ## 2026-08-23
 
 - **fix**: `/health` tells the truth. It returned 200 unconditionally, even
