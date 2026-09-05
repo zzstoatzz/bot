@@ -24,7 +24,7 @@ stores:
 | interaction | phi's reply inside a batch — `after_interaction`, verbatim user/bot pair | `[PAST EXCHANGES WITH @h]` | high |
 | observation | daily extraction at 19:00 UTC → `phi-extractor` → `observation-reconciler` | `[OBSERVATIONS ABOUT @h]` — 10 nearest the batch text | medium |
 | summary | prefect `phi-memory-synthesis` (`compact.py`), hourly, from observations + interactions | `[PHI'S SYNTHESIZED IMPRESSION OF @h]` | low — labeled *may hallucinate* |
-| note | `save_memory`, `publish_blog` — deliberate | `[RELEVANT MEMORIES — synthesized]` — top-10 → `phi-episodic-synth` | medium |
+| note | `save_memory`, `publish_blog` — deliberate | `[RELEVANT MEMORIES: selected saved accounts]` — top-10 → ID selection → exact text | medium |
 | run summary | every scheduled run, unconditionally (`tags=[run-summary, <label>]`) | same block · `search_memory` ("have I done this") | medium |
 | own post | jetstream tail of her repo; backfilled from PDS at start | `[PRIOR COVERAGE]` · the `self-repeat` judge | high |
 | repo event | the same tail, 48h | `[RECENT OPERATIONS]` — edits and deletes visible | high |
@@ -108,10 +108,12 @@ to add the draft key.
 - **supersession, not deletion.** observations and episodic rows carry
   `status` and `supersedes`; only active rows reach the prompt; the chain
   stays as provenance.
-- **episodic is synthesized, observations are not.** raw top-K from the
-  vector store put stale "pending X" notes next to fresh ones with equal
-  weight; `inject_episodic` now synthesizes top-K given goals + query.
-  per-author observations are already curated by reconciliation on write.
+- **episodic notes are selected and quoted.** search retains its recency
+  ranking, then a model selects IDs given the goals and query. Code renders
+  their exact text, date, origin, tags, and source count. `read_memory` opens
+  the full stored record and source URIs. This prevents recall from rewriting
+  a qualification; it does not validate a saved claim. Per-author observations
+  are still curated by reconciliation on write.
 - **writes to the library are live-first.** cards originate in the moment;
   the `curate` flow deletes, files, and trims and has no create tools. a
   review loop that authored from its own output once collapsed the library
@@ -133,7 +135,7 @@ anyone has asked for.
    context. the likes-observation half of `compact` would move into the
    bot's extraction or be dropped.
 2. **split run summaries out of episodic** (`phi-runs`, or a tag filter at
-   synth time), so `[RELEVANT MEMORIES]` draws only on what she chose to
+   selection time), so `[RELEVANT MEMORIES]` draws only on what she chose to
    remember and "have I done this" stays answerable from `search_memory`.
 3. **name the keys in the code.** group the `inject_*` callbacks by key so
    figure 3 is visible in `agent.py` rather than reconstructed from twenty

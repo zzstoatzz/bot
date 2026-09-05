@@ -715,7 +715,7 @@ class PhiAgent:
                 query = ctx.deps.event_material or ctx.deps.run_prompt
             if not query.strip():
                 return ""
-            # Pass phi's goals so the synthesis can rank by relevance to intent.
+            # Pass phi's goals so selection can rank by relevance to intent.
             try:
                 goals = await list_goal_records(bot_client)
             except Exception:

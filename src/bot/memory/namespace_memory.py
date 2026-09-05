@@ -9,10 +9,10 @@ from typing import ClassVar, TypedDict
 from atproto_core.exceptions import InvalidAtUriError
 from atproto_core.uri import AtUri
 from openai import AsyncOpenAI
-from pydantic_ai import Agent
 from turbopuffer import NotFoundError, Turbopuffer, omit
 
 from bot.config import settings
+from bot.memory.episodic_context import select_episodic_context
 from bot.memory.extraction import (
     EPISODIC_SCHEMA,
     USER_NAMESPACE_SCHEMA,
@@ -145,91 +145,6 @@ def _recency_weight(created_at: str, tags: list | None = None) -> float:
     except (ValueError, TypeError):
         age_days = 90.0
     return 0.5 ** (age_days / _RECENCY_HALF_LIFE_DAYS)
-
-
-# Lazy haiku agent — synthesizes top-K episodic candidates into a coherent
-# block, given phi's goals + the current query as context. Replaces a raw
-# top-K dump that was producing stale/contradictory content alongside fresh.
-_episodic_synth_agent: Agent | None = None
-
-
-def _get_episodic_synth_agent() -> Agent:
-    global _episodic_synth_agent
-    if _episodic_synth_agent is None:
-        _episodic_synth_agent = Agent[None, str](
-            name="phi-episodic-synth",
-            model=settings.extraction_model,
-            system_prompt=(
-                "You're helping phi pull a tight, useful summary from its "
-                "episodic memory for the situation at hand. You'll see phi's "
-                "current goals, what phi is processing right now, and the "
-                "raw candidates retrieved by similarity from the vector "
-                "store.\n\n"
-                "Write only what helps phi act on the current query. Dedupe "
-                "near-identical entries. Prefer recent over stale when they "
-                "conflict. Flag entries that may be stale (e.g. 'pending X' "
-                "notes about actions that may have completed since) — phi "
-                "can verify with tools if it matters.\n\n"
-                "Candidates tagged `correction` are phi's record of having "
-                "been wrong about something. When one is relevant to the "
-                "current query, always keep it — it exists precisely so phi "
-                "doesn't re-claim what she already retracted.\n\n"
-                "Every line you keep MUST carry its age and origin from the "
-                "bracket tag (e.g. '2d ago, cycle summary'). A memory "
-                "without when-and-where-from reads as a live fact and "
-                "misleads phi — never strip the tag.\n\n"
-                "Lowercase. No preamble, no meta-commentary. If nothing in "
-                "the candidates is actually relevant, return an empty string."
-            ),
-            output_type=str,
-        )
-    agent = _episodic_synth_agent
-    assert agent is not None
-    return agent
-
-
-async def _synthesize_episodic(
-    goals: list[dict], query: str, raw_notes: list[dict]
-) -> str:
-    if not raw_notes:
-        return ""
-
-    if goals:
-        goals_block = "\n".join(
-            f"- {g.get('title', '')}: {g.get('description', '')}" for g in goals
-        )
-    else:
-        goals_block = "(no goals set)"
-
-    def _kind(source: str) -> str:
-        if source.startswith("run:"):
-            return f"{source[4:]} summary"
-        return {"tool": "note phi saved", "conversation": "from a conversation"}.get(
-            source, source or "unknown origin"
-        )
-
-    notes_block = "\n".join(
-        f"[{(n.get('created_at') or '')[:10]}"
-        f"{' · ' + w if (w := relative_when(n.get('created_at') or '')) else ''}"
-        f" · {_kind(n.get('source', ''))}"
-        f"{' · ' + ', '.join(t) if (t := n.get('tags') or []) else ''}]"
-        f" {n.get('content', '')}"
-        for n in raw_notes
-    )
-
-    payload = (
-        f"phi's current goals:\n{goals_block}\n\n"
-        f"what phi is processing right now:\n{query}\n\n"
-        f"raw episodic candidates (top {len(raw_notes)} by similarity):\n"
-        f"{notes_block}"
-    )
-
-    try:
-        result = await _get_episodic_synth_agent().run(payload)
-        return (result.output or "").strip()
-    except Exception as e:
-        logger.warning(f"episodic synthesis failed: {e}")
-        return ""
 
 
 class NamespaceMemory:
@@ -921,22 +836,22 @@ class NamespaceMemory:
         goals: list[dict] | None = None,
         top_k: int = 10,
     ) -> str:
-        """Get a haiku-synthesized episodic context block for the prompt.
+        """Select relevant saved notes and render their exact text and IDs.
 
-        Top-K from the vector store, then a synthesis pass that takes phi's
-        goals + the current query as context and produces a coherent
-        block (deduped, recency-aware, contradictions flagged) instead of
-        a raw dump of similarity-ranked notes.
-
-        Returns an empty string if there are no relevant candidates.
+        Search retains its existing recency ranking and candidate count. The
+        selection model chooses records; it cannot rewrite their accounts.
         """
         raw = await self.search_episodic(query_text, top_k=top_k)
         if not raw:
             return ""
-        summary = await _synthesize_episodic(goals or [], query_text, raw)
-        if not summary:
-            return ""
-        return f"[RELEVANT MEMORIES — synthesized for this query]\n{summary}"
+        try:
+            return await select_episodic_context(goals or [], query_text, raw)
+        except Exception as error:
+            logger.warning(f"episodic selection failed: {error}")
+            return (
+                "[RELEVANT MEMORIES: selection unavailable for this run. "
+                "Use search_memory or search_encounters if recall is needed.]"
+            )
 
     async def search_unified(
         self, handle: str, query: str, top_k: int = 8

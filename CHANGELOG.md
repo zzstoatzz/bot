@@ -1,5 +1,13 @@
 # changelog
 
+## 2026-09-05 — Preserve accounts during ambient recall
+
+A recall recap dropped “against the correction note” from a saved regression
+check, making rereading a claim sound like checking its evidence. Replace the
+recap writer with ID selection and render the saved notes verbatim, including
+dates and exact read_memory addresses. Existing notes and retrieval ranking stay
+intact. A selection failure is visible as unavailable rather than empty recall.
+
 ## 2026-09-05 — Retain generated images before publication
 
 The first live image-reply test hit a PDS limitation: newly uploaded blobs

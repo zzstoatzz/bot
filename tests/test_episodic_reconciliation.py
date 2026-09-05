@@ -254,19 +254,6 @@ async def test_correction_tag_exempt_from_recency_decay():
     )
 
 
-def test_synth_candidates_render_tags():
-    """The ambient block's candidate lines must carry tags — a correction
-    invisible in [RELEVANT MEMORIES] is a correction phi can't act on."""
-    import inspect
-
-    from bot.memory import namespace_memory
-
-    src = inspect.getsource(namespace_memory._synthesize_episodic)
-    assert "tags" in src.split("notes_block")[1].split("payload")[0], (
-        "synth candidate lines no longer render tags"
-    )
-
-
 @pytest.mark.parametrize("action", ["ADD", "UPDATE", "DELETE", "NOOP"])
 async def test_save_returns_resulting_note_instead_of_candidate(action):
     mem, ns = _memory_with_episodic_ns()
