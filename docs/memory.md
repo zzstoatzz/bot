@@ -186,3 +186,8 @@ results and dated statements remain in the linked execution traces.
 
 The public atlas still selects its existing per-person/episodic sources;
 encounter and processing records are not added to that publication.
+
+`save_memory` returns the resulting note ID, text, citations, and reconciliation
+action after a successful write (or the retained note on NOOP). This exposes
+changes made by reconciliation instead of echoing the submitted candidate.
+The saved account and its citations remain claims, not independent verification.

@@ -23,6 +23,13 @@ from bot.memory.search_status import IncompleteMemorySearch
 from bot.utils.time import relative_when
 
 
+class EpisodicWriteResult(TypedDict):
+    id: str
+    action: str
+    content: str
+    source_uris: list[str]
+
+
 class ObservationRow(TypedDict):
     """An observation row as read back from turbopuffer.
 
@@ -686,7 +693,7 @@ class NamespaceMemory:
         tags: list[str],
         source: str = "tool",
         source_uris: list[str] | None = None,
-    ):
+    ) -> EpisodicWriteResult:
         """Store an episodic memory — something phi learned about the world.
 
         Consolidates at write time, the same way observations do: the
@@ -709,9 +716,11 @@ class NamespaceMemory:
             similar = []
 
         if not similar:
-            await self._write_episodic(content, tags, source, source_uris, embedding)
+            saved = await self._write_episodic(
+                content, tags, source, source_uris, embedding
+            )
             logger.info(f"stored episodic memory [{source}]: {content[:80]}")
-            return
+            return saved
 
         best = similar[0]
         try:
@@ -738,7 +747,12 @@ class NamespaceMemory:
             logger.info(
                 f"episodic NOOP [{source}]: '{content[:60]}' ({decision.reason})"
             )
-            return
+            return {
+                "id": best["id"],
+                "action": "NOOP",
+                "content": best["content"],
+                "source_uris": sources,
+            }
 
         if action in ("UPDATE", "DELETE") and decision is not None:
             self.namespaces["episodic"].write(
@@ -753,7 +767,7 @@ class NamespaceMemory:
                     )
                 )
                 merged_embedding = await self._get_embedding(merged_content)
-                await self._write_episodic(
+                saved = await self._write_episodic(
                     merged_content,
                     merged_tags,
                     source,
@@ -766,7 +780,7 @@ class NamespaceMemory:
                     f"'{merged_content[:40]}' ({decision.reason})"
                 )
             else:
-                await self._write_episodic(
+                saved = await self._write_episodic(
                     content,
                     tags,
                     source,
@@ -778,10 +792,14 @@ class NamespaceMemory:
                     f"episodic DELETE+ADD [{source}]: superseded "
                     f"'{best['content'][:40]}' ({decision.reason})"
                 )
-            return
+            saved["action"] = action
+            return saved
 
-        await self._write_episodic(content, tags, source, source_uris, embedding)
+        saved = await self._write_episodic(
+            content, tags, source, source_uris, embedding
+        )
         logger.info(f"stored episodic memory [{source}]: {content[:80]}")
+        return saved
 
     async def _write_episodic(
         self,
@@ -791,7 +809,7 @@ class NamespaceMemory:
         source_uris: list[str] | None,
         embedding: list[float],
         supersedes: str = "",
-    ) -> None:
+    ) -> EpisodicWriteResult:
         entry_id = self._generate_id("episodic", source, content)
         self.namespaces["episodic"].write(
             upsert_rows=[
@@ -810,6 +828,13 @@ class NamespaceMemory:
             distance_metric="cosine_distance",
             schema=EPISODIC_SCHEMA,
         )
+
+        return {
+            "id": entry_id,
+            "action": "ADD",
+            "content": content,
+            "source_uris": list(source_uris or []),
+        }
 
     async def _find_similar_episodic(
         self, embedding: list[float], top_k: int = 3

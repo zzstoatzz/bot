@@ -1,5 +1,15 @@
 # changelog
 
+## 2026-09-05 — Return the resulting saved note
+
+During the Ali correction, reconciliation removed a page-limited qualifier
+from the submitted text. save_memory still echoed the submitted text as if
+it had been stored unchanged. The acknowledgment now returns the resulting
+note ID, content, source references, and reconciliation action. UPDATE shows
+the merged account; NOOP shows the retained account. Failed writes do not
+produce a success acknowledgment. This exposes reconciliation to the caller
+without treating the saved account as verified evidence.
+
 ## 2026-09-05 — Preserve citations on unchanged episodic notes
 
 Phi supplied a corrected citation while re-saving an existing note. The

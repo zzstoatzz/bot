@@ -178,6 +178,9 @@ def register(agent):
         your context at the start of a run, keyed to what you're
         processing) and explicit `search_memory`.
 
+        Returns the resulting note ID, text, and citations after reconciliation,
+        which may differ from what you submitted.
+
         Re-saving a refined version of something you remember SUPERSEDES
         the old row — write-time reconciliation patches it with pedigree.
         This is how you edit your memory: save the better version, the
@@ -195,10 +198,16 @@ def register(agent):
         """
         if ctx.deps.memory:
             sources = [source_uri] if source_uri else None
-            await ctx.deps.memory.store_episodic_memory(
+            saved = await ctx.deps.memory.store_episodic_memory(
                 content, tags, source="tool", source_uris=sources
             )
-            return f"saved to memory — {content[:100]}"
+            return json.dumps(
+                {
+                    "stored_note": saved,
+                    "meaning": "The resulting saved account after reconciliation; its claims and citations are not independently verified.",
+                },
+                ensure_ascii=False,
+            )
         return "private memory not available"
 
 

@@ -8,12 +8,15 @@ near-duplicate row per run, forever. Episodic writes now flow through the
 same reconciler; superseded rows are dropped from every read path.
 """
 
+import json
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
+from pydantic_ai import Agent
 
 from bot.memory.namespace_memory import NamespaceMemory
+from bot.tools.memory import register
 
 
 def _memory_with_episodic_ns():
@@ -257,3 +260,43 @@ def test_synth_candidates_render_tags():
     assert "tags" in src.split("notes_block")[1].split("payload")[0], (
         "synth candidate lines no longer render tags"
     )
+
+
+@pytest.mark.parametrize("action", ["ADD", "UPDATE", "DELETE", "NOOP"])
+async def test_save_returns_resulting_note_instead_of_candidate(action):
+    mem, ns = _memory_with_episodic_ns()
+    mem._find_similar_episodic = AsyncMock(return_value=SIMILAR)
+    with patch(
+        "bot.memory.namespace_memory.get_reconciliation_agent",
+        return_value=_decision(action, new_content="merged account", new_tags=["t"]),
+    ):
+        result = await mem.store_episodic_memory(
+            "candidate account", ["t"], source_uris=["at://new/post"]
+        )
+    if action == "NOOP":
+        expected = {**SIMILAR[0], "source_uris": ["at://old/post", "at://new/post"]}
+    else:
+        expected = _upserted_rows(ns)[0]
+    assert result == {
+        "id": expected["id"], "action": action,
+        "content": expected["content"], "source_uris": expected["source_uris"],
+    }
+
+
+async def test_save_tool_reports_reconciled_content_and_propagates_failed_write():
+    mem, ns = _memory_with_episodic_ns()
+    mem._find_similar_episodic = AsyncMock(return_value=SIMILAR)
+    agent = Agent()
+    register(agent)
+    save = agent._function_toolset.tools["save_memory"].function
+    ctx = SimpleNamespace(deps=SimpleNamespace(memory=mem))
+    with patch(
+        "bot.memory.namespace_memory.get_reconciliation_agent",
+        return_value=_decision("UPDATE", new_content="only within that page", new_tags=["t"]),
+    ):
+        result = json.loads(await save(ctx, "exhaustive absence", ["t"]))
+        assert result["stored_note"]["content"] == "only within that page"
+        assert result["stored_note"]["id"] == _upserted_rows(ns)[0]["id"]
+        ns.write.side_effect = RuntimeError("storage unavailable")
+        with pytest.raises(RuntimeError, match="storage unavailable"):
+            await save(ctx, "another candidate", ["t"])
