@@ -73,8 +73,10 @@ def register(agent):
         """Make an image and upload it to your own PDS as a blob.
 
         Generation and upload happen inside the tool; you get back the blob
-        reference JSON plus width/height. Embed that blob object verbatim in
-        whatever record you're composing via pdsx:
+        reference JSON plus width/height. For a Bluesky post or reply, pass
+        images=[{"blob": <returned blob>, "alt": "description and visible text"}]
+        to post, along with text and optional in_reply_to.
+        Other destinations use pdsx:
         - social.grain.photo (grain photos — load the grain-photos skill)
         - app.bsky.actor.profile/self avatar or banner
         The blob is inert until a record references it; generating an image
@@ -121,8 +123,8 @@ def register(agent):
                 "aspectRatio": {"width": width, "height": height},
                 "bytes": len(data),
                 "note": (
-                    "embed `blob` verbatim as the blob field of your record "
-                    "(e.g. social.grain.photo's `photo`). aspectRatio is "
+                    "For Bluesky use post(images=[{blob: this blob, alt: description}]). "
+                    "For other records embed the blob verbatim (e.g. grain photo). aspectRatio is "
                     "ready to copy into grain records."
                 ),
             }

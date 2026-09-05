@@ -26,7 +26,7 @@ import logging
 from typing import Annotated, Literal, NotRequired, TypedDict
 
 from pydantic import Field
-from pydantic_ai import Agent
+from pydantic_ai import Agent, BinaryContent
 
 from bot.config import settings
 from bot.core.abilities import describe
@@ -192,6 +192,7 @@ async def check_action(
     recent_posts: str = "",
     tool: str = "",
     prior_coverage: str = "",
+    images: list[BinaryContent] | None = None,
 ) -> PolicyVerdict:
     """Ask the judge whether a proposed action is within policy.
 
@@ -230,7 +231,9 @@ async def check_action(
             "phi's own earlier posts nearest the proposed text (evidence for "
             f"self-repeat):\n{prior_coverage}",
         ]
-    result = await _get_judge().run("\n".join(parts))
+    result = await _get_judge().run(
+        ["\n".join(parts), *images] if images else "\n".join(parts)
+    )
     verdict = result.output
     if verdict["verdict"] != "allow":
         logger.warning(

@@ -152,7 +152,11 @@ class BotClient:
         self.client.app.bsky.notification.update_seen({"seenAt": seen_at})
 
     async def create_post(
-        self, text: str, reply_to=None, allowed_handles: set[str] | None = None
+        self,
+        text: str,
+        reply_to=None,
+        allowed_handles: set[str] | None = None,
+        embed: models.AppBskyEmbedImages.Main | None = None,
     ):
         """Create a new post or reply. Splits long text into a self-reply thread.
 
@@ -167,10 +171,15 @@ class BotClient:
             facets = create_facets(text, self.client, allowed_handles)
             if reply_to:
                 result = self.client.send_post(
-                    text=text, reply_to=reply_to, facets=facets
+                    text=text,
+                    reply_to=reply_to,
+                    facets=facets,
+                    **({"embed": embed} if embed else {}),
                 )
             else:
-                result = self.client.send_post(text=text, facets=facets)
+                result = self.client.send_post(
+                    text=text, facets=facets, **({"embed": embed} if embed else {})
+                )
             record_local_write(result.uri)
             return result
 
@@ -183,7 +192,10 @@ class BotClient:
 
             if i == 0:
                 last_result = self.client.send_post(
-                    text=chunk, reply_to=reply_to, facets=facets
+                    text=chunk,
+                    reply_to=reply_to,
+                    facets=facets,
+                    **({"embed": embed} if embed else {}),
                 )
                 if root_ref is None:
                     root_ref = models.ComAtprotoRepoStrongRef.Main(

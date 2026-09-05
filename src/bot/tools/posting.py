@@ -28,13 +28,14 @@ from typing import Annotated
 from atproto_client import models
 from atproto_client.models.utils import get_model_as_dict
 from pydantic import Field
-from pydantic_ai import RunContext
+from pydantic_ai import BinaryContent, RunContext
 
 from bot.config import settings
 from bot.core.atproto_client import bot_client
 from bot.core.mentionable import get_mentionable_handles
 from bot.core.override import get_override, refusal_text
 from bot.core.policy import check_action
+from bot.core.post_images import PostImage, prepare_images
 from bot.core.prior_coverage import coverage_note
 from bot.status import bot_status
 from bot.tools._helpers import PhiDeps, notification_input
@@ -168,6 +169,7 @@ async def _policy_gate(
     unprompted: bool,
     tool: str = "post",
     prior_coverage: str = "",
+    images: list[BinaryContent] | None = None,
 ) -> tuple[str | None, str]:
     """Run the pre-action policy judge. Returns (refusal, warn_note).
 
@@ -182,6 +184,7 @@ async def _policy_gate(
             recent_posts=_recent_own_posts(),
             tool=tool,
             prior_coverage=prior_coverage,
+            **({"images": images} if images else {}),
         )
     except Exception as e:
         logger.warning(f"policy check unavailable: {e}")
@@ -308,12 +311,21 @@ def register(agent):
                 )
             ),
         ] = "",
+        images: Annotated[
+            list[PostImage] | None,
+            Field(
+                description="up to four images: each has blob from generate_image and alt text; attached once, on the first post",
+                max_length=4,
+            ),
+        ] = None,
     ) -> str:
         """Create a post on bluesky. Top-level or reply — one operation.
 
         For threading: pass the URI of the parent post as ``in_reply_to``.
         Thread off your own posts (find URIs via ``get_own_posts``) or off
-        anyone else's verified post.
+        anyone else's verified post. To make an image reply, use generate_image
+        then pass its blob in images with alt text describing the image and any
+        visible writing. Images appear once, on the first post of a split thread.
 
         Handles facet construction (your @mentions notify only allowlisted
         handles), reply-ref construction (parent + root) when ``in_reply_to``
@@ -325,6 +337,25 @@ def register(agent):
         if override["active"]:
             return refusal_text(override)
 
+        embed = None
+        image_pixels = []
+        image_description = ""
+        if images:
+            try:
+                await bot_client.authenticate()
+                profile = bot_client.client.me
+                if profile is None:
+                    raise ValueError("authenticated profile unavailable")
+                embed, image_pixels, image_description = await prepare_images(
+                    profile.did, images
+                )
+            except Exception as error:
+                logger.warning(
+                    "post image preparation failed: %s", type(error).__name__
+                )
+                return "image attachment could not be read or validated; nothing was posted"
+        post_options = {"embed": embed} if embed else {}
+        action_text = text + ("\n" + image_description if image_description else "")
         notifs = ctx.deps.notifications_context or {}
         unprompted = not notification_input(ctx.deps) and not ctx.deps.author_handle
 
@@ -335,7 +366,7 @@ def register(agent):
             # (gerakines, 2026-08-18). a failed lookup degrades to "" and
             # the judge simply has no self-repeat evidence.
             refusal, warn_note = await _policy_gate(
-                f"top-level post on phi's own feed: {text}",
+                f"top-level post on phi's own feed: {action_text}",
                 "top-level post, triggered during "
                 + (
                     "notification handling."
@@ -345,12 +376,15 @@ def register(agent):
                 + _operator_authorization_note(notifs),
                 unprompted=unprompted,
                 prior_coverage=await coverage_note(ctx.deps.memory, text),
+                images=image_pixels,
             )
             if refusal:
                 return refusal
             try:
                 allowed = await _build_allowed_handles(ctx.deps.author_handle or "")
-                await bot_client.create_post(text, allowed_handles=allowed)
+                await bot_client.create_post(
+                    text, allowed_handles=allowed, **post_options
+                )
                 bot_status.record_response()
                 if f"@{settings.owner_handle}" in text:
                     bot_status.record_operator_mention(ctx.deps.seen_alert_keys)
@@ -373,12 +407,13 @@ def register(agent):
         refusal, warn_note = await _policy_gate(
             f"reply to {in_reply_to}"
             + (f" (by @{author_handle})" if author_handle else "")
-            + f": {text}",
+            + f": {action_text}",
             _reply_provenance(
                 in_reply_to, ctx.deps.notifications_context or {}, root_uri
             )
             + _operator_authorization_note(notification_input(ctx.deps)),
             unprompted=unprompted,
+            images=image_pixels,
         )
         if refusal:
             return refusal
@@ -392,7 +427,7 @@ def register(agent):
         try:
             allowed = await _build_allowed_handles(author_handle)
             result = await bot_client.create_post(
-                text, reply_to=reply_ref, allowed_handles=allowed
+                text, reply_to=reply_ref, allowed_handles=allowed, **post_options
             )
         except Exception as e:
             logger.exception(f"post (reply) failed for {in_reply_to}: {e}")
@@ -419,7 +454,7 @@ def register(agent):
             sources = [u for u in (in_reply_to, bot_post_uri) if u]
             try:
                 await ctx.deps.memory.after_interaction(
-                    author_handle, post_text, text, source_uris=sources
+                    author_handle, post_text, action_text, source_uris=sources
                 )
             except Exception as e:
                 logger.warning(f"failed to store interaction for @{author_handle}: {e}")

@@ -97,3 +97,12 @@ used as the post author. These local changes do not add run receipts.
 When a delivered post cannot be hydrated, the notification block retains the
 delivered text and labels the lookup status and record version. It does not
 assert the post was deleted or treat that version as a verified reply target.
+
+## Image posts
+
+`generate_image` returns an uploaded blob. `post` accepts up to four image
+attachments with alt text, for top-level posts or replies. It reads the actual
+blobs from Phi's PDS and sends the pixels and descriptions to the existing
+policy judge. The usual override, provenance, and judge-outage behavior apply.
+Text splitting attaches images only to the first post. Image descriptions and
+blob IDs accompany stored reply text; the source post record retains the embed.

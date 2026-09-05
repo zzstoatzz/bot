@@ -1,5 +1,13 @@
 # changelog
 
+## 2026-09-05 — Attach images through post
+
+Phi could generate images but could not attach them through the guarded
+Bluesky posting path. post now accepts up to four blobs with alt text, reads
+and validates their pixels, and supplies images plus text to the existing
+policy judge. Top-level and reply posts preserve the usual gates; split threads
+attach the images once. The generation tool now points at this supported path.
+
 ## 2026-09-05 — Open the saved version
 
 Explicit saves returned IDs that Phi could not open, while episodic search
