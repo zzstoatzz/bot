@@ -7,6 +7,10 @@ what moved and what it cost to find out.
 
 ## 2026-09-05
 
+- **pdsx rollout**: the service now returns complete record pages with cursors
+  or a retryable size error. Update the existing skill to match the live
+  contract and retire the select-only cursor workaround.
+
 - **record retrieval skill**: document pdsx reply-reference strings and the
   current requirement to project list_records results to retain the cursor.
   Retry truncated pages before advancing so omitted records are not skipped.

@@ -38,7 +38,7 @@ records that point at posts — likes, reposts, bookmarks, list items,
 notification subjects — carry a `subject.uri`, not the text. do not fetch
 them one `get_record` at a time, and do not pull whole post views: both
 read tools take a jq `select` that returns only what you name, and
-anything over 30k chars gets trimmed, so project before you page.
+large responses exceed the 30k character limit, so project before you page.
 
 ```
 mcp__pdsx__list_records("app.bsky.feed.like", repo="zzstoatzz.io", limit=100,
@@ -65,11 +65,12 @@ mcp__pdsx__list_records("app.bsky.feed.post", repo="phi.zzstoatzz.io", limit=100
     select=".[] | {uri, t: .value.createdAt, parent: .value.reply.parent}")
 ```
 
-`list_records` currently returns its cursor only with `select`. An unprojected
-list without a cursor does not establish exhaustion. An empty projected result
-with a cursor still has another page. If the response reports truncation,
-narrow the projection or reduce the limit and retry the same page before
-advancing: the cursor follows the fetched page, including any omitted rows.
+`list_records` returns `{results, cursor}` with or without `select`. An empty
+projected result with a cursor still has another page. `response_too_large`
+means narrow the projection or reduce the limit and retry with `retry_cursor`;
+it is an error, not an empty page. Successful pages omit no records. The generic
+`query` tool can still report truncation; retry those pages with a narrower
+projection before following a cursor past omitted results.
 
 ## finding the right lexicon
 
