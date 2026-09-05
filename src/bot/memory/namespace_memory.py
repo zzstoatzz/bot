@@ -895,6 +895,7 @@ class NamespaceMemory:
                     created_at = getattr(row, "created_at", "") or ""
                     results.append(
                         {
+                            "id": row.id,
                             "content": row.content,
                             "tags": getattr(row, "tags", []),
                             "source": getattr(row, "source", "unknown"),
@@ -1004,6 +1005,7 @@ class NamespaceMemory:
                         created_at = getattr(row, "created_at", "") or ""
                         results.append(
                             {
+                                "id": row.id,
                                 "content": row.content,
                                 "tags": getattr(row, "tags", []),
                                 "source": getattr(row, "source", "unknown"),

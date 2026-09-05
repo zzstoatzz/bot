@@ -90,6 +90,10 @@ RISK: dict[str, Risk] = {
         "magnitude": "none",
         "reason": "reads a feed; a post found this way is not an invitation to reply to it, which is the uninvited-reply policy.",
     },
+    "read_memory": {
+        "magnitude": "none",
+        "reason": "reads an exact stored episodic version; its claims remain unverified.",
+    },
     "search_memory": {
         "magnitude": "none",
         "reason": "reads her private vector memory, where a bad note stored earlier resurfaces looking like an established fact.",

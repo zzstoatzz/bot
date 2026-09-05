@@ -10,6 +10,7 @@ from bot.memory.encounter_search import read_encounter as read_source_encounter
 from bot.memory.encounter_search import read_encounter_activity
 from bot.memory.encounter_search import search_encounters as search_source_encounters
 from bot.memory.encounters import ENCOUNTER_NAMESPACE
+from bot.memory.episodic_read import read_note
 from bot.memory.search_status import IncompleteMemorySearch
 from bot.tools._helpers import (
     PhiDeps,
@@ -124,7 +125,7 @@ def register(agent):
         """Search your private memory. Use to find past conversations and
         things you've explicitly saved.
 
-        Results include stored source URIs when available; open them to
+        Results include episodic IDs for read_memory and stored source URIs; open them to
         inspect the original exchange or document.
 
         Without `about`: searches two places at once — your episodic notes
@@ -153,6 +154,29 @@ def register(agent):
             return "Memory search failed; history is unavailable for this query. This is not evidence of no prior encounter."
 
     @agent.tool
+    async def read_memory(
+        ctx: RunContext[PhiDeps],
+        note_id: Annotated[
+            str,
+            Field(
+                description="exact episodic note ID from save_memory or search_memory"
+            ),
+        ],
+    ) -> str:
+        """Read one stored episodic version verbatim, including superseded notes.
+
+        Returns its date, origin, status, citations, and prior-version ID.
+        These are dated accounts, not independently verified events. Open
+        source URIs to check evidence; read the supersedes ID to inspect history.
+        """
+        if not ctx.deps.memory:
+            return json.dumps({"status": "unavailable", "note": None})
+        return json.dumps(
+            await read_note(ctx.deps.memory.namespaces["episodic"], note_id),
+            ensure_ascii=False,
+        )
+
+    @agent.tool
     async def save_memory(
         ctx: RunContext[PhiDeps],
         content: Annotated[
@@ -172,29 +196,14 @@ def register(agent):
             ),
         ] = "",
     ) -> str:
-        """Save something to your private memory.
+        """Save a private episodic note in your exact wording.
 
-        Two ways it comes back: ambient recall (relevant notes ride into
-        your context at the start of a run, keyed to what you're
-        processing) and explicit `search_memory`.
+        Returns the stored ID, text, and citations. Revisions supersede related
+        notes; older versions remain readable with read_memory. Search with
+        search_memory; relevant notes also enter ambient recall.
 
-        Stores your wording exactly and returns the saved note ID, text, and
-        citations. Related older versions remain in memory as superseded records.
-
-        Re-saving a refined version of something you remember SUPERSEDES
-        the old row — write-time reconciliation patches it with pedigree.
-        This is how you edit your memory: save the better version, the
-        stale one retires.
-
-        Tag `correction` when recording that you got something wrong
-        (claim, fix, and the post uri where you corrected it). Correction
-        notes never fade from recall the way ordinary notes do. The
-        corrected FACT belongs in your semble library only if it earns a
-        place on its own — filed under its subject, never under the
-        mistake.
-
-        Pass source_uri when the memory is grounded in a specific post,
-        thread, or card you can cite — it makes it checkable later.
+        Tag corrections with 'correction' to retain their recall weight.
+        Pass the original source URI when available so the account is checkable.
         """
         if ctx.deps.memory:
             sources = [source_uri] if source_uri else None

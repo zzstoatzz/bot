@@ -206,3 +206,10 @@ async def test_embedding_failure_is_reported_without_backend_error_text():
     result = await tool(ctx, query="ten votes")
     assert "Memory search failed" in result
     assert "credentials" not in result
+
+
+@pytest.mark.parametrize("options", [{}, {"tag": "correction"}])
+async def test_episodic_search_keeps_the_exact_version_id(options):
+    tool, ctx, _ = tool_with_memory()
+    result = await tool(ctx, query="ten votes", **options)
+    assert "[note example-exchange]" in result

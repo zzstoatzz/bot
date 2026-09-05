@@ -67,6 +67,9 @@ window is a context bound, not a claim of capture completeness. Each result ID
 can be opened with `read_encounter`; `search_encounters` searches captured text
 across people. Existing per-person and episodic memories remain accessible
 through `search_memory`; they are not deleted or treated as fully migrated.
+Episodic search results and save receipts carry version IDs. `read_memory`
+opens that exact stored account, including superseded versions, with its date,
+origin, citations, and predecessor ID. A stored account is not verified evidence.
 
 because `inject_notifications` / `inject_user_memory` / `inject_episodic` return `""` without a notifications context, the **cycle** and **reflection** paths run with the every-run system blocks above plus their own appended blocks — but no notifications / per-author / episodic blocks.
 

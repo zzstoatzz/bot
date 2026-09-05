@@ -1,5 +1,14 @@
 # changelog
 
+## 2026-09-05 — Open the saved version
+
+Explicit saves returned IDs that Phi could not open, while episodic search
+dropped them. Preserve IDs in search results and add read_memory for one exact
+version, including superseded notes and predecessor links. The reader returns
+stored wording, dates, origin, status, and citations without synthesis. Missing
+records and unavailable storage are distinct results. Shorten save guidance
+while making the version reader discoverable.
+
 ## 2026-09-05 — Replace episodic versions in one write
 
 Reconciliation marked the old note superseded before embedding and writing

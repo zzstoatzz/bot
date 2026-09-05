@@ -151,6 +151,9 @@ async def test_reconciler_outage_degrades_to_add():
 
 
 class _Row(SimpleNamespace):
+    def __init__(self, **kwargs):
+        super().__init__(id=kwargs["content"], **kwargs)
+
     def __getitem__(self, k):
         if k == "$dist":
             return self.dist
