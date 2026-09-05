@@ -21,7 +21,8 @@ import type {
 	GraphData,
 	HealthInfo,
 	Skill,
-	UserView
+	UserView,
+	UserViewInteraction
 } from './types';
 
 export const PHI_DID = 'did:plc:65sucjiel52gefhcdcypynsr';
@@ -156,10 +157,35 @@ export async function getUserView(handle: string): Promise<UserView | null> {
 	try {
 		const res = await fetch(`/api/users/${encodeURIComponent(handle)}`);
 		if (!res.ok) return null;
-		return await res.json();
+		const view: UserView = await res.json();
+		view.recent_interactions = parseUserInteractions(view.recent_interactions);
+		return view;
 	} catch {
 		return null;
 	}
+}
+
+function parseUserInteractions(value: unknown): UserViewInteraction[] | null {
+	if (!Array.isArray(value)) return null;
+	const items: unknown[] = value;
+	const interactions: UserViewInteraction[] = [];
+	for (const item of items) {
+		if (
+			typeof item !== 'object' || item === null ||
+			!('id' in item) || typeof item.id !== 'string' ||
+			!('content' in item) || typeof item.content !== 'string' ||
+			!('created_at' in item) || (item.created_at !== null && typeof item.created_at !== 'string') ||
+			!('source_uris' in item) || !Array.isArray(item.source_uris) ||
+			!item.source_uris.every((uri: unknown): uri is string => typeof uri === 'string')
+		) return null;
+		interactions.push({
+			id: item.id,
+			content: item.content,
+			created_at: item.created_at,
+			source_uris: item.source_uris
+		});
+	}
+	return interactions;
 }
 
 // --- bsky public API ---

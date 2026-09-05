@@ -17,7 +17,7 @@
 	<span class="hint chrome faint">lens</span>
 	<div class="row">
 		{#each LENSES as lens, i (lens.key)}
-			<a href={lens.href} class="opt chrome" class:active={current === lens.key}>
+			<a href={lens.href} class="opt chrome" class:active={current === lens.key} aria-current={current === lens.key ? 'page' : undefined}>
 				<span class="num">{i + 1}</span>
 				<span class="lbl">{lens.label}</span>
 			</a>
@@ -107,9 +107,9 @@
 		.opt {
 			flex: 1;
 			justify-content: center;
-			padding: 8px 10px;
+			padding: 8px 6px;
 			font-size: 12px;
-			min-height: 36px;
+			min-height: 44px;
 			color: var(--text-mid);
 		}
 		.opt.active {

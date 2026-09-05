@@ -22,6 +22,13 @@ SPA: `ssr`/`prerender` disabled globally, unknown routes fall back to
 `OverrideBanner` renders cockpit-wide when the operator's override is
 active (public read of the record, ~60s cadence), linking to `/operator`.
 
+The context panel distinguishes the cached base-context composition from
+provider-measured usage in the runs included in that snapshot. The base
+composition excludes task prompts and per-run blocks; it is not the full
+starting context of a real run. Refresh failures leave the previous snapshot
+visible with an explicit failure message. The operator form keeps its own
+account-ownership rules regardless of the displayed usage data.
+
 ## oauth notes
 
 - browser flow (`@atproto/oauth-client-browser`), doodl's house pattern:
@@ -48,3 +55,13 @@ bun run check                          # svelte-check
 the docker build compiles `web/` in a bun stage and the fastapi app
 mounts `web/build/` at `/` (see `src/bot/main.py` "frontend mount" for
 the routing layering — explicit routes, then static, then SPA fallback).
+
+## Exchange inspection
+
+The user-view endpoint returns up to five recent stored reply pairs
+alongside the exchange count, with original content, storage timestamp, and
+source URIs. The detail drawer renders those rows and links to source posts.
+`recent_interactions: null` means the read failed or the serving API lacks
+this field; an empty array means that read succeeded with no rows. Legacy
+rows without source URIs remain visible and identify their missing links.
+This is bounded reply-pair history, not a complete encounter timeline.

@@ -906,6 +906,7 @@
 	}
 
 	function onWheel(e: WheelEvent) {
+		if (mobile()) return;
 		e.preventDefault();
 		const rect = canvas.getBoundingClientRect();
 		const mx = e.clientX - rect.left;
@@ -1243,38 +1244,33 @@
 	}
 
 	@media (max-width: 760px) {
+		.host {
+			position: relative;
+			inset: auto;
+		}
+
 		.canvas-hit {
 			display: none;
 		}
 
 		.desktop-field {
-			--mobile-field-h: clamp(300px, 48dvh, 410px);
-			top: 126px;
-			height: var(--mobile-field-h);
-			inset-inline: 0;
-			bottom: auto;
+			position: relative;
+			inset: auto;
+			height: clamp(240px, 36dvh, 320px);
 			z-index: 1;
+		}
+		canvas {
+			touch-action: pan-y;
 		}
 
 		.mobile-mind {
-			position: absolute;
-			top: calc(126px + clamp(300px, 48dvh, 410px) + 12px);
-			right: 0;
-			bottom: 0;
-			left: 0;
+			position: relative;
 			display: flex;
 			flex-direction: column;
 			gap: 12px;
-			padding: 0 14px calc(74px + env(safe-area-inset-bottom));
-			overflow-y: auto;
-			-webkit-overflow-scrolling: touch;
-			scrollbar-width: none;
+			padding: 12px 14px 0;
 			pointer-events: auto;
 			z-index: 2;
-		}
-
-		.mobile-mind::-webkit-scrollbar {
-			display: none;
 		}
 
 		.mobile-panel,

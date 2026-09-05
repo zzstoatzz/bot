@@ -94,24 +94,22 @@
 
 <main class="page">
 	<div class="page-inner">
-		<h1>operator override</h1>
+		<h1>Operator controls</h1>
 
 		<p class="explainer">
-			safe mode is an <code>{OVERRIDE_COLLECTION}</code> record on the <em>operator's</em> repo —
-			public, inspectable, and honest. while active, phi's outward-facing tools (post / like /
-			repost) refuse with the message below, and it renders as a banner in her system prompt.
-			anyone can sign in and write this record to their own repo; the bot only obeys the
-			operator's copy. repo ownership is the allowlist.
+			An active override pauses Phi's public actions and puts your message in her context.
+			Phi follows the override on Nate's account. Signing in with another account only lets
+			you edit that account's record.
 		</p>
 
 		{#if live}
 			<div class="live {live.active ? 'live-active' : ''}">
-				<span class="live-label">live state (what phi obeys):</span>
+				<span class="live-label">Current override</span>
 				{#if live.active}
 					<strong>override ACTIVE</strong>
 					<blockquote>{live.message}</blockquote>
 				{:else}
-					inactive — phi is operating normally
+					Inactive. Phi is operating normally.
 				{/if}
 			</div>
 		{/if}
@@ -120,7 +118,8 @@
 			<div class="status">loading…</div>
 		{:else if !session}
 			<form onsubmit={signIn} class="login">
-				<input type="text" placeholder="your handle (e.g. zzstoatzz.io)" bind:value={handleInput} />
+				<label for="operator-handle">Your AT Protocol handle</label>
+				<input id="operator-handle" type="text" placeholder="e.g. zzstoatzz.io" bind:value={handleInput} />
 				<button type="submit">sign in with atproto</button>
 			</form>
 		{:else}
@@ -164,6 +163,9 @@
 	 * pages, so content pages own their scroll region below the HUD chrome
 	 * (same pattern as docket/capabilities). */
 	.page {
+		z-index: 1;
+		background: var(--bg-void);
+		font-size: 15px;
 		position: fixed;
 		inset: 0;
 		overflow-y: auto;
@@ -176,9 +178,9 @@
 		margin: 0 auto;
 	}
 	.explainer {
-		color: var(--text-dim);
+		color: var(--text-mid);
 		max-width: 60ch;
-		line-height: 1.5;
+		line-height: 1.65;
 	}
 	.live {
 		border: 1px solid var(--line-dim);
@@ -194,7 +196,7 @@
 	.live-label {
 		display: block;
 		font-size: 0.8em;
-		opacity: 0.6;
+		color: var(--text-mid);
 		margin-bottom: 0.25rem;
 	}
 	.live blockquote {
@@ -248,5 +250,10 @@
 		color: var(--text-dim);
 		font-family: var(--font-mono);
 		font-size: 13px;
+	}
+	@media (max-width: 760px) {
+		.page {
+			padding-top: 150px;
+		}
 	}
 </style>

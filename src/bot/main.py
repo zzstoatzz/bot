@@ -496,6 +496,7 @@ async def user_view(handle: str):
     # most users have far fewer of each kind, and >200 of any one kind
     # renders the same way visually anyway.
     counts: dict[str, int] = {"observation": 0, "interaction": 0, "summary": 0}
+    recent_interactions: list[dict] | None = None
     for kind in counts:
         active_filter = (
             ["And", [["kind", "Eq", kind], ["status", "NotEq", "superseded"]]]
@@ -507,9 +508,19 @@ async def user_view(handle: str):
                 rank_by=("created_at", "desc"),
                 top_k=200,
                 filters=active_filter,
-                include_attributes=["kind"],
+                include_attributes=True if kind == "interaction" else ["kind"],
             )
             counts[kind] = len(resp.rows or [])
+            if kind == "interaction":
+                recent_interactions = [
+                    {
+                        "id": str(row.id),
+                        "content": getattr(row, "content", ""),
+                        "created_at": getattr(row, "created_at", None),
+                        "source_uris": getattr(row, "source_uris", []) or [],
+                    }
+                    for row in (resp.rows or [])[:5]
+                ]
         except Exception:
             pass  # namespace may not exist yet; counts stay 0
 
@@ -587,6 +598,7 @@ async def user_view(handle: str):
         "last_seen": last_seen,
         "summary": summary_obj,
         "recent_observations": recent_observations,
+        "recent_interactions": recent_interactions,
     }
     _user_view_cache[handle] = (now + _USER_VIEW_TTL, payload)
     return JSONResponse(payload)

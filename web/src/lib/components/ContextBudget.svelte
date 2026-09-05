@@ -39,7 +39,7 @@
 		} else if (reply.kind === 'computing') {
 			err = 'still composing after a restart — try again in a minute';
 		} else {
-			err = 'unavailable — rate limited, or phi is not up';
+			err = 'The snapshot could not be retrieved. Try refreshing again.';
 		}
 		loading = false;
 	}
@@ -123,8 +123,8 @@
 
 <section class="ctx">
 	<div class="head">
-		<h2>context window</h2>
-		<button class="refresh" onclick={() => load(true)} disabled={loading} title="recompose the next run and count it again (takes a few seconds)">{loading ? 'weighing…' : 'recount'}</button>
+		<h2>Context window</h2>
+		<button class="refresh" onclick={() => load(true)} disabled={loading} title="Recompose base context and refresh the usage snapshot">{loading ? 'Refreshing…' : 'Refresh snapshot'}</button>
 	</div>
 
 	{#if loading && !data}
@@ -132,13 +132,16 @@
 	{:else if err && !data}
 		<div class="status">{err}</div>
 	{:else if data}
+		{#if err}
+			<p class="status" role="status">Refresh failed. Showing the previous snapshot. {err}</p>
+		{/if}
 		<div class="headline">
 			{#if window !== null}
 				<span class="big">{pctLabel(prompt, window)}</span>
-				<span class="big-t">of the window, before she does anything</span>
+				<span class="big-t">of the window in the base-context snapshot</span>
 			{:else}
 				<span class="big">{tokens(prompt)}</span>
-				<span class="big-t">tokens before she does anything · window unknown</span>
+				<span class="big-t">base-context tokens · window size unknown</span>
 			{/if}
 		</div>
 		<p class="sub">
@@ -236,7 +239,7 @@
 				<div class="fact">
 					<span class="fact-n">{tokens(lastPeak)}</span>
 					<span class="fact-t">
-						the fullest request on her last run ({data.last_run.label},
+						the fullest request in this snapshot's latest run ({data.last_run.label},
 						<span title={whenTooltip(data.last_run.started_at)}>{relativeWhen(data.last_run.started_at)}</span>)
 						— measured by the provider, not composed here. the gap above the prompt is the conversation:
 						tool calls and their results piling up as the run went on
@@ -319,7 +322,7 @@
 		color: var(--text-dim);
 	}
 	.status {
-		font-size: 0.85rem;
+		font-size: 1rem;
 	}
 	.refresh,
 	.details-toggle,
@@ -328,7 +331,7 @@
 		border: 1px solid var(--line-mid);
 		color: var(--text-mid);
 		font-family: var(--font-mono);
-		font-size: 0.78rem;
+		font-size: 1rem;
 		padding: 0.15rem 0.6rem;
 		cursor: pointer;
 	}
@@ -358,12 +361,12 @@
 		text-transform: uppercase;
 		letter-spacing: 0.1em;
 		color: var(--text);
-		font-size: 0.85rem;
+		font-size: 1rem;
 	}
 	.sub {
 		margin: 0.4rem 0 1.25rem;
 		color: var(--text-dim);
-		font-size: 0.85rem;
+		font-size: 1rem;
 	}
 	.meter-block {
 		margin: 0 0 1.5rem;
@@ -382,7 +385,7 @@
 	}
 	.free-t {
 		color: var(--text-dim);
-		font-size: 0.8rem;
+		font-size: 1rem;
 	}
 	.meter {
 		display: flex;
@@ -413,7 +416,7 @@
 		flex-wrap: wrap;
 		gap: 0.4rem 1.25rem;
 		margin-top: 0.4rem;
-		font-size: 0.8rem;
+		font-size: 1rem;
 		color: var(--text-mid);
 	}
 	.m-legend .sw {
@@ -422,7 +425,7 @@
 	}
 	.unseen {
 		margin: 0.6rem 0 0;
-		font-size: 0.8rem;
+		font-size: 1rem;
 		line-height: 1.45;
 		max-width: 60ch;
 	}
@@ -463,7 +466,7 @@
 		display: flex;
 		flex-direction: column;
 		gap: 0.4rem;
-		font-size: 0.85rem;
+		font-size: 1rem;
 	}
 	.legend li {
 		display: grid;
@@ -505,7 +508,7 @@
 	}
 	.fact-t {
 		color: var(--text-dim);
-		font-size: 0.8rem;
+		font-size: 1rem;
 		line-height: 1.45;
 	}
 	.details-toggle {
@@ -518,7 +521,7 @@
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-		font-size: 0.8rem;
+		font-size: 1rem;
 		margin-bottom: 0.4rem;
 	}
 	.list {
@@ -534,7 +537,7 @@
 		grid-template-columns: 10px 7rem minmax(0, 1fr) 6rem 3.5rem;
 		gap: 0.6rem;
 		align-items: center;
-		font-size: 0.8rem;
+		font-size: 1rem;
 		padding: 0.25rem 0.6rem;
 		border-bottom: 1px solid var(--line-dim);
 	}
@@ -559,7 +562,7 @@
 		align-items: center;
 		gap: 0.4rem;
 		margin-top: 0.75rem;
-		font-size: 0.8rem;
+		font-size: 1rem;
 	}
 	.req {
 		padding: 0 0.35rem;

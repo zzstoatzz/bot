@@ -124,6 +124,14 @@ export interface UserView {
 	last_seen: string | null;
 	summary: UserViewSummary | null;
 	recent_observations: UserViewObservation[];
+	recent_interactions?: UserViewInteraction[] | null;
+}
+
+export interface UserViewInteraction {
+	id: string;
+	content: string;
+	created_at: string | null;
+	source_uris: string[];
 }
 
 // --- bsky public API minimal types (used by feed/blog) ---

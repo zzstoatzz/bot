@@ -20,6 +20,7 @@
 
 	let debounceTimer: ReturnType<typeof setTimeout> | undefined;
 	let seq = 0;
+	let launcher: HTMLButtonElement | undefined;
 
 	function show() {
 		open = true;
@@ -32,6 +33,7 @@
 
 	function hide() {
 		open = false;
+		launcher?.focus();
 	}
 
 	function search(q: string) {
@@ -102,7 +104,7 @@
 </script>
 
 <!-- launcher chip: keyboard hint on desktop, tap target on mobile -->
-<button class="launcher chrome" onclick={show} aria-label="search who phi knows">
+<button bind:this={launcher} class="launcher chrome" onclick={show} aria-label="search who phi knows">
 	<span class="key mono">⌘K</span>
 	<span class="lbl">what does phi know about…</span>
 </button>
@@ -126,7 +128,7 @@
 				spellcheck="false"
 				autocomplete="off"
 			/>
-			<span class="hint chrome">esc</span>
+			<button class="dismiss chrome" onclick={hide} aria-label="Close search">close</button>
 		</div>
 		{#if query.trim()}
 			<ul class="results" role="listbox">
@@ -234,13 +236,6 @@
 	input::placeholder {
 		color: var(--text-dim);
 	}
-	.hint {
-		font-size: 9px;
-		color: var(--text-dim);
-		border: 1px solid var(--line-dim);
-		padding: 2px 6px;
-	}
-
 	.results {
 		list-style: none;
 		margin: 0;
@@ -300,9 +295,13 @@
 
 	@media (max-width: 760px) {
 		.launcher {
-			top: auto;
-			bottom: calc(76px + env(safe-area-inset-bottom));
-			left: 50%;
+			position: relative;
+			inset: auto;
+			transform: none;
+			margin: 0 14px;
+			width: calc(100% - 28px);
+			min-height: 44px;
+			font-size: 13px;
 		}
 		.launcher .key {
 			display: none;
@@ -310,5 +309,10 @@
 		.palette {
 			top: 10vh;
 		}
+	}
+	.dismiss {
+		min-height: 44px;
+		min-width: 44px;
+		flex-shrink: 0;
 	}
 </style>

@@ -10,7 +10,8 @@
 	const LENSES = [
 		{ key: 'mind', href: '/', label: 'mind' },
 		{ key: 'capabilities', href: '/capabilities', label: 'capabilities' },
-		{ key: 'market', href: '/market', label: 'market' }
+		{ key: 'market', href: '/market', label: 'market' },
+		{ key: 'operator', href: '/operator', label: 'operator' }
 	] as const;
 
 	const current = $derived.by(() => {
@@ -18,14 +19,9 @@
 		if (path === '/') return 'mind';
 		if (path.startsWith('/capabilities')) return 'capabilities';
 		if (path.startsWith('/market')) return 'market';
+		if (path.startsWith('/operator')) return 'operator';
 		return 'mind';
 	});
-
-	function cycle(dir: 1 | -1) {
-		const idx = LENSES.findIndex((l) => l.key === current);
-		const next = (idx + dir + LENSES.length) % LENSES.length;
-		goto(LENSES[next].href);
-	}
 
 	function handleKey(e: KeyboardEvent) {
 		if (e.target instanceof HTMLInputElement) return;
@@ -33,10 +29,7 @@
 		if (e.key === '1') goto('/');
 		if (e.key === '2') goto('/capabilities');
 		if (e.key === '3') goto('/market');
-		if (e.key === 'Tab' && !e.shiftKey) {
-			e.preventDefault();
-			cycle(1);
-		}
+		if (e.key === '4') goto('/operator');
 	}
 
 	onMount(() => {
@@ -56,10 +49,11 @@
 	<HudLensCycler {current} {LENSES} />
 </div>
 
-<div class="hud hud-bl">
-	<HudCounts />
-</div>
-
-<div class="hud hud-br">
-	<HudReadout />
+<div class="hud-bottom">
+	<div class="hud hud-br">
+		<HudReadout />
+	</div>
+	<div class="hud hud-bl">
+		<HudCounts />
+	</div>
 </div>

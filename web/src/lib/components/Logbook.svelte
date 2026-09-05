@@ -115,21 +115,23 @@
 	}
 
 	const entry = $derived(logbook.value);
+	let dialog = $state<HTMLDialogElement>();
+	let returnFocus = $state<HTMLElement | null>(null);
 
 	function close() {
+		dialog?.close();
 		logbook.set(null);
+		returnFocus?.focus();
 	}
 
-	function handleKey(e: KeyboardEvent) {
-		if (e.key === 'Escape') close();
+	function openDialog(node: HTMLDialogElement) {
+		const active = document.activeElement;
+		returnFocus = active instanceof HTMLElement && active !== document.body
+			? active
+			: document.querySelector<HTMLButtonElement>('button[aria-label="search who phi knows"]');
+		node.showModal();
+		return { destroy: () => node.close() };
 	}
-
-	$effect(() => {
-		if (entry) {
-			window.addEventListener('keydown', handleKey);
-			return () => window.removeEventListener('keydown', handleKey);
-		}
-	});
 
 	// User-view fetch: when the entry is a 'handle' or 'discovery', go pull
 	// /api/users/{handle}. This is the rich state phi carries about a person —
@@ -209,22 +211,16 @@
 </script>
 
 {#if entry}
-	<div
-		class="overlay"
-		onclick={close}
-		role="presentation"
-		tabindex="-1"
-		onkeydown={handleKey}
-	></div>
-	<aside class="drawer scroll" aria-label="logbook entry">
+	<dialog bind:this={dialog} class="drawer" aria-label="logbook entry" use:openDialog oncancel={close}>
 		<header>
 			<div class="kind chrome">
 				{#if entry.kind === 'handle'}{entry.engaged ? 'in my memory' : 'on my radar'}{:else if entry.kind === 'goal'}goal{:else if entry.kind === 'docket'}promotion pressure{:else if entry.kind === 'activity'}emission · {entry.item.type}{:else if entry.kind === 'blog'}long form{:else if entry.kind === 'discovery'}on my radar{/if}
 				{#if entry.kind === 'docket-list'}public candidates{:else if entry.kind === 'store'}memory store{/if}
 			</div>
-			<button class="close chrome" onclick={close} aria-label="close">close · esc</button>
+			<button class="close" onclick={close} aria-label="Close details">Close</button>
 		</header>
 
+		<div class="detail-body scroll">
 		{#if entry.kind === 'handle'}
 			{@const handleEntry = entry as {
 				kind: 'handle';
@@ -238,14 +234,13 @@
 			{#if userViewLoading}
 				<p class="muted">recalling…</p>
 			{:else if userView}
-				<!-- top-line: phi's own framing of how she knows this person -->
 				<p class="muted">
 					{#if userView.is_stranger && userView.counts.observation === 0 && userView.counts.interaction === 0}
-						i don't carry anything about them yet.
+						No stored observations or exchanges were returned.
 					{:else if userView.is_stranger}
-						a thin sketch — not enough yet to feel like i know them.
+						Saved history is limited.
 					{:else}
-						they're someone i carry.
+						Stored context is available.
 					{/if}
 				</p>
 
@@ -275,6 +270,31 @@
 						{/if}
 					</div>
 				{/if}
+
+				<section class="exchanges" aria-label="Stored exchanges">
+					<h2>Stored exchanges</h2>
+					{#if userView.recent_interactions == null}
+						<p>Exchange details are unavailable in this snapshot.</p>
+					{:else if userView.recent_interactions.length === 0}
+						<p>No stored exchanges were returned.</p>
+					{:else}
+						<p>Showing {userView.recent_interactions.length} recent stored exchange{userView.recent_interactions.length === 1 ? '' : 's'}. This history does not include every encounter.</p>
+						{#each userView.recent_interactions as exchange (exchange.id)}
+							<article class="exchange">
+								{#if exchange.created_at}<p>Stored {exchange.created_at}</p>{/if}
+								<div class="exchange-text">{exchange.content}</div>
+								{#if exchange.source_uris.length > 0}
+									<ul>
+										{#each exchange.source_uris as uri, i}
+											{@const postUrl = bskyPostUrl(uri)}
+											<li>{#if postUrl}<a href={postUrl} target="_blank" rel="noopener">Open source post {i + 1}</a>{:else}<span>{uri}</span>{/if}</li>
+										{/each}
+									</ul>
+								{:else}<p>No source links were stored for this exchange.</p>{/if}
+							</article>
+						{/each}
+					{/if}
+				</section>
 
 				{#if userView.recent_observations.length > 0}
 					<div class="block">
@@ -671,20 +691,43 @@
 			</div>
 		{/if}
 
+		</div>
 		<footer class="chrome faint">a window into phi's experience</footer>
-	</aside>
+	</dialog>
 {/if}
 
 <style>
-	.overlay {
-		position: fixed;
-		inset: 0;
+	.exchanges {
+		font-size: 14px;
+		line-height: 1.6;
+		overflow-wrap: anywhere;
+	}
+	.exchanges h2 {
+		font-size: 18px;
+	}
+	.exchange {
+		border-top: 1px solid var(--line-mid);
+		padding-block: 12px;
+	}
+	.exchange-text {
+		white-space: pre-wrap;
+	}
+	.exchange a {
+		display: inline-flex;
+		align-items: center;
+		min-height: 44px;
+	}
+	.drawer::backdrop {
 		background: rgba(0, 0, 0, 0.4);
-		z-index: 50;
-		animation: fade 180ms ease-out;
 	}
 
 	.drawer {
+		margin: 0 0 0 auto;
+		color: var(--text);
+		border: 0;
+		max-width: 100%;
+		max-height: 100dvh;
+		height: 100dvh;
 		position: fixed;
 		top: 0;
 		right: 0;
@@ -699,6 +742,19 @@
 		display: flex;
 		flex-direction: column;
 		gap: 12px;
+	}
+	.detail-body {
+		min-height: 0;
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
+		overflow-y: auto;
+		overscroll-behavior: contain;
+		overflow-wrap: anywhere;
+	}
+	.detail-body > :global(*) {
+		flex-shrink: 0;
 	}
 
 	.drawer::before,
@@ -741,8 +797,10 @@
 	}
 
 	.close {
-		font-size: 9px;
-		padding: 4px 8px;
+		font-size: 14px;
+		min-height: 44px;
+		min-width: 64px;
+		padding: 8px 12px;
 	}
 
 	h1 {
@@ -1048,13 +1106,15 @@
 		border-top: 1px solid var(--line-dim);
 	}
 
-	@keyframes fade {
-		from {
-			opacity: 0;
+	@media (max-width: 760px) {
+		.drawer {
+			width: 100%;
+			padding: max(12px, env(safe-area-inset-top)) 16px max(12px, env(safe-area-inset-bottom));
+			font-size: 15px;
 		}
-		to {
-			opacity: 1;
-		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.drawer { animation: none; }
 	}
 
 	@keyframes slide {

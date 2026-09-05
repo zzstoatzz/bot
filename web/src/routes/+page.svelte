@@ -123,16 +123,22 @@
 </svelte:head>
 
 <div class="lens">
+	<CommandK />
 	<MindMap {goals} {known} {candidates} {avatars} {docket} {atlas} />
 </div>
 
 <Logbook />
-<CommandK />
 
 <style>
 	.lens {
 		position: absolute;
 		inset: 0;
+	}
+	@media (max-width: 760px) {
+		.lens {
+			overflow-y: auto;
+			padding: 134px 0 calc(80px + env(safe-area-inset-bottom));
+		}
 	}
 
 </style>

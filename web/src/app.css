@@ -38,8 +38,8 @@
 
 	/* text */
 	--text: #d6d2c9;
-	--text-mid: #8c8579;
-	--text-dim: #5a554a;
+	--text-mid: #b7b0a4;
+	--text-dim: #969389;
 
 	/* lines — orange at low/med alpha */
 	/* --grid: very faint, only for background scaffolding (concentric circles, crosshairs) */
@@ -166,6 +166,9 @@ a:hover {
 }
 
 /* hud overlays — fixed, on top of viewport */
+.hud-bottom {
+	display: contents;
+}
 .hud {
 	position: fixed;
 	z-index: 10;
@@ -228,24 +231,23 @@ a:hover {
 		border-bottom: 1px solid rgba(74, 139, 154, 0.18);
 	}
 
-	.hud-bl {
+	.hud-bottom {
+		position: fixed;
+		z-index: 10;
 		bottom: 0;
 		left: 0;
 		right: 0;
-		padding: 7px 14px calc(8px + env(safe-area-inset-bottom));
-		background:
-			linear-gradient(to top, rgba(7, 9, 15, 0.98) 0%, rgba(7, 9, 15, 0.86) 72%, transparent 100%),
-			var(--bg-void);
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+		padding: 8px 14px calc(8px + env(safe-area-inset-bottom));
+		background: var(--bg-void);
 		border-top: 1px solid var(--line-dim);
 	}
 
-	/* HudReadout stays visible on mobile — was previously display:none, which
-	 * removed all hover/status feedback on phones. Repositioned as a small
-	 * inline status strip just above the bottom HudCounts bar. */
+	.hud-bl,
 	.hud-br {
-		bottom: calc(42px + env(safe-area-inset-bottom)); /* clear of .hud-bl */
-		right: 14px;
-		left: 14px;
+		position: static;
 		font-size: 11px;
 	}
 }
