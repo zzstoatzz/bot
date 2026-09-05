@@ -210,13 +210,6 @@ class BotClient:
         await self.authenticate()
         return self.client.app.bsky.feed.get_posts(params={"uris": uris})
 
-    async def search_users(self, query: str, limit: int = 10):
-        """Search for users"""
-        await self.authenticate()
-        return self.client.app.bsky.actor.search_actors(
-            params={"q": query, "limit": limit}
-        )
-
     async def like_post(self, uri: str, cid: str):
         """Like a post"""
         await self.authenticate()

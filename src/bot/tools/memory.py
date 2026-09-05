@@ -52,6 +52,7 @@ def register(agent):
         namespace.
 
         With `about="@handle"`: searches that user's namespace only.
+        Use search_people for a name clue when you don't know the handle.
 
         With `tag`: only episodic notes carrying that tag come back —
         `tag="correction"` is how you audit your own errata.

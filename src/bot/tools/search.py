@@ -4,6 +4,7 @@ cosmik/semble network search lives in the semble MCP toolset
 (semble_execute composing search_semantic and friends), not here.
 """
 
+import json
 from datetime import date
 from typing import Annotated, Literal
 
@@ -42,6 +43,40 @@ def render_posts(posts: list[dict], today: date) -> str:
 
 
 def register(agent):
+    @agent.tool
+    async def search_people(
+        ctx: RunContext[PhiDeps],
+        query: Annotated[str, Field(description="A name or handle prefix to resolve.")],
+    ) -> str:
+        """Find candidate accounts through typeahead.waow.tech. Returns up to
+        ten handles and DIDs. Use a resolved handle with search_memory(about=...).
+        These are identity matches, not evidence of a previous encounter. If
+        context cannot distinguish candidates, ask the person which they mean.
+        """
+        query = query.strip().lstrip("@")
+        if not query:
+            return "Provide a name or handle prefix."
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                response = await client.get(
+                    "https://typeahead.waow.tech/xrpc/tech.waow.typeahead.searchActors",
+                    params={"q": query, "limit": 10},
+                    headers={"X-Client": "phi.zzstoatzz.io"},
+                )
+                response.raise_for_status()
+                actors = response.json()["actors"]
+                candidates = [
+                    {
+                        "handle": a["handle"],
+                        "did": a["did"],
+                        "display_name": a.get("displayName", ""),
+                    }
+                    for a in actors[:10]
+                ]
+        except (httpx.HTTPError, ValueError, KeyError, TypeError):
+            return "Identity lookup unavailable. This does not establish that the person is absent."
+        return json.dumps({"candidates": candidates}, ensure_ascii=False)
+
     @agent.tool
     async def search_posts(
         ctx: RunContext[PhiDeps],

@@ -154,3 +154,11 @@ failures are not evidence that no encounter occurred. Unified search retains
 successful results and their citations when the other namespace fails. With
 no current author, it queries episodic memory only rather than a blank-handle
 user namespace. This does not provide cross-person search.
+
+`search_people(query)` resolves a name or handle prefix through
+typeahead.waow.tech, returning up to ten candidate handles and DIDs. Phi can
+use an established handle with `search_memory(about=...)`; ambiguous matches
+can be clarified in the conversation. Identity lookup does not establish a
+prior encounter and cannot search conversation topics. The tool reports an
+unavailable service separately from an empty candidate list. No structured
+elicitation transport or automatic choice of person is added.

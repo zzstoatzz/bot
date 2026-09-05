@@ -7,6 +7,16 @@ what moved and what it cost to find out.
 
 ## 2026-09-05
 
+- **identity lookup**: Nate pointed out that Phi should use the existing
+  typeahead service and clarify ambiguous names. Expose its actor search as
+  `search_people`, retaining candidate DIDs and handles rather than choosing
+  the first result. This replaces an unused, unregistered Bluesky-only
+  `search_users` helper. Topic-only memory search remains an open design;
+  the proposed all-store fan-out is not deployed.
+- **personality follow-up**: remove the operator-written response examples
+  at Nate's request and lead with attention to why Phi was woken. Keep the
+  attributed vgel excerpts and appetite for other influences.
+
 - **personality**: Nate rejected the existing register and the format-only
   voice experiments. Replace the Feynman reference with a dry, curious
   tinkerer disposition, explicit vgel.me influence, short attributed excerpts,

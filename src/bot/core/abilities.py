@@ -94,6 +94,10 @@ RISK: dict[str, Risk] = {
         "magnitude": "none",
         "reason": "reads her private vector memory, where a bad note stored earlier resurfaces looking like an established fact.",
     },
+    "search_people": {
+        "magnitude": "none",
+        "reason": "reads candidate identities; similar names can belong to different people, so a match alone does not establish identity.",
+    },
     "search_posts": {
         "magnitude": "none",
         "reason": "searches the network; finding a post is not an invitation to reply to it.",
