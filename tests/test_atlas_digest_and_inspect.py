@@ -5,6 +5,7 @@ of her own mind. inspect_atlas lets her drill into specific clusters /
 points / promotion-status pools when she wants detail.
 """
 
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -238,7 +239,9 @@ async def _call_inspect(sample_atlas, **kwargs):
             new=AsyncMock(return_value=_summarize_atlas(sample_atlas)),
         ),
     ):
-        return await fn(ctx=None, **kwargs)
+        return await fn(
+            ctx=SimpleNamespace(deps=SimpleNamespace(memory=None)), **kwargs
+        )
 
 
 async def test_inspect_atlas_no_args_returns_digest(sample_atlas):

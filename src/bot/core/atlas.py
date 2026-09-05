@@ -168,7 +168,7 @@ def _summarize_atlas(atlas: dict[str, Any]) -> str:
     coarse_line = ", ".join(coarse_parts)
 
     return (
-        f"[ATLAS — daily map of every point in your mind, generated {generated_at}]\n"
+        f"[ATLAS — daily projection of memory and public records, generated {generated_at}]\n"
         f"{len(points)} points: {kind_line}\n"
         f"{len(coarse)} coarse clusters: {coarse_line}\n"
         f"{len(fine)} fine clusters\n"

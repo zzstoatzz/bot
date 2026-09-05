@@ -21,6 +21,7 @@ from pydantic import Field
 from pydantic_ai import RunContext
 
 from bot.core.atlas import get_atlas, get_atlas_digest
+from bot.memory.atlas_source import read_atlas_source
 from bot.tools._helpers import PhiDeps
 
 logger = logging.getLogger("bot.tools.atlas")
@@ -90,8 +91,8 @@ def register(agent):
             Field(
                 description=(
                     "Atlas point id (e.g. 'observation-phi-users-zzstoatzz_io-abc'). "
-                    "Returns the full point record plus its 2D nearest "
-                    "neighbors resolved to kind + label."
+                    "Returns the projected point and its neighbors. For memory "
+                    "points, also reads the exact stored source row."
                 )
             ),
         ] = None,
@@ -122,7 +123,7 @@ def register(agent):
             Field(description="Max points to return for cluster / status queries."),
         ] = 20,
     ) -> str:
-        """Drill into your atlas — the daily map of every point in your mind.
+        """Inspect your daily projection of memory and public records.
 
         The [ATLAS] digest in your context tells you the shape; this tool
         lets you look inside. Counts, cluster labels, and promotion
@@ -140,7 +141,17 @@ def register(agent):
             point = by_id.get(point_id)
             if not point:
                 return f"no point found with id {point_id!r}"
-            return _format_point_detail(point, atlas)
+            detail = _format_point_detail(point, atlas)
+            refs = point.get("refs") or {}
+            if refs.get("tpuf_id"):
+                if ctx.deps.memory is None:
+                    source = (
+                        "Stored source unavailable: private memory is not connected."
+                    )
+                else:
+                    source = await read_atlas_source(ctx.deps.memory.client, point)
+                return f"{detail}\n\n{source}"
+            return detail
 
         # cluster_id — show what's in a specific fine cluster
         if cluster_id is not None:

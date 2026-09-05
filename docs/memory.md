@@ -42,6 +42,13 @@ per batch and never stored; the policy judge reads `phi-own-posts` and recent
 posts but writes nothing; logfire traces are what she *did* (`self-traces`
 skill), memory is what she chose to write down.
 
+`inspect_atlas(point_id=...)` follows an existing `tpuf_namespace` / `tpuf_id`
+reference to the current stored memory row. It returns the complete stored
+content, kind, timestamp, status (including superseded), and original source
+URIs. The atlas label remains a dated projection; the backing row can have
+changed since generation. Missing rows and failed reads are reported separately.
+This lookup does not search across people or recreate missing encounters.
+
 Stored `source_uris` survive tool search (scoped, unified, and tagged),
 per-author observations and exchanges, and the recent-conversations view.
 Each reference is rendered as `source: <uri>` so Phi can fetch the underlying
