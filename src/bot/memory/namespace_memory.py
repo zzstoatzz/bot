@@ -740,7 +740,8 @@ class NamespaceMemory:
             action = "ADD"
 
         if preserve_text and action == "NOOP" and content != best["content"]:
-            action = "UPDATE"
+            # Keep the new wording without archiving a more informative account.
+            action = "ADD"
 
         if action == "NOOP":
             existing_sources = list(best.get("source_uris") or [])

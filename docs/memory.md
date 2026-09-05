@@ -192,3 +192,7 @@ action after a successful write (or the retained note on NOOP). Explicit notes p
 relationship to older versions without rewriting their text. Automatic run
 summaries retain text consolidation.
 The saved account and its citations remain claims, not independent verification.
+
+An explicit save judged redundant (NOOP) still retains different submitted
+wording as a separate note. It does not archive the existing account: a brief
+confirmation must not displace a detailed correction just to preserve its text.

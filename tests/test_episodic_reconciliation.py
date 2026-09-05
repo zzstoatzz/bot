@@ -319,9 +319,9 @@ async def test_authored_qualification_survives_noop_classification():
             "no reply among the 48 returned records", ["correction"], preserve_text=True
         )
     assert saved["content"] == "no reply among the 48 returned records"
-    assert saved["action"] == "UPDATE"
-    assert _upserted_rows(ns)[0]["supersedes"] == previous["id"]
-    assert _patched_rows(ns) == [{"id": previous["id"], "status": "superseded"}]
+    assert saved["action"] == "ADD"
+    assert _upserted_rows(ns)[0]["supersedes"] == ""
+    assert not _patched_rows(ns)
 
 
 async def test_replacement_embedding_failure_keeps_previous_note_active():
@@ -369,3 +369,25 @@ async def test_replacement_and_supersession_share_one_transport_write(action, re
                 saved = await mem.store_episodic_memory("replacement", ["t"])
                 assert saved["id"] == requests[0]["upsert_rows"][0]["id"]
     assert len(requests) == 1
+
+
+async def test_redundant_confirmation_keeps_detailed_correction_active():
+    mem, ns = _memory_with_episodic_ns()
+    previous = dict(
+        SIMILAR[0],
+        content="My check showed 48 of 100 fetched records. Codex performed the other check.",
+    )
+    confirmation = "Re-read the correction note. Nothing new to establish."
+    mem._find_similar_episodic = AsyncMock(return_value=[previous])
+    with patch(
+        "bot.memory.namespace_memory.get_reconciliation_agent",
+        return_value=_decision("NOOP", reason="Adds no new information"),
+    ):
+        saved = await mem.store_episodic_memory(
+            confirmation, ["correction"], preserve_text=True
+        )
+    assert saved["content"] == confirmation
+    assert saved["action"] == "ADD"
+    assert _upserted_rows(ns)[0]["supersedes"] == ""
+    assert not _patched_rows(ns)
+
