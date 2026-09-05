@@ -1,5 +1,17 @@
 # changelog
 
+## 2026-09-05 — Preserve explicit notes verbatim
+
+The reconciler removed a page-limited qualification from a note Phi saved
+about the Ali exchange. Explicit save_memory calls now retain the submitted
+text exactly. If changed wording is classified NOOP, it becomes a new version
+of the related note instead of disappearing. Exact-text duplicates still
+retain new citations without creating a version. Automatic run summaries and
+blog notes keep their existing consolidation. Nate approved the tradeoff of
+more versions for retaining the wording Phi chose. Tests cover both UPDATE
+and NOOP attempting to lose a qualification. This preserves errors Phi writes
+too; factual verification and citation correctness remain separate work.
+
 ## 2026-09-05 — Show unknown cockpit counts honestly
 
 The footer showed zero goals, people, candidates, and outputs while its

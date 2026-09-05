@@ -693,6 +693,8 @@ class NamespaceMemory:
         tags: list[str],
         source: str = "tool",
         source_uris: list[str] | None = None,
+        *,
+        preserve_text: bool = False,
     ) -> EpisodicWriteResult:
         """Store an episodic memory — something phi learned about the world.
 
@@ -737,6 +739,9 @@ class NamespaceMemory:
             decision = None
             action = "ADD"
 
+        if preserve_text and action == "NOOP" and content != best["content"]:
+            action = "UPDATE"
+
         if action == "NOOP":
             existing_sources = list(best.get("source_uris") or [])
             sources = list(dict.fromkeys(existing_sources + list(source_uris or [])))
@@ -759,7 +764,9 @@ class NamespaceMemory:
                 patch_rows=[{"id": best["id"], "status": "superseded"}],
             )
             if action == "UPDATE":
-                merged_content = decision.new_content or content
+                merged_content = (
+                    content if preserve_text else decision.new_content or content
+                )
                 merged_tags = decision.new_tags or tags
                 unioned = list(
                     dict.fromkeys(

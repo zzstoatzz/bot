@@ -188,6 +188,7 @@ The public atlas still selects its existing per-person/episodic sources;
 encounter and processing records are not added to that publication.
 
 `save_memory` returns the resulting note ID, text, citations, and reconciliation
-action after a successful write (or the retained note on NOOP). This exposes
-changes made by reconciliation instead of echoing the submitted candidate.
+action after a successful write (or the retained note on NOOP). Explicit notes preserve the submitted wording; reconciliation chooses their
+relationship to older versions without rewriting their text. Automatic run
+summaries retain text consolidation.
 The saved account and its citations remain claims, not independent verification.

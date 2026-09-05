@@ -283,7 +283,7 @@ async def test_save_returns_resulting_note_instead_of_candidate(action):
     }
 
 
-async def test_save_tool_reports_reconciled_content_and_propagates_failed_write():
+async def test_save_tool_preserves_authored_scope_and_propagates_failed_write():
     mem, ns = _memory_with_episodic_ns()
     mem._find_similar_episodic = AsyncMock(return_value=SIMILAR)
     agent = Agent()
@@ -292,11 +292,28 @@ async def test_save_tool_reports_reconciled_content_and_propagates_failed_write(
     ctx = SimpleNamespace(deps=SimpleNamespace(memory=mem))
     with patch(
         "bot.memory.namespace_memory.get_reconciliation_agent",
-        return_value=_decision("UPDATE", new_content="only within that page", new_tags=["t"]),
+        return_value=_decision("UPDATE", new_content="no reply exists", new_tags=["t"]),
     ):
-        result = json.loads(await save(ctx, "exhaustive absence", ["t"]))
-        assert result["stored_note"]["content"] == "only within that page"
+        result = json.loads(await save(ctx, "no reply among the 48 returned records", ["t"]))
+        assert result["stored_note"]["content"] == "no reply among the 48 returned records"
         assert result["stored_note"]["id"] == _upserted_rows(ns)[0]["id"]
         ns.write.side_effect = RuntimeError("storage unavailable")
         with pytest.raises(RuntimeError, match="storage unavailable"):
             await save(ctx, "another candidate", ["t"])
+
+
+async def test_authored_qualification_survives_noop_classification():
+    mem, ns = _memory_with_episodic_ns()
+    previous = dict(SIMILAR[0], content="no reply exists")
+    mem._find_similar_episodic = AsyncMock(return_value=[previous])
+    with patch(
+        "bot.memory.namespace_memory.get_reconciliation_agent",
+        return_value=_decision("NOOP"),
+    ):
+        saved = await mem.store_episodic_memory(
+            "no reply among the 48 returned records", ["correction"], preserve_text=True
+        )
+    assert saved["content"] == "no reply among the 48 returned records"
+    assert saved["action"] == "UPDATE"
+    assert _upserted_rows(ns)[0]["supersedes"] == previous["id"]
+    assert _patched_rows(ns) == [{"id": previous["id"], "status": "superseded"}]

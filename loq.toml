@@ -17,7 +17,7 @@ max_lines = 1767
 
 [[rules]]
 path = "src/bot/memory/namespace_memory.py"
-max_lines = 1296
+max_lines = 1303
 
 [[rules]]
 path = "src/bot/main.py"
@@ -45,4 +45,4 @@ max_lines = 674
 
 [[rules]]
 path = "CHANGELOG.md"
-max_lines = 543
+max_lines = 555

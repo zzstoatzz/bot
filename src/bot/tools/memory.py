@@ -178,8 +178,8 @@ def register(agent):
         your context at the start of a run, keyed to what you're
         processing) and explicit `search_memory`.
 
-        Returns the resulting note ID, text, and citations after reconciliation,
-        which may differ from what you submitted.
+        Stores your wording exactly and returns the saved note ID, text, and
+        citations. Related older versions remain in memory as superseded records.
 
         Re-saving a refined version of something you remember SUPERSEDES
         the old row — write-time reconciliation patches it with pedigree.
@@ -199,7 +199,7 @@ def register(agent):
         if ctx.deps.memory:
             sources = [source_uri] if source_uri else None
             saved = await ctx.deps.memory.store_episodic_memory(
-                content, tags, source="tool", source_uris=sources
+                content, tags, source="tool", source_uris=sources, preserve_text=True
             )
             return json.dumps(
                 {
