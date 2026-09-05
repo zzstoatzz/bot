@@ -7,6 +7,17 @@ what moved and what it cost to find out.
 
 ## 2026-09-05
 
+- **cockpit**: phone memory views scroll the graph and reading content
+  together. Search has its own row; navigation includes Operator; a solid
+  footer keeps status text off the content. Details use a full-width phone
+  dialog with a reachable close button and restored focus. The previous
+  layout left most of a small screen permanently occupied by the graph.
+- **evidence**: person details show up to five stored exchanges and their
+  source links, including the Ali reply pair. Failed reads and legacy rows
+  without links are explicit. Context-budget labels identify the cached
+  base snapshot, and refresh failures retain it with a visible error.
+  Browser checks covered 320px, 390px, 430px, and desktop layouts; this
+  does not establish complete encounter history or real-device gesture behavior.
 - **fix**: memory search and automatic per-person/recent-exchange context
   retain stored source URIs. The Ali exchange was stored with its original
   post references, but retrieval discarded them before Phi could use them.
