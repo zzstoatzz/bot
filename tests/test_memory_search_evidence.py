@@ -213,3 +213,29 @@ async def test_episodic_search_keeps_the_exact_version_id(options):
     tool, ctx, _ = tool_with_memory()
     result = await tool(ctx, query="ten votes", **options)
     assert "[note example-exchange]" in result
+
+
+@pytest.mark.parametrize("options", [{}, {"about": ALI}, {"about": f"@{ALI}"}])
+async def test_search_excludes_replaced_accounts_but_keeps_legacy_records(options):
+    tool, ctx, memory = tool_with_memory()
+    ctx.deps.author_handle = ALI
+    namespace = memory.get_user_namespace(ALI)
+    base = namespace.records[0]
+    namespace.records = [
+        {**base, "id": "old", "status": "superseded", "content": "withdrawn account"},
+        {**base, "id": "current", "content": "current account"},
+        {
+            key: value
+            for key, value in {
+                **base,
+                "id": "legacy",
+                "content": "legacy account",
+            }.items()
+            if key != "status"
+        },
+    ]
+    memory.namespaces["episodic"] = Namespace([])
+    result = await tool(ctx, query="account", **options)
+    assert "withdrawn account" not in result
+    assert "current account" in result
+    assert "legacy account" in result

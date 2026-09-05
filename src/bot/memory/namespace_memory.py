@@ -656,7 +656,7 @@ class NamespaceMemory:
         return "\n".join(parts)
 
     async def search(self, handle: str, query: str, top_k: int = 10) -> list[dict]:
-        """Unfiltered semantic search across all memory kinds for a user."""
+        """Search all user memory kinds, excluding superseded versions."""
         user_ns = self.get_user_namespace(handle)
         try:
             query_embedding = await self._get_embedding(query)
@@ -669,6 +669,8 @@ class NamespaceMemory:
             results = []
             if response.rows:
                 for row in response.rows:
+                    if getattr(row, "status", None) == "superseded":
+                        continue
                     results.append(
                         {
                             "kind": getattr(row, "kind", "unknown"),
@@ -964,6 +966,8 @@ class NamespaceMemory:
                 results = []
                 if response.rows:
                     for row in response.rows:
+                        if getattr(row, "status", None) == "superseded":
+                            continue
                         results.append(
                             {
                                 "content": row.content,
