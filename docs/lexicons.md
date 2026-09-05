@@ -1,6 +1,6 @@
 # lexicons
 
-phi defines seven custom record and query types under `io.zzstoatzz.phi.*`.
+phi defines eight custom record and query types under `io.zzstoatzz.phi.*`.
 They live in `lexicons/`, one file per NSID, and are **published as records on
 phi's own PDS** so anyone can resolve the schema from the NSID alone.
 
@@ -12,6 +12,7 @@ phi's own PDS** so anyone can resolve the schema from the NSID alone.
 | `io.zzstoatzz.phi.mentionConsent` | record | handles phi is allowed to @-mention |
 | `io.zzstoatzz.phi.editorialContext` | record | grounding notes coral's curator injects verbatim |
 | `io.zzstoatzz.phi.entityDirectives` | record | per-entity directives for that same curator |
+| `io.zzstoatzz.phi.influence` | record | chosen authors and works, pinned to profile versions; retirement preserves the choice record. Background reading is not yet connected to runs. |
 | `io.zzstoatzz.phi.getAbilities` | query | phi's tools and what each costs if it goes wrong |
 
 \* `goal` predates the lexicon directory and has no schema file yet.

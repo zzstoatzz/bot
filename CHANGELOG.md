@@ -619,3 +619,11 @@ what moved and what it cost to find out.
   relay-state churn). Nothing was migrated: the content was either stale
   operational data or impressions of strangers, which belong in `phi-users-*`,
   not in public cards.
+
+## Influence choices
+
+Phi can record, revise, and retire writing influences through the existing PDS
+record tools and a runtime skill. Choices pin an author's DID/profile version
+and keep selected work URLs separate from personality. Retired choices remain
+readable. This increment stores choices; it does not inject background readings
+or change the active personality.
