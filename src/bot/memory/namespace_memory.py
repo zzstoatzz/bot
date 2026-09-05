@@ -10,7 +10,7 @@ from atproto_core.exceptions import InvalidAtUriError
 from atproto_core.uri import AtUri
 from openai import AsyncOpenAI
 from pydantic_ai import Agent
-from turbopuffer import NotFoundError, Turbopuffer
+from turbopuffer import NotFoundError, Turbopuffer, omit
 
 from bot.config import settings
 from bot.memory.extraction import (
@@ -760,9 +760,6 @@ class NamespaceMemory:
             }
 
         if action in ("UPDATE", "DELETE") and decision is not None:
-            self.namespaces["episodic"].write(
-                patch_rows=[{"id": best["id"], "status": "superseded"}],
-            )
             if action == "UPDATE":
                 merged_content = (
                     content if preserve_text else decision.new_content or content
@@ -832,6 +829,9 @@ class NamespaceMemory:
                     "supersedes": supersedes,
                 }
             ],
+            patch_rows=[{"id": supersedes, "status": "superseded"}]
+            if supersedes
+            else omit,
             distance_metric="cosine_distance",
             schema=EPISODIC_SCHEMA,
         )

@@ -45,4 +45,4 @@ max_lines = 674
 
 [[rules]]
 path = "CHANGELOG.md"
-max_lines = 555
+max_lines = 564

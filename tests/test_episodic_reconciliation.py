@@ -12,8 +12,10 @@ import json
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
 
+import httpx
 import pytest
 from pydantic_ai import Agent
+from turbopuffer import BadRequestError, Turbopuffer
 
 from bot.memory.namespace_memory import NamespaceMemory
 from bot.tools.memory import register
@@ -49,7 +51,7 @@ def _patched_rows(ns):
     return [
         call.kwargs["patch_rows"][0]
         for call in ns.write.call_args_list
-        if "patch_rows" in call.kwargs
+        if call.kwargs.get("patch_rows")
     ]
 
 
@@ -317,3 +319,50 @@ async def test_authored_qualification_survives_noop_classification():
     assert saved["action"] == "UPDATE"
     assert _upserted_rows(ns)[0]["supersedes"] == previous["id"]
     assert _patched_rows(ns) == [{"id": previous["id"], "status": "superseded"}]
+
+
+async def test_replacement_embedding_failure_keeps_previous_note_active():
+    mem, ns = _memory_with_episodic_ns()
+    mem._find_similar_episodic = AsyncMock(return_value=SIMILAR)
+    mem._get_embedding.side_effect = [[0.1] * 8, RuntimeError("embedding unavailable")]
+    with patch(
+        "bot.memory.namespace_memory.get_reconciliation_agent",
+        return_value=_decision("UPDATE", new_content="replacement", new_tags=["t"]),
+    ):
+        with pytest.raises(RuntimeError, match="embedding unavailable"):
+            await mem.store_episodic_memory("new account", ["t"])
+    ns.write.assert_not_called()
+
+
+@pytest.mark.parametrize("action", ["UPDATE", "DELETE"])
+@pytest.mark.parametrize("reject", [False, True])
+async def test_replacement_and_supersession_share_one_transport_write(action, reject):
+    requests = []
+
+    def serve(request):
+        body = json.loads(request.content)
+        requests.append(body)
+        assert body["patch_rows"] == [{"id": "old-row", "status": "superseded"}]
+        assert body["upsert_rows"][0]["supersedes"] == "old-row"
+        assert body["upsert_rows"][0]["status"] == "active"
+        return httpx.Response(400, json={"error": "rejected"}) if reject else httpx.Response(200, json={"rows_affected": 2})
+
+    with Turbopuffer(
+        api_key="test", base_url="https://memory.test", max_retries=0,
+        http_client=httpx.Client(transport=httpx.MockTransport(serve)),
+    ) as client:
+        mem = NamespaceMemory.__new__(NamespaceMemory)
+        mem.namespaces = {"episodic": client.namespace("test-notes")}
+        mem._find_similar_episodic = AsyncMock(return_value=SIMILAR)
+        mem._get_embedding = AsyncMock(return_value=[0.1] * 8)
+        with patch(
+            "bot.memory.namespace_memory.get_reconciliation_agent",
+            return_value=_decision(action, new_content="replacement", new_tags=["t"]),
+        ):
+            if reject:
+                with pytest.raises(BadRequestError):
+                    await mem.store_episodic_memory("replacement", ["t"])
+            else:
+                saved = await mem.store_episodic_memory("replacement", ["t"])
+                assert saved["id"] == requests[0]["upsert_rows"][0]["id"]
+    assert len(requests) == 1

@@ -1,5 +1,14 @@
 # changelog
 
+## 2026-09-05 — Replace episodic versions in one write
+
+Reconciliation marked the old note superseded before embedding and writing
+its replacement. An embedding or storage failure could therefore leave the
+old record excluded from active recall with no replacement. Prepare the new
+record first, then upsert it and patch the old status in one atomic batch.
+Tests reproduce the embedding failure and verify that UPDATE and DELETE
+use one transport request, including rejected-write cases.
+
 ## 2026-09-05 — Preserve explicit notes verbatim
 
 The reconciler removed a page-limited qualification from a note Phi saved
