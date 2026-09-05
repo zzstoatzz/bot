@@ -315,6 +315,8 @@ export interface ChickenTrader {
 	positions: ChickenPosition[];
 	trades: ChickenTrade[];
 	networth_series: [number, number][]; // [unix seconds, networth subc]
+	season_start: number;
+	past_seasons: ChickenPastSeason[];
 }
 
 export interface ChickenContender {
@@ -322,9 +324,9 @@ export interface ChickenContender {
 	handle: string;
 	likes: number;
 	p: number | null;
-	mid_subc: number;
-	bid_subc: number;
-	ask_subc: number;
+	mid_subc: number | null;
+	bid_subc: number | null;
+	ask_subc: number | null;
 }
 
 export interface ChickenRound {
@@ -472,4 +474,24 @@ export interface ContextBudget {
 	totals: { static: number; blocks: number; tools: number; prompt: number };
 	recent: ContextRecentRequests | null;
 	last_run: ContextLastRun | null;
+}
+
+export interface ChickenPastSeason {
+	season: number;
+	pnl_subc: number;
+	rank: number;
+	trades: number;
+	networth_subc: number;
+}
+export interface ChickenMarket {
+	season: {
+		num: number;
+		day: number;
+		total_days: number;
+		start_round: string;
+		end_round: string;
+		settling: boolean;
+		ends_at: number;
+	};
+	round: ChickenRound | null;
 }

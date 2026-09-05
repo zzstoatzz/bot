@@ -92,6 +92,23 @@
 	function pointLinks(p: Point): PointLink[] {
 		const r = refs(p);
 		const links: PointLink[] = [];
+		if (Array.isArray(r.source_uris)) {
+			for (const uri of r.source_uris) {
+				if (typeof uri !== 'string') continue;
+				const source = parseAtUri(uri);
+				if (source?.collection && source.rkey) {
+					links.push({
+						href: source.collection === 'app.bsky.feed.post'
+							? `https://bsky.app/profile/${source.authority}/post/${source.rkey}`
+							: recordViewer(uri),
+						label: source.collection === 'app.bsky.feed.post' ? 'source post' : 'source record',
+						note: 'stored evidence'
+					});
+				} else if (/^https?:\/\//.test(uri)) {
+					links.push({ href: uri, label: 'source page', note: 'stored evidence' });
+				}
+			}
+		}
 		const handle = typeof r.handle === 'string' ? r.handle : null;
 		const atUri = typeof r.at_uri === 'string' ? r.at_uri : null;
 		const parsed = atUri ? parseAtUri(atUri) : null;

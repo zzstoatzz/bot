@@ -60,11 +60,11 @@
 	// the five slices: a fixed order and a fixed color each, validated for
 	// the dark surface (dataviz reference palette, slots 1–5)
 	const SLICES = [
-		{ key: 'static', label: 'instructions', color: '#3987e5' },
-		{ key: 'blocks', label: 'context blocks', color: '#d95926' },
-		{ key: 'function', label: 'her own tools', color: '#199e70' },
-		{ key: 'mcp', label: 'mcp tools', color: '#c98500' },
-		{ key: 'other', label: 'skills + framing', color: '#d55181' }
+		{ key: 'static', label: 'instructions', color: '#7ec0d4' },
+		{ key: 'blocks', label: 'context blocks', color: '#e09060' },
+		{ key: 'function', label: 'her own tools', color: '#629a98' },
+		{ key: 'mcp', label: 'mcp tools', color: '#c9a05a' },
+		{ key: 'other', label: 'skills + framing', color: '#a78f85' }
 	] as const;
 	type SliceKey = (typeof SLICES)[number]['key'];
 
@@ -381,7 +381,7 @@
 	.free-n {
 		font-family: var(--font-chrome);
 		font-size: 1.4rem;
-		color: #0ca30c;
+		color: var(--scan-hot);
 	}
 	.free-t {
 		color: var(--text-dim);
@@ -400,16 +400,16 @@
 		min-width: 1px;
 	}
 	.m-composed {
-		background: #3987e5;
+		background: #7ec0d4;
 	}
 	.m-start {
-		background: #d95926;
+		background: #e09060;
 	}
 	.m-typical {
-		background: #c98500;
+		background: #c9a05a;
 	}
 	.m-peak {
-		background: #d55181;
+		background: #a78f85;
 	}
 	.m-legend {
 		display: flex;

@@ -7,6 +7,13 @@ what moved and what it cost to find out.
 
 ## 2026-09-05
 
+- **cockpit**: carry the Metroid Prime visual treatment through Operator,
+  Mind, and Market with readable selected navigation, shared panel framing,
+  and mobile controls. Operator retains its OAuth and override semantics.
+  Market separates season resets and historical results, restores direct
+  chart inspection, and distinguishes missing quotes from zero. Mind leads
+  with activity and goals while keeping the atlas available as a projection.
+
 - **identity lookup**: Nate pointed out that Phi should use the existing
   typeahead service and clarify ambiguous names. Expose its actor search as
   `search_people`, retaining candidate DIDs and handles rather than choosing

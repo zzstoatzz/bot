@@ -34,24 +34,18 @@
 	});
 
 	const status = $derived.by(() => {
-		if (!health) return { color: 'var(--danger)', label: 'offline', pulse: false };
+		if (!health) return { color: 'var(--text-dim)', label: 'status unavailable', pulse: false };
 		if (health.status !== 'healthy')
 			return { color: 'var(--danger)', label: 'stalled', pulse: false };
 		if (health.paused) return { color: 'var(--warn)', label: 'paused', pulse: true };
-		if (health.polling_active) return { color: 'var(--hud-hot)', label: 'online', pulse: true };
+		if (health.polling_active) return { color: 'var(--hud-hot)', label: 'online', pulse: false };
 		return { color: 'var(--text-dim)', label: 'idle', pulse: false };
 	});
-
 </script>
 
 <div class="ident">
 	<div class="glyph-wrap" style="color: {status.color}" class:pulse={status.pulse}>
-		<svg
-			class="logo"
-			viewBox="0 0 32 32"
-			aria-hidden="true"
-			xmlns="http://www.w3.org/2000/svg"
-		>
+		<svg class="logo" viewBox="0 0 32 32" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
 			<!-- outer hex frame -->
 			<polygon
 				points="16,3 27,9 27,23 16,29 5,23 5,9"
@@ -117,7 +111,7 @@
 		width: 100%;
 		height: 100%;
 		display: block;
-		filter: drop-shadow(0 0 0 currentColor);
+		filter: drop-shadow(0 0 3px currentColor);
 		transition: filter 0.4s ease-out;
 	}
 
@@ -141,7 +135,7 @@
 	@media (max-width: 760px) {
 		.ident {
 			gap: 10px;
-			align-items: flex-start;
+			align-items: center;
 		}
 		.glyph-wrap {
 			width: 28px;
@@ -152,21 +146,22 @@
 			font-size: 16px;
 		}
 		.handle {
-			display: none;
+			font-size: 10px;
 		}
-		.sep {
+		.bio {
 			display: none;
 		}
 	}
 
 	.meta {
+		min-width: 0;
 		display: flex;
 		flex-direction: column;
 		gap: 2px;
 	}
 
 	.name {
-		font-size: 14px;
+		font-size: 20px;
 		color: var(--hud-hot);
 		letter-spacing: 0.18em;
 	}
@@ -178,9 +173,8 @@
 		font-size: 10px;
 	}
 
-
 	.state {
-		font-size: 9px;
+		font-size: 12px;
 	}
 
 	.sep {
@@ -198,7 +192,7 @@
 		color: var(--text-mid);
 		font-style: italic;
 		line-height: 1.35;
-		max-width: 280px;
+		max-width: 340px;
 		margin-top: 2px;
 		cursor: help;
 		white-space: nowrap;

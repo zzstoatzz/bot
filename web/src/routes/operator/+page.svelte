@@ -1,4 +1,5 @@
 <script lang="ts">
+	import '$lib/reading.css';
 	import { onMount } from 'svelte';
 	import { Agent } from '@atproto/api';
 	import type { OAuthSession } from '@atproto/oauth-client-browser';
@@ -92,9 +93,18 @@
 	}
 </script>
 
-<main class="page">
-	<div class="page-inner">
-		<h1>Operator controls</h1>
+<svelte:head><title>Phi · Operator</title></svelte:head>
+
+<main class="reading-page operator-page">
+	<div class="reading-inner">
+		<header class="page-heading">
+			<h1>Operator</h1>
+			<span class="mode" class:paused={live?.active}>
+				{live ? (live.active ? 'Public actions paused' : 'Public actions enabled') : (loaded ? 'Override status unavailable' : 'Reading status…')}
+			</span>
+		</header>
+		<section class="control-panel" aria-labelledby="control-heading">
+		<h2 id="control-heading">Public action control</h2>
 
 		<p class="explainer">
 			An active override pauses Phi's public actions and puts your message in her context.
@@ -104,12 +114,12 @@
 
 		{#if live}
 			<div class="live {live.active ? 'live-active' : ''}">
-				<span class="live-label">Current override</span>
+				<span class="live-label">Saved directive</span>
 				{#if live.active}
-					<strong>override ACTIVE</strong>
+					<strong>Paused</strong>
 					<blockquote>{live.message}</blockquote>
 				{:else}
-					Inactive. Phi is operating normally.
+					Public actions are enabled. Phi follows her normal policies.
 				{/if}
 			</div>
 		{/if}
@@ -136,9 +146,11 @@
 			<form onsubmit={save} class="editor">
 				<label class="toggle">
 					<input type="checkbox" bind:checked={active} />
-					override active (safe mode)
+					Pause public actions
 				</label>
+				<label for="override-message">Message to Phi</label>
 				<textarea
+					id="override-message"
 					rows="6"
 					placeholder="your message to phi — why the override is on, and how to reach you. shown to her verbatim."
 					bind:value={message}
@@ -150,110 +162,161 @@
 		{/if}
 
 		{#if status}
-			<div class="status">{status}</div>
+			<div class="status" role="status">{status}</div>
 		{/if}
 
+		</section>
 		<ContextBudget />
 		<CachePanel />
 	</div>
 </main>
 
 <style>
-	/* house content-page container: body is overflow:hidden for the canvas
-	 * pages, so content pages own their scroll region below the HUD chrome
-	 * (same pattern as docket/capabilities). */
-	.page {
+	.operator-page {
 		z-index: 1;
-		background: var(--bg-void);
-		font-size: 15px;
-		position: fixed;
-		inset: 0;
-		overflow-y: auto;
-		overflow-x: hidden;
-		padding: 96px 16px 80px;
-		-webkit-overflow-scrolling: touch;
 	}
-	.page-inner {
-		max-width: 720px;
-		margin: 0 auto;
+	.mode {
+		font: 16px var(--font-chrome);
+		color: var(--scan-hot);
+		padding: 8px 12px;
+		border-left: 2px solid currentColor;
+		background: #17333b70;
+	}
+	.mode.paused {
+		color: var(--warn-hot);
+		background: #49341c70;
 	}
 	.explainer {
 		color: var(--text-mid);
-		max-width: 60ch;
-		line-height: 1.65;
+		max-width: 70ch;
+		margin-top: 12px;
 	}
 	.live {
-		border: 1px solid var(--line-dim);
-		border-left: 2px solid var(--hud-mid);
-		background: var(--bg-elev);
-		padding: 0.75rem 1rem;
-		margin: 1rem 0;
+		border-left: 2px solid var(--scan-hot);
+		background: #09141b;
+		padding: 16px 20px;
+		margin: 20px 0;
 	}
 	.live-active {
-		border-color: #e0a458;
-		background: color-mix(in srgb, #e0a458 12%, transparent);
+		border-color: var(--warn-hot);
+		background: #211b14;
 	}
 	.live-label {
 		display: block;
-		font-size: 0.8em;
 		color: var(--text-mid);
-		margin-bottom: 0.25rem;
+		font: 14px var(--font-chrome);
+		margin-bottom: 6px;
+	}
+	.live strong {
+		color: var(--warn-hot);
 	}
 	.live blockquote {
-		margin: 0.5rem 0 0;
-		padding-left: 0.75rem;
-		border-left: 2px solid currentColor;
+		margin: 8px 0 0;
 		white-space: pre-wrap;
+		overflow-wrap: anywhere;
 	}
-	.login,
-	.editor {
-		display: flex;
-		flex-direction: column;
-		gap: 0.75rem;
-		max-width: 34rem;
-		margin-top: 1rem;
+	.login, .editor {
+		display: grid;
+		gap: 12px;
+		margin-top: 20px;
 	}
-	.login input,
+	.login {
+		max-width: 480px;
+	}
+	.login input, .editor textarea {
+		width: 100%;
+		min-width: 0;
+		box-sizing: border-box;
+		font: 15px/1.65 var(--font-content);
+		padding: 12px 14px;
+		color: var(--text);
+		background: #070d14;
+		border: 1px solid #47606a;
+		border-radius: 0;
+		box-shadow: inset 0 2px 8px #0008;
+	}
 	.editor textarea {
-		font: inherit;
-		padding: 0.5rem;
-		background: var(--bg-elev);
-		color: inherit;
-		border: 1px solid var(--line-dim);
+		resize: vertical;
+		min-height: 160px;
+	}
+	.editor textarea:focus-visible {
+		outline: 2px solid var(--scan-hot);
+		outline-offset: 3px;
 	}
 	.toggle {
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
-	}
-	button {
-		font: inherit;
-		padding: 0.5rem 0.9rem;
+		gap: 12px;
+		min-height: 48px;
+		color: #f0d8bc;
+		font: 22px var(--font-chrome);
 		cursor: pointer;
 	}
-	button.linkish {
-		background: none;
-		border: none;
-		text-decoration: underline;
-		padding: 0;
-		margin-left: 0.75rem;
+	.toggle input {
+		width: 22px;
+		height: 22px;
+		accent-color: var(--hud-hot);
+	}
+	.operator-page :global(button) {
+		min-height: 44px;
+		font: 16px var(--font-chrome);
+		padding: 8px 12px;
+	}
+	.editor button, .login button {
+		justify-self: start;
 	}
 	.session-row {
-		margin: 1rem 0;
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 8px 12px;
+		color: var(--text-mid);
+	}
+	.session-row code {
+		overflow-wrap: anywhere;
+		font: 12px var(--font-mono);
+		color: var(--scan-hot);
 	}
 	.warn {
-		opacity: 0.7;
-		font-size: 0.9em;
+		flex-basis: 100%;
+		color: var(--warn-hot);
 	}
 	.status {
-		margin-top: 1rem;
-		color: var(--text-dim);
-		font-family: var(--font-mono);
-		font-size: 13px;
+		margin-top: 16px;
+		color: var(--scan-hot);
+	}
+	.operator-page :global(.ctx), .operator-page :global(.cache) {
+		margin-top: 0;
+		border-top: 0;
+		padding: 24px;
+	}
+	.operator-page :global(.head) {
+		flex-wrap: wrap;
+		gap: 12px;
+	}
+	.operator-page :global(.ctx h2), .operator-page :global(.cache h2) {
+		font-size: 25px;
+		letter-spacing: 0.07em;
+	}
+	.operator-page :global(.samples) {
+		display: block;
+		max-width: 100%;
+		overflow-x: auto;
 	}
 	@media (max-width: 760px) {
-		.page {
-			padding-top: 150px;
+		.page-heading {
+			align-items: start;
+			flex-direction: column;
+			gap: 12px;
+		}
+		.operator-page :global(.ctx), .operator-page :global(.cache) {
+			padding: 20px 16px;
+		}
+		.live {
+			padding: 14px;
+		}
+		.editor button, .login button {
+			width: 100%;
 		}
 	}
 </style>

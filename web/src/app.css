@@ -98,12 +98,12 @@ body::before {
 		url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='56' height='64' viewBox='0 0 56 64'><g fill='none' stroke='%23b86b3a' stroke-width='0.6' opacity='0.08'><polygon points='14,2 42,2 56,18 42,34 14,34 0,18'/><polygon points='14,34 42,34 56,50 42,66 14,66 0,50'/></g></svg>"),
 		/* horizontal scanlines */
 		repeating-linear-gradient(
-			0deg,
-			rgba(255, 255, 255, 0.012) 0px,
-			rgba(255, 255, 255, 0.012) 1px,
-			transparent 1px,
-			transparent 3px
-		);
+				0deg,
+				rgba(255, 255, 255, 0.012) 0px,
+				rgba(255, 255, 255, 0.012) 1px,
+				transparent 1px,
+				transparent 3px
+			);
 	background-size:
 		56px 64px,
 		auto;
@@ -179,16 +179,6 @@ a:hover {
 	pointer-events: auto;
 }
 
-.hud-tl {
-	top: 18px;
-	left: 22px;
-}
-
-.hud-tr {
-	top: 18px;
-	right: 22px;
-}
-
 .hud-bl {
 	bottom: 16px;
 	left: 22px;
@@ -204,31 +194,6 @@ a:hover {
 @media (max-width: 760px) {
 	.viewport {
 		height: 100dvh;
-	}
-
-	.hud-tl {
-		top: 0;
-		left: 0;
-		right: 0;
-		padding: 10px 14px 9px;
-		background:
-			linear-gradient(to bottom, rgba(7, 9, 15, 0.99) 0%, rgba(7, 9, 15, 0.98) 78%, rgba(7, 9, 15, 0.9) 100%),
-			var(--bg-void);
-		border-bottom: 1px solid var(--line-dim);
-	}
-
-	.hud-tr {
-		top: 68px;
-		left: 0;
-		right: 0;
-		padding: 8px 14px 11px;
-		/* no backdrop-filter here: a full-width fixed blur strip re-blurs
-		   everything beneath it on every scroll frame, and behind a ~97%
-		   opaque gradient it was invisible anyway. opaque is free. */
-		background:
-			linear-gradient(180deg, rgba(7, 9, 15, 1), rgba(7, 9, 15, 0.97)),
-			radial-gradient(circle at 50% 0%, rgba(126, 192, 212, 0.08), transparent 64%);
-		border-bottom: 1px solid rgba(74, 139, 154, 0.18);
 	}
 
 	.hud-bottom {

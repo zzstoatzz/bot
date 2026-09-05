@@ -3,6 +3,8 @@
 //   2. phi's PDS records (public, no auth) via bsky.social
 //   3. external services: bsky public API, hub discovery pool, top chicken market
 
+import { parseTrader, parseMarket, parseResults } from './chicken';
+
 import type {
 	ActivityItem,
 	Atlas,
@@ -13,7 +15,7 @@ import type {
 	ContextBudget,
 	ContextPreview,
 	ChickenResultRound,
-	ChickenRound,
+	ChickenMarket,
 	ChickenTrader,
 	DiscoveryEntry,
 	Docket,
@@ -237,23 +239,21 @@ export async function getDiscoveryPool(): Promise<DiscoveryEntry[]> {
 
 export async function getChickenTrader(): Promise<ChickenTrader | null> {
 	const res = await fetch('/api/chicken/trader');
-	if (res.status === 404) return null; // no wallet yet
-	if (!res.ok) throw new Error(`chicken trader: ${res.status}`);
-	return await res.json();
+	if (res.status === 404) return null;
+	if (!res.ok) throw new Error(`Wallet unavailable (${res.status})`);
+	return parseTrader(await res.json());
 }
 
-export async function getChickenRound(): Promise<ChickenRound | null> {
+export async function getChickenMarket(): Promise<ChickenMarket> {
 	const res = await fetch('/api/chicken/market');
-	if (!res.ok) throw new Error(`chicken market: ${res.status}`);
-	const data: { round?: ChickenRound } = await res.json();
-	return data.round ?? null;
+	if (!res.ok) throw new Error(`Season unavailable (${res.status})`);
+	return parseMarket(await res.json());
 }
 
 export async function getChickenResults(): Promise<ChickenResultRound[]> {
 	const res = await fetch('/api/chicken/results');
-	if (!res.ok) return [];
-	const data: { rounds?: ChickenResultRound[] } = await res.json();
-	return data.rounds ?? [];
+	if (!res.ok) throw new Error(`Round results unavailable (${res.status})`);
+	return parseResults(await res.json());
 }
 
 // --- prompt cache stability ---

@@ -14,10 +14,14 @@
 </script>
 
 <div class="cycler">
-	<span class="hint chrome faint">lens</span>
 	<div class="row">
 		{#each LENSES as lens, i (lens.key)}
-			<a href={lens.href} class="opt chrome" class:active={current === lens.key} aria-current={current === lens.key ? 'page' : undefined}>
+			<a
+				href={lens.href}
+				class="opt chrome"
+				class:active={current === lens.key}
+				aria-current={current === lens.key ? 'page' : undefined}
+			>
 				<span class="num">{i + 1}</span>
 				<span class="lbl">{lens.label}</span>
 			</a>
@@ -27,99 +31,96 @@
 
 <style>
 	.cycler {
-		display: flex;
-		flex-direction: column;
-		align-items: flex-end;
-		gap: 4px;
+		filter: drop-shadow(0 3px 2px #00000060);
 	}
-
-	.hint {
-		font-size: 9px;
-		color: var(--text-dim);
-	}
-
 	.row {
+		position: relative;
+		isolation: isolate;
 		display: flex;
 		gap: 1px;
-		border: 1px solid var(--line-mid);
-		background: var(--bg-panel);
-		clip-path: polygon(
-			6px 0,
-			100% 0,
-			100% calc(100% - 6px),
-			calc(100% - 6px) 100%,
-			0 100%,
-			0 6px
-		);
+		padding: 1px;
+		background: linear-gradient(135deg, #8b8c7e, #4e6570 38%, #293945 65%, #89765b);
+		clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
 	}
-
+	.row::before {
+		content: '';
+		position: absolute;
+		inset: 1px;
+		z-index: -1;
+		background: #0b121c;
+		clip-path: polygon(7px 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%, 0 7px);
+	}
 	.opt {
+		position: relative;
 		display: flex;
 		align-items: center;
-		gap: 6px;
-		padding: 6px 10px;
-		font-size: 11px;
-		color: var(--text-mid);
+		justify-content: center;
+		gap: 8px;
+		min-height: 42px;
+		padding: 8px 17px;
+		font-size: 16px;
+		letter-spacing: 0.08em;
+		color: #d7d4c8;
 		text-decoration: none;
+		background: linear-gradient(180deg, #202e3b, #0c1520);
+		box-shadow:
+			inset 0 1px 0 #ffffff0b,
+			inset 0 -2px 0 #00000055;
 		transition:
-			color 0.12s,
-			background 0.12s;
+			background 0.12s,
+			color 0.12s;
 	}
-
+	.opt:first-child {
+		clip-path: polygon(7px 0, 100% 0, 100% 100%, 0 100%, 0 7px);
+	}
+	.opt:last-child {
+		clip-path: polygon(0 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%);
+	}
 	.opt:hover {
-		color: var(--hud-hot);
-		background: rgba(184, 107, 58, 0.05);
+		color: #fff0dc;
+		background: linear-gradient(180deg, #3b3b37, #202628);
 	}
-
 	.opt.active {
-		color: var(--hud-hot);
-		background: rgba(184, 107, 58, 0.1);
+		color: #24190f;
+		background: linear-gradient(180deg, #f0be8d 0%, #dfa06b 45%, #bf804f 100%);
+		box-shadow:
+			inset 0 1px 0 #fff2d6,
+			inset 0 -3px 0 #794c2d;
+		text-shadow: 0 1px 0 #ffffff35;
 	}
-
+	.opt:focus-visible {
+		outline: 0;
+		box-shadow:
+			inset 0 0 0 2px #c2f1fc,
+			inset 0 -3px 0 #7ec0d4;
+	}
 	.num {
-		font-family: var(--font-mono);
-		font-size: 9px;
-		color: var(--text-dim);
+		font: 10px var(--font-mono);
+		color: #99acb6;
 	}
-
 	.opt.active .num {
-		color: var(--hud-mid);
+		color: #4d3421;
 	}
-
 	@media (max-width: 760px) {
-		.cycler {
-			width: 100%;
-			align-items: stretch;
-		}
-		.hint {
-			display: none;
-		}
 		.row {
 			width: 100%;
-			border-color: rgba(126, 192, 212, 0.24);
-			background:
-				linear-gradient(180deg, rgba(22, 30, 43, 0.72), rgba(7, 10, 17, 0.72)),
-				rgba(7, 9, 15, 0.86);
-			box-shadow:
-				inset 0 1px 0 rgba(214, 210, 201, 0.05),
-				0 8px 30px rgba(0, 0, 0, 0.26);
 		}
 		.opt {
 			flex: 1;
-			justify-content: center;
-			padding: 8px 6px;
-			font-size: 12px;
 			min-height: 44px;
-			color: var(--text-mid);
-		}
-		.opt.active {
-			background:
-				radial-gradient(circle at 50% 0%, rgba(224, 144, 96, 0.2), transparent 72%),
-				rgba(184, 107, 58, 0.1);
-			color: var(--hud-hot);
+			padding: 8px 7px;
+			font-size: 15px;
+			letter-spacing: 0.06em;
 		}
 		.num {
 			display: none;
+		}
+	}
+	@media (max-width: 360px) {
+		.opt {
+			font-size: 14px;
+			padding-inline: 5px;
+			letter-spacing: 0.04em;
 		}
 	}
 </style>

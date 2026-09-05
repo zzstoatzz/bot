@@ -41,19 +41,63 @@
 	});
 </script>
 
-<div class="hud hud-tl">
-	<HudIdentity />
-</div>
-
-<div class="hud hud-tr">
-	<HudLensCycler {current} {LENSES} />
-</div>
+<header class="cockpit-header">
+	<div class="identity"><HudIdentity /></div>
+	<nav aria-label="Cockpit pages"><HudLensCycler {current} {LENSES} /></nav>
+</header>
 
 <div class="hud-bottom">
 	<div class="hud hud-br">
 		<HudReadout />
 	</div>
-	<div class="hud hud-bl">
-		<HudCounts />
-	</div>
+	{#if current !== 'mind' && current !== 'market'}
+		<div class="hud hud-bl"><HudCounts /></div>
+	{/if}
 </div>
+
+<style>
+	.cockpit-header {
+		position: fixed;
+		z-index: 10;
+		inset: 0 0 auto;
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		gap: 24px;
+		padding: 14px 24px;
+		background: linear-gradient(180deg, #18222cef, #090f18fa);
+		border-top: 1px solid #71604b;
+		border-bottom: 1px solid #3a4b56;
+		box-shadow:
+			0 4px 0 #060b12,
+			0 5px 0 #172633,
+			0 10px 26px #00000040;
+	}
+	.identity {
+		min-width: 0;
+		max-width: 380px;
+	}
+	nav {
+		flex-shrink: 0;
+	}
+	@media (max-width: 760px) {
+		.cockpit-header {
+			display: grid;
+			grid-template-columns: minmax(0, 1fr);
+			justify-content: stretch;
+			gap: 10px;
+			padding: 10px 14px 12px;
+		}
+		.identity {
+			min-width: 0;
+		}
+		nav {
+			width: 100%;
+		}
+	}
+	@media (max-width: 360px) {
+		.cockpit-header {
+			padding-inline: 10px;
+		}
+	}
+</style>

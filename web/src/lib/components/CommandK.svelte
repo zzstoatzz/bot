@@ -2,6 +2,8 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { logbook } from '$lib/state.svelte';
 
+	let { inline = false }: { inline?: boolean } = $props();
+
 	interface Actor {
 		did: string;
 		handle: string;
@@ -104,9 +106,15 @@
 </script>
 
 <!-- launcher chip: keyboard hint on desktop, tap target on mobile -->
-<button bind:this={launcher} class="launcher chrome" onclick={show} aria-label="search who phi knows">
+<button
+	bind:this={launcher}
+	class="launcher"
+	class:inline
+	onclick={show}
+	aria-label="search who phi knows"
+>
 	<span class="key mono">⌘K</span>
-	<span class="lbl">what does phi know about…</span>
+	<span class="lbl">Look up a person</span>
 </button>
 
 {#if open}
@@ -158,7 +166,9 @@
 				{/if}
 			</ul>
 		{:else}
-			<div class="empty mono">type to search the network — pick a person to see what phi remembers</div>
+			<div class="empty mono">
+				type to search the network — pick a person to see what phi remembers
+			</div>
 		{/if}
 	</div>
 {/if}
@@ -181,6 +191,16 @@
 		font-size: 10px;
 		letter-spacing: 0.12em;
 		color: var(--text-mid);
+	}
+	.launcher.inline {
+		position: static;
+		transform: none;
+		min-height: 48px;
+		font-family: var(--font-chrome);
+		font-size: 17px;
+		letter-spacing: 0;
+		border-radius: 0;
+		padding: 12px 16px;
 	}
 	.launcher:hover {
 		color: var(--hud-hot);

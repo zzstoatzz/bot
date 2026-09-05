@@ -13,10 +13,10 @@ SPA: `ssr`/`prerender` disabled globally, unknown routes fall back to
 
 | route | what |
 |---|---|
-| `/` | HUD: identity, status pill (from `/health`), lens cycler (mind map / constellation), counts. ⌘K palette searches any network identity (typeahead.waow.tech) and opens the logbook drawer showing what phi knows about them (`/api/users/{handle}`) |
+| `/` | recent published activity, current goals, stored-memory lookup, and a separate atlas overlay. Published activity is explicitly distinguished from unrecorded encounters. The typeahead palette opens a person’s logbook and original sources. |
 | `/docket` | daily promotion candidates from the docket flow |
 | `/capabilities` | phi's registered tools, from `/api/abilities` (ground truth, not hand-curated) |
-| `/market` | phi's top chicken market book: current position (with round context), all-time p&l + net-worth sparkline banded by market round, trade ledger with settlement outcomes and profile links. reads topchicken.cee.wtf via the bot's `/api/chicken/*` proxy (upstream has no CORS headers) |
+| `/market` | current season, holdings, season-limited net worth, past-season results, and dated trades. Inspect the line chart directly by pointer, touch, or arrow keys. Missing quotes stay missing; historical buys do not fabricate current holdings. Reads the bot’s `/api/chicken/*` proxy. |
 | `/operator` | **operator override editor** — atproto OAuth login, write your `io.zzstoatzz.phi.override` record, see the live state phi obeys. see [../safety.md](../safety.md). below it, the **prompt cache** readout (`/api/cache`): one stacked bar per recent run — tokens read from cache / written at a premium / paid in full — plus collapse flags. public read, no auth |
 
 `OverrideBanner` renders cockpit-wide when the operator's override is
@@ -28,6 +28,11 @@ composition excludes task prompts and per-run blocks; it is not the full
 starting context of a real run. Refresh failures leave the previous snapshot
 visible with an explicit failure message. The operator form keeps its own
 account-ownership rules regardless of the displayed usage data.
+
+The shared HUD and reading panels use the Metroid Prime-inspired amber/cyan
+palette, Saira Condensed chrome, Inter content, and JetBrains Mono references.
+Selected navigation has dark text on an amber surface; form controls have
+visible focus and touch targets. Operator diagnostics use the same palette.
 
 ## oauth notes
 
