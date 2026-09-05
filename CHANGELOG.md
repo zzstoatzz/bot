@@ -1,5 +1,13 @@
 # changelog
 
+## 2026-09-05 — Exclude superseded user accounts from search
+
+Scoped and current-author memory search returned replaced observations as ordinary
+results, unlike episodic search. Exclude records explicitly marked superseded
+from those results while retaining legacy records without status. Historical
+records remain stored. Candidate limits and ranking are unchanged, so a search
+can return fewer results when its candidate pool includes superseded records.
+
 ## 2026-09-05 — Retain the existing account when a save adds no information
 
 The exact-wording path converted a reconciler NOOP into UPDATE. A brief Ali
