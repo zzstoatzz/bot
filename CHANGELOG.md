@@ -7,6 +7,19 @@ what moved and what it cost to find out.
 
 ## 2026-09-05
 
+- **evidence**: inspecting an atlas memory point resolves its original stored
+  row and source links. The projection's short label no longer substitutes
+  for the underlying memory. Missing sources and read failures are explicit.
+- **retrieval**: failed searches no longer report no memories. A combined
+  search retains available results while naming unavailable scopes; missing
+  namespaces remain distinct from backend failures.
+- **measurement**: input-token totals already include cached subsets. Cache
+  accounting now avoids adding those subsets again, including when reloading
+  saved samples, so request sizes and cache savings reflect provider totals.
+- **skills**: prompt inspection uses the exposed query_traces tool and current
+  model-request fields, with bounded slices and explicit telemetry limits.
+  Shorter infrastructure and trace descriptions retain their tool contracts.
+
 - **cockpit**: phone memory views scroll the graph and reading content
   together. Search has its own row; navigation includes Operator; a solid
   footer keeps status text off the content. Details use a full-width phone
