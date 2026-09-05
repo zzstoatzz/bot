@@ -7,6 +7,12 @@ what moved and what it cost to find out.
 
 ## 2026-09-05
 
+- **record retrieval skill**: document pdsx reply-reference strings and the
+  current requirement to project list_records results to retain the cursor.
+  Retry truncated pages before advancing so omitted records are not skipped.
+  This addresses the concrete read failures in the Ali test; a service-level
+  pagination repair remains a separate, unpublished proposal.
+
 - **tool descriptions**: replace moralizing goal guidance with direct field and
   evidence requirements. The wording was present in the recorded Ali test
   request despite the new personality. Authorization, field caps, and goal

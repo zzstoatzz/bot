@@ -57,6 +57,20 @@ hydration calls, zero errors, ~7k chars a call. narrow first when you can:
 `search_posts` takes `author`, `since`, `until`, `sort=latest` and a
 `cursor`, and often finds the post before the walk does.
 
+For reply searches, these read tools simplify `.value.reply.parent` and
+`.value.reply.root` to URI strings. Use the returned shape, for example:
+
+```
+mcp__pdsx__list_records("app.bsky.feed.post", repo="phi.zzstoatzz.io", limit=100,
+    select=".[] | {uri, t: .value.createdAt, parent: .value.reply.parent}")
+```
+
+`list_records` currently returns its cursor only with `select`. An unprojected
+list without a cursor does not establish exhaustion. An empty projected result
+with a cursor still has another page. If the response reports truncation,
+narrow the projection or reduce the limit and retry the same page before
+advancing: the cursor follows the fetched page, including any omitted rows.
+
 ## finding the right lexicon
 
 three ways, in order of effort:
