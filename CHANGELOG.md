@@ -1,5 +1,12 @@
 # changelog
 
+## 2026-09-05 — Separate music history from capability
+
+Remove the unsupported claim that Phi makes music from her personality. Nate
+placed older music records under the account; record ownership did not establish
+that Phi composed them. Preserve his explanation in the account lore, attributed
+and dated, without assigning Phi a future musical ambition.
+
 ## 2026-09-05 — Preserve citation provenance across memory versions
 
 Two malformed references supplied by Phi survived multiple corrections through

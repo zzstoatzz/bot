@@ -4,6 +4,8 @@ deeper dive into phi's design.
 
 ## contents
 
+- [lore.md](lore.md) — dated background about the account, with who supplied each account
+
 - [architecture.md](architecture.md) — entry points, scheduling, which model runs which agent, why this shape
 - [memory.md](memory.md) — the four kinds of state phi draws on (thread, private, public, intent)
 - [system-prompt.md](system-prompt.md) — block-by-block reference for what's actually in phi's context per run
