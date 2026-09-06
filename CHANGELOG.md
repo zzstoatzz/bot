@@ -1,5 +1,13 @@
 # changelog
 
+## Architecture layout correction
+
+Replaced the fixed-coordinate architecture diagram after text overflow made it
+unreadable at intermediate widths. A subsystem index opens a focused view of
+labeled inputs, the selected component, and outputs. Content determines node
+height; narrow screens and enlarged text reflow the model. Source inspection
+and the underlying architecture contract are unchanged.
+
 ## 2026-09-06 — Inspect the architecture
 
 Add a dedicated architecture page, separate from the semantic atlas. A reviewed

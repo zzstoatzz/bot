@@ -17,7 +17,8 @@ remembered material, not a map of the software that handles it.
   records and does not check external service health. External source references
   describe reviewed repository contracts, not a verified remote deployment.
 - `web/src/lib/architecture.ts` validates the response once. The Svelte page
-  renders the same model as a desktop schematic and a mobile component browser.
+  renders a subsystem index and a focused input/component/output model. Nodes use
+  content-sized layout; connections carry labels rather than crossing the overview.
   The source view exposes package dependencies separately from semantic flow.
 
 The semantic connections need human review. Imports alone cannot establish that
