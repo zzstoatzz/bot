@@ -111,3 +111,7 @@ Runtime skill `revise-personality` explains direct `write_personality` authorshi
 Live personality revisions are on Phi’s PDS under `io.zzstoatzz.phi.personality`;
 the repo personality file seeds an empty collection. Revisions take effect next
 run and remain available for restoration. Operational rules remain separate.
+
+The architecture cockpit at `/architecture` uses a reviewed component manifest
+and an AST-derived source inventory. See `docs/architecture-map.md`. The existing
+runtime `own-source` skill explains inspecting and proposing updates to this model.

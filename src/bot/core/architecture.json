@@ -1,0 +1,733 @@
+{
+  "nodes": [
+    {
+      "id": "notifications",
+      "label": "Bluesky notifications",
+      "lane": 0,
+      "row": 0,
+      "summary": "Conversations wake Phi",
+      "details": "The poller batches incoming notifications; the handler builds thread context and captures encounters before the agent runs.",
+      "sources": [
+        {
+          "path": "src/bot/services/notification_poller.py",
+          "symbol": ""
+        },
+        {
+          "path": "src/bot/services/message_handler.py",
+          "symbol": ""
+        }
+      ],
+      "tags": [
+        "runtime",
+        "memory"
+      ],
+      "status": "implemented"
+    },
+    {
+      "id": "schedule",
+      "label": "Scheduled attention",
+      "lane": 0,
+      "row": 2,
+      "summary": "Cycles, people, reflection",
+      "details": "The bot poll loop owns its waking-hour attention schedule. Focused maintenance passes can also be triggered externally.",
+      "sources": [
+        {
+          "path": "src/bot/agent.py",
+          "symbol": "process_cycle"
+        },
+        {
+          "path": "src/bot/services/notification_poller.py",
+          "symbol": ""
+        }
+      ],
+      "tags": [
+        "runtime"
+      ],
+      "status": "implemented"
+    },
+    {
+      "id": "prefect",
+      "label": "Prefect & workflows",
+      "lane": 0,
+      "row": 4,
+      "summary": "External triggers and alerts",
+      "details": "my-prefect-server invokes control/trigger endpoints for focused passes. Workflow observations and alerts enter context; authenticated Prefect MCP access is conditional. A review verdict does not itself merge a pull: the external merge flow retains operator approval.",
+      "sources": [
+        {
+          "path": "src/bot/main.py",
+          "symbol": ""
+        },
+        {
+          "path": "src/bot/agent.py",
+          "symbol": "process_pull_review"
+        },
+        {
+          "repo": "my-prefect-server",
+          "path": "flows/phi_trigger.py",
+          "symbol": ""
+        },
+        {
+          "repo": "my-prefect-server",
+          "path": "flows/merge_approved.py",
+          "symbol": ""
+        }
+      ],
+      "tags": [
+        "runtime",
+        "delivery"
+      ],
+      "status": "implemented"
+    },
+    {
+      "id": "web",
+      "label": "Web & discovery",
+      "lane": 0,
+      "row": 6,
+      "summary": "Read beyond stored memory",
+      "details": "Web search, publication search, people discovery and source-reading tools supply new material during a run. Tool results become conversation context.",
+      "sources": [
+        {
+          "path": "src/bot/agent.py",
+          "symbol": "process_people"
+        },
+        {
+          "path": "src/bot/tools/search.py",
+          "symbol": ""
+        }
+      ],
+      "tags": [
+        "runtime",
+        "memory"
+      ],
+      "status": "implemented"
+    },
+    {
+      "id": "pds",
+      "label": "PDS identity & intent",
+      "lane": 1,
+      "row": 0,
+      "summary": "Personality, SELF, goals, override",
+      "details": "AT Protocol records hold deliberate personality revisions, self-description, goals, influence choices and operator control. Personality changes affect the next run. These are distinct from extracted memories.",
+      "sources": [
+        {
+          "path": "src/bot/core/personality.py",
+          "symbol": ""
+        },
+        {
+          "path": "src/bot/core/self_record.py",
+          "symbol": ""
+        },
+        {
+          "path": "src/bot/core/override.py",
+          "symbol": ""
+        }
+      ],
+      "tags": [
+        "memory",
+        "delivery"
+      ],
+      "status": "implemented"
+    },
+    {
+      "id": "encounters",
+      "label": "Captured encounters",
+      "lane": 1,
+      "row": 1,
+      "summary": "Incoming events with provenance",
+      "details": "Incoming notifications preserve actor, text and source references. search_encounters can search these across people. This is not exhaustive outgoing-post or decision history. Storage: the phi-encounters Turbopuffer namespace.",
+      "sources": [
+        {
+          "path": "src/bot/memory/encounters.py",
+          "symbol": ""
+        }
+      ],
+      "tags": [
+        "memory"
+      ],
+      "status": "implemented"
+    },
+    {
+      "id": "memory",
+      "label": "Turbopuffer memory",
+      "lane": 1,
+      "row": 2,
+      "summary": "Person stores and episodic notes",
+      "details": "Per-person and episodic namespaces support recall. Explicit save_memory returns stored wording; extraction and reconciliation also run in the background. Remembered accounts are not proof of what a tool did.",
+      "sources": [
+        {
+          "path": "src/bot/memory/namespace_memory.py",
+          "symbol": ""
+        },
+        {
+          "path": "src/bot/tools/memory.py",
+          "symbol": ""
+        }
+      ],
+      "tags": [
+        "memory"
+      ],
+      "status": "implemented"
+    },
+    {
+      "id": "semble",
+      "label": "Semble / Cosmik",
+      "lane": 1,
+      "row": 3,
+      "summary": "Public library and connections",
+      "details": "Cards, collections and typed connections organize external reading on AT Protocol. Semble tools query and curate the library; a library summary also enters context. Stored annotations have no public-comedy constraint.",
+      "sources": [
+        {
+          "path": "skills/cosmik-records/SKILL.md",
+          "symbol": ""
+        },
+        {
+          "path": "src/bot/agent.py",
+          "symbol": "inject_public_memory"
+        }
+      ],
+      "tags": [
+        "memory"
+      ],
+      "status": "implemented"
+    },
+    {
+      "id": "atlas",
+      "label": "Semantic atlas",
+      "lane": 1,
+      "row": 4,
+      "summary": "Projection of remembered material",
+      "details": "The atlas is a semantic projection and cluster digest, published as PDS state and displayed in the mind view. It is a representation of material, not the architecture or the source of all memory.",
+      "sources": [
+        {
+          "path": "src/bot/core/atlas.py",
+          "symbol": ""
+        },
+        {
+          "path": "src/bot/agent.py",
+          "symbol": "inject_atlas_digest"
+        }
+      ],
+      "tags": [
+        "memory"
+      ],
+      "status": "implemented"
+    },
+    {
+      "id": "influences",
+      "label": "Chosen influences",
+      "lane": 1,
+      "row": 5,
+      "summary": "Authors and works on PDS",
+      "details": "Phi chooses and retires writing influences through AT Protocol records. vgel.me was the initial influence, not a permanent personality definition. Choosing a record does not yet seed a run.",
+      "sources": [
+        {
+          "path": "src/bot/core/influences.py",
+          "symbol": ""
+        },
+        {
+          "path": "skills/choose-influences/SKILL.md",
+          "symbol": ""
+        }
+      ],
+      "tags": [
+        "memory"
+      ],
+      "status": "implemented"
+    },
+    {
+      "id": "reader",
+      "label": "Influence reader",
+      "lane": 1,
+      "row": 6,
+      "summary": "Not connected to runs",
+      "details": "Background reading, distillation and context-sensitive voice seeding remain unfinished. Local prototypes exist outside the deployed release. This node records that gap, not a running service.",
+      "sources": [
+        {
+          "path": "docs/architecture.md",
+          "symbol": ""
+        }
+      ],
+      "tags": [
+        "memory"
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "context",
+      "label": "Prompt assembly",
+      "lane": 2,
+      "row": 0,
+      "summary": "Live blocks + task + tool results",
+      "details": "Dynamic inject_* functions assemble context for each entry point. Personality, operational rules, incoming material, recall and fresh state meet here. Diagnostic preview shows blocks; Logfire model requests establish what a run actually received.",
+      "sources": [
+        {
+          "path": "src/bot/agent.py",
+          "symbol": ""
+        }
+      ],
+      "tags": [
+        "runtime",
+        "memory"
+      ],
+      "status": "implemented"
+    },
+    {
+      "id": "skills",
+      "label": "Progressive disclosure",
+      "lane": 2,
+      "row": 1,
+      "summary": "Discover, load, then use",
+      "details": "The initial skill catalog names capabilities. load_skill reveals full instructions when needed. Runtime skills belong to Phi; .claude/skills belongs to the operator.",
+      "sources": [
+        {
+          "path": "src/bot/agent.py",
+          "symbol": ""
+        },
+        {
+          "path": "skills/pdsx-fundamentals/SKILL.md",
+          "symbol": ""
+        }
+      ],
+      "tags": [
+        "runtime",
+        "memory"
+      ],
+      "status": "implemented"
+    },
+    {
+      "id": "agent",
+      "label": "Phi agent loop",
+      "lane": 2,
+      "row": 2,
+      "summary": "One loop, multiple entry points",
+      "details": "PydanticAI runs the main model with PhiDeps. Phi chooses and executes tool calls inside the run. The final returned string is a logging summary, not a separate action-dispatch plan.",
+      "sources": [
+        {
+          "path": "src/bot/agent.py",
+          "symbol": "PhiAgent"
+        }
+      ],
+      "tags": [
+        "runtime",
+        "memory",
+        "delivery"
+      ],
+      "status": "implemented"
+    },
+    {
+      "id": "tools",
+      "label": "Native tools & MCP",
+      "lane": 2,
+      "row": 4,
+      "summary": "Read, remember, publish, act",
+      "details": "Native Python tools and per-run MCP connections expose capabilities. Reads supply evidence; writes pass their relevant controls. PDSx, Semble, publications, Tangled and optional Prefect have different responsibilities.",
+      "sources": [
+        {
+          "path": "src/bot/tools/__init__.py",
+          "symbol": ""
+        },
+        {
+          "path": "src/bot/agent.py",
+          "symbol": ""
+        }
+      ],
+      "tags": [
+        "runtime",
+        "memory",
+        "delivery"
+      ],
+      "status": "implemented"
+    },
+    {
+      "id": "override",
+      "label": "Operator override",
+      "lane": 3,
+      "row": 0,
+      "summary": "Operator-owned stop control",
+      "details": "The override lives on the operator\u2019s PDS. Native publication paths and MCP mutations consult it. It is separate from Phi\u2019s personality and from public style.",
+      "sources": [
+        {
+          "path": "src/bot/core/override.py",
+          "symbol": ""
+        },
+        {
+          "path": "src/bot/core/mcp_guard.py",
+          "symbol": ""
+        }
+      ],
+      "tags": [
+        "delivery"
+      ],
+      "status": "implemented"
+    },
+    {
+      "id": "judge",
+      "label": "Public policy judge",
+      "lane": 3,
+      "row": 1,
+      "summary": "Independent pre-publication check",
+      "details": "The configured policy model checks public proposals. Public etiquette is versioned; rejected attempts require private revision documentation. Short posts and developed blogs have different forms. Approval is neither publication evidence nor operator taste acceptance.",
+      "sources": [
+        {
+          "path": "src/bot/core/policy.py",
+          "symbol": "check_action"
+        },
+        {
+          "path": "src/bot/core/etiquette.py",
+          "symbol": ""
+        }
+      ],
+      "tags": [
+        "delivery"
+      ],
+      "status": "implemented"
+    },
+    {
+      "id": "publication",
+      "label": "Public delivery",
+      "lane": 3,
+      "row": 2,
+      "summary": "Bluesky, blog, profile, comments",
+      "details": "Native post preflights each emitted thread part before publishing any. Blog and bio have native gates; the MCP guard blocks known raw feed-write bypasses and checks repository prose. Arbitrary external workflows are not proved impossible bypasses.",
+      "sources": [
+        {
+          "path": "src/bot/tools/posting.py",
+          "symbol": ""
+        },
+        {
+          "path": "src/bot/tools/blog.py",
+          "symbol": ""
+        },
+        {
+          "path": "src/bot/core/mcp_guard.py",
+          "symbol": ""
+        }
+      ],
+      "tags": [
+        "delivery"
+      ],
+      "status": "implemented"
+    },
+    {
+      "id": "logfire",
+      "label": "Logfire evidence",
+      "lane": 3,
+      "row": 4,
+      "summary": "Requests, results and failures",
+      "details": "Tracing records what models received, tool arguments, returned results, errors and cache usage. Phi can query her own traces; the operator uses them to distinguish attempted from completed actions.",
+      "sources": [
+        {
+          "path": "src/bot/tools/traces.py",
+          "symbol": ""
+        },
+        {
+          "path": "src/bot/agent.py",
+          "symbol": ""
+        }
+      ],
+      "tags": [
+        "runtime",
+        "memory",
+        "delivery"
+      ],
+      "status": "implemented"
+    },
+    {
+      "id": "cockpit",
+      "label": "Cockpit & operator",
+      "lane": 3,
+      "row": 6,
+      "summary": "Inspect and control the system",
+      "details": "FastAPI serves state and the Svelte cockpit. The mind page visualizes semantic material; this architecture page models machinery. The operator page exposes override controls and classifier statistics.",
+      "sources": [
+        {
+          "path": "src/bot/main.py",
+          "symbol": ""
+        },
+        {
+          "path": "web/src/routes/operator/+page.svelte",
+          "symbol": ""
+        }
+      ],
+      "tags": [
+        "runtime",
+        "delivery"
+      ],
+      "status": "implemented"
+    },
+    {
+      "id": "journal",
+      "label": "Revision journal",
+      "lane": 3,
+      "row": 3,
+      "summary": "Private notes, public counters",
+      "details": "A separate SQLite journal on the Fly volume records classifier attempts and exact private revision notes. Notes are not embedded into ambient recall. The public board exposes reasons and documentation status, not private note text.",
+      "sources": [
+        {
+          "path": "src/bot/core/etiquette.py",
+          "symbol": ""
+        }
+      ],
+      "tags": [
+        "memory",
+        "delivery"
+      ],
+      "status": "implemented"
+    },
+    {
+      "id": "helpers",
+      "label": "Memory helpers",
+      "lane": 2,
+      "row": 5,
+      "summary": "Extract, reconcile, synthesize",
+      "details": "Helper model calls extract and reconcile observations and synthesize retrieved episodic context. These transformations differ from explicit authored-note storage. Their outputs can influence what the main model sees; they are not the top-level speaker.",
+      "sources": [
+        {
+          "path": "src/bot/memory/extraction.py",
+          "symbol": ""
+        },
+        {
+          "path": "src/bot/memory/namespace_memory.py",
+          "symbol": ""
+        }
+      ],
+      "tags": [
+        "memory",
+        "runtime"
+      ],
+      "status": "implemented"
+    },
+    {
+      "id": "atlas-builder",
+      "label": "Atlas build flow",
+      "lane": 0,
+      "row": 5,
+      "summary": "Project and cluster off-band",
+      "details": "The external phi_atlas flow reads Turbopuffer and Phi\u2019s PDS objects, embeds material, reduces it with UMAP, clusters and labels it, then publishes an atlas blob to Phi\u2019s PDS. This is distinct from the publication-network atlas. The bot reads the result; it does not rebuild the atlas in each agent run.",
+      "sources": [
+        {
+          "repo": "my-prefect-server",
+          "path": "flows/phi_atlas.py",
+          "symbol": ""
+        }
+      ],
+      "tags": [
+        "memory",
+        "runtime"
+      ],
+      "status": "implemented"
+    }
+  ],
+  "edges": [
+    {
+      "source": "notifications",
+      "target": "encounters",
+      "label": "capture incoming events",
+      "planned": false
+    },
+    {
+      "source": "notifications",
+      "target": "context",
+      "label": "notification task and thread",
+      "planned": false
+    },
+    {
+      "source": "schedule",
+      "target": "context",
+      "label": "scheduled task",
+      "planned": false
+    },
+    {
+      "source": "prefect",
+      "target": "context",
+      "label": "trigger material and workflow state",
+      "planned": false
+    },
+    {
+      "source": "pds",
+      "target": "context",
+      "label": "identity, intent and rules",
+      "planned": false
+    },
+    {
+      "source": "encounters",
+      "target": "context",
+      "label": "recent incoming context",
+      "planned": false
+    },
+    {
+      "source": "memory",
+      "target": "context",
+      "label": "per-person and episodic recall",
+      "planned": false
+    },
+    {
+      "source": "semble",
+      "target": "context",
+      "label": "library summary",
+      "planned": false
+    },
+    {
+      "source": "atlas",
+      "target": "context",
+      "label": "cluster digest",
+      "planned": false
+    },
+    {
+      "source": "influences",
+      "target": "reader",
+      "label": "chosen authors and works",
+      "planned": false
+    },
+    {
+      "source": "context",
+      "target": "agent",
+      "label": "assembled instructions",
+      "planned": false
+    },
+    {
+      "source": "skills",
+      "target": "agent",
+      "label": "catalog and loaded instructions",
+      "planned": false
+    },
+    {
+      "source": "agent",
+      "target": "tools",
+      "label": "tool calls",
+      "planned": false
+    },
+    {
+      "source": "tools",
+      "target": "agent",
+      "label": "returned results",
+      "planned": false
+    },
+    {
+      "source": "tools",
+      "target": "web",
+      "label": "search and read",
+      "planned": false
+    },
+    {
+      "source": "tools",
+      "target": "memory",
+      "label": "save and retrieve",
+      "planned": false
+    },
+    {
+      "source": "tools",
+      "target": "semble",
+      "label": "curate and query",
+      "planned": false
+    },
+    {
+      "source": "tools",
+      "target": "pds",
+      "label": "read and change records",
+      "planned": false
+    },
+    {
+      "source": "tools",
+      "target": "override",
+      "label": "check mutation control",
+      "planned": false
+    },
+    {
+      "source": "override",
+      "target": "judge",
+      "label": "public proposal when permitted",
+      "planned": false
+    },
+    {
+      "source": "judge",
+      "target": "publication",
+      "label": "approved composition",
+      "planned": false
+    },
+    {
+      "source": "agent",
+      "target": "logfire",
+      "label": "trace model and tools",
+      "planned": false
+    },
+    {
+      "source": "logfire",
+      "target": "tools",
+      "label": "query_traces evidence",
+      "planned": false
+    },
+    {
+      "source": "logfire",
+      "target": "cockpit",
+      "label": "observability",
+      "planned": false
+    },
+    {
+      "source": "atlas",
+      "target": "cockpit",
+      "label": "mind projection",
+      "planned": false
+    },
+    {
+      "source": "reader",
+      "target": "context",
+      "label": "future context-specific distillation",
+      "planned": true
+    },
+    {
+      "source": "judge",
+      "target": "journal",
+      "label": "record outcomes and required notes",
+      "planned": false
+    },
+    {
+      "source": "journal",
+      "target": "cockpit",
+      "label": "redacted public statistics",
+      "planned": false
+    },
+    {
+      "source": "agent",
+      "target": "helpers",
+      "label": "post-run extraction",
+      "planned": false
+    },
+    {
+      "source": "memory",
+      "target": "helpers",
+      "label": "retrieved episodic material",
+      "planned": false
+    },
+    {
+      "source": "helpers",
+      "target": "context",
+      "label": "synthesized recall",
+      "planned": false
+    },
+    {
+      "source": "helpers",
+      "target": "memory",
+      "label": "reconciled observations",
+      "planned": false
+    },
+    {
+      "source": "memory",
+      "target": "atlas-builder",
+      "label": "observations and episodic material",
+      "planned": false
+    },
+    {
+      "source": "pds",
+      "target": "atlas-builder",
+      "label": "posts, blogs, goals and Cosmik records",
+      "planned": false
+    },
+    {
+      "source": "atlas-builder",
+      "target": "atlas",
+      "label": "publish projection blob",
+      "planned": false
+    }
+  ]
+}

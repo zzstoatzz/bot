@@ -9,9 +9,10 @@
 
 	const LENSES = [
 		{ key: 'mind', href: '/', label: 'mind' },
-		{ key: 'capabilities', href: '/capabilities', label: 'capabilities' },
+		{ key: 'capabilities', href: '/capabilities', label: 'capabilities', shortLabel: 'tools' },
 		{ key: 'market', href: '/market', label: 'market' },
-		{ key: 'operator', href: '/operator', label: 'operator' }
+		{ key: 'operator', href: '/operator', label: 'operator' },
+		{ key: 'architecture', href: '/architecture', label: 'architecture', shortLabel: 'system' }
 	] as const;
 
 	const current = $derived.by(() => {
@@ -20,6 +21,7 @@
 		if (path.startsWith('/capabilities')) return 'capabilities';
 		if (path.startsWith('/market')) return 'market';
 		if (path.startsWith('/operator')) return 'operator';
+		if (path.startsWith('/architecture')) return 'architecture';
 		return 'mind';
 	});
 
@@ -30,6 +32,7 @@
 		if (e.key === '2') goto('/capabilities');
 		if (e.key === '3') goto('/market');
 		if (e.key === '4') goto('/operator');
+		if (e.key === '5') goto('/architecture');
 	}
 
 	onMount(() => {

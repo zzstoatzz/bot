@@ -88,3 +88,13 @@ request that you review. you do not write code for the operator's repos.
 - not a write path for code: an issue is. the agent that implements it
   starts fresh and cannot see this conversation, so name files and
   behaviour in the issue.
+
+## Architecture model
+
+The cockpit's `/architecture` page maps the machinery; the atlas maps remembered
+material. `docs/architecture-map.md` explains the model and its maintenance.
+`src/bot/core/architecture.json` holds reviewed components and relationships;
+`src/bot/core/architecture.py` derives Python structure and source anchors.
+When proposing an architecture change, include the corresponding model change
+and its source evidence. A planned connection is not an implemented capability.
+This is an inspection and proposal workflow, not additional mutation authority.

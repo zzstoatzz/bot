@@ -28,6 +28,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from bot.config import settings
 from bot.core import ops_log, prior_coverage, watchdog
 from bot.core.alert_watch import fold_firing, parse_webhook
+from bot.core.architecture import architecture_model
 from bot.core.atlas import get_atlas
 from bot.core.atproto_client import bot_client
 from bot.core.cache_stability import cache_monitor
@@ -816,6 +817,12 @@ async def context_budget_refresh(request: Request):
 _graph_cache_data: dict | None = None
 _graph_cache_expires: float = 0.0
 _GRAPH_CACHE_TTL = 60  # seconds
+
+
+@app.get("/api/architecture")
+async def architecture():
+    """Reviewed relationships and source-derived structure of this release."""
+    return await asyncio.to_thread(architecture_model)
 
 
 @app.get("/api/etiquette")

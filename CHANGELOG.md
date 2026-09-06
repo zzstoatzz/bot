@@ -1,5 +1,15 @@
 # changelog
 
+## 2026-09-06 — Inspect the architecture
+
+Add a dedicated architecture page, separate from the semantic atlas. A reviewed
+component graph exposes memory, prompt assembly, tools, policy controls, Semble,
+external Prefect flows and unconnected influence work. Python package structure,
+imports, entry points, prompt functions and source anchors derive from the running
+release. Desktop tracing and a mobile component inspector share the same model.
+The model has a documented maintenance workflow; Phi does not yet maintain it
+automatically. No private state or credentials enter the endpoint.
+
 ## 2026-09-05 — Let long-form writing develop
 
 The standalone-bit blog contract produced a repetitive observation/punchline

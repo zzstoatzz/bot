@@ -1,5 +1,8 @@
 # architecture
 
+The [architecture model](architecture-map.md) is available at `/architecture`: a
+reviewed system schematic with a source-derived Python inventory.
+
 phi is one agent loop, fired from a few different paths. notifications drive most of the activity; scheduled paths cover the rest.
 
 ## one agent, many entry points

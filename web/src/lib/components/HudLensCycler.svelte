@@ -3,6 +3,7 @@
 		readonly key: string;
 		readonly href: string;
 		readonly label: string;
+		readonly shortLabel?: string;
 	}
 
 	interface Props {
@@ -23,7 +24,8 @@
 				aria-current={current === lens.key ? 'page' : undefined}
 			>
 				<span class="num">{i + 1}</span>
-				<span class="lbl">{lens.label}</span>
+				<span class="lbl" class:has-short={Boolean(lens.shortLabel)}>{lens.label}</span>
+				{#if lens.shortLabel}<span class="short-label">{lens.shortLabel}</span>{/if}
 			</a>
 		{/each}
 	</div>
@@ -94,6 +96,7 @@
 			inset 0 0 0 2px #c2f1fc,
 			inset 0 -3px 0 #7ec0d4;
 	}
+	.short-label { display: none; }
 	.num {
 		font: 10px var(--font-mono);
 		color: #99acb6;
@@ -102,14 +105,19 @@
 		color: #4d3421;
 	}
 	@media (max-width: 760px) {
+		.has-short { display: none; }
+		.short-label { display: inline; }
 		.row {
 			width: 100%;
+			display: grid;
+			grid-template-columns: repeat(5, minmax(0, 1fr));
 		}
 		.opt {
 			flex: 1;
 			min-height: 44px;
-			padding: 8px 7px;
-			font-size: 15px;
+			padding: 8px 3px;
+			min-width: 0;
+			font-size: 13px;
 			letter-spacing: 0.06em;
 		}
 		.num {
@@ -118,7 +126,7 @@
 	}
 	@media (max-width: 360px) {
 		.opt {
-			font-size: 14px;
+			font-size: 12px;
 			padding-inline: 5px;
 			letter-spacing: 0.04em;
 		}

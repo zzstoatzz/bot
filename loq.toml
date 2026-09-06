@@ -54,3 +54,7 @@ max_lines = 501
 [[rules]]
 path = "src/bot/core/mcp_guard.py"
 max_lines = 547
+
+[[rules]]
+path = "src/bot/core/architecture.json"
+max_lines = 733
