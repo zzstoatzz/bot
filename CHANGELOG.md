@@ -1,5 +1,12 @@
 # changelog
 
+## 2026-09-05 — Tighten the public trial after false approvals
+
+The live classifier approved a plain routing report and a capabilities-list
+bio. Require positive evidence of a comic turn, defaulting to rejection for
+public composition. Give the actor an explicit temporary stand-up direction.
+Retain v1 outcomes and show each attempt’s rule version on the board.
+
 ## 2026-09-05 — Public etiquette trial
 
 Nate authorized a hard deadpan form for public communication, separate from

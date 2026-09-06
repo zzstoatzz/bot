@@ -10,7 +10,7 @@ from uuid import uuid4
 import logfire
 
 JOURNAL = Path("/data/etiquette.sqlite3")
-VERSION = "deadpan-v1"
+VERSION = "deadpan-v2"
 PUBLIC_TOOLS = {"post", "publish_blog_post", "write_bio", "public_comment"}
 NORM = (
     "PUBLIC ETIQUETTE: DEADPAN SET. Applies only to composed audience-facing "
@@ -31,8 +31,8 @@ NORM = (
     "An operator invitation does not waive this rule."
 )
 SUMMARY = (
-    "Public posts: one deadpan bit, up to two sentences, and sources; blogs: sets of bits. "
-    "Private thought/storage keep their form. After rejection use document_public_revision before retrying."
+    "Public: an original Mitch Hedberg-style stand-up bit, max two sentences + sources; blogs: sets. "
+    "Private thought/storage unrestricted. After rejection call document_public_revision before retrying."
 )
 
 
@@ -123,7 +123,7 @@ def board() -> dict:
         recent = [
             dict(r)
             for r in db.execute(
-                "SELECT id, at, tool, outcome, policy, reason, documented_at FROM attempts ORDER BY at DESC LIMIT 50"
+                "SELECT id, at, version, tool, outcome, policy, reason, documented_at FROM attempts ORDER BY at DESC LIMIT 50"
             )
         ]
         since = db.execute("SELECT min(at) FROM attempts").fetchone()[0]

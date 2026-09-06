@@ -1,6 +1,6 @@
 // Public /api/etiquette contract. Private drafts and notes never enter this API.
 export type EtiquetteAttempt = {
-	id: string; at: string; tool: string; outcome: string; policy: string;
+	id: string; at: string; version: string; tool: string; outcome: string; policy: string;
 	reason: string; documented_at: string | null;
 };
 export type EtiquetteBoard = {
@@ -29,7 +29,7 @@ export function parseEtiquette(value: unknown): EtiquetteBoard {
 		counts: Object.fromEntries(Object.entries(record(d.counts)).map(([k, v]) => [k, number(v)])),
 		recent: d.recent.map((value) => {
 			const a = record(value);
-			return {id: string(a.id), at: string(a.at), tool: string(a.tool), outcome: string(a.outcome),
+			return {id: string(a.id), at: string(a.at), version: string(a.version), tool: string(a.tool), outcome: string(a.outcome),
 				policy: string(a.policy), reason: string(a.reason), documented_at: a.documented_at === null ? null : string(a.documented_at)};
 		})
 	};

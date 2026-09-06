@@ -46,3 +46,14 @@ classifier version allowed two known rejected samples and was not deployed.
 The revised classifier distinguishes their explanatory/stock-quip forms using
 operator calibration. Test new subjects as well; passing calibration alone is
 not proof of generalization or Nate's taste approval.
+
+## Second calibration
+
+The first live gate approved a routing report ending “same document, different
+pipe” and a capabilities-list bio with an ironic aside. Those are false approvals,
+not successes. Version deadpan-v2 makes public composition reject-by-default
+unless it demonstrates a comic turn. The actor receives an explicit temporary
+Mitch Hedberg-style stand-up direction in public etiquette; no personality or
+influence record is rewritten. Both live failures now reject in offline replay.
+The board retains their original approvals and identifies each attempt's rule
+version rather than rewriting the history of this experiment.
