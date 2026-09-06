@@ -1,5 +1,13 @@
 # changelog
 
+## Recognize operator accounts in reply provenance
+
+Replies to older devlog posts were described to the judge as uninvited stranger
+replies even though the configured devlog DID is an operator and the policy
+permits operator-post replies. Recognize configured operator DIDs before profile
+lookup; this also works during profile-service outages. Stranger-thread gating
+and publication etiquette are unchanged.
+
 ## Tool-use observation and classifier audit
 
 Added a durable 30-day tool-use journal and operator board beside classifier

@@ -140,6 +140,11 @@ def _reply_provenance(uri: str, ctx_notifs: dict, root_uri: str = "") -> str:
     own_did = getattr(getattr(bot_client.client, "me", None), "did", "") or ""
     if did and did == own_did:
         return "reply target is phi's own post (threading her own thread)."
+    if did and did in settings.operator_dids:
+        return (
+            f"reply target is a post by configured operator DID {did}. "
+            "The operator-post exception applies without a current-batch invitation."
+        )
     handle = ""
     try:
         profile = bot_client.client.app.bsky.actor.get_profile({"actor": did})

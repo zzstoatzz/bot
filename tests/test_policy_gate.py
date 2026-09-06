@@ -347,3 +347,15 @@ async def test_pull_comment_text_reaches_the_prompt():
     prompt = agent._run_agent.await_args.kwargs["prompt"]
     assert "[REVIEW COMMENT]" in prompt and "start over from round 1" in prompt
     assert agent._run_agent.await_args.kwargs["deps"].event_material == material
+
+
+def test_devlog_target_outside_batch_is_operator_even_if_profile_lookup_fails():
+    with patch.object(
+        posting.bot_client.client.app.bsky.actor,
+        "get_profile",
+        side_effect=RuntimeError("offline"),
+    ) as lookup:
+        provenance = _reply_provenance(f"at://{DEVLOG}/app.bsky.feed.post/3older", {})
+    assert "configured operator DID" in provenance
+    assert "unprompted" not in provenance
+    lookup.assert_not_called()
