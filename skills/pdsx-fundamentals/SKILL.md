@@ -14,7 +14,7 @@ pdsx is a generic atproto MCP. it lets you do CRUD on any lexicon as long as you
 | `mcp__pdsx__get_record(uri)` | fetch one record by AT-URI |
 | `mcp__pdsx__query(nsid, params?, host?, repo?)` | call a read-only XRPC query (GET) — the non-record read surface |
 | `mcp__pdsx__create_record(collection, record, rkey?)` | write a new record on **your** PDS |
-| `mcp__pdsx__update_record(uri, record)` | replace an existing record's value |
+| `mcp__pdsx__update_record(uri, updates)` | merge selected fields into an existing record |
 | `mcp__pdsx__delete_record(uri)` | delete a record from your PDS |
 | `mcp__pdsx__whoami()` | confirm which DID/handle pdsx is authed as |
 

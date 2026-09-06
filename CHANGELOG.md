@@ -1,5 +1,13 @@
 # changelog
 
+## Correct profile-image update guidance
+
+The runtime skills described pdsx updates as whole-record replacement and used
+the wrong argument. The live tool takes `updates` and merges selected fields.
+The image recipe now sends only the changed blob, preserving existing profile
+text without resubmitting it to the public-writing judge. Removed the automatic
+announcement requirement and stale profile-label claim from that skill.
+
 ## Preserve independent assessment after rejection
 
 Private revision notes now invite Phi's assessment, evidence and next step,

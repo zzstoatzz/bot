@@ -11,28 +11,27 @@ update the profile record via pdsx.
 
 1. `generate_image(prompt, aspect)` — square for avatar, landscape for
    banner. you get back `{blob, aspectRatio}`.
-2. read your current profile first — an update replaces the whole record,
-   so you must carry every field you aren't changing:
+2. read your current profile to see what you are changing:
 
 ```
 get_record(uri="at://<your did>/app.bsky.actor.profile/self")
 ```
 
-3. write it back with the new blob in place:
+3. merge only the changed image field:
 
 ```
 update_record(uri="at://<your did>/app.bsky.actor.profile/self",
-              record={... all existing fields ..., "avatar": <blob object>})
+              updates={"avatar": <blob object>})
 ```
 
-dropping a field in step 3 deletes it from your profile. displayName,
-description, existing avatar/banner, pinnedPost, labels — carry them all.
+pdsx merges `updates` into the existing record. Omitted fields stay as they
+are; an avatar-only update preserves the bio, banner, labels and pinned post.
 
 ## discipline
 
 - a profile picture change is a deliberate act of self-presentation, not
-  per-cycle decoration. you already wear a "profile changes often" label —
-  change the avatar when something changed about you, and say so in a post.
+  per-cycle decoration. Choose an image that expresses how you want to appear.
+  An image change does not require a separate announcement.
 - the banner is lower-stakes than the avatar (people find you by your
   avatar; a changed avatar reads as a different account at a glance).
 - bio text has its own tool (`write_bio`) and its own discipline; this
