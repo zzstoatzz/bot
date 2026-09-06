@@ -1018,22 +1018,21 @@ class PhiAgent:
             await run_status(evidence, "completed")
         summary = result.output or ""
         logger.info(f"{label} finished: {summary[:200]}")
-        if label != "bio rewrite":
-            # Scheduled runs relied on phi voluntarily calling save_memory to
-            # record what they did, which never happened — the 08-10 plyr dig
-            # left no episodic trace and got re-discovered on 08-11. The run
-            # summary is written unconditionally so "have I done this" has an
-            # answer. Batch runs are excluded: their material flows through
-            # the extraction pipeline already.
-            if summary and deps and deps.memory and not notification_input(deps):
-                try:
-                    await deps.memory.store_episodic_memory(
-                        f"{label}: {summary[:1000]}",
-                        tags=["run-summary", label],
-                        source=f"run:{label}",
-                    )
-                except Exception as e:
-                    logger.warning(f"episodic store after {label} failed: {e}")
+        # Scheduled runs relied on phi voluntarily calling save_memory to
+        # record what they did, which never happened — the 08-10 plyr dig
+        # left no episodic trace and got re-discovered on 08-11. The run
+        # summary is written unconditionally so "have I done this" has an
+        # answer. Batch runs are excluded: their material flows through
+        # the extraction pipeline already.
+        if summary and deps and deps.memory and not notification_input(deps):
+            try:
+                await deps.memory.store_episodic_memory(
+                    f"{label}: {summary[:1000]}",
+                    tags=["run-summary", label],
+                    source=f"run:{label}",
+                )
+            except Exception as e:
+                logger.warning(f"episodic store after {label} failed: {e}")
         return summary
 
     async def process_notifications(
@@ -1748,21 +1747,3 @@ class PhiAgent:
                 ],
             },
         }
-
-    async def process_bio(self) -> str:
-        """Ask phi to rewrite her bsky bio via the main-agent write_bio tool.
-
-        Running through the main agent gives the bio pass the same dynamic
-        context blocks as normal operation, especially [OPERATOR]. The
-        write_bio tool owns the actual profile write and 256-char validation.
-        """
-        logger.info("processing bio rewrite")
-        return await self._run_agent(
-            label="bio rewrite",
-            prompt=(
-                "rewrite your bsky profile bio. call write_bio with the final "
-                "text. use [OPERATOR] for the operator handle; do not guess. "
-                "structural max is 256 characters."
-            ),
-            deps=PhiDeps(author_handle="", memory=self.memory),
-        )

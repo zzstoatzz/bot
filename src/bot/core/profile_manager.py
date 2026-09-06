@@ -158,8 +158,7 @@ class ProfileManager:
     async def set_description(self, text: str):
         """Write the bio description directly.
 
-        Used by `PhiAgent.process_bio` at startup — phi has just authored
-        a fresh bio and we want exactly that text on the profile.
+        Used by write_bio when Phi chooses to change her description.
         """
         try:
             current = _read_profile(self.client)

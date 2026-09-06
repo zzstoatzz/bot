@@ -79,8 +79,7 @@ async def lifespan(app: FastAPI):
     await profile_manager.initialize()
     app.state.profile_manager = profile_manager
 
-    # Start notification polling — needed before the bio rewrite because the
-    # poller owns the PhiAgent instance we call process_bio on.
+    # Start notification polling and its health monitors.
     poller = NotificationPoller(bot_client)
     app.state.poller = poller
     await poller.start()
@@ -134,14 +133,8 @@ async def lifespan(app: FastAPI):
 
         backfill_task = asyncio.create_task(_backfill(), name="own-posts-backfill")
 
-    # Phi rewrites her own bio at every startup. Best-effort — if the bio
-    # call fails (rate limit, model error, etc), fall back to the existing
-    # online-suffix flow rather than blocking startup on it.
-    try:
-        await poller.handler.agent.process_bio()
-    except Exception as e:
-        logger.warning(f"bio rewrite at startup failed: {e}; falling back to suffix")
-        await profile_manager.set_online_status(True)
+    # Preserve authored text; startup only updates the existing status marker.
+    await profile_manager.set_online_status(True)
 
     logger.info("phi is online, listening for mentions")
 

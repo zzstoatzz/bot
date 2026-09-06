@@ -102,7 +102,7 @@ no poll iteration has completed in `health_stale_after` seconds (default 30x
 failing machine; fly restarts a machine when its process exits (`[[restart]]`
 policy `on-failure`). so `core/watchdog.py` applies the same decision every 15s
 and exits the process non-zero. the check's `grace_period` covers startup (auth,
-schedule seeding, bio rewrite — about a minute observed; 60s is fly's cap) so a booting machine
+schedule seeding — 60s is Fly's cap; bios are preserved across startup) so a booting machine
 is not marked failing.
 
 secrets via `fly secrets set` or `fly secrets import` (pipe `grep ^KEY .env` into it to keep values off the terminal).

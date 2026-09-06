@@ -1,5 +1,12 @@
 # changelog
 
+## 2026-09-05 — Preserve the bio on startup
+
+The deadpan gate exposed conflicting bio instructions and repeated rejections
+delayed startup. Retire the automatic bio-writing run, keep the current text
+across deployments, and remove the tool’s requirement to list capabilities.
+Phi can still choose to revise her bio through the classified native tool.
+
 ## 2026-09-05 — Tighten the public trial after false approvals
 
 The live classifier approved a plain routing report and a capabilities-list
