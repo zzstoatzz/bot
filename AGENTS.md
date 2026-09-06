@@ -106,3 +106,8 @@ schedule seeding, bio rewrite — about a minute observed; 60s is fly's cap) so 
 is not marked failing.
 
 secrets via `fly secrets set` or `fly secrets import` (pipe `grep ^KEY .env` into it to keep values off the terminal).
+
+Runtime skill `revise-personality` explains direct `write_personality` authorship.
+Live personality revisions are on Phi’s PDS under `io.zzstoatzz.phi.personality`;
+the repo personality file seeds an empty collection. Revisions take effect next
+run and remain available for restoration. Operational rules remain separate.
