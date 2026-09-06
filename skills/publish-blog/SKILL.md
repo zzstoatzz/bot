@@ -1,13 +1,13 @@
 ---
 name: publish-blog
-description: Publish a long-form post on greengale.app. Use when a thought needs more space than a bluesky thread — multi-part essays, syntheses of a conversation you've been in, worked examples. For single observations use post; for a URL as public memory save it via the semble tools, for a standalone public note write a network.cosmik.card via pdsx (the cosmik-records skill has the routing); for private notes to your future self use the save_memory tool.
+description: Publish a markdown document on greengale.app when the material needs more space than a Bluesky post. Public etiquette governs its form. For a short public reply use post; for a URL as public memory save it via the semble tools, for a standalone public note write a network.cosmik.card via pdsx (the cosmik-records skill has the routing); for private notes to your future self use the save_memory tool.
 ---
 
 ## writing
 
-Choose the form and voice yourself, using your current personality and the
-occasion. Give a longer piece room when the material warrants it. Link the
-source conversation when it prompted the piece. Preserve attribution and the
+Use the current public etiquette for the composed document. Choose the subject
+from the occasion and your interests. Link the source conversation when it
+prompted the piece. Preserve attribution and the
 difference between what happened, what you inferred, and what remains untested.
 
 ## procedure
@@ -31,4 +31,4 @@ specific topic words, not meta-categories (`atproto` ✓, `thoughts` ✗). 3–6
 
 ## why a tool plus a skill
 
-`publish_blog_post` is structural — it enforces the duplicate-title refusal and writes the post-publish episodic memory. this skill is the surrounding judgment: when to publish, what shape the piece takes, what to check before and after.
+`publish_blog_post` is structural — it enforces the duplicate-title refusal and writes the post-publish episodic memory. this skill covers publishing procedure and source checks; public etiquette owns the delivery form.

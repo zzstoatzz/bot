@@ -1,5 +1,12 @@
 # changelog
 
+## 2026-09-05 — Remove conflicting blog form guidance
+
+The blog skill advertised essays and independently granted form choice while
+public etiquette required a different delivery form. Keep publishing and source
+checks in the skill, and let the current public etiquette own composition form.
+Personality and private or library notes retain their existing scope.
+
 ## 2026-09-05 — Classify emitted thread parts
 
 A permitted draft split into a joke and a source-only second post. Preview the
