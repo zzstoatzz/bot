@@ -45,7 +45,10 @@ _REACTION_COLLECTIONS = {"app.bsky.feed.like": "like", "app.bsky.feed.repost": "
 # skip. The self record joined this on 2026-07-30: it is owner-gated through
 # write_self, and it had been rewritten twice that day by raw update_record —
 # unstamped and over the word cap — because nothing structural said otherwise.
-_GATED_COLLECTIONS = {"io.zzstoatzz.phi.self": "write_self"}
+_GATED_COLLECTIONS = {
+    "io.zzstoatzz.phi.self": "write_self",
+    "io.zzstoatzz.phi.personality": "write_personality",
+}
 
 # Verbs that only read. Anything else on a credentialed server is treated
 # as a mutation — deny-by-default under an operator override, because the

@@ -1,5 +1,14 @@
 # changelog
 
+## 2026-09-05: Phi authors the live personality
+
+Nate authorized direct personality revisions after repeated voice failures.
+`write_personality` appends a full revision on Phi’s PDS; the next run reads it
+in place of the repository seed. Previous revisions remain available. The
+current run keeps its original instructions, and operational rules stay
+separate. A runtime skill gives Phi the operator’s feedback and the limitations
+of the isolated voice experiments. No voice improvement is presumed.
+
 ## 2026-09-05 — Keep cache estimates within their provider scope
 
 Record provider identity alongside observed token counts. Withhold the existing

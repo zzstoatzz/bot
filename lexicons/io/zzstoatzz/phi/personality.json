@@ -1,0 +1,35 @@
+{
+  "lexicon": 1,
+  "id": "io.zzstoatzz.phi.personality",
+  "defs": {
+    "main": {
+      "type": "record",
+      "key": "tid",
+      "description": "Complete authored personality revision. Newest TID is active; earlier revisions remain available.",
+      "record": {
+        "type": "object",
+        "required": [
+          "text",
+          "reason",
+          "createdAt"
+        ],
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 6000
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime"
+          }
+        }
+      }
+    }
+  }
+}

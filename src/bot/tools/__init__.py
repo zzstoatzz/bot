@@ -16,6 +16,7 @@ def register_all(agent, graze_client: GrazeClient):
         images,
         media,
         memory,
+        personality,
         posting,
         search,
         self_record,
@@ -29,6 +30,7 @@ def register_all(agent, graze_client: GrazeClient):
     bluesky.register(agent)
     bio.register(agent)
     self_record.register(agent)
+    personality.register(agent)
     blog.register(agent)
     goals.register(agent)
     images.register(agent)

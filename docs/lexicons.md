@@ -74,3 +74,6 @@ without reading this codebase.
 
 What it does *not* do is make her safer. A published schema is documentation,
 not enforcement — the gates are in `core/policy.py` and `core/mcp_guard.py`.
+
+`io.zzstoatzz.phi.personality`: TID-keyed full personality revisions (`text`,
+`reason`, `createdAt`). The newest TID supplies the live personality.

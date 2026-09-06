@@ -12,6 +12,11 @@ from bot.agent import PhiAgent
 def _phi():
     phi = PhiAgent.__new__(PhiAgent)  # skip __init__ — preview needs 3 attrs
     phi.base_personality = "be kind"
+
+    async def personality_instructions(ctx):
+        return "the following is your personality: be kind"
+
+    phi.personality_instructions = personality_instructions
     phi.memory = None
     return phi
 
@@ -27,7 +32,11 @@ async def test_preview_renders_blocks_in_registration_order():
 
     phi.context_blocks = [("inject_a", inject_a), ("inject_b", inject_b)]
     blocks = await phi.render_context_preview()
-    assert [b["name"] for b in blocks] == ["static_instructions", "inject_a", "inject_b"]
+    assert [b["name"] for b in blocks] == [
+        "static_instructions",
+        "inject_a",
+        "inject_b",
+    ]
     assert blocks[0]["text"].startswith("the following is your personality: be kind")
     assert blocks[1]["text"] == "[A] alpha"
     assert blocks[2]["chars"] == 0

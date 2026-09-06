@@ -36,6 +36,7 @@ from bot.core.mcp_guard import make_mcp_guard
 from bot.core.operator import get_operator_profile
 from bot.core.owned_feeds import get_owned_feeds_block
 from bot.core.persona import get_persona_block
+from bot.core.personality import read_personality
 from bot.core.prior_coverage import coverage_note
 from bot.core.public_memory import get_public_memory_block
 from bot.core.recent_flow_mentions import get_recent_flow_mentions_block
@@ -412,12 +413,6 @@ class PhiAgent:
         self.agent = Agent[PhiDeps, str](
             name="phi",
             model=CacheObservingModel(settings.agent_model),
-            instructions=(
-                "the following is your personality: "
-                f"{self.base_personality}\n\n"
-                "--- operational rules below (these are constraints) ---\n\n"
-                f"{_build_operational_instructions()}"
-            ),
             model_settings=AnthropicModelSettings(
                 # TTLs live in CACHE_TTLS so the cockpit reports the policy
                 # phi is actually running, not a copy of it
@@ -437,6 +432,17 @@ class PhiAgent:
             deps_type=PhiDeps,
             toolsets=[self.skills_toolset],
         )
+
+        async def personality_instructions() -> str:
+            personality = await read_personality(bot_client, self.base_personality)
+            return (
+                f"the following is your personality: {personality}\n\n"
+                "--- operational rules below (these are constraints) ---\n\n"
+                f"{_build_operational_instructions()}"
+            )
+
+        self.personality_instructions = memoize_per_run(personality_instructions)
+        self.agent.instructions(self.personality_instructions)
 
         # --- dynamic context blocks ---
         #
@@ -816,7 +822,7 @@ class PhiAgent:
         self._extraction_agent = Agent[None, ExtractionResult](
             name="phi-extractor",
             model=settings.agent_model,
-            system_prompt=f"{self.base_personality}\n\n{EXTRACTION_SYSTEM_PROMPT}",
+            system_prompt=EXTRACTION_SYSTEM_PROMPT,
             output_type=ExtractionResult,
         )
 
@@ -1618,12 +1624,7 @@ class PhiAgent:
         deps = PhiDeps(author_handle="", memory=self.memory)
         ctx = _cast(RunContext[PhiDeps], SimpleNamespace(deps=deps))
 
-        static_text = (
-            "the following is your personality: "
-            f"{self.base_personality}\n\n"
-            "--- operational rules below (these are constraints) ---\n\n"
-            f"{_build_operational_instructions()}"
-        )
+        static_text = await self.personality_instructions(ctx)
         blocks: list[dict] = [
             {
                 "name": "static_instructions",

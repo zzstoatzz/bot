@@ -108,3 +108,13 @@ the PDS for older published blobs, and sends pixels and descriptions to the exis
 policy judge. The usual override, provenance, and judge-outage behavior apply.
 Text splitting attaches images only to the first post. Image descriptions and
 blob IDs accompany stored reply text; the source post record retains the embed.
+
+## Authored personality revisions
+
+`personality_instructions` reads the newest `io.zzstoatzz.phi.personality`
+revision once per run and composes it before the operational instructions.
+The diagnostic preview uses the same renderer. The repository personality file
+is only the seed when no PDS revisions exist. `write_personality` appends a full
+replacement for the next run without operator-like approval, while respecting
+the operator pause. Previous revisions remain on PDS. The extraction task uses
+its extraction instructions without conversational personality.
