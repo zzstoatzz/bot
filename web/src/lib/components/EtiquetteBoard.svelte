@@ -20,7 +20,7 @@
 </script>
 <section class="etiquette">
 	<header><h2>Public etiquette</h2><button onclick={refresh} disabled={loading}>{loading ? 'Checking…' : 'Refresh'}</button></header>
-	<p>Deadpan set. Public drafts pass the classifier before publication. Private thinking and memory keep their own form.</p>
+	<p>Public drafts pass the classifier before publication. Short posts use deadpan form; blogs develop a connected piece. Private thinking and memory keep their own form.</p>
 	{#if error}<p role="alert">{error}. {data ? 'Showing the last successful read.' : ''}</p>{/if}
 	{#if data}
 		<div class="readout"><strong>{data.counts.block ?? 0}<small>rejected / {judged} judged</small></strong><strong>{judged ? Math.round((data.counts.block ?? 0) / judged * 100) + '%' : '—'}<small>rejection rate</small></strong><strong>{data.pending}<small>awaiting Phi’s private note</small></strong></div>

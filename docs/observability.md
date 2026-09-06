@@ -39,3 +39,24 @@ keeping: `query_schema_reference` before writing non-trivial SQL, and never
 truncating a `tool_response` with `left(...)` when the question is whether a
 value was present — truncating your own evidence and then reporting uncertainty
 is worse than not looking.
+
+## Tool exposure and invocation journal
+
+`/api/tool-usage` and the operator page show a rolling 30-day window from
+`/data/tool_usage.sqlite3`. `core/tool_usage.py` uses the installed PydanticAI
+capability hooks: `before_model_request` observes final function definitions;
+`wrap_tool_execute` observes invocation and return/raise without changing either.
+Request/run counts describe exposure, not attention. The journal persists restarts
+and stores no tool arguments, results, private notes or error messages.
+
+Native tools with zero exposure are explicitly unobserved. Remote tools appear
+once discovered in a request or invoked. MCP code-mode's nested operations are
+inside one tool call and require inspecting its Logfire span. Skill loading is
+counted as `load_skill`, not as using every capability described by that skill.
+A returned result may be a refusal or text error; unfinished means no completion
+was recorded, which can include an interrupted process. It is not a tool-success
+metric. Observation failures log errors and do not alter Phi's execution.
+
+The journal starts at deployment; older use is unknown there. Historical Logfire
+queries can investigate earlier activity, but cannot establish exposure from
+invocation counts alone. No tool-use quota or automatic retirement is implied.

@@ -36,6 +36,7 @@ from bot.core.discovery_pool import get_filtered_pool
 from bot.core.docket import get_docket
 from bot.core.etiquette import board as etiquette_board
 from bot.core.profile_manager import ProfileManager
+from bot.core.tool_usage import board as tool_usage_board
 from bot.logging_config import _clear_uvicorn_handlers
 from bot.memory import NamespaceMemory
 from bot.services.notification_poller import NotificationPoller
@@ -823,6 +824,11 @@ _GRAPH_CACHE_TTL = 60  # seconds
 async def architecture():
     """Reviewed relationships and source-derived structure of this release."""
     return await asyncio.to_thread(architecture_model)
+
+
+@app.get("/api/tool-usage")
+async def get_tool_usage():
+    return await asyncio.to_thread(tool_usage_board)
 
 
 @app.get("/api/etiquette")

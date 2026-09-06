@@ -57,4 +57,4 @@ max_lines = 547
 
 [[rules]]
 path = "src/bot/core/architecture.json"
-max_lines = 733
+max_lines = 737

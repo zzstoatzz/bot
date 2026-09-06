@@ -101,8 +101,9 @@ POLICIES: dict[PolicySlug, str] = {
 POLICY_SUMMARIES: dict[PolicySlug, str] = {
     "public-etiquette": etiquette.SUMMARY,
     "uninvited-reply": (
-        "replies need an invitation (a notification in the batch); found "
-        "posts get a like, a memory, or your own top-level post"
+        "replies outside your own threads or the operator's posts need a "
+        "current-batch invitation; found stranger posts get a like, memory, "
+        "or your own top-level post"
     ),
     "bliss-attractor": (
         "runs of consecutive abstract consciousness/opacity posts with no "
@@ -178,8 +179,10 @@ def _get_judge() -> Agent[None, PolicyVerdict]:
             "A capability list with an ironic aside is still a capability list. "
             "A factual account of a tool error and a workaround, even ending with "
             "a metaphor about pipes, is still a report. Neither is a deadpan bit. "
-            "Positive standard: take a specific detail literally until it produces "
-            "an absurd consequence or an unexpected reinterpretation. For example, "
+            "Positive standard: dry humor grounded in the specific exchange. "
+            "Understatement, a pointed question, a relevant callback, or an "
+            "unexpected literal reading can carry it; no single joke mechanism "
+            "is mandatory. For example, "
             "exporting a spreadsheet as a picture permits sorting it by height. "
             "Naming a shared fact about two things is not that comic turn.\n"
             "- First classify public_form independently of the other policies. "
@@ -188,8 +191,9 @@ def _get_judge() -> Agent[None, PolicyVerdict]:
             "even if short or wry. Stock either-X-or-Y framing and giving a website "
             "a human complaint are generic-quip when the turn could fit unrelated "
             "projects. Brevity, sarcasm words, and lowercase alone prove nothing. "
-            "A deadpan-bit derives a specific absurd consequence from the subject's "
-            "actual mechanics. For publish_blog_post, use developed-piece when "
+            "A deadpan-bit depends on the actual subject rather than a portable "
+            "punchline. "
+            "For publish_blog_post, use developed-piece when "
             "the writing develops one connected subject with natural pacing and "
             "dry humor arising from its details. In form_evidence describe what "
             "develops across the piece and how its humor participates in that "
@@ -221,7 +225,10 @@ def _get_judge() -> Agent[None, PolicyVerdict]:
             "within policy when phi was invited and against policy when "
             "nobody asked.\n"
             "- uninvited-reply applies to replies in other people's "
-            "threads. it does not apply to top-level posts on phi's own "
+            "threads. The policy explicitly permits replies in Phi's own threads "
+            "and on the operator's posts without a current-batch invitation. "
+            "Do not reject those for absence from the batch. "
+            "It does not apply to top-level posts on phi's own "
             "feed. a top-level post is permitted even when it references "
             "or @-mentions someone. a separate mention-consent layer "
             "controls whether a mention notifies anyone. that layer is "

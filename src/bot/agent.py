@@ -43,6 +43,7 @@ from bot.core.recent_flow_mentions import get_recent_flow_mentions_block
 from bot.core.recent_operations import get_operations_block
 from bot.core.self_record import get_self_block
 from bot.core.self_state import get_inventory_block, get_state_block
+from bot.core.tool_usage import ToolUsage
 from bot.core.workflow_state import get_workflow_state_block
 from bot.memory.encounters import (
     ENCOUNTER_NAMESPACE,
@@ -431,6 +432,7 @@ class PhiAgent:
             output_type=str,
             deps_type=PhiDeps,
             toolsets=[self.skills_toolset],
+            capabilities=[ToolUsage()],
         )
 
         async def personality_instructions() -> str:

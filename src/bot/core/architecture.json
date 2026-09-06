@@ -457,15 +457,19 @@
     },
     {
       "id": "journal",
-      "label": "Revision journal",
+      "label": "Operational journals",
       "lane": 3,
       "row": 3,
-      "summary": "Private notes, public counters",
-      "details": "A separate SQLite journal on the Fly volume records classifier attempts and exact private revision notes. Notes are not embedded into ambient recall. The public board exposes reasons and documentation status, not private note text.",
+      "summary": "Judgments and tool-use evidence",
+      "details": "Separate durable SQLite journals hold classifier decisions and private revision notes, plus tool exposure and invocation metadata. Tool use records contain names, counts, outcomes and trace IDs, never arguments or results. They support operator inspection, not ambient conversational memory.",
       "sources": [
         {
           "path": "src/bot/core/etiquette.py",
           "symbol": ""
+        },
+        {
+          "path": "src/bot/core/tool_usage.py",
+          "symbol": "ToolUsage"
         }
       ],
       "tags": [

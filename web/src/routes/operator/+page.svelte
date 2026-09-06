@@ -6,6 +6,7 @@
 	import { initOAuth, OVERRIDE_COLLECTION } from '$lib/operator/oauth';
 	import { fetchOverride, OPERATOR_DID, type Override } from '$lib/operator/override';
 	import CachePanel from '$lib/components/CachePanel.svelte';
+	import ToolUsageBoard from '$lib/components/ToolUsageBoard.svelte';
 	import EtiquetteBoard from '$lib/components/EtiquetteBoard.svelte';
 	import ContextBudget from '$lib/components/ContextBudget.svelte';
 
@@ -167,6 +168,7 @@
 		{/if}
 
 		</section>
+		<ToolUsageBoard />
 		<EtiquetteBoard />
 		<ContextBudget />
 		<CachePanel />

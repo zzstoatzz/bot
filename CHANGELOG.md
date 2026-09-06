@@ -1,5 +1,19 @@
 # changelog
 
+## Tool-use observation and classifier audit
+
+Added a durable 30-day tool-use journal and operator board beside classifier
+history. Observes actual model-request tool definitions and execution hooks;
+separates offered-but-unused tools from unobserved native tools, records raised
+versus returned calls, and links invocations to Logfire. Nested code-mode actions
+are not separate calls. No private arguments or results enter this journal.
+
+Removed the classifier's single-mechanism requirement for an absurd consequence:
+subject-specific dry understatement, questions and callbacks can satisfy short
+form. Restored the existing operator-thread exception in the reply-policy summary.
+The factuality audit still contains a false approval with contradictory timestamps;
+these changes do not establish factual reliability or operator taste acceptance.
+
 ## Architecture layout correction
 
 Replaced the fixed-coordinate architecture diagram after text overflow made it
