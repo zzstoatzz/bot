@@ -63,7 +63,7 @@
 					<button class="back-to-map" onclick={()=>document.querySelector('.system-index')?.scrollIntoView({block:'start'})}>↑ All components</button><div class="inspector-heading"><small>{active.status === 'planned' ? 'Unconnected work' : 'Component inspection'}</small><h2>{active.label}</h2></div>
 					<p>{active.details}</p>
 					{#if active.id === 'agent'}<dl><dt>Main model</dt><dd>{model.configuration.main}</dd><dt>Memory helpers</dt><dd>{model.configuration.memory}</dd></dl>{/if}
-					{#if active.id === 'judge'}<dl><dt>Policy model</dt><dd>{model.configuration.policy}</dd><dt>Etiquette version</dt><dd>{model.configuration.etiquette}</dd></dl><a href="/operator">Inspect judgments ↗</a>{/if}
+					{#if active.id === 'judge'}<dl><dt>Policy model</dt><dd>{model.configuration.policy}</dd><dt>Etiquette version</dt><dd>{model.configuration.etiquette}</dd></dl>{/if}
 					{#if active.id === 'prefect'}<p class="config">Prefect authentication {model.configuration.prefect ? 'configured' : 'not configured'}; connectivity is not checked here.</p>{/if}
 					{#if active.id === 'semble'}<p class="config">Semble writes {model.configuration.semble ? 'configured' : 'not configured'}; connectivity is not checked here.</p>{/if}
 					<details class="source-references"><summary>Source references ({active.sources.length})</summary><ul class="sources">{#each active.sources as ref}<li><a href={ref.url} target="_blank" rel="noreferrer">{ref.repo === 'bot' ? '' : `${ref.repo}/`}{ref.path}{ref.symbol ? ` · ${ref.symbol}` : ''} ↗</a><small>{ref.evidence}{ref.line ? ` · line ${ref.line}` : ''}</small></li>{/each}</ul></details>

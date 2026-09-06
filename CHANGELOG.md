@@ -1,5 +1,13 @@
 # changelog
 
+## Keep operator controls unlisted and simplify tool use
+
+Removed Operator from public navigation, shortcuts and public-page links. The
+Phi identity now links home; /operator remains directly accessible with its
+existing authentication. Tool use returns to the cockpit typeface and a simple
+call-ranked list with one search field. Exposure counts and traces live inside
+each tool, removing filter tabs, sort controls and repeated instructional copy.
+
 ## Make tool usage comparable and inspectable
 
 The operator tool board now ranks calls in a compact table with volume bars,

@@ -15,7 +15,7 @@
 </script>
 
 <div class="cycler">
-	<div class="row">
+	<div class="row" style:--lens-count={LENSES.length}>
 		{#each LENSES as lens, i (lens.key)}
 			<a
 				href={lens.href}
@@ -110,7 +110,7 @@
 		.row {
 			width: 100%;
 			display: grid;
-			grid-template-columns: repeat(5, minmax(0, 1fr));
+			grid-template-columns: repeat(var(--lens-count), minmax(0, 1fr));
 		}
 		.opt {
 			flex: 1;

@@ -98,7 +98,7 @@
 			</aside>
 
 			<section class="detail-pane">
-				<div class="pane-rule chrome">as phi would read it · <a href="/operator">weights on the operator page</a></div>
+				<div class="pane-rule chrome">as phi would read it</div>
 				{#if selected}
 					<div class="detail scroll">
 						<div class="d-head">

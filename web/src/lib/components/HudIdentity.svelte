@@ -43,7 +43,7 @@
 	});
 </script>
 
-<div class="ident">
+<a class="ident" href="/" aria-label="Phi home">
 	<div class="glyph-wrap" style="color: {status.color}" class:pulse={status.pulse}>
 		<svg class="logo" viewBox="0 0 32 32" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
 			<!-- outer hex frame -->
@@ -81,22 +81,24 @@
 			<span class="hex" style="color: {status.color}" class:pulse={status.pulse}></span>
 			<span class="state chrome muted">{status.label}</span>
 			<span class="sep">·</span>
-			<a href="https://bsky.app/profile/{PHI_HANDLE}" target="_blank" rel="noopener" class="handle"
-				>@{PHI_HANDLE}</a
-			>
+			<span class="handle">@{PHI_HANDLE}</span>
 		</div>
 		{#if bio}
 			<div class="bio" title={bio}>{bio}</div>
 		{/if}
 	</div>
-</div>
+</a>
 
 <style>
 	.ident {
+		text-decoration: none;
+		color: inherit;
 		display: flex;
 		gap: 12px;
 		align-items: center;
 	}
+
+	.ident:focus-visible { outline: 2px solid var(--scan-hot); outline-offset: 6px; }
 
 	.glyph-wrap {
 		width: 32px;

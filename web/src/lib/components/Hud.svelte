@@ -11,7 +11,6 @@
 		{ key: 'mind', href: '/', label: 'mind' },
 		{ key: 'capabilities', href: '/capabilities', label: 'capabilities', shortLabel: 'tools' },
 		{ key: 'market', href: '/market', label: 'market' },
-		{ key: 'operator', href: '/operator', label: 'operator' },
 		{ key: 'architecture', href: '/architecture', label: 'architecture', shortLabel: 'system' }
 	] as const;
 
@@ -28,11 +27,11 @@
 	function handleKey(e: KeyboardEvent) {
 		if (e.target instanceof HTMLInputElement) return;
 		if (e.target instanceof HTMLTextAreaElement) return;
+		if (e.target instanceof HTMLSelectElement) return;
 		if (e.key === '1') goto('/');
 		if (e.key === '2') goto('/capabilities');
 		if (e.key === '3') goto('/market');
-		if (e.key === '4') goto('/operator');
-		if (e.key === '5') goto('/architecture');
+		if (e.key === '4') goto('/architecture');
 	}
 
 	onMount(() => {

@@ -14,10 +14,10 @@
 </script>
 
 {#if override?.active}
-	<a class="override-banner" href="/operator" title="operator override — click to manage">
+	<div class="override-banner" role="status">
 		<span class="dot"></span>
 		operator override active — phi's outward actions are held. {override.message}
-	</a>
+	</div>
 {/if}
 
 <style>
