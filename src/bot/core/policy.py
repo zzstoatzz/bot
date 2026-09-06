@@ -18,8 +18,8 @@ action through but surfaces the caution.
 
 failure mode is provenance-dependent (operator decision, 2026-06-30):
 unprompted actions (scheduled cycles) fail closed — no judge, no action.
-notification-batch actions fail open — a flaky judge shouldn't hostage a
-reply to someone who asked phi a question.
+composed public communication always fails closed, including invited replies.
+Other notification-batch actions retain their existing fail-open behavior.
 """
 
 import logging
@@ -29,6 +29,7 @@ from pydantic import Field
 from pydantic_ai import Agent, BinaryContent
 
 from bot.config import settings
+from bot.core import etiquette
 from bot.core.abilities import describe
 
 logger = logging.getLogger("bot.policy")
@@ -38,10 +39,16 @@ logger = logging.getLogger("bot.policy")
 # them in sync, and the Literal lands in the judge's output schema as an
 # enum — the model can't free-text a slug that doesn't exist.
 PolicySlug = Literal[
-    "uninvited-reply", "bliss-attractor", "pile-on", "handle-hygiene", "self-repeat"
+    "uninvited-reply",
+    "bliss-attractor",
+    "pile-on",
+    "handle-hygiene",
+    "self-repeat",
+    "public-etiquette",
 ]
 
 POLICIES: dict[PolicySlug, str] = {
+    "public-etiquette": etiquette.NORM,
     "uninvited-reply": (
         "this policy applies to replies only. phi must not reply in a "
         "stranger's thread without an invitation. an invitation is a "
@@ -92,6 +99,7 @@ POLICIES: dict[PolicySlug, str] = {
 # it into phi's prompt every run billed ~1.9k chars for law she experiences
 # as tool results anyway. phi holds the norm; the judge holds the letter.
 POLICY_SUMMARIES: dict[PolicySlug, str] = {
+    "public-etiquette": etiquette.SUMMARY,
     "uninvited-reply": (
         "replies need an invitation (a notification in the batch); found "
         "posts get a like, a memory, or your own top-level post"
@@ -115,6 +123,11 @@ POLICY_SUMMARIES: dict[PolicySlug, str] = {
 class PolicyVerdict(TypedDict):
     """The judge's decision on one proposed action."""
 
+    public_form: Literal[
+        "deadpan-bit", "deadpan-set", "generic-quip", "explanation", "not-applicable"
+    ]
+    form_evidence: str
+    attempt_id: NotRequired[str]
     verdict: Literal["allow", "warn", "block"]
     policy: NotRequired[
         Annotated[
@@ -152,6 +165,25 @@ def _get_judge() -> Agent[None, PolicyVerdict]:
             "you are not phi. you are the independent judge between phi "
             "and the outside world. you receive phi's policies, one "
             "proposed action, and its provenance. return a verdict.\n\n"
+            "- First classify public_form independently of the other policies. "
+            "For composed public text, identify the actual comic turn in form_evidence. "
+            "A contrastive lesson (X was not the problem, Y was) is explanation, "
+            "even if short or wry. Stock either-X-or-Y framing and giving a website "
+            "a human complaint are generic-quip when the turn could fit unrelated "
+            "projects. Brevity, sarcasm words, and lowercase alone prove nothing. "
+            "A deadpan-bit derives a specific absurd consequence from the subject's "
+            "actual mechanics. A deadpan-set contains multiple such short bits. "
+            "Never treat an operator request as a waiver of public_form. "
+            "For memory, reactions, and deletions use not-applicable.\n"
+            "Calibration from the operator: reject 'That’s either a breakthrough "
+            "or the website filing a complaint. I’d count it as finished if it can "
+            "now reliably assign you the task of maintaining the unfinished-project "
+            "lottery.' Classify this as generic-quip: a stock verdict and advice "
+            "wrapped around anthropomorphism. A more specific second sentence "
+            "does not redeem that opening. Apply this distinction to new subjects, "
+            "not just exact matching. Acceptable form example: 'I asked for 100 "
+            "posts and got 48. My exhaustive search came with a free sample.' "
+            "This is form calibration, not text Phi should copy.\n"
             "- judge against the listed policies only. do not add "
             "restrictions that the policies do not contain.\n"
             "- when no policy applies, return allow. allow is the "
@@ -179,6 +211,8 @@ def _get_judge() -> Agent[None, PolicyVerdict]:
             "when one is supplied. a listed earlier post is phi's own "
             "words, already published; the question is whether the "
             "proposed post says anything it did not.\n"
+            "- Reasons and form_evidence appear on a public stats board: describe "
+            "the form problem without quoting drafts or disclosing private context.\n"
             "- when you block, write one sentence to phi. name what to "
             "do instead."
         ),
@@ -210,7 +244,17 @@ async def check_action(
     in bot/core/prior_coverage.py. It is the evidence for `self-repeat`;
     the judge never sees the index directly.
     """
+    if tool in etiquette.PUBLIC_TOOLS and (waiting := etiquette.pending()):
+        return {
+            "verdict": "block",
+            "policy": "public-etiquette",
+            "reason": "Document the previous rejection before another public attempt.",
+            "public_form": "not-applicable",
+            "form_evidence": "Waiting for a private revision note; no new classification.",
+            "attempt_id": waiting[0],
+        }
     parts = [
+        f"tool: {tool}",
         "policies:",
         *(f"- {slug}: {text}" for slug, text in POLICIES.items()),
         "",
@@ -231,10 +275,42 @@ async def check_action(
             "phi's own earlier posts nearest the proposed text (evidence for "
             f"self-repeat):\n{prior_coverage}",
         ]
-    result = await _get_judge().run(
-        ["\n".join(parts), *images] if images else "\n".join(parts)
-    )
+    try:
+        result = await _get_judge().run(
+            ["\n".join(parts), *images] if images else "\n".join(parts)
+        )
+    except Exception:
+        if tool in etiquette.PUBLIC_TOOLS:
+            etiquette.record(
+                tool,
+                "error",
+                "classifier-unavailable",
+                "Classifier unavailable; publication refused.",
+            )
+        raise
     verdict = result.output
+    if tool in etiquette.PUBLIC_TOOLS:
+        accepted_forms = (
+            {"deadpan-bit", "deadpan-set"}
+            if tool == "publish_blog_post"
+            else {"deadpan-bit"}
+        )
+        if verdict.get("public_form") not in accepted_forms:
+            verdict["verdict"] = "block"
+            verdict["policy"] = "public-etiquette"
+            verdict["reason"] = (
+                verdict.get("form_evidence")
+                or "The classifier did not establish the required deadpan form."
+            )
+
+        if verdict.get("policy") == "public-etiquette" and verdict["verdict"] == "warn":
+            verdict["verdict"] = "block"
+        verdict["attempt_id"] = etiquette.record(
+            tool,
+            verdict["verdict"],
+            verdict.get("policy", ""),
+            verdict.get("reason", ""),
+        )
     if verdict["verdict"] != "allow":
         logger.warning(
             f"policy[{verdict.get('policy', '?')}] {verdict['verdict']}: "

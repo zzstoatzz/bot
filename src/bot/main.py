@@ -33,6 +33,7 @@ from bot.core.atproto_client import bot_client
 from bot.core.cache_stability import cache_monitor
 from bot.core.discovery_pool import get_filtered_pool
 from bot.core.docket import get_docket
+from bot.core.etiquette import board as etiquette_board
 from bot.core.profile_manager import ProfileManager
 from bot.logging_config import _clear_uvicorn_handlers
 from bot.memory import NamespaceMemory
@@ -822,6 +823,12 @@ async def context_budget_refresh(request: Request):
 _graph_cache_data: dict | None = None
 _graph_cache_expires: float = 0.0
 _GRAPH_CACHE_TTL = 60  # seconds
+
+
+@app.get("/api/etiquette")
+async def get_etiquette_stats():
+    """Classifier outcomes; excludes private drafts and revision notes."""
+    return await asyncio.to_thread(etiquette_board)
 
 
 @app.get("/api/memory/graph")

@@ -32,6 +32,7 @@ from pydantic_ai import BinaryContent, RunContext
 
 from bot.config import settings
 from bot.core.atproto_client import bot_client
+from bot.core.etiquette import PUBLIC_TOOLS
 from bot.core.mentionable import get_mentionable_handles
 from bot.core.override import get_override, refusal_text
 from bot.core.policy import check_action
@@ -188,15 +189,24 @@ async def _policy_gate(
         )
     except Exception as e:
         logger.warning(f"policy check unavailable: {e}")
-        if unprompted:
+        if unprompted or tool in PUBLIC_TOOLS:
             return (
-                "policy check unavailable and this action is unprompted — "
+                "policy check unavailable for this public action — "
                 "refusing (fail-closed). nothing was posted. lower-stakes "
                 "moves (a like record, save_memory) are still open, or try "
                 "again next cycle.",
                 "",
             )
         return None, ""  # invited actions fail open
+    if verdict["verdict"] == "block" and verdict.get("attempt_id"):
+        return (
+            f"PUBLIC ACTION REJECTED. Nothing was published. Attempt {verdict['attempt_id']}. "
+            f"{verdict.get('policy')}: {verdict.get('reason')}\n"
+            "Call document_public_revision with this attempt_id and your private account "
+            "of what you will change. Then submit a revised draft for a fresh check. "
+            "Do not publish the rejection report or retry the same draft.",
+            "",
+        )
     if verdict["verdict"] == "block":
         return (
             f"blocked by policy '{verdict.get('policy', '?')}': "
@@ -292,7 +302,7 @@ def register(agent):
             str,
             Field(
                 description=(
-                    "the post text. lowercase per phi.md aesthetic. bsky's "
+                    "the public text, subject to deadpan etiquette. bsky's "
                     "300-grapheme limit is handled — longer text auto-splits "
                     "into a self-reply thread."
                 )

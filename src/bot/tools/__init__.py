@@ -11,6 +11,7 @@ def register_all(agent, graze_client: GrazeClient):
         bio,
         blog,
         bluesky,
+        etiquette,
         feeds,
         goals,
         images,
@@ -24,6 +25,7 @@ def register_all(agent, graze_client: GrazeClient):
         traces,
     )
 
+    etiquette.register(agent)
     memory.register(agent)
     search.register(agent)
     feeds.register(agent, graze_client)

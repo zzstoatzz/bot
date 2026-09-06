@@ -37,6 +37,10 @@ class Risk(TypedDict):
 
 
 RISK: dict[str, Risk] = {
+    "document_public_revision": {
+        "magnitude": "low",
+        "reason": "stores Phi’s exact private account of a rejected public attempt; does not publish or approve a draft.",
+    },
     # --- reads: nothing changes -------------------------------------------
     "check_infra": {
         "magnitude": "none",
@@ -194,6 +198,10 @@ RISK: dict[str, Risk] = {
 # still needs their risk text, so they declare here, outside the bijection
 # that `tests/test_abilities.py` holds over RISK.
 GOVERNED_WRITE_RISK: dict[str, Risk] = {
+    "document_public_revision": {
+        "magnitude": "low",
+        "reason": "stores Phi’s exact private account of a rejected public attempt; does not publish or approve a draft.",
+    },
     "like": {
         "magnitude": "moderate",
         "reason": "notifies one person that phi read them, which is a social act she cannot un-send even after unliking.",

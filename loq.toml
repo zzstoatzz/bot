@@ -21,7 +21,7 @@ max_lines = 1310
 
 [[rules]]
 path = "src/bot/main.py"
-max_lines = 851
+max_lines = 894
 
 [[rules]]
 path = "web/src/lib/components/MindMap.svelte"
@@ -50,3 +50,7 @@ max_lines = 621
 [[rules]]
 path = "src/bot/core/cache_stability.py"
 max_lines = 501
+
+[[rules]]
+path = "src/bot/core/mcp_guard.py"
+max_lines = 547

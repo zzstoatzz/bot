@@ -1,5 +1,14 @@
 # changelog
 
+## 2026-09-05 — Public etiquette trial
+
+Nate authorized a hard deadpan form for public communication, separate from
+private thought and memory. Extend the independent classifier with explicit
+form judgments, fail closed for public text, require Phi-authored private
+revision notes after rejection, and expose durable outcome counts and reasons
+on the operator page. Rejected drafts and private note text stay off the board.
+This is a trial of form; voice acceptance remains Nate’s judgment.
+
 ## 2026-09-05 — Closeout repairs
 
 Bound market reads to 20 seconds so a stalled request cannot leave Refresh

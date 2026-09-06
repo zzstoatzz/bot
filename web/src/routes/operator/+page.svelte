@@ -6,6 +6,7 @@
 	import { initOAuth, OVERRIDE_COLLECTION } from '$lib/operator/oauth';
 	import { fetchOverride, OPERATOR_DID, type Override } from '$lib/operator/override';
 	import CachePanel from '$lib/components/CachePanel.svelte';
+	import EtiquetteBoard from '$lib/components/EtiquetteBoard.svelte';
 	import ContextBudget from '$lib/components/ContextBudget.svelte';
 
 	let oauth = $state<Awaited<ReturnType<typeof initOAuth>> | null>(null);
@@ -166,6 +167,7 @@
 		{/if}
 
 		</section>
+		<EtiquetteBoard />
 		<ContextBudget />
 		<CachePanel />
 	</div>

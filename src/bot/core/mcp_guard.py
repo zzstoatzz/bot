@@ -46,6 +46,7 @@ _REACTION_COLLECTIONS = {"app.bsky.feed.like": "like", "app.bsky.feed.repost": "
 # write_self, and it had been rewritten twice that day by raw update_record —
 # unstamped and over the word cap — because nothing structural said otherwise.
 _GATED_COLLECTIONS = {
+    "app.greengale.document": "publish_blog_post",
     "io.zzstoatzz.phi.self": "write_self",
     "io.zzstoatzz.phi.personality": "write_personality",
 }
@@ -79,6 +80,16 @@ def _bare_verb(name: str) -> str:
     return name
 
 
+def _pdsx_collection(args: dict[str, Any]) -> str:
+    if args.get("collection"):
+        return str(args["collection"])
+    uri = str(args.get("uri", ""))
+    parts = uri.removeprefix("at://").split("/")
+    if uri.startswith("at://") and len(parts) == 3:
+        return parts[1]
+    return parts[0] if len(parts) == 2 else ""
+
+
 def _mutations(server: str, name: str, tool_args: dict[str, Any]) -> list[str]:
     """What this call would change. Empty means it only reads.
 
@@ -109,12 +120,14 @@ def _structural_refusal(
     operator setting turns back on."""
     if server != "pdsx" or name not in _PDSX_MUTATIONS:
         return None
-    collection = str(tool_args.get("collection", ""))
+    collection = _pdsx_collection(tool_args)
+    if name == "delete_record" and collection == "app.greengale.document":
+        return None
     if tool := _GATED_COLLECTIONS.get(collection):
         logger.warning(f"pdsx guard refused {name} into {collection}")
         return (
-            f"refused: raw {name} into {collection} skips the owner gate, "
-            f"the length cap, and the updatedAt stamp. use {tool} instead."
+            f"refused: raw {name} into {collection} bypasses its trusted write path. "
+            f"Use {tool} so its authorization and validation checks run."
         )
     if not collection.startswith(_BLOCKED_PREFIX):
         return None
@@ -233,6 +246,53 @@ def make_mcp_guard(server: str, run_label: str = ""):
                 changes=changes,
             )
 
+        if (
+            server == "pdsx"
+            and changes
+            and name != "delete_record"
+            and _pdsx_collection(tool_args) == "app.bsky.actor.profile"
+        ):
+            from bot.tools.posting import _policy_gate
+
+            value = tool_args.get("record", tool_args.get("updates", {}))
+            text = "\n".join(
+                str(value[k]) for k in ("displayName", "description") if k in value
+            )
+            if text:
+                refusal, _ = await _policy_gate(
+                    text,
+                    "Phi proposes public profile text.",
+                    unprompted=True,
+                    tool="write_bio",
+                )
+                if refusal:
+                    return refusal
+
+        if (
+            server == "tangled"
+            and changes
+            and any(word in _bare_verb(name) for word in ("comment", "issue", "pull"))
+            and not _bare_verb(name).startswith(
+                ("delete", "close", "merge", "list", "get")
+            )
+        ):
+            from bot.tools.posting import _policy_gate
+
+            prose = {
+                k: v
+                for k, v in tool_args.items()
+                if k in {"text", "body", "title", "description", "content"}
+            }
+            if prose:
+                refusal, _ = await _policy_gate(
+                    str(prose),
+                    "Phi proposes a public repository communication.",
+                    unprompted=True,
+                    tool="public_comment",
+                )
+                if refusal:
+                    return refusal
+
         if server == "pdsx" and name == "create_record":
             verb = _REACTION_COLLECTIONS.get(str(tool_args.get("collection", "")))
             if verb:
@@ -242,7 +302,7 @@ def make_mcp_guard(server: str, run_label: str = ""):
                 return await _with_coverage(ctx, result)
 
         if server == "pdsx" and name == "delete_record":
-            collection = str(tool_args.get("collection", ""))
+            collection = _pdsx_collection(tool_args)
             if collection.startswith(_BLOCKED_PREFIX) and (
                 collection not in _REACTION_COLLECTIONS
             ):
@@ -377,7 +437,7 @@ async def _govern_delete(
     from bot.core.atproto_client import bot_client
     from bot.tools.posting import _policy_gate
 
-    collection = str(tool_args.get("collection", ""))
+    collection = _pdsx_collection(tool_args)
     rkey = str(tool_args.get("rkey", ""))
     repo = str(tool_args.get("repo", "") or "")
     if not rkey:

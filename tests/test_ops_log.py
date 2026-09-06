@@ -290,9 +290,12 @@ def test_read_ops_dedupes_reconnect_replays():
     assert len(ops_log.read_ops(48)) == 1
 
 
-def test_compact_collapses_reply_runs_and_card_pairs():
+def test_compact_collapses_reply_runs_and_card_pairs(monkeypatch):
     """2026-08-07 diet: consecutive replies rendered one row each and every
     semble save billed two rows (URL card + NOTE card written together)."""
+    # Keep the pair in the same calendar minute regardless of test start time.
+    base = int(time.time() // 60) * 60
+    monkeypatch.setattr(time, "time", lambda: base)
     rows = _rows_from_ops(
         [
             _op(

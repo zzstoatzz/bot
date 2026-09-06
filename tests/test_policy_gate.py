@@ -76,12 +76,12 @@ async def test_judge_failure_fails_closed_when_unprompted():
     assert note == ""
 
 
-async def test_judge_failure_fails_open_when_invited():
+async def test_judge_failure_fails_closed_for_invited_public_text():
     with patch.object(
         posting, "check_action", AsyncMock(side_effect=RuntimeError("judge down"))
     ):
         refusal, note = await _policy_gate("reply: ...", "batch", unprompted=False)
-    assert refusal is None
+    assert refusal and "fail-closed" in refusal
     assert note == ""
 
 

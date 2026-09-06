@@ -6,6 +6,7 @@ from bot.config import settings
 from bot.core.atproto_client import bot_client
 from bot.core.override import get_override, refusal_text
 from bot.tools._helpers import PhiDeps
+from bot.tools.posting import _policy_gate
 from bot.types import GreenGaleDocument, generate_tid
 
 
@@ -69,6 +70,14 @@ def register(agent):
         override = await get_override()
         if override["active"]:
             return refusal_text(override)
+        refusal, _ = await _policy_gate(
+            f"publish blog title: {title}\nbody:\n{content}",
+            "Phi proposes a public blog document.",
+            unprompted=True,
+            tool="publish_blog_post",
+        )
+        if refusal:
+            return refusal
         try:
             doc = GreenGaleDocument(
                 title=title,

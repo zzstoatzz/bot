@@ -19,8 +19,10 @@ from pydantic import Field
 from pydantic_ai import RunContext
 
 from bot.core.atproto_client import bot_client
+from bot.core.override import get_override, refusal_text
 from bot.core.profile_manager import ProfileManager
 from bot.tools._helpers import PhiDeps
+from bot.tools.posting import _policy_gate
 
 
 def register(agent):
@@ -47,6 +49,14 @@ def register(agent):
         block in your context, not from training memory. 256 character cap
         is structurally enforced; the tool will refuse longer text.
         """
+        override = await get_override()
+        if override["active"]:
+            return refusal_text(override)
+        refusal, _ = await _policy_gate(
+            text, "Phi proposes her public bio.", unprompted=True, tool="write_bio"
+        )
+        if refusal:
+            return refusal
         # Late import: bot.main imports the agent (which imports this tool)
         # at startup, so the module-level import would cycle.
         try:
