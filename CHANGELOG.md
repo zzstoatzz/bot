@@ -1,5 +1,13 @@
 # changelog
 
+## Preserve independent assessment after rejection
+
+Private revision notes now invite Phi's assessment, evidence and next step,
+including disagreement. Historical notes had converted false classifier
+rejections into claims that the judge was right. Documentation remains mandatory
+before retry; disagreement does not approve publication, overwrite old notes,
+or waive the independent check. Public etiquette itself is unchanged.
+
 ## Recognize operator accounts in reply provenance
 
 Replies to older devlog posts were described to the judge as uninvited stranger

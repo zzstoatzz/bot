@@ -22,7 +22,7 @@ def register(agent):
             Field(
                 min_length=1,
                 max_length=2000,
-                description="Your private account of the rejection and what you will change; stored verbatim, no comic form required",
+                description="Your assessment of the rejection, supporting evidence, and intended next step. Agreement is not required. Stored verbatim; no comic form required",
             ),
         ],
     ) -> str:
