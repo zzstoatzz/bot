@@ -166,3 +166,43 @@ async def test_profile_text_update_is_classified_but_image_patch_is_not(monkeypa
         == "updated"
     )
     assert classifier.await_count == 1
+
+
+async def test_split_source_overflow_is_checked_before_any_publication(monkeypatch):
+    from bot.tools import posting
+
+    registered = {}
+    posting.register(
+        SimpleNamespace(tool=lambda fn: registered.setdefault(fn.__name__, fn))
+    )
+    monkeypatch.setattr(
+        posting,
+        "get_override",
+        AsyncMock(return_value={"active": False, "message": ""}),
+    )
+    monkeypatch.setattr(posting, "_recent_own_posts", lambda: "")
+    monkeypatch.setattr(posting, "coverage_note", AsyncMock(return_value=""))
+    judge = AsyncMock(
+        side_effect=[
+            {"verdict": "allow"},
+            {
+                "verdict": "block",
+                "policy": "public-etiquette",
+                "reason": "The second post only contains sources.",
+                "attempt_id": "overflow",
+            },
+        ]
+    )
+    monkeypatch.setattr(posting, "check_action", judge)
+    publish = AsyncMock()
+    monkeypatch.setattr(posting.bot_client, "create_post", publish)
+    from bot.tools._helpers import PhiDeps
+
+    draft = "j" * 210 + "\n" + "https://example.org/" + "s" * 170
+    result = await registered["post"](
+        SimpleNamespace(deps=PhiDeps(author_handle="")), draft
+    )
+    assert "PUBLIC ACTION REJECTED" in result
+    assert judge.await_count == 2
+    assert "j" * 210 not in judge.await_args.kwargs["action"]
+    publish.assert_not_awaited()

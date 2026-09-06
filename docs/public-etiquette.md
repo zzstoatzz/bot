@@ -62,3 +62,8 @@ Startup now preserves the authored bio and only toggles its status marker.
 The previous automatic rewrite held startup open while the classifier rejected
 capability lists requested by the bio tool itself. That conflicting instruction
 and the automatic authoring entry point have been retired.
+
+Version deadpan-v3 keeps the same form rule. Before publishing a split Bluesky
+thread, the gate now reviews every exact
+chunk produced by the existing splitter. All must pass before any is sent.
+A joke in the first chunk cannot approve a source-only overflow chunk.

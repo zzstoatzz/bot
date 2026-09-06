@@ -10,7 +10,7 @@ from uuid import uuid4
 import logfire
 
 JOURNAL = Path("/data/etiquette.sqlite3")
-VERSION = "deadpan-v2"
+VERSION = "deadpan-v3"
 PUBLIC_TOOLS = {"post", "publish_blog_post", "write_bio", "public_comment"}
 NORM = (
     "PUBLIC ETIQUETTE: DEADPAN SET. Applies only to composed audience-facing "

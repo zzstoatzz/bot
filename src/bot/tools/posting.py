@@ -31,7 +31,7 @@ from pydantic import Field
 from pydantic_ai import BinaryContent, RunContext
 
 from bot.config import settings
-from bot.core.atproto_client import bot_client
+from bot.core.atproto_client import _split_text, bot_client
 from bot.core.etiquette import PUBLIC_TOOLS
 from bot.core.mentionable import get_mentionable_handles
 from bot.core.override import get_override, refusal_text
@@ -171,6 +171,7 @@ async def _policy_gate(
     tool: str = "post",
     prior_coverage: str = "",
     images: list[BinaryContent] | None = None,
+    publication_text: str | None = None,
 ) -> tuple[str | None, str]:
     """Run the pre-action policy judge. Returns (refusal, warn_note).
 
@@ -178,6 +179,22 @@ async def _policy_gate(
     fail-closed when the judge is unavailable and the action is
     unprompted). warn_note is appended to the success result on a warn.
     """
+    if publication_text is not None and len(parts := _split_text(publication_text)) > 1:
+        notes = []
+        for index, part in enumerate(parts):
+            refusal, note = await _policy_gate(
+                f"emitted public post {index + 1}/{len(parts)} of a proposed thread: {part}",
+                provenance,
+                unprompted=unprompted,
+                tool=tool,
+                prior_coverage=prior_coverage,
+                images=images if index == 0 else None,
+            )
+            if refusal:
+                return refusal, ""
+            if note:
+                notes.append(note)
+        return None, "\n".join(notes)
     try:
         verdict = await check_action(
             action=action,
@@ -303,8 +320,9 @@ def register(agent):
             Field(
                 description=(
                     "the public text, subject to deadpan etiquette. bsky's "
-                    "300-grapheme limit is handled — longer text auto-splits "
-                    "into a self-reply thread."
+                    "300-character split is previewed by the classifier: every "
+                    "emitted part must satisfy public etiquette. Keep the bit "
+                    "and source together; a source-only overflow is rejected."
                 )
             ),
         ],
@@ -387,6 +405,7 @@ def register(agent):
                 unprompted=unprompted,
                 prior_coverage=await coverage_note(ctx.deps.memory, text),
                 images=image_pixels,
+                publication_text=text,
             )
             if refusal:
                 return refusal
@@ -424,6 +443,7 @@ def register(agent):
             + _operator_authorization_note(notification_input(ctx.deps)),
             unprompted=unprompted,
             images=image_pixels,
+            publication_text=text,
         )
         if refusal:
             return refusal

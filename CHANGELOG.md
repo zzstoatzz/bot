@@ -1,5 +1,11 @@
 # changelog
 
+## 2026-09-05 — Classify emitted thread parts
+
+A permitted draft split into a joke and a source-only second post. Preview the
+existing splitter and classify each emitted part before publishing any of it.
+Rejections retain the same private-documentation requirement.
+
 ## 2026-09-05 — Preserve the bio on startup
 
 The deadpan gate exposed conflicting bio instructions and repeated rejections
