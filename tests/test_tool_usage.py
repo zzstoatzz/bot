@@ -36,3 +36,16 @@ def test_usage_keeps_zero_exposure_distinct_and_deduplicates(tmp_path, monkeypat
     assert rows["query_traces"]["calls"] == rows["query_traces"]["raised"] == 1
     assert rows["query_traces"]["unfinished"] == 0
     assert rows["post"]["requests"] == rows["post"]["calls"] == 0
+
+
+def test_unused_tool_links_to_last_offered_run(tmp_path, monkeypatch):
+    monkeypatch.setattr(tool_usage, "JOURNAL", tmp_path / "usage.sqlite3")
+    monkeypatch.setattr(
+        tool_usage.settings.logfire, "ui_url", "https://logfire.example/phi"
+    )
+    tool_usage.record_offers("first", 1, ["read_memory"], "first-trace")
+    tool_usage.record_offers("second", 1, ["read_memory"], "second-trace")
+    rows = {t["name"]: t for t in tool_usage.board()["tools"]}
+    assert rows["read_memory"]["calls"] == 0
+    assert rows["read_memory"]["last_offered_trace_url"].endswith("%27second-trace%27")
+    assert rows["post"]["last_offered_trace_url"] is None

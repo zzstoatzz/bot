@@ -1,5 +1,14 @@
 # changelog
 
+## Make tool usage comparable and inspectable
+
+The operator tool board now ranks calls in a compact table with volume bars,
+counted filters, search, sorting and per-tool trace details. Replaces the card
+wall with the linked selection and progressive detail used in race38 and
+typeahead, while retaining Phi's cockpit styling. Unused tools link to the last
+run where their definition was offered, so investigating non-use has a starting
+point. The observation window and recent-trace limit remain explicit.
+
 ## Correct profile-image update guidance
 
 The runtime skills described pdsx updates as whole-record replacement and used

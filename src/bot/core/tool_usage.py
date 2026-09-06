@@ -36,6 +36,9 @@ def connect():
             db.execute(
                 "CREATE TABLE IF NOT EXISTS calls (run TEXT, call TEXT, tool TEXT, at TEXT, trace TEXT, outcome TEXT, PRIMARY KEY(run,call))"
             )
+            db.execute(
+                "CREATE INDEX IF NOT EXISTS offers_tool_at ON offers(tool, at DESC)"
+            )
             yield db
     finally:
         db.close()
@@ -67,7 +70,7 @@ def board():
         offers = {
             r["tool"]: dict(r)
             for r in db.execute(
-                "SELECT tool, count(*) requests, count(DISTINCT run) runs, max(at) last_offered FROM offers WHERE at >= ? GROUP BY tool",
+                "SELECT tool, count(*) requests, count(DISTINCT run) runs, max(at) last_offered, (SELECT trace FROM offers o WHERE o.tool=offers.tool ORDER BY at DESC LIMIT 1) last_offered_trace FROM offers WHERE at >= ? GROUP BY tool",
                 (cutoff,),
             )
         }
@@ -102,16 +105,19 @@ def board():
                 "raised": called.get("raised", 0),
                 "unfinished": called.get("unfinished", 0),
                 "last_offered": offered.get("last_offered"),
+                "last_offered_trace_url": trace_url(offered.get("last_offered_trace")),
                 "last_called": called.get("last_called"),
             }
         )
     for row in recent:
-        row["trace_url"] = (
-            f"{settings.logfire.ui_url}/?q=trace_id%3D%27{row['trace']}%27"
-            if row["trace"] and settings.logfire.ui_url
-            else None
-        )
+        row["trace_url"] = trace_url(row["trace"])
     return {"since": since, "window_days": 30, "tools": tools, "recent": recent}
+
+
+def trace_url(value: str | None) -> str | None:
+    if value and settings.logfire.ui_url:
+        return f"{settings.logfire.ui_url}/?q=trace_id%3D%27{value}%27"
+    return None
 
 
 async def observe(fn, *args):

@@ -6,16 +6,24 @@ function text(value: unknown): string { if (typeof value !== 'string') throw new
 function count(value: unknown): number { if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) throw new Error('Invalid tool count'); return value; }
 function list(value: unknown): unknown[] { if (!Array.isArray(value)) throw new Error('Invalid usage list'); return value; }
 function optionalText(value: unknown) { return value === null ? null : text(value); }
+function traceLink(value: unknown) {
+ const link = optionalText(value);
+ if (link) {
+  const url = new URL(link);
+  if (url.protocol !== 'https:' || !url.hostname.startsWith('logfire')) throw new Error('Invalid trace link');
+ }
+ return link;
+}
 export function parseToolUsage(value: unknown) {
  const data = record(value);
  return {
   since: optionalText(data.since), windowDays: count(data.window_days),
   tools: list(data.tools).map(value => { const row = record(value); return {
+   offeredTraceUrl: traceLink(row.last_offered_trace_url ?? null),
    name: text(row.name), requests: count(row.requests), runs: count(row.runs), calls: count(row.calls),
    returned: count(row.returned), raised: count(row.raised), unfinished: count(row.unfinished), lastCalled: optionalText(row.last_called)
   }; }),
-  recent: list(data.recent).map(value => { const row = record(value); const url = optionalText(row.trace_url);
-   if (url && !url.startsWith('https://logfire')) throw new Error('Invalid trace link');
+  recent: list(data.recent).map(value => { const row = record(value); const url = traceLink(row.trace_url);
    return {name: text(row.tool), at: text(row.at), outcome: text(row.outcome), trace: text(row.trace), url};
   })
  };
