@@ -206,3 +206,31 @@ async def test_split_source_overflow_is_checked_before_any_publication(monkeypat
     assert judge.await_count == 2
     assert "j" * 210 not in judge.await_args.kwargs["action"]
     publish.assert_not_awaited()
+
+
+@pytest.mark.parametrize(
+    ("tool", "form", "expected"),
+    [
+        ("publish_blog_post", "developed-piece", "allow"),
+        ("publish_blog_post", "deadpan-set", "block"),
+        ("publish_blog_post", "deadpan-bit", "block"),
+        ("post", "developed-piece", "block"),
+        ("post", "deadpan-bit", "allow"),
+    ],
+)
+async def test_long_form_has_its_own_judgment_unit(monkeypatch, tool, form, expected):
+    judge = SimpleNamespace(
+        run=AsyncMock(
+            return_value=SimpleNamespace(
+                output={
+                    "verdict": "allow",
+                    "public_form": form,
+                    "form_evidence": "Assessment of the complete submitted composition.",
+                }
+            )
+        )
+    )
+    monkeypatch.setattr(policy, "_get_judge", lambda: judge)
+    verdict = await policy.check_action("draft", "invited", tool=tool)
+    assert verdict["verdict"] == expected
+    assert etiquette.board()["counts"] == {expected: 1}

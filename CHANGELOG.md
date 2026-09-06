@@ -1,5 +1,12 @@
 # changelog
 
+## 2026-09-05 — Let long-form writing develop
+
+The standalone-bit blog contract produced a repetitive observation/punchline
+rhythm. Replace it with whole-piece assessment: connected development, natural
+pacing, and humor that can build or recur across plain passages. Short-post
+rules and private storage remain separate. Version judgments as deadpan-v4.
+
 ## 2026-09-05 — Remove conflicting blog form guidance
 
 The blog skill advertised essays and independently granted form choice while

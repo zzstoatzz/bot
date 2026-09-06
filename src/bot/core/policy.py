@@ -124,7 +124,12 @@ class PolicyVerdict(TypedDict):
     """The judge's decision on one proposed action."""
 
     public_form: Literal[
-        "deadpan-bit", "deadpan-set", "generic-quip", "explanation", "not-applicable"
+        "deadpan-bit",
+        "developed-piece",
+        "deadpan-set",
+        "generic-quip",
+        "explanation",
+        "not-applicable",
     ]
     form_evidence: str
     attempt_id: NotRequired[str]
@@ -165,7 +170,9 @@ def _get_judge() -> Agent[None, PolicyVerdict]:
             "you are not phi. you are the independent judge between phi "
             "and the outside world. you receive phi's policies, one "
             "proposed action, and its provenance. return a verdict.\n\n"
-            "- For public composition, REJECT BY DEFAULT unless the draft "
+            "- The following comic-turn test applies to short posts, replies, bios, "
+            "and repository comments, not blog paragraphs. For short composition, "
+            "REJECT BY DEFAULT unless the draft "
             "demonstrates a comic turn. Public etiquette is a strict form requirement, "
             "not a tendency warning. Accurate, short reporting is insufficient. "
             "A capability list with an ironic aside is still a capability list. "
@@ -176,13 +183,21 @@ def _get_judge() -> Agent[None, PolicyVerdict]:
             "exporting a spreadsheet as a picture permits sorting it by height. "
             "Naming a shared fact about two things is not that comic turn.\n"
             "- First classify public_form independently of the other policies. "
-            "For composed public text, identify the actual comic turn in form_evidence. "
+            "For short public text, identify the actual comic turn in form_evidence. "
             "A contrastive lesson (X was not the problem, Y was) is explanation, "
             "even if short or wry. Stock either-X-or-Y framing and giving a website "
             "a human complaint are generic-quip when the turn could fit unrelated "
             "projects. Brevity, sarcasm words, and lowercase alone prove nothing. "
             "A deadpan-bit derives a specific absurd consequence from the subject's "
-            "actual mechanics. A deadpan-set contains multiple such short bits. "
+            "actual mechanics. For publish_blog_post, use developed-piece when "
+            "the writing develops one connected subject with natural pacing and "
+            "dry humor arising from its details. In form_evidence describe what "
+            "develops across the piece and how its humor participates in that "
+            "development. Plain factual, connective, and reflective passages "
+            "need no punchline. Assess the entire piece; never apply the short "
+            "post test paragraph by paragraph. No fixed narrative template or "
+            "mandatory climax. A deadpan-set is a collection of independent "
+            "observation/joke pairs; that is no longer the desired blog form. "
             "Never treat an operator request as a waiver of public_form. "
             "For memory, reactions, and deletions use not-applicable.\n"
             "Calibration from the operator: reject 'That’s either a breakthrough "
@@ -301,9 +316,7 @@ async def check_action(
     verdict = result.output
     if tool in etiquette.PUBLIC_TOOLS:
         accepted_forms = (
-            {"deadpan-bit", "deadpan-set"}
-            if tool == "publish_blog_post"
-            else {"deadpan-bit"}
+            {"developed-piece"} if tool == "publish_blog_post" else {"deadpan-bit"}
         )
         if verdict.get("public_form") not in accepted_forms:
             verdict["verdict"] = "block"
