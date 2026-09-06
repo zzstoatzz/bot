@@ -3,16 +3,19 @@
 from typing import Annotated
 
 from pydantic import Field
+from pydantic_ai import RunContext
 
 from bot.core.atproto_client import bot_client
 from bot.core.override import get_override, refusal_text
 from bot.core.personality import MAX_CHARS
 from bot.core.personality import write_personality as save_personality
+from bot.tools._helpers import PhiDeps
 
 
 def register(agent):
     @agent.tool
     async def write_personality(
+        ctx: RunContext[PhiDeps],
         text: Annotated[
             str,
             Field(

@@ -94,6 +94,19 @@ async def test_direct_tool_needs_no_owner_like_but_respects_pause(paused):
             AsyncMock(return_value="at://phi/revision/new"),
         ) as save,
     ):
-        result = await registered["write_personality"]("new disposition", "experiment")
+        result = await registered["write_personality"](
+            SimpleNamespace(deps=PhiDeps(author_handle="")),
+            "new disposition",
+            "experiment",
+        )
         assert save.await_count == (0 if paused else 1)
         assert ("next run" in result) is not paused
+
+
+def test_tool_registers_with_real_pydantic_agent():
+    from pydantic_ai import Agent
+    from pydantic_ai.models.test import TestModel
+
+    agent = Agent(TestModel(), deps_type=PhiDeps)
+    personality.register(agent)
+    assert "write_personality" in agent._function_toolset.tools
