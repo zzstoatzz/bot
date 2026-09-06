@@ -1,5 +1,6 @@
 """Architecture drift checks protect the public model's source claims."""
 
+from bot.core import architecture
 from bot.core.architecture import (
     ROOT,
     architecture_model,
@@ -56,3 +57,22 @@ def test_inventory_is_derived_and_runtime_configuration_is_allowlisted():
         "prefect_authenticated",
         "semble_writes_configured",
     }
+
+
+def test_inventory_works_from_installed_package(tmp_path, monkeypatch):
+    installed = tmp_path / "lib/python3.12/site-packages/bot"
+    installed.mkdir(parents=True)
+    (installed / "agent.py").write_text("def process_cycle(): pass\n")
+    monkeypatch.setattr(architecture, "BOT", installed)
+    monkeypatch.setattr(architecture, "ROOT", tmp_path)
+    source_inventory.cache_clear()
+    try:
+        modules = source_inventory()
+        assert modules[0]["path"] == "src/bot/agent.py"
+        reference = architecture.source_reference(
+            architecture.Source(path="src/bot/agent.py", symbol="process_cycle"), modules
+        )
+        assert reference["evidence"] == "packaged source"
+        assert reference["line"] == 1
+    finally:
+        source_inventory.cache_clear()

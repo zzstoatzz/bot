@@ -13,8 +13,11 @@ from pydantic import BaseModel, Field
 from bot.config import settings
 from bot.core import etiquette
 
-ROOT = Path(__file__).resolve().parents[3]
-BOT = ROOT / "src/bot"
+BOT = Path(__file__).resolve().parents[1]
+ROOT = next(
+    (parent for parent in BOT.parents if (parent / "skills").is_dir()),
+    Path.cwd(),
+)
 
 
 class Source(BaseModel):
@@ -102,7 +105,7 @@ def source_inventory() -> list[dict]:
         imports = internal_imports(tree, package, known)
         modules.append(
             {
-                "path": str(path.relative_to(ROOT)),
+                "path": str(Path("src/bot") / path.relative_to(BOT)),
                 "package": str(path.relative_to(BOT).parent).replace(".", "root"),
                 "name": name,
                 "imports": imports,
@@ -113,7 +116,11 @@ def source_inventory() -> list[dict]:
 
 
 def source_reference(source: Source, modules: list[dict]) -> dict:
-    path = ROOT / source.path
+    path = (
+        BOT / source.path.removeprefix("src/bot/")
+        if source.path.startswith("src/bot/")
+        else ROOT / source.path
+    )
     line = None
     if source.repo == "bot" and source.symbol:
         module = next((m for m in modules if m["path"] == source.path), None)
