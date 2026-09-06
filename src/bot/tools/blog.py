@@ -4,6 +4,7 @@ from pydantic_ai import RunContext
 
 from bot.config import settings
 from bot.core.atproto_client import bot_client
+from bot.core.override import get_override, refusal_text
 from bot.tools._helpers import PhiDeps
 from bot.types import GreenGaleDocument, generate_tid
 
@@ -65,6 +66,9 @@ def register(agent):
         content: full markdown body.
         tags: optional list of topic tags.
         """
+        override = await get_override()
+        if override["active"]:
+            return refusal_text(override)
         try:
             doc = GreenGaleDocument(
                 title=title,

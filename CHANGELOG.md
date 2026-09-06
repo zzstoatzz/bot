@@ -1,5 +1,13 @@
 # changelog
 
+## 2026-09-05 — Closeout repairs
+
+Bound market reads to 20 seconds so a stalled request cannot leave Refresh
+disabled indefinitely. Retain previous data and expose the existing error state.
+Make native blog publication respect the operator pause before any write.
+Remove the blog skill’s prescribed essay shape so Phi chooses the form herself.
+Record the system map and deferred work in the closeout document.
+
 ## 2026-09-05: Phi authors the live personality
 
 Nate authorized direct personality revisions after repeated voice failures.

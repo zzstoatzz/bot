@@ -18,7 +18,7 @@ three settings, all full pydantic-ai `provider:model` strings:
 | `policy_model` | `phi-policy-judge` | `openai-responses:gpt-5.6-luna` |
 | `extraction_model` | `phi-episodic-synth`, `observation-reconciler`, `phi-posting-inventory` | `openai-responses:gpt-5.6-luna` |
 
-phi herself stays on one model deliberately. her voice is the product of a specific model reading [personalities/phi.md](../personalities/phi.md), and `core/cache_stability.py` wraps `agent_model` only — the cache accounting reads Anthropic's `cache_read_tokens` / `cache_write_tokens` off each response, so it observes the main agent and nothing else. sub-agents produce *structured context*, not voice, which is why they can move independently.
+phi herself stays on one model deliberately. her live personality is the newest `io.zzstoatzz.phi.personality` revision on her PDS; [personalities/phi.md](../personalities/phi.md) seeds an empty collection, and `core/cache_stability.py` wraps `agent_model` only — the cache accounting reads Anthropic's `cache_read_tokens` / `cache_write_tokens` off each response, so it observes the main agent and nothing else. sub-agents produce *structured context*, not voice, which is why they can move independently.
 
 **the `openai-responses:` prefix is load-bearing.** every sub-agent above has an `output_type`, which pydantic-ai sends as a function tool, and OpenAI reasoning models reject function tools on `/v1/chat/completions` when `reasoning_effort` is set. the chat-completions path fails with a 400 on every call, not intermittently. a new sub-agent pointed at an OpenAI reasoning model needs the same prefix.
 

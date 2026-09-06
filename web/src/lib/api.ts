@@ -239,7 +239,8 @@ export async function getDiscoveryPool(): Promise<DiscoveryEntry[]> {
 
 export async function getChickenTrader(refresh = false): Promise<ChickenTrader | null> {
 	const res = await fetch(`/api/chicken/trader?refresh=${refresh}`, {
-		cache: 'no-store'
+		cache: 'no-store',
+		signal: AbortSignal.timeout(20_000)
 	});
 	if (res.status === 404) return null;
 	if (!res.ok) throw new Error(`Wallet unavailable (${res.status})`);
@@ -248,7 +249,8 @@ export async function getChickenTrader(refresh = false): Promise<ChickenTrader |
 
 export async function getChickenMarket(refresh = false): Promise<ChickenMarket> {
 	const res = await fetch(`/api/chicken/market?refresh=${refresh}`, {
-		cache: 'no-store'
+		cache: 'no-store',
+		signal: AbortSignal.timeout(20_000)
 	});
 	if (!res.ok) throw new Error(`Season unavailable (${res.status})`);
 	return parseMarket(await res.json());
@@ -256,7 +258,8 @@ export async function getChickenMarket(refresh = false): Promise<ChickenMarket> 
 
 export async function getChickenResults(refresh = false): Promise<ChickenResultRound[]> {
 	const res = await fetch(`/api/chicken/results?refresh=${refresh}`, {
-		cache: 'no-store'
+		cache: 'no-store',
+		signal: AbortSignal.timeout(20_000)
 	});
 	if (!res.ok) throw new Error(`Round results unavailable (${res.status})`);
 	return parseResults(await res.json());
