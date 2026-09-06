@@ -18,17 +18,32 @@ async def read_personality(client: BotClient, fallback: str) -> str:
     """
     await client.authenticate()
     assert client.client.me is not None
-    result = client.client.com.atproto.repo.list_records(
-        params={
-            "repo": client.client.me.did,
-            "collection": COLLECTION,
-            "limit": 1,
-            "reverse": True,
-        }
-    )
-    if not result.records:
+    # Some PDS implementations ignore the deprecated reverse flag. Walk all
+    # pages and select by TID explicitly, rather than treating page one as newest.
+    latest = None
+    cursor = None
+    seen = set()
+    while True:
+        result = client.client.com.atproto.repo.list_records(
+            params={
+                "repo": client.client.me.did,
+                "collection": COLLECTION,
+                "limit": 100,
+                **({"cursor": cursor} if cursor else {}),
+            }
+        )
+        for record in result.records:
+            if latest is None or record.uri > latest.uri:
+                latest = record
+        cursor = getattr(result, "cursor", None)
+        if not result.records or not cursor:
+            break
+        if cursor in seen:
+            raise ValueError("Personality pagination did not advance")
+        seen.add(cursor)
+    if latest is None:
         return fallback
-    value = get_model_as_dict(result.records[0].value)
+    value = get_model_as_dict(latest.value)
     text = value.get("text")
     if not isinstance(text, str) or not text.strip() or len(text) > MAX_CHARS:
         raise ValueError("The latest personality revision has invalid text")

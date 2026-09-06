@@ -28,7 +28,9 @@ def client_with(records):
 
 
 def revision(text):
-    return SimpleNamespace(value=DotDict({"text": text}))
+    return SimpleNamespace(
+        value=DotDict({"text": text}), uri="at://phi/personality/" + text
+    )
 
 
 async def test_latest_revision_replaces_seed_and_empty_collection_uses_seed():
@@ -36,7 +38,6 @@ async def test_latest_revision_replaces_seed_and_empty_collection_uses_seed():
     assert await read_personality(client, "seed") == "seed"
     repo.list_records.return_value.records = [revision("authored")]
     assert await read_personality(client, "seed") == "authored"
-    assert repo.list_records.call_args.kwargs["params"]["reverse"] is True
 
 
 async def test_failure_or_invalid_revision_does_not_silently_restore_seed():
@@ -110,3 +111,14 @@ def test_tool_registers_with_real_pydantic_agent():
     agent = Agent(TestModel(), deps_type=PhiDeps)
     personality.register(agent)
     assert "write_personality" in agent._function_toolset.tools
+
+
+async def test_forward_pages_still_select_newest_revision():
+    client, repo = client_with([])
+    repo.list_records.side_effect = [
+        SimpleNamespace(records=[revision("first")], cursor="first"),
+        SimpleNamespace(records=[revision("second")], cursor="second"),
+        SimpleNamespace(records=[], cursor=None),
+    ]
+    assert await read_personality(client, "seed") == "second"
+    assert repo.list_records.call_count == 3
