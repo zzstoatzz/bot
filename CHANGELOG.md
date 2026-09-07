@@ -1,5 +1,9 @@
 # changelog
 
+## 2026-09-06 — Correct global suppression guidance
+
+The Coral skill now explains exact case-insensitive matching across contexts and requires source-backed extraction artifacts. Shared names, majority verb usage, and real places repeated by a bot are not global suppression candidates. The editorial entry point reinforces that distinction; targeted corrections must preserve unrelated entries exactly.
+
 ## 2026-09-06 — Explicit memory corrections and season timestamps
 
 Phi can correct an active note by exact ID with save_memory, preserving authored text, citations, and the prior version. Missing or superseded targets fail rather than choosing another similar note. The market tool now exposes the leaderboard’s absolute scheduled season end and settling flag so the final round’s calendar date is not mistaken for a settlement.

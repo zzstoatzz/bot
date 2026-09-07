@@ -123,9 +123,23 @@ directive discipline:
 - alias ONLY unambiguous same-referent variants — misspellings, partial
   names, possessives that NER split. never merge two entities that could be
   distinct people or things. if you'd have to research to be sure, don't.
-- suppress ONLY NER noise: common words misfired as entities ("Love",
-  "Green", "American"). never a real topical entity, however boring. always
-  fill `reason` — the record is public and it's your audit trail.
+- suppression is a GLOBAL, case-insensitive exact match on the extracted
+  entity text, across authors, languages, entity labels, and both cohorts.
+  It cannot distinguish a verb from a person's name or a bot's route from
+  someone discussing the same place. A full-name extraction remains distinct,
+  but a legitimate bare-name extraction is still lost.
+- use suppression for demonstrated extraction artifacts: for example a fused
+  boilerplate field such as "VesselAlert Name", supported by source posts.
+  Inspect counterexamples as well as the repetitive sample. A real referent
+  in the evidence makes global suppression inappropriate: keep the entity and
+  describe the ambiguity in editorialContext instead. Multiple people sharing
+  a name, a majority of verb uses, little news value, or one repetitive account
+  are not evidence that the extracted text has no legitimate referent.
+  Author/template-specific noise belongs in contextual ingestion filtering,
+  not this global table. When that filter is unavailable, keep the entity.
+- include the source post URIs and the observed extraction error in `reason`.
+  On a targeted correction, copy unrelated entries exactly from the current
+  record; an edit timestamp is not a fresh verification of those entries.
 - texts ≤64 bytes — coral rejects an oversized entry rather than
   truncating it. the list length is NOT your constraint: coral's table is
   unbounded (a 10k safety valve that errors loudly, never truncates), so
