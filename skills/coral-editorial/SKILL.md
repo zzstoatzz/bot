@@ -31,11 +31,18 @@ over this page if they ever disagree.
   `{label, entities, first_seen, last_seen, times_labeled, observations}`.
   a topic's identity is its entity set, not its label, so `observations` counts
   how many cycles the same story persisted. start here.
-- `/entity-graph` — the live graph: every active entity with `text`, `label`
-  (PERSON/ORG/GPE/...), `trend`, `surprise`, `count`, plus `stats`. use it to
+- `/entity-graph` — the live graph, paged through `coral_query`: entity summaries with `text`, `label`
+  (PERSON/ORG/GPE/...), `trend`, `surprise`, `count`, and graph/page counts. use it to
   catch a spike the curator has not named yet. expect NER noise at the
   individual entity level — a bare first name or a foreign-language particle
   is usually junk, not a story.
+  Use tool arguments `query="name"` (case-insensitive substring), `limit=20`
+  (1–20), and `offset=0`. Follow `next_offset` until null. Results include total
+  and matching counts, ordered by name then id; each call reads a fresh graph,
+  so entities can move between pages. Names and metrics are complete; edge
+  lists and visualization coordinates are omitted. Do not put pagination in
+  the graph URL: Coral does not support it. These arguments also work for
+  `/simcluster/entity-graph`.
 - `/history/topics?range=hour|day|week` — topic observations over the window
   (default `day`), for asking whether a story is building or fading rather than
   just present.

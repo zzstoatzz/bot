@@ -1,5 +1,9 @@
 # changelog
 
+## 2026-09-06 — Readable Coral graph pages
+
+Coral graph queries now return complete entity summaries with name search, bounded pages, counts, and a next offset. Previously the tool cut a 183k-character graph off at 8k mid-JSON and suggested unsupported URL parameters. The skill now describes the actual tool arguments and live-page semantics.
+
 ## 2026-09-06 — Preserve citation context in thread review
 
 Public thread preflight now shows the classifier the complete numbered split

@@ -16,6 +16,7 @@ from bot.config import settings
 from bot.core.atproto_client import bot_client
 from bot.core.prior_coverage import coverage_note
 from bot.tools._helpers import PhiDeps, _relative_age
+from bot.tools.coral import entity_page
 
 # coral: the operator's firehose NER service (sibling repo). `/` returns its
 # own endpoint list; the coral-editorial skill documents what each route is for.
@@ -304,20 +305,48 @@ def register(agent):
             Field(
                 description=(
                     "coral API path, e.g. '/groups/history?limit=20', "
-                    "'/entity-graph', '/history/topics?hours=24', '/stats', "
+                    "'/entity-graph', '/history/topics?range=day', '/stats', "
                     "or the '/simcluster/...' mirror. GET '/' for the "
                     "endpoint list."
                 )
             ),
         ],
+        query: Annotated[
+            str,
+            Field(
+                description="Entity-name substring, case-insensitive; graph endpoints only."
+            ),
+        ] = "",
+        limit: Annotated[
+            int, Field(ge=1, le=20, description="Entities per graph page, 1–20.")
+        ] = 20,
+        offset: Annotated[
+            int,
+            Field(
+                ge=0,
+                description="Graph page offset; use next_offset from the previous result.",
+            ),
+        ] = 0,
     ) -> str:
-        """Read any endpoint on coral, the operator's firehose entity-graph service. Use when get_trending's summary is not enough — to page further back through curated stories, pull an entity's history, or check graph health. Load the coral-editorial skill for what each route means."""
+        """Read any endpoint on coral, the operator's firehose entity-graph service. Use when get_trending's summary is not enough — to page further back through curated stories, pull an entity's history, or check graph health. Graph endpoints return searchable entity summaries with next_offset; use the query, limit, and offset tool arguments, not URL parameters. Load the coral-editorial skill for route details."""
         if not path.startswith("/"):
             path = "/" + path
+        graph_path = path.split("?", 1)[0]
+        is_graph = graph_path in {"/entity-graph", "/simcluster/entity-graph"}
+        if is_graph and "?" in path:
+            return "Use query, limit, and offset tool arguments for graph pages; remove URL parameters."
+        if not 1 <= limit <= 20 or offset < 0:
+            return "Graph limit must be 1–20 and offset must be nonnegative."
+        if not is_graph and (query or limit != 20 or offset):
+            return (
+                "query, limit, and offset tool arguments apply only to graph endpoints."
+            )
         try:
             async with httpx.AsyncClient(timeout=15) as client:
                 r = await client.get(f"{CORAL_BASE}{path}")
                 r.raise_for_status()
+                if is_graph:
+                    return entity_page(r.json(), query, limit, offset)
                 body = r.text
         except Exception as e:
             return f"coral {path} failed: {e}"
