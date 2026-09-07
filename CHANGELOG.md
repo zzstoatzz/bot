@@ -1,5 +1,9 @@
 # changelog
 
+## 2026-09-06 — Preserve separate run accounts
+
+Scheduled-run summaries now retain their full wording and bypass similarity reconciliation; later notes cannot consolidate against them. The editorial reconciler had folded yesterday’s five cards into today’s summary and lost today’s two cards. Existing stored versions are not rewritten by this patch.
+
 ## 2026-09-06 — Readable Coral graph pages
 
 Coral graph queries now return complete entity summaries with name search, bounded pages, counts, and a next offset. Previously the tool cut a 183k-character graph off at 8k mid-JSON and suggested unsupported URL parameters. The skill now describes the actual tool arguments and live-page semantics.

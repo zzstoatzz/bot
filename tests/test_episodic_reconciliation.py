@@ -59,7 +59,7 @@ SIMILAR = [
     {
         "id": "old-row",
         "content": "dug through fm.plyr.track, found three satie takes",
-        "tags": ["run-summary"],
+        "tags": ["music"],
         "source_uris": ["at://old/post"],
     }
 ]
@@ -165,16 +165,28 @@ async def test_search_episodic_drops_superseded():
     ns.query.return_value = SimpleNamespace(
         rows=[
             _Row(
-                content="old version", tags=[], source="tool",
-                created_at="", status="superseded", dist=0.2,
+                content="old version",
+                tags=[],
+                source="tool",
+                created_at="",
+                status="superseded",
+                dist=0.2,
             ),
             _Row(
-                content="current version", tags=[], source="tool",
-                created_at="", status="active", dist=0.2,
+                content="current version",
+                tags=[],
+                source="tool",
+                created_at="",
+                status="active",
+                dist=0.2,
             ),
             _Row(
-                content="legacy row without status", tags=[], source="tool",
-                created_at="", status=None, dist=0.2,
+                content="legacy row without status",
+                tags=[],
+                source="tool",
+                created_at="",
+                status=None,
+                dist=0.2,
             ),
         ]
     )
@@ -209,12 +221,18 @@ async def test_search_episodic_recency_beats_stale_similarity():
         rows=[
             _Row(  # April ops dump: slightly closer, four months old
                 content="prefect check 2026-04-26: ingest healthy",
-                tags=[], source="tool", status="active", dist=0.30,
+                tags=[],
+                source="tool",
+                status="active",
+                dist=0.30,
                 created_at=(now - timedelta(days=120)).isoformat(),
             ),
             _Row(  # last week's lived episode: a bit further, recent
                 content="dug through fm.plyr.track, posted, blogged",
-                tags=[], source="run:cycle", status="active", dist=0.40,
+                tags=[],
+                source="run:cycle",
+                status="active",
+                dist=0.40,
                 created_at=(now - timedelta(days=5)).isoformat(),
             ),
         ]
@@ -237,12 +255,18 @@ async def test_correction_tag_exempt_from_recency_decay():
         rows=[
             _Row(
                 content="relays A and B are synchronized (claimed, then retracted)",
-                tags=["correction"], source="tool", status="active", dist=0.35,
+                tags=["correction"],
+                source="tool",
+                status="active",
+                dist=0.35,
                 created_at=(now - timedelta(days=120)).isoformat(),
             ),
             _Row(
                 content="checked the relay dashboards this morning",
-                tags=[], source="run:cycle", status="active", dist=0.35,
+                tags=[],
+                source="run:cycle",
+                status="active",
+                dist=0.35,
                 created_at=(now - timedelta(days=2)).isoformat(),
             ),
         ]
@@ -283,8 +307,10 @@ async def test_save_returns_resulting_note_instead_of_candidate(action):
     else:
         expected = _upserted_rows(ns)[0]
     assert result == {
-        "id": expected["id"], "action": action,
-        "content": expected["content"], "source_uris": expected["source_uris"],
+        "id": expected["id"],
+        "action": action,
+        "content": expected["content"],
+        "source_uris": expected["source_uris"],
     }
 
 
@@ -299,8 +325,12 @@ async def test_save_tool_preserves_authored_scope_and_propagates_failed_write():
         "bot.memory.namespace_memory.get_reconciliation_agent",
         return_value=_decision("UPDATE", new_content="no reply exists", new_tags=["t"]),
     ):
-        result = json.loads(await save(ctx, "no reply among the 48 returned records", ["t"]))
-        assert result["stored_note"]["content"] == "no reply among the 48 returned records"
+        result = json.loads(
+            await save(ctx, "no reply among the 48 returned records", ["t"])
+        )
+        assert (
+            result["stored_note"]["content"] == "no reply among the 48 returned records"
+        )
         assert result["stored_note"]["id"] == _upserted_rows(ns)[0]["id"]
         ns.write.side_effect = RuntimeError("storage unavailable")
         with pytest.raises(RuntimeError, match="storage unavailable"):
@@ -348,10 +378,16 @@ async def test_replacement_and_supersession_share_one_transport_write(action, re
         assert body["patch_rows"] == [{"id": "old-row", "status": "superseded"}]
         assert body["upsert_rows"][0]["supersedes"] == "old-row"
         assert body["upsert_rows"][0]["status"] == "active"
-        return httpx.Response(400, json={"error": "rejected"}) if reject else httpx.Response(200, json={"rows_affected": 2})
+        return (
+            httpx.Response(400, json={"error": "rejected"})
+            if reject
+            else httpx.Response(200, json={"rows_affected": 2})
+        )
 
     with Turbopuffer(
-        api_key="test", base_url="https://memory.test", max_retries=0,
+        api_key="test",
+        base_url="https://memory.test",
+        max_retries=0,
         http_client=httpx.Client(transport=httpx.MockTransport(serve)),
     ) as client:
         mem = NamespaceMemory.__new__(NamespaceMemory)
@@ -391,3 +427,32 @@ async def test_redundant_confirmation_keeps_detailed_correction_active():
     assert _upserted_rows(ns)[0]["supersedes"] == ""
     assert not _patched_rows(ns)
 
+
+async def test_run_summary_keeps_this_runs_actions_without_reconciliation():
+    mem, ns = _memory_with_episodic_ns()
+    mem._find_similar_episodic = AsyncMock(return_value=SIMILAR)
+    text = "Today: saved Moscow and wrestling cards. " + "detail " * 200
+    with patch("bot.memory.namespace_memory.get_reconciliation_agent") as judge:
+        await mem.store_episodic_memory(
+            text, ["run-summary", "editorial"], source="run:editorial"
+        )
+    judge.assert_not_called()
+    mem._find_similar_episodic.assert_not_awaited()
+    assert _upserted_rows(ns)[0]["content"] == text
+    assert not _patched_rows(ns)
+
+
+async def test_later_note_cannot_supersede_a_run_account():
+    mem, ns = _memory_with_episodic_ns()
+    mem._find_similar_episodic = AsyncMock(
+        return_value=[
+            {**SIMILAR[0], "source": "run:editorial", "tags": ["run-summary"]}
+        ]
+    )
+    with patch("bot.memory.namespace_memory.get_reconciliation_agent") as judge:
+        await mem.store_episodic_memory(
+            "Today I learned something related", ["editorial"]
+        )
+    judge.assert_not_called()
+    assert len(_upserted_rows(ns)) == 1
+    assert not _patched_rows(ns)

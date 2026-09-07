@@ -1029,7 +1029,7 @@ class PhiAgent:
         if summary and deps and deps.memory and not notification_input(deps):
             try:
                 await deps.memory.store_episodic_memory(
-                    f"{label}: {summary[:1000]}",
+                    f"{label}: {summary}",
                     tags=["run-summary", label],
                     source=f"run:{label}",
                 )

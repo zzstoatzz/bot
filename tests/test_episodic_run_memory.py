@@ -100,3 +100,16 @@ def test_inject_episodic_seeds_from_run_prompt_only():
         "residue-seeded recall is back — memory as amplifier, not cue "
         "(residue itself was removed 2026-08-15 for laundering stale claims)"
     )
+
+
+async def test_scheduled_summary_retains_actions_after_1000_characters():
+    phi = _phi_with_fake_run()
+    deps = _deps()
+    text = "Details. " * 150 + "Created the second source card."
+    with (
+        patch.object(PhiAgent, "_mcp_toolsets", return_value=[]),
+        patch.object(_FakeResult, "output", text),
+    ):
+        await phi._run_agent(label="editorial", prompt="hi", deps=deps)
+    content = deps.memory.store_episodic_memory.await_args.args[0]
+    assert content == "editorial: " + text

@@ -703,9 +703,9 @@ class NamespaceMemory:
         Consolidates at write time, the same way observations do: the
         candidate is reconciled against the most similar existing episode
         (ADD / UPDATE / DELETE / NOOP, superseded rows patched, pedigree
-        linked). Without this, every loop's run summary is one permanent
-        near-duplicate row per run, forever — the store fills with the log
-        instead of the gist. A reconciler outage degrades to a raw ADD:
+        linked). Scheduled-run accounts are separate events: they retain
+        their full text and are excluded from consolidation. A reconciler
+        outage for other notes degrades to a raw ADD:
         losing dedup for one write is fine, losing the memory is not.
 
         source_uris are AT-URIs that back this memory (a post phi was reading,
@@ -713,8 +713,20 @@ class NamespaceMemory:
         on read.
         """
         embedding = await self._get_embedding(content)
+        if source.startswith("run:"):
+            # A run is an event, not a revision of the previous similar run.
+            # Keep its account intact rather than merging actions across dates.
+            return await self._write_episodic(
+                content, tags, source, source_uris, embedding
+            )
         try:
             similar = await self._find_similar_episodic(embedding, top_k=3)
+            similar = [
+                row
+                for row in similar
+                if not str(row.get("source", "")).startswith("run:")
+                and "run-summary" not in row.get("tags", [])
+            ]
         except Exception as e:
             logger.warning(f"episodic similarity lookup failed, raw ADD: {e}")
             similar = []
@@ -869,6 +881,7 @@ class NamespaceMemory:
                     "id": row.id,
                     "content": row.content,
                     "tags": getattr(row, "tags", []) or [],
+                    "source": getattr(row, "source", "") or "",
                     "source_uris": list(getattr(row, "source_uris", []) or []),
                 }
             )
