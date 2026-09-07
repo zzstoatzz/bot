@@ -1,5 +1,12 @@
 # changelog
 
+## 2026-09-06 — Preserve citation context in thread review
+
+Public thread preflight now shows the classifier the complete numbered split
+preview in one review. Source-only continuations remain attached to the prose
+they support; the whole composition must pass before any part is published.
+This replaces isolated per-part judging, which induced removal of a source URL.
+
 ## Keep operator controls unlisted and simplify tool use
 
 Removed Operator from public navigation, shortcuts and public-page links. The

@@ -64,10 +64,12 @@ The previous automatic rewrite held startup open while the classifier rejected
 capability lists requested by the bio tool itself. That conflicting instruction
 and the automatic authoring entry point have been retired.
 
-Version deadpan-v3 keeps the same form rule. Before publishing a split Bluesky
-thread, the gate now reviews every exact
-chunk produced by the existing splitter. All must pass before any is sent.
-A joke in the first chunk cannot approve a source-only overflow chunk.
+Split Bluesky threads are reviewed as one composition, with a numbered preview
+of every exact chunk from the existing splitter (deadpan-v6). Nothing is sent
+before the complete preview passes. Citations and continuations can support the
+composition without supplying another joke; all parts remain subject to the
+other policies. The earlier per-chunk v3 gate hid surrounding prose from the
+judge and caused Phi to remove a source-only continuation to get published.
 
 ## Long-form correction (deadpan-v4)
 

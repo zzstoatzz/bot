@@ -185,21 +185,18 @@ async def _policy_gate(
     unprompted). warn_note is appended to the success result on a warn.
     """
     if publication_text is not None and len(parts := _split_text(publication_text)) > 1:
-        notes = []
-        for index, part in enumerate(parts):
-            refusal, note = await _policy_gate(
-                f"emitted public post {index + 1}/{len(parts)} of a proposed thread: {part}",
-                provenance,
-                unprompted=unprompted,
-                tool=tool,
-                prior_coverage=prior_coverage,
-                images=images if index == 0 else None,
-            )
-            if refusal:
-                return refusal, ""
-            if note:
-                notes.append(note)
-        return None, "\n".join(notes)
+        preview = "\n\n".join(
+            f"[Post {index + 1}/{len(parts)}]\n{part}"
+            for index, part in enumerate(parts)
+        )
+        action = (
+            f"{action.replace(publication_text, '[see numbered preview]', 1)}\n\n"
+            f"Exact publication preview (one proposed composition):\n{preview}"
+            "\n\nAssess every part together, including sources and continuations. "
+            "Reject the entire composition if any part violates a policy; "
+            "nothing will be published until this complete preview passes. "
+            "On rejection, identify the offending post number and quote the text."
+        )
     try:
         verdict = await check_action(
             action=action,

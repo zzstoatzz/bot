@@ -10,13 +10,17 @@ from uuid import uuid4
 import logfire
 
 JOURNAL = Path("/data/etiquette.sqlite3")
-VERSION = "deadpan-v5"
+VERSION = "deadpan-v6"
 PUBLIC_TOOLS = {"post", "publish_blog_post", "write_bio", "public_comment"}
 NORM = (
     "PUBLIC ETIQUETTE. Applies to composed audience-facing communication "
     "(post, publish_blog_post, write_bio, public_comment). "
     "Short posts/replies/bios: one original short deadpan bit grounded in the "
     "actual subject, at most two prose sentences. "
+    "For a split thread, assess the complete publication preview. A citation "
+    "or continuation supports the composition; it need not supply another joke. "
+    "Keep source links attached to their claims when revising. Check every "
+    "part for the other policies; a compliant opening cannot excuse a violation later. "
     "Blogs: write one connected piece in natural speech. Develop a thread of "
     "attention: details accumulate, an earlier detail can acquire a different "
     "meaning later, and the ending grows from what happened in the piece. "
