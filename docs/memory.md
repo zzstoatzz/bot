@@ -203,3 +203,10 @@ Scheduled-run summaries are stored in full as separate timestamped events
 writes also exclude run-summary rows from consolidation. This keeps one run's
 account from absorbing another run's actions; it does not independently verify
 Phi's account. Explicit `save_memory` notes still preserve their wording.
+
+`save_memory(..., supersedes_id="<active note id>")` corrects that exact version
+without similarity selection or reconciliation. Read it first with `read_memory`.
+Missing/superseded targets are refused; the original text remains readable and
+source references are retained. Correction calls are serialized in Phi's process
+and recheck the target before writing; this is not a distributed compare-and-swap
+against external writers.

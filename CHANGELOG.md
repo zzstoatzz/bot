@@ -1,5 +1,9 @@
 # changelog
 
+## 2026-09-06 — Explicit memory corrections and season timestamps
+
+Phi can correct an active note by exact ID with save_memory, preserving authored text, citations, and the prior version. Missing or superseded targets fail rather than choosing another similar note. The market tool now exposes the leaderboard’s absolute scheduled season end and settling flag so the final round’s calendar date is not mistaken for a settlement.
+
 ## 2026-09-06 — Preserve separate run accounts
 
 Scheduled-run summaries now retain their full wording and bypass similarity reconciliation; later notes cannot consolidate against them. The editorial reconciler had folded yesterday’s five cards into today’s summary and lost today’s two cards. Existing stored versions are not rewritten by this patch.

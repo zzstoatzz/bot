@@ -13,6 +13,7 @@ from pydantic_ai import Agent
 from turbopuffer import NotFoundError, Turbopuffer, omit
 
 from bot.config import settings
+from bot.memory.episodic_read import read_note
 from bot.memory.extraction import (
     EPISODIC_SCHEMA,
     USER_NAMESPACE_SCHEMA,
@@ -21,6 +22,8 @@ from bot.memory.extraction import (
 )
 from bot.memory.search_status import IncompleteMemorySearch
 from bot.utils.time import relative_when
+
+_correction_lock = asyncio.Lock()
 
 
 class EpisodicWriteResult(TypedDict):
@@ -819,6 +822,40 @@ class NamespaceMemory:
         )
         logger.info(f"stored episodic memory [{source}]: {content[:80]}")
         return saved
+
+    async def correct_episodic_memory(
+        self,
+        note_id: str,
+        content: str,
+        tags: list[str],
+        source_uris: list[str] | None = None,
+    ) -> EpisodicWriteResult:
+        """Replace one active version explicitly; retain its text in history."""
+        async with _correction_lock:
+            existing = await read_note(self.namespaces["episodic"], note_id)
+            if existing["status"] != "ok":
+                raise ValueError(
+                    f"Correction target {note_id}: {existing['status']}; nothing written"
+                )
+            note = existing["note"]
+            if note["status"] == "superseded":
+                raise ValueError(
+                    "Correction target is superseded; read the current version first. Nothing written."
+                )
+            embedding = await self._get_embedding(content)
+            current = await read_note(self.namespaces["episodic"], note_id)
+            if current != existing:
+                raise ValueError(
+                    "Correction target changed during preparation; read it again. Nothing written."
+                )
+            return await self._write_episodic(
+                content,
+                list(dict.fromkeys([*tags, "correction"])),
+                "tool:correction",
+                list(dict.fromkeys([*note["source_uris"], *(source_uris or [])])),
+                embedding,
+                supersedes=note_id,
+            )
 
     async def _write_episodic(
         self,

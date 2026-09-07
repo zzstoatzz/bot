@@ -287,7 +287,9 @@ async def test_partial_liquidity_refuses_and_says_size_down():
         "filled_fully": False,
     }
     with _trade_patches(bc, quote):
-        out = await fn(SimpleNamespace(), contender="@goose.art", side="buy", shares=9000)
+        out = await fn(
+            SimpleNamespace(), contender="@goose.art", side="buy", shares=9000
+        )
     assert "size down" in out
     bc.client.com.atproto.repo.create_record.assert_not_called()
 
@@ -368,7 +370,14 @@ async def test_update_strategy_writes_doctrine_record():
 async def test_leaderboard_shows_doctrine_or_asks_for_one():
     fn = _register()["check_top_chicken"]
     board = {
-        "season_info": {"num": 3, "day": 5, "total_days": 7, "end_round": "2026-07-12"},
+        "season_info": {
+            "num": 11,
+            "day": 7,
+            "total_days": 7,
+            "end_round": "2026-09-06",
+            "ends_at": 1788786000,
+            "settling": False,
+        },
         "leaders": [
             {"did": "did:plc:rival", "handle": "rival.example", "pnl_subc": 100_000},
             {"did": "did:plc:phi", "handle": "phi.example", "pnl_subc": 50_000},
@@ -392,6 +401,8 @@ async def test_leaderboard_shows_doctrine_or_asks_for_one():
     ):
         out = await fn(SimpleNamespace())
     assert "compound early, variance late" in out
+    assert "season scheduled end: 2026-09-07 13:00 UTC" in out
+    assert "leaderboard settling: false" in out
     assert "← you" in out
 
     with (

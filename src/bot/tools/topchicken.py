@@ -215,6 +215,16 @@ async def _season_section() -> list[str]:
         f" · final round {info.get('end_round')} (settles ~13:00 UTC the day after)"
     ]
 
+    ends_at: object = info.get("ends_at")
+    if isinstance(ends_at, int) and not isinstance(ends_at, bool):
+        closes = datetime.fromtimestamp(ends_at, UTC)
+        lines.append(
+            f"season scheduled end: {closes:%Y-%m-%d %H:%M UTC} "
+            "(leaderboard ends_at; the final calendar day is not a settlement result)"
+        )
+    if isinstance(info.get("settling"), bool):
+        lines.append(f"leaderboard settling: {str(info['settling']).lower()}")
+
     await bot_client.authenticate()
     assert bot_client.client.me is not None
     my_did = bot_client.client.me.did

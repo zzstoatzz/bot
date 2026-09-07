@@ -195,6 +195,12 @@ def register(agent):
                 )
             ),
         ] = "",
+        supersedes_id: Annotated[
+            str,
+            Field(
+                description="Exact active note ID to correct, after reading it with read_memory. Empty for a new note."
+            ),
+        ] = "",
     ) -> str:
         """Save a private episodic note in your exact wording.
 
@@ -202,14 +208,31 @@ def register(agent):
         notes; older versions remain readable with read_memory. Search with
         search_memory; relevant notes also enter ambient recall.
 
+        For a correction, read_memory first and pass supersedes_id: only that
+        active version is replaced, without a model choosing or rewriting it.
+        A missing or superseded target is refused. Corrections retain citations
+        and receive the correction tag automatically.
+
         Tag corrections with 'correction' to retain their recall weight.
         Pass the original source URI when available so the account is checkable.
         """
         if ctx.deps.memory:
             sources = [source_uri] if source_uri else None
-            saved = await ctx.deps.memory.store_episodic_memory(
-                content, tags, source="tool", source_uris=sources, preserve_text=True
-            )
+            if supersedes_id:
+                try:
+                    saved = await ctx.deps.memory.correct_episodic_memory(
+                        supersedes_id, content, tags, sources
+                    )
+                except ValueError as exc:
+                    return str(exc)
+            else:
+                saved = await ctx.deps.memory.store_episodic_memory(
+                    content,
+                    tags,
+                    source="tool",
+                    source_uris=sources,
+                    preserve_text=True,
+                )
             return json.dumps(
                 {
                     "stored_note": saved,
