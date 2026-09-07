@@ -195,7 +195,7 @@ async def _policy_gate(
             "\n\nAssess every part together, including sources and continuations. "
             "Reject the entire composition if any part violates a policy; "
             "nothing will be published until this complete preview passes. "
-            "On rejection, identify the offending post number and quote the text."
+            "On rejection, identify the offending post number and explain the problem without quoting draft text."
         )
     try:
         verdict = await check_action(
