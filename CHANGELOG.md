@@ -1,5 +1,9 @@
 # changelog
 
+## 2026-09-08 — Read source pages beyond search snippets
+
+Phi can read extracted web pages through read_web_page, with explicit pagination and failures. Web search previously exposed only short snippets, leaving influence reading without a native route to the complete text. The influence skill distinguishes immediate reading from the background reader, which remains unconnected. This adds source access, not a new personality prescription.
+
 ## 2026-09-08 — Permit direct public participation
 
 The public classifier now accepts specific questions, answers, and corrections without demanding a comic turn. The former short-post gate rejected useful reporting and pushed revisions toward compulsory punchlines. Generic quips remain rejectable, private thought and memory stay outside the form rule, and public actions still fail closed on classifier errors. The default judge moves to Terra after offline comparison; this is a bounded calibration trial, not a claim that Phi’s voice is solved.

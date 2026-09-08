@@ -53,7 +53,7 @@ sandbox/                   # experiments (graduate to scripts/ once proven)
 - memory: turbopuffer namespaces (`phi-users-{handle}`, `phi-episodic`). intent state on PDS under `io.zzstoatzz.phi.*` (goals, mention consent, override, atlas, docket).
 - owner-gated mutations (`follow_user`, `propose_goal_change`, `write_self`, `manage_mentionable`, `create_feed`) flow through a like-as-approval mechanism: phi posts an authorization request, owner likes it, next batch lets the action through.
 - MCP servers: pdsx (atproto record CRUD, feed-writes guarded), pub-search (publication search), semble (code-mode public knowledge graph), prefect (workflow state; only when auth configured). connected via `MCPServerStreamableHTTP`, fresh per `agent.run()`.
-- web grounding via tavily for recency claims (`web_search`).
+- web grounding via tavily: `web_search` discovers sources; `read_web_page` reads extracted Markdown with explicit pagination. The runtime `choose-influences` skill uses this reading capability; background influence reading is still unconnected.
 
 ## skills
 

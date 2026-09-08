@@ -29,8 +29,11 @@ a record for that DID, update it. Otherwise create one:
 }
 ```
 
-`reason` allows 800 characters. `works` is optional, up to ten URLs; the reader
-currently supports HTML articles. Recent posts are read separately. Choose works
+Read a work now with `read_web_page(url=...)`; follow `next_offset` until the
+extracted text is complete. Search snippets are for discovery, not a full reading.
+ATProto publications can also be read with `pub_get_document`.
+
+`reason` allows 800 characters. `works` is optional, up to ten URLs. Choose works
 you actually want to spend time with; you can change the list as your interests
 change.
 

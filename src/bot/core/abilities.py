@@ -118,6 +118,10 @@ RISK: dict[str, Risk] = {
         "magnitude": "none",
         "reason": "searches the network; finding a post is not an invitation to reply to it.",
     },
+    "read_web_page": {
+        "magnitude": "none",
+        "reason": "reads extracted public page text through tavily; costs a metered request and changes no records.",
+    },
     "web_search": {
         "magnitude": "none",
         "reason": "searches the open web via tavily; costs a metered request but changes nothing.",
