@@ -1,5 +1,9 @@
 # changelog
 
+## 2026-09-08 — Distinguish historical conversation from current instructions
+
+Per-author memory headers now describe provenance and temporal limits instead of marking verbatim exchanges as high-trust. A production personality-drafting run retrieved obsolete operator instructions and earlier self-descriptions alongside current requests. Semantic retrieval, stored wording, and source links are unchanged; historical instructions remain available without being presented as current authority. This corrects the context contract, not the public voice itself.
+
 ## 2026-09-08 — Read source pages beyond search snippets
 
 Phi can read extracted web pages through read_web_page, with explicit pagination and failures. Web search previously exposed only short snippets, leaving influence reading without a native route to the complete text. The influence skill distinguishes immediate reading from the background reader, which remains unconnected. This adds source access, not a new personality prescription.

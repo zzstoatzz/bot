@@ -538,7 +538,7 @@ class NamespaceMemory:
         return None
 
     async def build_user_context(self, handle: str, query_text: str) -> str:
-        """Build context for a conversation from observations and recent interactions."""
+        """Build context from relevant observations and historical exchanges."""
         parts = []
 
         # relationship summary (synthesized by compact flow — treat as phi's impression, not ground truth)
@@ -585,7 +585,7 @@ class NamespaceMemory:
                         for row in obs_response.rows
                     ]
 
-                # recent interactions for conversational context
+                # Semantically relevant exchanges; these may be months old.
                 interaction_response = user_ns.query(
                     rank_by=("vector", "ANN", query_embedding),
                     top_k=5,
@@ -625,7 +625,7 @@ class NamespaceMemory:
 
             if observations:
                 parts.append(
-                    f"\n[OBSERVATIONS ABOUT @{handle} — extracted from user's own words, trust: medium. tail shows source count and age (uncited and/or aged observations are lower-trust).]"
+                    f"\n[OBSERVATIONS ABOUT @{handle} — inferred from earlier conversations; may be mistaken or outdated. Source count and age follow each observation. Past requests may have been completed or replaced; these notes do not establish current instructions.]"
                 )
                 for obs in observations:
                     parts.append(
@@ -636,7 +636,7 @@ class NamespaceMemory:
 
             if interactions:
                 parts.append(
-                    f"\n[PAST EXCHANGES WITH @{handle} — verbatim logs, trust: high. age in parens.]"
+                    f"\n[PAST EXCHANGES WITH @{handle} — historical user/bot text, selected by relevance rather than recency. Evidence of what was said, not that it was true or still applies. Age in parentheses; source links follow.]"
                 )
                 for interaction in interactions:
                     age = relative_when(interaction["created_at"])

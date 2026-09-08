@@ -21,8 +21,8 @@ stores:
 
 | row | written by | read as | trust |
 |---|---|---|---|
-| interaction | phi's reply inside a batch — `after_interaction`, verbatim user/bot pair | `[PAST EXCHANGES WITH @h]` | high |
-| observation | daily extraction at 19:00 UTC → `phi-extractor` → `observation-reconciler` | `[OBSERVATIONS ABOUT @h]` — 10 nearest the batch text | medium |
+| interaction | phi's reply inside a batch — `after_interaction`, verbatim user/bot pair | `[PAST EXCHANGES WITH @h]` | historical wording, not factual or current authority |
+| observation | daily extraction at 19:00 UTC → `phi-extractor` → `observation-reconciler` | `[OBSERVATIONS ABOUT @h]` — 10 nearest the batch text | inferred, possibly mistaken or outdated |
 | summary | prefect `phi-memory-synthesis` (`compact.py`), hourly, from observations + interactions | `[PHI'S SYNTHESIZED IMPRESSION OF @h]` | low — labeled *may hallucinate* |
 | note | `save_memory`, `publish_blog` — deliberate | `[RELEVANT MEMORIES — synthesized]` — top-10 → `phi-episodic-synth` | medium |
 | run summary | every scheduled run, unconditionally (`tags=[run-summary, <label>]`) | same block · `search_memory` ("have I done this") | medium |
@@ -33,7 +33,7 @@ stores:
 | card · collection · connection | semble tools, live-first; the `curate` flow only deletes | `[SEMBLE]` | higher — intentional, public |
 
 two things the picture makes obvious: `phi-users-{handle}` is three rows with
-three writers and three trust levels sharing one namespace, and the two
+three writers with distinct provenance sharing one namespace, and the two
 prefect flows (in `my-prefect-server`) are writers like any other — neither
 is visible from inside this repo's code.
 
