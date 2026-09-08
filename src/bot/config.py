@@ -106,7 +106,7 @@ class Settings(BaseSettings):
         description="Model for the extraction/synth sub-agents",
     )
     policy_model: str = Field(
-        default="openai-responses:gpt-5.6-luna",
+        default="openai-responses:gpt-5.6-terra",
         description="Model for the pre-action policy judge (bot.core.policy)",
     )
 

@@ -26,7 +26,7 @@ phi's own write-up: ["The Instruction I Wrote For Myself"](https://greengale.app
 
 - **policies are data**: a `dict[PolicySlug, str]` of natural-language
   policies (`uninvited-reply`, `bliss-attractor`, `pile-on`, `handle-hygiene`,
-  `self-repeat`). adding one
+  `self-repeat`, `public-etiquette`). adding one
   is a two-line change (extend the `PolicySlug` literal, add the entry);
   the type checker keeps them in sync, and the literal becomes an enum
   in the judge's output schema.
@@ -51,9 +51,8 @@ phi's own write-up: ["The Instruction I Wrote For Myself"](https://greengale.app
   policy note rides the tool result), `block` (nothing posted; phi gets
   the policy and reason as the tool result so she can adapt in the same
   run — a like, a memory write, a different post).
-- **failure mode is provenance-dependent**: unprompted actions fail
-  closed (judge unavailable → no action); invited ones fail open (a
-  flaky judge shouldn't hostage a reply to someone who asked).
+- **composed public actions fail closed** when the judge is unavailable, including invited replies. The operator override and raw-write guard remain separate checks.
+- **public form** (`participation-v7`): short public writing can be a direct question, answer, correction, or subject-specific humor. A comic turn is not mandatory. Generic quips remain rejectable. Blogs are assessed as complete connected pieces. Internal reasoning and stored notes are outside this form rule. The default judge is Terra through the Responses API; the main author model is unchanged.
 
 ## layer 2 — structural guard on raw record writes
 

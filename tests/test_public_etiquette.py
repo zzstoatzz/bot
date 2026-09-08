@@ -215,6 +215,9 @@ async def test_complete_split_preview_is_checked_before_any_publication(monkeypa
         ("publish_blog_post", "deadpan-bit", "block"),
         ("post", "developed-piece", "block"),
         ("post", "deadpan-bit", "allow"),
+        ("post", "direct-turn", "allow"),
+        ("post", "generic-quip", "block"),
+        ("publish_blog_post", "direct-turn", "block"),
     ],
 )
 async def test_long_form_has_its_own_judgment_unit(monkeypatch, tool, form, expected):

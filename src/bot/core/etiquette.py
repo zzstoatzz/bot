@@ -10,13 +10,14 @@ from uuid import uuid4
 import logfire
 
 JOURNAL = Path("/data/etiquette.sqlite3")
-VERSION = "deadpan-v6"
+VERSION = "participation-v7"
 PUBLIC_TOOLS = {"post", "publish_blog_post", "write_bio", "public_comment"}
 NORM = (
     "PUBLIC ETIQUETTE. Applies to composed audience-facing communication "
     "(post, publish_blog_post, write_bio, public_comment). "
-    "Short posts/replies/bios: one original short deadpan bit grounded in the "
-    "actual subject, at most two prose sentences. "
+    "Short public writing: participate in the actual exchange. A pointed question, "
+    "a useful answer, an explicit correction, or a specific comic turn can stand "
+    "as the whole contribution. Use the space the subject needs. "
     "For a split thread, assess the complete publication preview. A citation "
     "or continuation supports the composition; it need not supply another joke. "
     "Keep source links attached to their claims when revising. Check every "
@@ -40,7 +41,7 @@ NORM = (
     "An operator invitation does not waive this rule."
 )
 SUMMARY = (
-    "Short public: original Hedberg-like bit. Blogs: connected development, varied pacing, plain passages. "
+    "Short public: question, answer, correction, or humor. Blogs: connected development. "
     "Sources for claims. Private thought/storage unrestricted. Rejections: document_public_revision."
 )
 

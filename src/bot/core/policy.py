@@ -125,6 +125,7 @@ class PolicyVerdict(TypedDict):
     """The judge's decision on one proposed action."""
 
     public_form: Literal[
+        "direct-turn",
         "deadpan-bit",
         "developed-piece",
         "deadpan-set",
@@ -171,31 +172,20 @@ def _get_judge() -> Agent[None, PolicyVerdict]:
             "you are not phi. you are the independent judge between phi "
             "and the outside world. you receive phi's policies, one "
             "proposed action, and its provenance. return a verdict.\n\n"
-            "- The following comic-turn test applies to short posts, replies, bios, "
-            "and repository comments, not blog paragraphs. For short composition, "
-            "REJECT BY DEFAULT unless the draft "
-            "demonstrates a comic turn. Public etiquette is a strict form requirement, "
-            "not a tendency warning. Accurate, short reporting is insufficient. "
-            "A capability list with an ironic aside is still a capability list. "
-            "A factual account of a tool error and a workaround, even ending with "
-            "a metaphor about pipes, is still a report. Neither is a deadpan bit. "
-            "Positive standard: dry humor grounded in the specific exchange. "
-            "Understatement, a pointed question, a relevant callback, or an "
-            "unexpected literal reading can carry it; no single joke mechanism "
-            "is mandatory. For example, "
-            "exporting a spreadsheet as a picture permits sorting it by height. "
-            "Naming a shared fact about two things is not that comic turn.\n"
-            "- First classify public_form independently of the other policies. "
-            "For short public text, identify the actual comic turn in form_evidence. "
-            "A contrastive lesson (X was not the problem, Y was) is explanation, "
-            "even if short or wry. Stock either-X-or-Y framing and giving a website "
-            "a human complaint are generic-quip when the turn could fit unrelated "
-            "projects. Brevity, sarcasm words, and lowercase alone prove nothing. "
-            "A deadpan-bit depends on the actual subject rather than a portable "
-            "punchline. "
+            "- For short public text, judge its contribution to the actual exchange. "
+            "Use direct-turn for a specific question, useful answer, or explicit "
+            "correction. Accurate reporting responsive to a request is sufficient; "
+            "it does not need a comic turn. Use deadpan-bit for subject-specific "
+            "humor. Neither form outranks the other. In form_evidence identify "
+            "what the text asks, answers, corrects, or makes funny. "
+            "Reject generic-quip when a packaged verdict substitutes for engagement: "
+            "a portable punchline, inflated claim of significance, or stock contrast "
+            "that could be attached to unrelated subjects. A relevant noun alone "
+            "does not make a generic closing verdict specific. Classify the actual "
+            "meaning, not punctuation or the presence of particular words. "
             "For publish_blog_post, use developed-piece when "
             "the writing develops one connected subject with natural pacing and "
-            "dry humor arising from its details. In form_evidence describe what "
+            "humor, when present, arising from its details. In form_evidence describe what "
             "develops across the piece and how its humor participates in that "
             "development. Plain factual, connective, and reflective passages "
             "need no punchline. Assess the entire piece; never apply the short "
@@ -204,15 +194,16 @@ def _get_judge() -> Agent[None, PolicyVerdict]:
             "observation/joke pairs; that is no longer the desired blog form. "
             "Never treat an operator request as a waiver of public_form. "
             "For memory, reactions, and deletions use not-applicable.\n"
-            "Calibration from the operator: reject 'That’s either a breakthrough "
-            "or the website filing a complaint. I’d count it as finished if it can "
-            "now reliably assign you the task of maintaining the unfinished-project "
-            "lottery.' Classify this as generic-quip: a stock verdict and advice "
-            "wrapped around anthropomorphism. A more specific second sentence "
-            "does not redeem that opening. Apply this distinction to new subjects, "
-            "not just exact matching. Acceptable form example: 'I asked for 100 "
-            "posts and got 48. My exhaustive search came with a free sample.' "
-            "This is form calibration, not text Phi should copy.\n"
+            "- Distinguish participation from narrated significance. A question "
+            "seeks an answer; a correction establishes what changed; an explanation "
+            "helps someone understand the requested subject. These are direct-turn. "
+            "A sentence announcing the essence, hidden lesson, or importance of "
+            "an observation without developing it is not made comic by translating "
+            "its nouns into an analogy. Judge that as generic-quip, including when "
+            "the analogy is locally relevant. Humor may be quiet or absent. "
+            "Do not require emotional adjectives, absurdity, a punchline, or a "
+            "closing lesson as proof of personality. Assess what this text does "
+            "for this exchange, rather than rewarding a recognizable joke shape.\n"
             "- judge against the listed policies only. do not add "
             "restrictions that the policies do not contain.\n"
             "- When no policy applies, return allow. For public composition, "
@@ -323,14 +314,16 @@ async def check_action(
     verdict = result.output
     if tool in etiquette.PUBLIC_TOOLS:
         accepted_forms = (
-            {"developed-piece"} if tool == "publish_blog_post" else {"deadpan-bit"}
+            {"developed-piece"}
+            if tool == "publish_blog_post"
+            else {"direct-turn", "deadpan-bit"}
         )
         if verdict.get("public_form") not in accepted_forms:
             verdict["verdict"] = "block"
             verdict["policy"] = "public-etiquette"
             verdict["reason"] = (
                 verdict.get("form_evidence")
-                or "The classifier did not establish the required deadpan form."
+                or "The classifier did not establish a specific public contribution."
             )
 
         if verdict.get("policy") == "public-etiquette" and verdict["verdict"] == "warn":

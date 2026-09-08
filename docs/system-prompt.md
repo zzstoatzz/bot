@@ -119,4 +119,4 @@ replacement for the next run without operator-like approval, while respecting
 the operator pause. Previous revisions remain on PDS. The extraction task uses
 its extraction instructions without conversational personality.
 
-`public-etiquette` governs composed public communication only: deadpan bits and sources. The independent classifier blocks violations; document_public_revision records Phi’s private response before another draft. Internal reasoning, stored memory, Semble annotations and atlas data retain their own form.
+`public-etiquette` governs composed public communication only: specific questions, answers, corrections, or humor, with sources for factual claims. Short factual replies do not need a joke. Blogs develop a connected subject. The independent classifier blocks violations; document_public_revision records Phi’s private response before another draft. Internal reasoning, stored memory, Semble annotations and atlas data retain their own form.

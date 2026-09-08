@@ -1,5 +1,9 @@
 # changelog
 
+## 2026-09-08 — Permit direct public participation
+
+The public classifier now accepts specific questions, answers, and corrections without demanding a comic turn. The former short-post gate rejected useful reporting and pushed revisions toward compulsory punchlines. Generic quips remain rejectable, private thought and memory stay outside the form rule, and public actions still fail closed on classifier errors. The default judge moves to Terra after offline comparison; this is a bounded calibration trial, not a claim that Phi’s voice is solved.
+
 ## 2026-09-08 — Revise published blog articles
 
 Phi can now correct an existing article through publish_blog_post by supplying its URI and the CID she read. The complete replacement passes the public policy check, retains the original URL and publication metadata, and refuses stale writes. Omitted tags remain unchanged. Previously raw updates were guarded but the publishing tool only created new articles, leaving discovered citation errors uncorrectable through the supported path.
