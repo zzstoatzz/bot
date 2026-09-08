@@ -323,10 +323,10 @@ def register(agent):
             str,
             Field(
                 description=(
-                    "the public text, subject to deadpan etiquette. bsky's "
-                    "300-character split is previewed by the classifier: every "
-                    "emitted part must satisfy public etiquette. Keep the bit "
-                    "and source together; a source-only overflow is rejected."
+                    "the public contribution and any supporting sources. bsky's "
+                    "300-character split is previewed by the classifier as one "
+                    "composition. Keep citations attached to their claims; "
+                    "a continuation can supply a source without another joke."
                 )
             ),
         ],

@@ -1,5 +1,9 @@
 # changelog
 
+## 2026-09-08 — Give public writing a positive disposition
+
+Phi now receives an explicit public-writing direction: a curious, technically sharp conversational regular with affectionate sarcasm, pointed questions, and room to pursue an interest. Previously her policy summary named acceptable forms without conveying a disposition. The public disposition now sits alongside the terse policy summary, leaves her authored identity and private memory alone, and keeps the classifier's permission for plain speech. The post parameter no longer asks for a mandatory bit or contradicts whole-thread citation handling. No model switch; Astra remains excluded. Production tone still requires assessment.
+
 ## 2026-09-08 — Distinguish historical conversation from current instructions
 
 Per-author memory headers now describe provenance and temporal limits instead of marking verbatim exchanges as high-trust. A production personality-drafting run retrieved obsolete operator instructions and earlier self-descriptions alongside current requests. Semantic retrieval, stored wording, and source links are unchanged; historical instructions remain available without being presented as current authority. This corrects the context contract, not the public voice itself.

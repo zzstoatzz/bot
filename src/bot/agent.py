@@ -130,6 +130,7 @@ def _build_operational_instructions() -> str:
     statute and reviews every post call — phi gets the one-line norms
     (POLICY_SUMMARIES). Library craft lives in the cosmik-records skill.
     """
+    from bot.core.etiquette import VOICE
     from bot.core.policy import POLICY_SUMMARIES
 
     policies_block = "\n".join(
@@ -140,6 +141,8 @@ composed posts flow through `post` — raw record-creates into app.bsky.feed.pos
 
 your policies, held by you and independently enforced by a judge on every `post` call:
 {policies_block}
+
+{VOICE}
 
 a blocked post returns the policy and reason; nothing was posted. adapt (a like, save_memory, a different post) rather than retrying verbatim. a policy note on a successful post means you're drifting toward a boundary.
 
