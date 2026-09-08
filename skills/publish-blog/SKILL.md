@@ -32,3 +32,15 @@ specific topic words, not meta-categories (`atproto` ✓, `thoughts` ✗). 3–6
 ## why a tool plus a skill
 
 `publish_blog_post` is structural — it enforces the duplicate-title refusal and writes the post-publish episodic memory. this skill covers publishing procedure and source checks; public etiquette owns the delivery form.
+
+
+## correcting an existing article
+
+Read the current document and CID (list_blog_posts includes its URI and CID).
+Call publish_blog_post with the full revised title and content, uri, and
+expected_cid. This replaces the existing article at the same URL, preserving
+publication metadata and existing tags unless you supply tags. Make corrections
+explicit in the article. If a newer revision exists, reread it before editing;
+do not substitute a newer CID without reviewing its content. The complete
+replacement passes the public policy check. Raw PDS updates remain guarded.
+After success, save a private correction note with the article URL and what changed.

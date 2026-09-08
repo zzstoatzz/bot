@@ -1,5 +1,8 @@
 """Blog tools — greengale publishing."""
 
+from typing import Annotated
+
+from pydantic import Field
 from pydantic_ai import RunContext
 
 from bot.config import settings
@@ -45,7 +48,7 @@ def register(agent):
                 # include the AT-URI explicitly so the model doesn't have to guess
                 # the collection name when passing to pub_get_document.
                 lines.append(
-                    f"- {title}{tag_str}{date_str}\n  uri: {rec.uri}\n  url: {url}"
+                    f"- {title}{tag_str}{date_str}\n  uri: {rec.uri}\n  cid: {rec.cid}\n  url: {url}"
                 )
             return "\n".join(lines)
         except Exception as e:
@@ -57,16 +60,34 @@ def register(agent):
         title: str,
         content: str,
         tags: list[str] | None = None,
+        uri: Annotated[
+            str | None,
+            Field(
+                description="Existing own blog AT-URI to revise; omit for a new article."
+            ),
+        ] = None,
+        expected_cid: Annotated[
+            str | None,
+            Field(
+                description="CID of the article revision you read; required with uri to prevent overwriting newer edits."
+            ),
+        ] = None,
     ) -> str:
         """Publish a markdown blog post to greengale.app (your ATProto blog).
 
         IMPORTANT: before calling this, use list_blog_posts to review your existing posts
         so you don't repeat yourself.
 
+        To correct an existing article, read it first and supply its uri and
+        expected_cid with the complete revised title and body. The URL stays fixed.
+        Omitted tags preserve existing tags on revisions.
+
         title: post title.
         content: full markdown body.
         tags: optional list of topic tags.
         """
+        if bool(uri) != bool(expected_cid):
+            return "refused: revision requires both uri and expected_cid"
         override = await get_override()
         if override["active"]:
             return refusal_text(override)
@@ -92,6 +113,9 @@ def register(agent):
             assert bot_client.client.me is not None
             did = bot_client.client.me.did
             handle = settings.bluesky_handle
+
+            if uri:
+                return _revise_blog_document(did, handle, uri, expected_cid, doc, tags)
 
             # check for title duplicates
             existing = bot_client.client.com.atproto.repo.list_records(
@@ -137,3 +161,35 @@ def register(agent):
             return f"published: {url}"
         except Exception as e:
             return f"failed to publish: {e}"
+
+
+def _revise_blog_document(did, handle, uri, expected_cid, doc, tags):
+    """Replace a checked own document without changing its publication identity."""
+    prefix = f"at://{did}/app.greengale.document/"
+    if (
+        not uri.startswith(prefix)
+        or not uri[len(prefix) :]
+        or "/" in uri[len(prefix) :]
+    ):
+        return "refused: target must be an existing blog document on your own repo"
+    rkey = uri[len(prefix) :]
+    repo = bot_client.client.com.atproto.repo
+    existing = repo.get_record(
+        params={"repo": did, "collection": "app.greengale.document", "rkey": rkey}
+    )
+    if existing.cid != expected_cid:
+        return "refused: article changed since you read it; read the current revision before editing"
+    record = dict(existing.value)
+    record.update(title=doc.title, content=doc.content)
+    if tags is not None:
+        record["tags"] = tags
+    repo.put_record(
+        data={
+            "repo": did,
+            "collection": "app.greengale.document",
+            "rkey": rkey,
+            "record": record,
+            "swap_record": expected_cid,
+        }
+    )
+    return f"updated: https://greengale.app/{handle}/{rkey}"

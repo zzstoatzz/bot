@@ -1,5 +1,9 @@
 # changelog
 
+## 2026-09-08 — Revise published blog articles
+
+Phi can now correct an existing article through publish_blog_post by supplying its URI and the CID she read. The complete replacement passes the public policy check, retains the original URL and publication metadata, and refuses stale writes. Omitted tags remain unchanged. Previously raw updates were guarded but the publishing tool only created new articles, leaving discovered citation errors uncorrectable through the supported path.
+
 ## 2026-09-06 — Correct global suppression guidance
 
 The Coral skill now explains exact case-insensitive matching across contexts and requires source-backed extraction artifacts. Shared names, majority verb usage, and real places repeated by a bot are not global suppression candidates. The editorial entry point reinforces that distinction; targeted corrections must preserve unrelated entries exactly.
