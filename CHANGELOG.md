@@ -1,5 +1,15 @@
 # changelog
 
+## Reply evidence for the classifier
+
+The public classifier was asked to judge a reply's contribution to an exchange
+without receiving the parent post. A supervised voice test exposed it explaining
+how a joke fit a premise it had not seen. Reply checks now include the verified
+parent's exact text, URI and CID as quoted source material, separate from the
+proposed publication. Fresh record reads retain the text as notification-backed
+reads already did. This gives the judge evidence; it does not prove its verdict
+or restore any writer context during the voice reset.
+
 ## Web source captures
 
 Web-page continuation previously fetched the source again, allowing slices from
