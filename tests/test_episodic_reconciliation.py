@@ -278,10 +278,11 @@ async def test_correction_tag_exempt_from_recency_decay():
     )
 
 
-async def test_selected_context_preserves_original_wording_and_provenance():
+async def test_selected_context_preserves_original_wording_and_provenance(monkeypatch):
     from pydantic_ai.models.test import TestModel
 
-    from bot.memory.namespace_memory import _get_episodic_selector
+    from bot.memory import namespace_memory
+    from bot.memory.namespace_memory import EpisodicSelection
 
     mem, _ = _memory_with_episodic_ns()
     notes = [
@@ -297,8 +298,12 @@ async def test_selected_context_preserves_original_wording_and_provenance():
     ]
     mem.search_episodic = AsyncMock(return_value=notes)
     model = TestModel(custom_output_args={"indices": [0, 0]})
-    with _get_episodic_selector().override(model=model):
-        result = await mem.get_episodic_context("Which voice instruction is current?")
+    monkeypatch.setattr(
+        namespace_memory,
+        "_episodic_selector",
+        Agent(model, output_type=EpisodicSelection),
+    )
+    result = await mem.get_episodic_context("Which voice instruction is current?")
     header, body = result.split("\n", 1)
     assert "historical" in header
     assert json.loads(body) == {
@@ -313,15 +318,19 @@ async def test_selected_context_preserves_original_wording_and_provenance():
 
 
 @pytest.mark.parametrize("indices", [[], [9]])
-async def test_empty_or_invalid_selection_cannot_invent_context(indices):
+async def test_empty_or_invalid_selection_cannot_invent_context(indices, monkeypatch):
     from pydantic_ai.models.test import TestModel
 
-    from bot.memory.namespace_memory import _get_episodic_selector, _select_episodic
+    from bot.memory import namespace_memory
+    from bot.memory.namespace_memory import EpisodicSelection, _select_episodic
 
-    with _get_episodic_selector().override(
-        model=TestModel(custom_output_args={"indices": indices})
-    ):
-        assert await _select_episodic([], "question", [{"content": "old note"}]) == ""
+    model = TestModel(custom_output_args={"indices": indices})
+    monkeypatch.setattr(
+        namespace_memory,
+        "_episodic_selector",
+        Agent(model, output_type=EpisodicSelection),
+    )
+    assert await _select_episodic([], "question", [{"content": "old note"}]) == ""
 
 
 @pytest.mark.parametrize("action", ["ADD", "UPDATE", "DELETE", "NOOP"])
