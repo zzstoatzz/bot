@@ -278,17 +278,50 @@ async def test_correction_tag_exempt_from_recency_decay():
     )
 
 
-def test_synth_candidates_render_tags():
-    """The ambient block's candidate lines must carry tags — a correction
-    invisible in [RELEVANT MEMORIES] is a correction phi can't act on."""
-    import inspect
+async def test_selected_context_preserves_original_wording_and_provenance():
+    from pydantic_ai.models.test import TestModel
 
-    from bot.memory import namespace_memory
+    from bot.memory.namespace_memory import _get_episodic_selector
 
-    src = inspect.getsource(namespace_memory._synthesize_episodic)
-    assert "tags" in src.split("notes_block")[1].split("payload")[0], (
-        "synth candidate lines no longer render tags"
-    )
+    mem, _ = _memory_with_episodic_ns()
+    notes = [
+        {
+            "id": "old",
+            "content": "Use the old voice.\nMaybe this never shipped.",
+            "created_at": "2026-09-01T00:00:00Z",
+            "source": "tool",
+            "source_uris": ["at://example/post/1"],
+            "tags": ["correction"],
+        },
+        {"id": "other", "content": "Unrelated gardening note."},
+    ]
+    mem.search_episodic = AsyncMock(return_value=notes)
+    model = TestModel(custom_output_args={"indices": [0, 0]})
+    with _get_episodic_selector().override(model=model):
+        result = await mem.get_episodic_context("Which voice instruction is current?")
+    header, body = result.split("\n", 1)
+    assert "historical" in header
+    assert json.loads(body) == {
+        "id": "old",
+        "recorded_at": notes[0]["created_at"],
+        "source": "tool",
+        "source_uris": notes[0]["source_uris"],
+        "tags": ["correction"],
+        "content": notes[0]["content"],
+    }
+    assert "gardening" not in result
+
+
+@pytest.mark.parametrize("indices", [[], [9]])
+async def test_empty_or_invalid_selection_cannot_invent_context(indices):
+    from pydantic_ai.models.test import TestModel
+
+    from bot.memory.namespace_memory import _get_episodic_selector, _select_episodic
+
+    with _get_episodic_selector().override(
+        model=TestModel(custom_output_args={"indices": indices})
+    ):
+        assert await _select_episodic([], "question", [{"content": "old note"}]) == ""
 
 
 @pytest.mark.parametrize("action", ["ADD", "UPDATE", "DELETE", "NOOP"])

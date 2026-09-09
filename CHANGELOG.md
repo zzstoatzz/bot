@@ -1,5 +1,16 @@
 # changelog
 
+## 2026-09-09 — Select recalled notes without rewriting them
+
+The episodic helper answered an operator question about Phi's current prompt
+from historical notes, first describing an old voice experiment as current
+“visible direction,” then claiming a present Public voice section was absent.
+The helper never had that prompt. It now returns candidate indices only;
+Python renders original notes with recorded dates, tags and source references.
+Memory writes and stored wording are unchanged. This removes generated claims
+from this retrieval path; it does not by itself establish improved public voice.
+
+
 ## 2026-09-09 — Editorial coverage across time
 
 The existing editorial pass now follows developments through Coral observations,

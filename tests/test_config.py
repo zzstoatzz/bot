@@ -58,7 +58,11 @@ class TestSubAgentModelStrings:
 
         for mod, attr, factory in (
             (extraction, "_reconciliation_agent", extraction.get_reconciliation_agent),
-            (namespace_memory, "_episodic_synth_agent", namespace_memory._get_episodic_synth_agent),
+            (
+                namespace_memory,
+                "_episodic_selector",
+                namespace_memory._get_episodic_selector,
+            ),
             (self_state, "_inventory_agent", self_state._get_inventory_agent),
             (policy, "_judge", policy._get_judge),
         ):
@@ -70,9 +74,11 @@ class TestSubAgentModelStrings:
         """Every sub-agent must use the configured string verbatim."""
         sentinel = "openai-responses:gpt-5.6-luna"
         # constructing the provider needs a key present; nothing is sent.
-        with patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test"}), patch.object(
-            settings, "extraction_model", sentinel
-        ), patch.object(settings, "policy_model", sentinel):
+        with (
+            patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test"}),
+            patch.object(settings, "extraction_model", sentinel),
+            patch.object(settings, "policy_model", sentinel),
+        ):
             for factory in self._agents():
                 agent = factory()
                 assert agent.model.system == "openai", (
