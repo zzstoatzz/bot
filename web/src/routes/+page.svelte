@@ -5,18 +5,18 @@
 	import CommandK from '$lib/components/CommandK.svelte';
 	import AtlasOverlay from '$lib/components/AtlasOverlay.svelte';
 	import { logbook, mindCounts } from '$lib/state.svelte';
-	import { getMemoryGraph, getGoals, getDocket, getAtlas, getActivity } from '$lib/api';
-	import type { GraphNode, Goal, Docket, Atlas, ActivityItem } from '$lib/types';
+	import { getPeople, getGoals, getDocket, getAtlas, getActivity } from '$lib/api';
+	import type { Goal, Docket, Atlas, ActivityItem } from '$lib/types';
 	let goals = $state<Goal[]>([]);
-	let known = $state<GraphNode[]>([]);
+	let known = $state<string[]>([]);
 	let docket = $state<Docket | null>(null);
 	let atlas = $state<Atlas | null>(null);
 	let activity = $state<ActivityItem[]>([]);
 	type Source = 'activity' | 'goals' | 'people' | 'atlas' | 'docket';
-	let states = $state<Record<Source, 'loading' | 'ready' | 'error'>>({
+	let states = $state<Record<Source, 'idle' | 'loading' | 'ready' | 'error'>>({
 		activity: 'loading',
 		goals: 'loading',
-		people: 'loading',
+		people: 'idle',
 		atlas: 'loading',
 		docket: 'loading'
 	});
@@ -24,11 +24,14 @@
 	let atlasOpen = $state(false);
 	let query = $state('');
 	let showAll = $state(false);
-	const people = $derived(
-		known
-			.filter((p) => p.label.toLowerCase().includes(query.toLowerCase()))
-			.slice(0, query ? 50 : 12)
-	);
+	let peopleLimit = $state(12);
+	const matchingPeople = $derived(known.filter((handle) => handle.includes(query.toLowerCase().replace(/^@/, ''))));
+	const people = $derived(matchingPeople.slice(0, peopleLimit));
+	async function loadPeople() {
+		if (states.people === 'loading') return;
+		await read('people', getPeople, (handles) => (known = handles));
+		mindCounts.set({ ...mindCounts.value, ppl: states.people === 'ready' ? known.length : null });
+	}
 	const shownActivity = $derived(activity.slice(0, showAll ? 30 : 5));
 	async function read<T>(source: Source, fetcher: () => Promise<T>, accept: (value: T) => void) {
 		states[source] = 'loading';
@@ -41,7 +44,7 @@
 	}
 	async function refresh() {
 		refreshing = true;
-		mindCounts.set({ goals: 0, out: 0, ppl: 0, cand: 0, loaded: false });
+		mindCounts.set({ goals: 0, out: 0, ppl: null, cand: 0, loaded: false });
 		await Promise.all([
 			read(
 				'activity',
@@ -49,23 +52,15 @@
 				(r) => (activity = r.toSorted((a, b) => Date.parse(b.time) - Date.parse(a.time)))
 			),
 			read('goals', getGoals, (r) => (goals = r)),
-			read(
-				'people',
-				getMemoryGraph,
-				(r) =>
-					(known = r.nodes
-						.filter((n) => n.type === 'user')
-						.toSorted((a, b) => a.label.localeCompare(b.label)))
-			),
 			read('atlas', getAtlas, (r) => (atlas = r)),
 			read('docket', getDocket, (r) => (docket = r))
 		]);
 		mindCounts.set({
 			goals: goals.length,
 			out: activity.length,
-			ppl: known.length,
+			ppl: states.people === 'ready' ? known.length : null,
 			cand: docket?.candidates.length ?? 0,
-			loaded: Object.values(states).every((s) => s === 'ready')
+			loaded: Object.entries(states).every(([key, state]) => key === 'people' || state === 'ready')
 		});
 		refreshing = false;
 	}
@@ -176,41 +171,25 @@
 						Explore Phi’s conversations and the notes it kept.
 					</p>
 					<div class="lookup"><CommandK inline /></div>
-					{#if states.people === 'loading'}<p class="empty">
-							Loading people…
-						</p>{:else if states.people === 'error'}<p class="notice">
-							The people index could not be loaded. You can still search by name or handle.
-						</p>{:else}<details class="people-browser">
-							<summary>Browse {known.length} people</summary><label class="person-filter"
-								>Filter accounts<input
-									type="search"
-									placeholder="Filter by handle"
-									bind:value={query}
-								/></label
-							>
+					<details class="people-browser" ontoggle={(event) => {
+						if (event.currentTarget.open && states.people === 'idle') void loadPeople();
+					}}>
+						<summary>Browse saved accounts</summary>
+						{#if states.people === 'loading'}
+							<p class="empty" role="status">Loading accounts…</p>
+						{:else if states.people === 'error'}
+							<p class="empty" role="alert">The account list couldn’t be loaded.</p>
+							<button onclick={loadPeople}>Try again</button>
+						{:else if states.people === 'ready'}
+							<label class="person-filter">Filter accounts<input type="search" placeholder="Filter by handle" bind:value={query} oninput={() => (peopleLimit = 12)} /></label>
 							<div class="people">
-								{#each people as person}<button
-										onclick={() =>
-											logbook.set({
-												kind: 'handle',
-												handle: person.label.replace(/^@/, ''),
-
-												engaged: true,
-												payload: person
-											})}
-										>{person.label.startsWith('@') ? person.label : `@${person.label}`}<span
-											aria-hidden="true"
-										>
-											→</span
-										></button
-									>{/each}
+								{#each people as handle}<button onclick={() => logbook.set({kind: 'handle', handle, engaged: true, payload: null})}>@{handle}<span aria-hidden="true"> →</span></button>{/each}
 							</div>
-							{#if !people.length}<p class="empty">No matching people in this index.</p>{:else}<p
-									class="footnote"
-								>
-									Alphabetical · showing {people.length}{query ? ' matches' : ` of ${known.length}`}
-								</p>{/if}
-						</details>{/if}
+							{#if !people.length}<p class="empty">No matching accounts.</p>{/if}
+							{#if matchingPeople.length > people.length}<button class="more" onclick={() => (peopleLimit += 12)}>Show 12 more</button>{/if}
+							{#if people.length}<p class="footnote">{people.length} of {matchingPeople.length} accounts</p>{/if}
+						{/if}
+					</details>
 				</section>
 				<section>
 					<h2>Memory atlas</h2>
@@ -339,7 +318,13 @@
 	.lookup {
 		margin: 20px 0;
 	}
+	.people-browser summary {
+		cursor: pointer;
+		color: #a1d4df;
+		padding: 8px 0;
+	}
 	.person-filter {
+		margin-top: 16px;
 		display: grid;
 		gap: 8px;
 		font-size: 13px;

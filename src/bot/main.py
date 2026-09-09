@@ -841,6 +841,14 @@ async def get_etiquette_stats():
     return await asyncio.to_thread(etiquette_board)
 
 
+@app.get("/api/memory/people")
+@limiter.limit("30/minute")
+async def memory_people(request: Request):
+    """Account handles only; no per-person memory queries or graph projection."""
+    memory = NamespaceMemory(api_key=settings.turbopuffer_api_key)
+    return await asyncio.to_thread(memory.list_user_handles)
+
+
 @app.get("/api/memory/graph")
 @limiter.limit("10/minute")
 async def memory_graph_data(request: Request):

@@ -104,3 +104,12 @@ def test_render_marks_missing_reply_instead_of_hiding_it():
 
 def test_render_empty():
     assert "no recent interactions" in render_recent_conversations([])
+
+
+def test_account_directory_never_reads_person_memory():
+    prefix = f"{NamespaceMemory.NAMESPACES['users']}-"
+    mem = _mem_with_namespaces([f"{prefix}h{i:03d}_bsky_social" for i in range(179)])
+    handles = mem.list_user_handles()
+    assert len(handles) == 179
+    assert handles[-1] == "h178.bsky.social"
+    mem.client.namespace.assert_not_called()

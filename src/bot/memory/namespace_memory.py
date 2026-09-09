@@ -1135,6 +1135,14 @@ class NamespaceMemory:
         user_prefix = f"{self.NAMESPACES['users']}-"
         return [ns.id for ns in self.client.namespaces(prefix=user_prefix)]
 
+    def list_user_handles(self) -> list[str]:
+        """List account handles without reading memory rows or vectors."""
+        prefix = f"{self.NAMESPACES['users']}-"
+        return sorted(
+            ns.removeprefix(prefix).replace("_", ".")
+            for ns in self._user_namespace_ids()
+        )
+
     def get_graph_data(self) -> dict:
         """Build graph nodes and edges from memory namespaces with semantic coordinates."""
         nodes = [{"id": "phi", "label": "phi", "type": "phi"}]

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { getGoals, getActivity, getMemoryGraph, getDocket } from '$lib/api';
+	import { getGoals, getActivity, getDocket } from '$lib/api';
 	import { mindCounts } from '$lib/state.svelte';
 
 	let goalsCount = $state<number | null>(null);
@@ -20,18 +20,13 @@
 	);
 
 	onMount(async () => {
-		const [goals, activity, graph, docket] = await Promise.allSettled([
+		const [goals, activity, docket] = await Promise.allSettled([
 			getGoals(),
 			getActivity(),
-			getMemoryGraph(),
 			getDocket()
 		]);
 		goalsCount = goals.status === 'fulfilled' ? goals.value.length : null;
 		outputCount = activity.status === 'fulfilled' ? activity.value.length : null;
-		peopleCount =
-			graph.status === 'fulfilled'
-				? graph.value.nodes.filter((n) => n.type === 'user').length
-				: null;
 		candidateCount = docket.status === 'fulfilled' ? (docket.value?.candidates.length ?? 0) : null;
 	});
 </script>

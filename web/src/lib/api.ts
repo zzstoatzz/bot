@@ -113,6 +113,12 @@ export async function getActivity(): Promise<ActivityItem[]> {
 	return await res.json();
 }
 
+export async function getPeople(): Promise<string[]> {
+	const res = await fetch('/api/memory/people', { signal: AbortSignal.timeout(15000) });
+	if (!res.ok) throw new Error(`people: ${res.status}`);
+	return await res.json();
+}
+
 export async function getMemoryGraph(): Promise<GraphData> {
 	const res = await fetch('/api/memory/graph');
 	if (!res.ok) throw new Error(`memory graph: ${res.status}`);

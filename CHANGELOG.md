@@ -1,5 +1,13 @@
 # changelog
 
+## 2026-09-09 — Lightweight account browsing
+
+The Mind page and footer no longer build a semantic memory graph to list people.
+The account directory loads on opening, lists namespace handles without reading
+per-person vectors, and shows twelve accounts at a time with filtering and retry.
+Reading panels retain their typography and palette, with subtle grain, depth,
+and brighter body text.
+
 ## 2026-09-09 — Readable conversation history
 
 Person panels now lead with Phi’s dated summary, followed by recent notes and expandable exchanges. Removed the large storage counters, vague availability sentence, raw ISO dates, and decorative footer. Counts and storage coverage remain in a disclosure. Search uses a native dialog so it stays above the fixed header and traps keyboard focus; the homepage entry is Conversations. Missing memory namespaces now return an empty exchange list, while failed reads remain unavailable. Stored text is unchanged.

@@ -29,7 +29,7 @@ export const logbook = cell<LogbookEntry | null>(null);
 export const mindCounts = cell({
 	goals: 0,
 	out: 0,
-	ppl: 0,
+	ppl: null as number | null,
 	cand: 0,
 	loaded: false
 });
