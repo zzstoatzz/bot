@@ -143,3 +143,21 @@ the network through an MCP server went around it:
 - tangled had no hook at all, and it carries phi's PDS credentials — issues
   and comments there are public actions in her own name.
 
+
+## Directed contact
+
+`uninvited-reply` remains the historical journal key, but its scope is directed
+contact, not a particular post format. Publication adapters pass verified
+`ContactTarget` destinations and evidence to `check_action`. Each destination
+must have invitation, own-conversation, operator-account or specific operator
+direction evidence before the model judge can permit publication. The judge
+still checks that operator text actually authorizes the action.
+
+Both parent and embedded-record destinations use the same check; permission for
+one does not transfer to another. Discovery and bot labels supply no authority.
+Mention facets retain their consent allowlist. A top-level placement is not an
+exemption. Independent writing without directed contact remains permitted.
+Missing authority is recorded in the existing public revision journal and
+returned to Phi before any post is written. Future delivery adapters must
+report their contact effects to this boundary rather than add policy exceptions
+for new interaction names.

@@ -36,7 +36,7 @@ from bot.core.atproto_client import _split_text, bot_client
 from bot.core.etiquette import PUBLIC_TOOLS
 from bot.core.mentionable import get_mentionable_handles
 from bot.core.override import get_override, refusal_text
-from bot.core.policy import check_action
+from bot.core.policy import ContactTarget, check_action
 from bot.core.post_images import PostImage, prepare_images
 from bot.core.prior_coverage import coverage_note
 from bot.status import bot_status
@@ -120,6 +120,36 @@ def _operator_direction(uri: str, root_uri: str, ctx_notifs: dict) -> str:
     return ""
 
 
+def _publication_contact(
+    uri: str, ctx_notifs: dict, root_uri: str = ""
+) -> ContactTarget:
+    """Describe destination authority independently of publication format.
+
+    Protocol adapters supply verified destinations. Labels and discovery do not
+    participate in authorization. Operator direction is evidence for the judge,
+    not a blanket permission to bypass it.
+    """
+    parsed = _parse_at_uri(uri)
+    did = parsed[0] if parsed else ""
+    own = getattr(getattr(bot_client.client, "me", None), "did", "") or ""
+    root = _parse_at_uri(root_uri)
+    evidence = ""
+    if did and (did == own or (root and root[0] == own)):
+        evidence = "Phi's own post or conversation."
+    elif did and did in settings.operator_dids:
+        evidence = "Configured operator's post."
+    elif (entry := ctx_notifs.get(uri)) and entry.get("reason") in {
+        "mention",
+        "reply",
+        "quote",
+        "cited",
+    }:
+        evidence = f"Current notification at this target: {entry['reason']}."
+    elif direction := _operator_direction(uri, root_uri, ctx_notifs):
+        evidence = f"Operator source for the judge to assess: {direction}"
+    return {"uri": uri, "evidence": evidence}
+
+
 def _reply_provenance(uri: str, ctx_notifs: dict, root_uri: str = "") -> str:
     """Describe how phi came to hold this reply target — the single input
     the judge weighs most. Invited (in the notification batch), self
@@ -178,6 +208,7 @@ async def _policy_gate(
     prior_coverage: str = "",
     images: list[BinaryContent] | None = None,
     publication_text: str | None = None,
+    contacts: list[ContactTarget] | None = None,
 ) -> tuple[str | None, str]:
     """Run the pre-action policy judge. Returns (refusal, warn_note).
 
@@ -205,6 +236,7 @@ async def _policy_gate(
             recent_posts=_recent_own_posts(),
             tool=tool,
             prior_coverage=prior_coverage,
+            contacts=contacts,
             **({"images": images} if images else {}),
         )
     except Exception as e:
@@ -361,7 +393,7 @@ def register(agent):
         quote: Annotated[
             str,
             Field(
-                description="AT-URI of a post to quote. Its record is verified and shown to the policy judge. Can accompany a reply or images; attached once on the first post."
+                description="AT-URI of a post to quote. Contact with its author requires invitation or operator authorization; its record is verified for the judge. Can accompany a reply or images; attached once on the first post."
             ),
         ] = "",
     ) -> str:
@@ -439,6 +471,7 @@ def register(agent):
         action_text = text + ("\n" + image_description if image_description else "")
         action_text += quote_description
         notifs = ctx.deps.notifications_context or {}
+        contacts = [_publication_contact(quote, notifs)] if quote else []
         unprompted = not notification_input(ctx.deps) and not ctx.deps.author_handle
 
         if not in_reply_to:
@@ -460,6 +493,7 @@ def register(agent):
                 prior_coverage=await coverage_note(ctx.deps.memory, text),
                 images=image_pixels,
                 publication_text=text,
+                contacts=contacts,
             )
             if refusal:
                 return refusal
@@ -503,6 +537,7 @@ def register(agent):
             unprompted=unprompted,
             images=image_pixels,
             publication_text=text,
+            contacts=[*contacts, _publication_contact(in_reply_to, notifs, root_uri)],
         )
         if refusal:
             return refusal
@@ -533,6 +568,7 @@ def register(agent):
         # skip when threading your own posts or replying to URIs found
         # outside the batch — those aren't "interactions with a user."
         notifs = ctx.deps.notifications_context or {}
+        contacts = [_publication_contact(quote, notifs)] if quote else []
         if (
             in_reply_to in notifs
             and ctx.deps.memory

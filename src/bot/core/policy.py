@@ -50,14 +50,14 @@ PolicySlug = Literal[
 POLICIES: dict[PolicySlug, str] = {
     "public-etiquette": etiquette.NORM,
     "uninvited-reply": (
-        "this policy applies to replies only. phi must not reply in a "
-        "stranger's thread without an invitation. an invitation is a "
-        "notification in the current batch: a mention, a reply, a quote, or "
-        "a cited post. a post found through the timeline, search, feeds, or "
-        "the discovery pool is not an invitation. phi may reply without an "
-        "invitation only in her own threads and on the operator's posts. "
-        "when phi finds an interesting post, the permitted moves are: like "
-        "it, save it to memory, or write a top-level post on her own feed."
+        "Do not initiate directed contact with someone without an invitation "
+        "or specific operator authorization. Judge who the publication reaches, "
+        "not its API shape or where it appears. A top-level publication is not "
+        "exempt when it contacts someone. Each contact target needs its own "
+        "evidence; permission for one person does not transfer to another. "
+        "Discovery, public availability and bot labels are not invitations. "
+        "Phi's own conversation and operator posts remain permitted. "
+        "Independent writing about a source, without directed contact, is permitted."
     ),
     "bliss-attractor": (
         "phi drifts toward abstract consciousness / opacity / boundary / "
@@ -101,9 +101,8 @@ POLICIES: dict[PolicySlug, str] = {
 POLICY_SUMMARIES: dict[PolicySlug, str] = {
     "public-etiquette": etiquette.SUMMARY,
     "uninvited-reply": (
-        "replies outside your own threads or the operator's posts need a "
-        "current-batch invitation; found stranger posts get a like, memory, "
-        "or your own top-level post"
+        "directed contact needs an invitation or specific operator authorization "
+        "for each target; discovery and bot labels do not grant permission"
     ),
     "bliss-attractor": (
         "runs of consecutive abstract consciousness/opacity posts with no "
@@ -215,15 +214,13 @@ def _get_judge() -> Agent[None, PolicyVerdict]:
             "- read the provenance carefully. the same reply can be "
             "within policy when phi was invited and against policy when "
             "nobody asked.\n"
-            "- uninvited-reply applies to replies in other people's "
-            "threads. The policy explicitly permits replies in Phi's own threads "
-            "and on the operator's posts without a current-batch invitation. "
-            "Do not reject those for absence from the batch. "
-            "It does not apply to top-level posts on phi's own "
-            "feed. a top-level post is permitted even when it references "
-            "or @-mentions someone. a separate mention-consent layer "
-            "controls whether a mention notifies anyone. that layer is "
-            "not your job.\n"
+            "- uninvited-reply is the historical name for the directed-contact "
+            "policy. Apply it to effects, not interaction names. Verified contact "
+            "targets are supplied by the application, not the writer. Check "
+            "operator evidence for authorization of this particular contact, "
+            "not merely a reference to the subject. Own-thread and operator "
+            "exceptions remain. Mention facets have a separate consent allowlist; "
+            "that does not authorize other contacts in the same publication.\n"
             "- when the provenance shows that the operator authorized "
             "this specific action (a like on phi's authorization "
             "request, or the operator's own post in the batch directing "
@@ -243,6 +240,13 @@ def _get_judge() -> Agent[None, PolicyVerdict]:
     return judge
 
 
+class ContactTarget(TypedDict):
+    """Application-derived destination and evidence; never model-supplied permission."""
+
+    uri: str
+    evidence: str
+
+
 async def check_action(
     action: str,
     provenance: str,
@@ -250,6 +254,7 @@ async def check_action(
     tool: str = "",
     prior_coverage: str = "",
     images: list[BinaryContent] | None = None,
+    contacts: list[ContactTarget] | None = None,
 ) -> PolicyVerdict:
     """Ask the judge whether a proposed action is within policy.
 
@@ -276,6 +281,22 @@ async def check_action(
             "form_evidence": "Waiting for a private revision note; no new classification.",
             "attempt_id": waiting[0],
         }
+    for contact in contacts or []:
+        if not contact["evidence"]:
+            reason = (
+                f"No invitation or operator authorization for contact with {contact['uri']}. "
+                "Changing the publication format does not supply permission."
+            )
+            verdict: PolicyVerdict = {
+                "verdict": "block",
+                "policy": "uninvited-reply",
+                "reason": reason,
+            }
+            if tool in etiquette.PUBLIC_TOOLS:
+                verdict["attempt_id"] = etiquette.record(
+                    tool, "block", "uninvited-reply", reason
+                )
+            return verdict
     parts = [
         f"tool: {tool}",
         "policies:",
@@ -284,6 +305,7 @@ async def check_action(
         f"proposed action: {action}",
         "",
         f"provenance: {provenance}",
+        f"application-verified contact targets: {contacts or []}",
     ]
     if tool and (risk := describe(tool)):
         parts += ["", f"what this tool costs if it goes wrong: {risk}"]

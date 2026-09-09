@@ -139,8 +139,8 @@ async def lifespan(app: FastAPI):
 
         backfill_task = asyncio.create_task(_backfill(), name="own-posts-backfill")
 
-    # Preserve authored text; startup only updates the existing status marker.
-    await profile_manager.set_online_status(True)
+    # Reflect the runtime pause rather than merely a running web server.
+    await profile_manager.set_online_status(not bot_status.paused)
 
     logger.info("phi is online, listening for mentions")
 
