@@ -72,6 +72,11 @@ async def _get_json(url: str, params: dict | None = None) -> dict:
         return r.json()
 
 
+def _contender_identity(c: dict) -> str:
+    """Keep each count attached to the post measured by the market."""
+    return f"@{c['handle']} [post: {c.get('post_uri') or 'URI unavailable'}]"
+
+
 def _contender_line(c: dict) -> str:
     """One board row: identity, likes, momentum, and price."""
     deltas = c.get("deltas") or {}
@@ -86,7 +91,7 @@ def _contender_line(c: dict) -> str:
     p_s = f"{p:.2f}" if p is not None else "—"
     vel = c.get("velocity") or 0
     return (
-        f"@{c['handle']} {c.get('likes', 0)}L (v={vel:.1f}/hr{momentum}, "
+        f"{_contender_identity(c)} {c.get('likes', 0)}L (v={vel:.1f}/hr{momentum}, "
         f"p={p_s}, ask {ask_s})"
     )
 
@@ -140,7 +145,7 @@ async def _market_section(handle: str | None) -> list[str]:
             # the whole tail, compactly — this is where every big payout this
             # season came from, so it is never summarized away
             tail = ", ".join(
-                f"@{c['handle']} {c['likes']}L {(c.get('ask_subc') or 0) / 100:.1f}¢"
+                f"{_contender_identity(c)} {c['likes']}L {(c.get('ask_subc') or 0) / 100:.1f}¢"
                 for c in with_likes
             )
             lines.append(f"tail ({len(with_likes)} with likes): {tail}")

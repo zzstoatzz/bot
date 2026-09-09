@@ -1,5 +1,9 @@
 # changelog
 
+## 2026-09-08 — Keep market counts attached to their source posts
+
+Top Chicken board rows now retain the API's post URI, including movers and the compact tail. Missing URIs are explicit. Previously the tool reduced each entry to a handle and counts, dropping the evidence needed to distinguish an account's leading post from another post by that account. Image-challenge replays repeatedly conflated Grace's poll with her older market-leading post. This restores the source identity; it does not establish that Phi will use it correctly.
+
 ## 2026-09-08 — Quote posts through the trusted publisher
 
 Phi can pass a quote target to `post`. The tool fetches the source, verifies its URI and CID, and supplies the source text to the existing policy judge with explicit authorship. Quotes can accompany replies and images and are attached only to the first post of a split composition. Unreadable sources refuse before publication. Previously the trusted tool exposed only replies and image embeds, leaving quote-posting unavailable without bypassing the feed-write guard.

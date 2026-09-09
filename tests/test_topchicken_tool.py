@@ -15,6 +15,32 @@ import httpx
 from bot.tools import topchicken
 
 
+async def test_market_counts_keep_post_identity_across_board_movers_and_tail():
+    contenders = [
+        {
+            "did": f"did:plc:player{i}",
+            "handle": f"player{i}.test",
+            "post_uri": f"at://did:plc:player{i}/app.bsky.feed.post/source{i}",
+            "likes": 100 + i,
+            "p": 1 - i / 20,
+            "velocity": 2 if i == 12 else 0,
+        }
+        for i in range(15)
+    ]
+    contenders[-1].pop("post_uri")
+    with patch.object(
+        topchicken,
+        "_get_json",
+        AsyncMock(side_effect=[{"round": {"contenders": contenders}}, {"board": contenders}]),
+    ):
+        rendered = "\n".join(await topchicken._market_section(None))
+    assert "movers outside the leaders" in rendered
+    assert "tail (2 with likes)" in rendered
+    for c in contenders[:-1]:
+        assert f"@{c['handle']} [post: {c['post_uri']}] {c['likes']}L" in rendered
+    assert "@player14.test [post: URI unavailable] 114L" in rendered
+
+
 class _Recorder:
     """Captures the registered tool fns by name so we can call them directly."""
 
@@ -105,7 +131,7 @@ async def test_board_comes_from_the_market_with_bisk_advice_as_garnish():
         out = await fn(SimpleNamespace(), handle="@zzstoatzz.io")
 
     assert "round 2026-07-02 · open · 1 contenders" in out
-    assert "@goose.art 246L (v=0.0/hr, p=0.34, ask 34.7¢)" in out
+    assert "@goose.art [post: URI unavailable] 246L (v=0.0/hr, p=0.34, ask 34.7¢)" in out
     assert "Mind the 2% spread" in out
 
 
