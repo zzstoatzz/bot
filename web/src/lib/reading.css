@@ -41,21 +41,25 @@
 	line-height: 1.1;
 	letter-spacing: 0.11em;
 	color: var(--hud-hot);
-	text-shadow: 0 0 24px rgba(224, 144, 96, 0.2);
+	text-shadow: 0 1px 0 #f8c59b40, 0 2px 2px #000000b3, 0 0 20px #e0906026;
 }
 .reading-page h2 {
 	font-size: 25px;
 	line-height: 1.25;
 	letter-spacing: 0.07em;
-	color: #ecd2b5;
+	color: #f0d1ad;
+	text-shadow: 0 1px 0 #fff0d51a, 0 2px 2px #000000b3;
 }
 .reading-page h3 {
 	font-size: 19px;
 	line-height: 1.35;
 	letter-spacing: 0.045em;
+	color: #ece1d2;
+	text-shadow: 0 1px 1px #000000cc;
 }
 .reading-page a {
-	color: #a1d4df;
+	color: #a0d9e6;
+	text-shadow: 0 1px 1px #00000099;
 	text-decoration: none;
 }
 .reading-page a:hover {
@@ -141,13 +145,13 @@
 }
 .reading-page section::before {
 	inset: 0;
-	background: linear-gradient(140deg, #8c7058 0%, #364854 24%, #263541 70%, #7e654f);
+	background: linear-gradient(140deg, #b08a60 0%, #466774 24%, #293d49 70%, #926d4b);
 }
 .reading-page section::after {
 	inset: 1px;
 	background:
 		url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Cpath fill='%23fff' opacity='.035' filter='url(%23n)' d='M0 0h160v160H0z'/%3E%3C/svg%3E") repeat,
-		linear-gradient(150deg, #202c37 0%, #101b25 48%, #0b131c 100%);
+		linear-gradient(150deg, #23323d 0%, #111e29 48%, #0b141e 100%);
 	background-size: 160px 160px, auto;
 	clip-path: polygon(9px 0, 100% 0, 100% calc(100% - 9px), calc(100% - 9px) 100%, 0 100%, 0 9px);
 	box-shadow:

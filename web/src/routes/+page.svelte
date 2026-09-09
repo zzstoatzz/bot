@@ -241,7 +241,10 @@
 		cursor: pointer;
 		min-height: 44px;
 		padding: 10px 0;
-		color: #7ec0d4;
+		color: #a0d9e6;
+		display: flex;
+		justify-content: space-between;
+		gap: 12px;
 	}
 	.people-browser[open] summary {
 		margin-bottom: 12px;
@@ -362,7 +365,10 @@
 		overflow-wrap: anywhere;
 	}
 	.people button {
-		color: #7ec0d4;
+		color: #a0d9e6;
+		display: flex;
+		justify-content: space-between;
+		gap: 12px;
 	}
 	.people span,
 	.idea span {
@@ -402,7 +408,7 @@
 		}
 		.people {
 			display: grid;
-			grid-template-columns: repeat(2, minmax(0, 1fr));
+			grid-template-columns: minmax(0, 1fr);
 			gap: 0 16px;
 		}
 		.people button {
