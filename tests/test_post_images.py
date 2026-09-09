@@ -141,7 +141,7 @@ async def test_post_image_uses_policy_and_preserves_reply_refs(reply, blocked, q
         patch.object(
             posting.bot_client,
             "create_post",
-            AsyncMock(return_value=SimpleNamespace(uri=URI)),
+            AsyncMock(return_value=SimpleNamespace(uri=URI + "new", cid="created-cid")),
         ) as create,
     ):
         result = await captured["post"](
@@ -162,6 +162,8 @@ async def test_post_image_uses_policy_and_preserves_reply_refs(reply, blocked, q
         assert "blocked" in result
     else:
         assert create.await_args is not None
+        assert result.splitlines()[0] == f"published: {URI}new"
+        assert result.splitlines()[1] == "cid: created-cid"
         attached = create.await_args.kwargs["embed"]
         if quote:
             assert attached.record.record.uri == URI

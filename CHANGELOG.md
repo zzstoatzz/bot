@@ -1,5 +1,14 @@
 # changelog
 
+## 2026-09-09 — Return the created post reference
+
+The post tool reported a reply's parent URI as its success location and omitted
+created references for top-level posts. In a live diagnostic run Phi guessed a
+placeholder URI, was refused, then searched for the reply it had just made.
+Both paths now return the client's created URI and CID. For automatically split
+text, this is the last created post, which is the continuation parent.
+
+
 ## 2026-09-09 — Select recalled notes without rewriting them
 
 The episodic helper answered an operator question about Phi's current prompt

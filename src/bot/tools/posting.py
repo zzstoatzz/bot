@@ -360,7 +360,9 @@ def register(agent):
         """Create a post on bluesky. Top-level or reply — one operation.
 
         For threading: pass the URI of the parent post as ``in_reply_to``.
-        Thread off your own posts (find URIs via ``get_own_posts``) or off
+        A successful call returns the new post URI and CID; for split text,
+        these identify the last post, ready to use as the next parent.
+        Thread off your own posts using that receipt, or off
         anyone else's verified post. To make an image reply, use generate_image
         then pass its blob in images with alt text describing the image and any
         visible writing. Images appear once, on the first post of a split thread.
@@ -455,14 +457,14 @@ def register(agent):
                 return refusal
             try:
                 allowed = await _build_allowed_handles(ctx.deps.author_handle or "")
-                await bot_client.create_post(
+                result = await bot_client.create_post(
                     text, allowed_handles=allowed, **post_options
                 )
                 bot_status.record_response()
                 if f"@{settings.owner_handle}" in text:
                     bot_status.record_operator_mention(ctx.deps.seen_alert_keys)
                 logger.info(f"posted: {text[:80]}")
-                return f"posted: {text[:100]}" + warn_note
+                return f"published: {result.uri}\ncid: {result.cid}" + warn_note
             except Exception as e:
                 logger.exception(f"post failed: {e}")
                 return f"failed to post: {e}"
@@ -533,4 +535,7 @@ def register(agent):
             except Exception as e:
                 logger.warning(f"failed to store interaction for @{author_handle}: {e}")
 
-        return f"replied to {target} at {in_reply_to}" + warn_note
+        return (
+            f"published: {result.uri}\ncid: {result.cid}\nreply to: {in_reply_to}"
+            + warn_note
+        )
