@@ -29,17 +29,34 @@ def _day_bound(day: str) -> str:
 
 
 def render_posts(posts: list[dict], today: date) -> str:
-    """one line per post from appview JSON: handle, likes, age, text."""
+    """Post text and link targets from raw appview JSON, including unknown embeds."""
     lines = []
     for post in posts:
-        text = (post.get("record") or {}).get("text", "")
+        record = post.get("record") or {}
+        text = record.get("text", "")
         handle = (post.get("author") or {}).get("handle", "?")
         likes = post.get("likeCount") or 0
         age = _relative_age(post.get("indexedAt") or "", today)
         age_str = f", {age}" if age else ""
         lines.append(
-            f"@{handle} [{post.get('uri', '')}] ({likes} likes{age_str}): {text[:200]}"
+            f"@{handle} [{post.get('uri', '')}] ({likes} likes{age_str}): {text}"
         )
+        encoded = text.encode("utf-8")
+        for facet in record.get("facets") or []:
+            index = facet.get("index") or {}
+            start, end = index.get("byteStart"), index.get("byteEnd")
+            label = ""
+            if (
+                isinstance(start, int)
+                and isinstance(end, int)
+                and 0 <= start < end <= len(encoded)
+            ):
+                label = encoded[start:end].decode("utf-8", errors="replace")
+            for feature in facet.get("features") or []:
+                if feature.get(
+                    "$type"
+                ) == "app.bsky.richtext.facet#link" and feature.get("uri"):
+                    lines.append(f"  link {label!r}: {feature['uri']}")
     return "\n\n".join(lines)
 
 

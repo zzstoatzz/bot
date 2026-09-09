@@ -1,5 +1,9 @@
 # changelog
 
+## 2026-09-08 — Preserve evidence in post search
+
+Search results now include the full post text and labeled link destinations. Previously they stopped at 200 characters and discarded rich-text links, hiding the feed URLs behind the options in Grace's poll. Results remain raw appview JSON so unfamiliar embed types cannot break search. This restores evidence for investigation without prescribing a conclusion or changing personality.
+
 ## 2026-09-08 — Give public writing a positive disposition
 
 Phi now receives an explicit public-writing direction: a curious, technically sharp conversational regular with affectionate sarcasm, pointed questions, and room to pursue an interest. Previously her policy summary named acceptable forms without conveying a disposition. The public disposition now sits alongside the terse policy summary, leaves her authored identity and private memory alone, and keeps the classifier's permission for plain speech. The post parameter no longer asks for a mandatory bit or contradicts whole-thread citation handling. No model switch; Astra remains excluded. Production tone still requires assessment.
