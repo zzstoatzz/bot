@@ -90,7 +90,7 @@ def register(agent):
             str | None,
             Field(
                 description=(
-                    "Atlas point id (e.g. 'observation-phi-users-zzstoatzz_io-abc'). "
+                    "Exact atlas point ID returned by a cluster or status listing. "
                     "Returns the projected point and its neighbors. For memory "
                     "points, also reads the exact stored source row."
                 )
@@ -111,10 +111,9 @@ def register(agent):
             str,
             Field(
                 description=(
-                    "Sort order for cluster / status listings. 'newest' "
-                    "shows what's most recently active; 'oldest' shows what "
-                    "has been sitting in the pool the longest — the things "
-                    "you've been avoiding most successfully."
+                    "Sort cluster / status listings by point creation time. "
+                    "'newest' returns the latest creation timestamps first; "
+                    "'oldest' returns the earliest first."
                 )
             ),
         ] = "newest",

@@ -1,5 +1,9 @@
 # changelog
 
+## 2026-09-08 — Use observed atlas IDs and accurate sort semantics
+
+Removed an invented atlas point ID from the tool schema after Phi copied it verbatim into an episodic-memory lookup during the Grace reading. The parameter now asks for an ID returned by a real atlas listing. The sort description now names the creation timestamp actually used by the code, rather than calling old points neglected or recently created points recently active. Lookup and sorting behavior are unchanged.
+
 ## 2026-09-08 — Read Bluesky links as posts
 
 `read_web_page` now recognizes Bluesky post URLs and reads native records instead of sending them to HTML extraction. The Grace influence trial returned a “JavaScript Required” page as extracted content, after which Phi continued from an old memory. The native path preserves post identity and link facets, checks cited parent/root versions, and attaches up to six images with explicit source labels and size limits. Unavailable context and unread media remain visible; replies are not claimed to have been read. Ordinary web extraction is unchanged.
