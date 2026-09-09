@@ -156,7 +156,7 @@ async def test_post_image_uses_policy_and_preserves_reply_refs(reply, blocked, q
     assert image.alt in judge.await_args.kwargs["action"]
     if quote:
         assert "the source claim" in judge.await_args.kwargs["action"]
-        assert "not authored by Phi" in judge.await_args.kwargs["action"]
+        assert "separate from proposed text" in judge.await_args.kwargs["action"]
     if blocked:
         create.assert_not_called()
         assert "blocked" in result

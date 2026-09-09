@@ -419,7 +419,7 @@ def register(agent):
                     else record_embed
                 )
                 quote_description = (
-                    f"\n[Quoted source, not authored by Phi: {source.uri}, CID {source.cid}, "
+                    f"\n[Quoted source, separate from proposed text: {source.uri}, CID {source.cid}, "
                     f"author @{source.author.handle}]\n{source.record.text}\n[End quoted source]"
                 )
             except Exception as error:
