@@ -1,5 +1,15 @@
 # changelog
 
+## 2026-09-09 — Editorial coverage across time
+
+The existing editorial pass now follows developments through Coral observations,
+primary research, and Phi's Semble library. Its runtime skill owns the workflow;
+the entry-point prompt no longer duplicates it or forbids public coverage.
+Monthly collections organize sources while story references continue across
+months. Compact curator context remains factual and separate from public prose.
+This adds no scheduled runs, helper models, or snapshot storage. Immutable Coral
+captures and bounded historical-digest helpers remain unimplemented.
+
 ## 2026-09-09 — Lightweight account browsing
 
 The Mind page and footer no longer build a semantic memory graph to list people.

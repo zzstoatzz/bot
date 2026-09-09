@@ -1447,41 +1447,17 @@ class PhiAgent:
         return await self._run_scheduled(name="curation", task=task)
 
     async def process_editorial(self) -> str:
-        """Refresh the editorial-context record that grounds coral's curator.
+        """Follow developments and preserve researched coverage using Coral and Semble.
 
-        Triggered externally (prefect, daily) via
-        /api/control/trigger/editorial. phi reads coral's trending entities,
-        researches the unfamiliar ones, and rewrites her
-        io.zzstoatzz.phi.editorialContext record — which coral injects
-        verbatim into its curator prompt on the next cycle.
+        The existing external schedule invokes /api/control/trigger/editorial.
+        The runtime skill owns the reading, publishing, and curator-note guidance.
         """
         task = (
-            "editorial pass for coral. load your coral-editorial skill first "
-            "— it has the record shape, the write recipe, and the note "
-            "discipline; follow it exactly.\n\n"
-            "this is a focused maintenance pass, not a posting cycle: stay "
-            "off the feed. check what's trending (get_trending), research "
-            "what you don't recognize — and CARD what the research earns "
-            "before you write any notes: the best source for each entity "
-            "genuinely worth grounding goes into your semble library (1-3 "
-            "cards max, filed in collections named for things in the world), "
-            "with a connection when today's event continues an arc your "
-            "library already holds. then rewrite your editorial-context "
-            "record AS A RENDERING OF WHAT YOUR LIBRARY NOW KNOWS about "
-            "what's currently trending — refresh what's still hot, prune "
-            "what fell off, add grounding only where a curator without "
-            "research ability would misread the moment. an empty notes list "
-            "is a legitimate outcome.\n\n"
-            "then review your io.zzstoatzz.phi.entityDirectives record per "
-            "the skill's directive discipline: add alias merges for "
-            "unambiguous same-referent variants you noticed in trending, "
-            "use source-backed suppression only for extraction artifacts, never "
-            "for ambiguous names or real places in repetitive traffic; retain "
-            "those entities and explain ambiguity in editorial context. Re-justify "
-            "or prune every existing entry — coral executes these "
-            "mechanically, so restraint beats coverage.\n\n"
-            "finish with a one-line summary of what changed in each record "
-            "and why."
+            "Editorial pass. Load coral-editorial. Look at what is developing, "
+            "including how it has changed over time, and choose what merits "
+            "investigation. Follow the sources and your earlier coverage. "
+            "Preserve useful findings for readers and future revisits; decide "
+            "whether there is something worth publishing."
         )
         return await self._run_scheduled(name="editorial", task=task)
 

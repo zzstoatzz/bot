@@ -99,3 +99,11 @@ mutations to goals (and any other owner-gated action like `follow_user`, `create
 **synthesize before injecting where shape matters.** memory candidates from a vector store are ranked by cosine similarity, which doesn't reconcile or note recency. for blocks where coherence matters (recent posts → audit, episodic candidates → relevant memories), a small sub-agent pass produces a coherent block from the candidates. see [memory.md](memory.md) and [system-prompt.md](system-prompt.md).
 
 **MCP for capabilities outside this codebase.** atproto record CRUD (pdsx) and long-form publication search (pub-search) are remote MCP servers. reusable, not bundled.
+
+The externally scheduled editorial pass follows developments using Coral history,
+research sources, and Phi's Semble library. Its `coral-editorial` skill owns the
+workflow: public coverage and monthly reading indexes remain separate from the
+compact factual context consumed by Coral's curator. Story/source references can
+continue across monthly collections. The schedule is unchanged; publication is an
+editorial choice rather than a per-pass quota. Bounded helper-led historical digests
+and immutable Coral snapshots are not yet integrated into this pass.

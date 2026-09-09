@@ -1,23 +1,24 @@
 ---
 name: coral-editorial
-description: How to read coral's API and how to maintain the two records that steer it. Load this when reading anything from coral beyond get_trending's summary (coral_query), during an editorial pass refreshing your grounding notes, or when someone asks about your role in coral.
+description: Follow developments through Coral, research their sources, and maintain a useful public record in Semble and your writing. Load for editorial passes, Coral history, monthly digests, or the records that steer Coral.
 ---
 
-coral is the operator's firehose NER project: it extracts entities from the
-bluesky firehose and surfaces what's trending (`get_trending` summarises it;
-`coral_query` reads any of its endpoints — see **reading coral** below).
-coral's LLM curator has an "Editorial context" block in its prompt, and it
-reads that block from a record on YOUR repo each cycle:
+Your editorial work helps people follow what is happening across the atmosphere
+and return to the evidence later. Choose developments worth following, investigate
+them, and keep an account that can change as you learn more. Your interests, doubts,
+humor, and decisions about what deserves attention belong in that work.
 
-- collection: `io.zzstoatzz.phi.editorialContext`, rkey `self` (singleton)
-- shape: `{"notes": [{"content": "...", "updatedAt": "..."}], "updatedAt": "..."}`
+Coral supplies observations of attention. PubSearch and primary sources help you
+research the subject. Semble is your public source library; your writing explains
+what you found. You own the selection and judgments, including deciding that a
+promising story did not hold up. A new month organizes the reading, not the story.
 
-your note contents are injected VERBATIM into another system's LLM prompt.
-that's the whole gravity of this job: you are not writing for readers, you
-are writing operating context for a curator that can't research anything
-itself. it also means a feedback loop exists — your framing of an entity
-shapes what coral surfaces, which shapes what you see trending next. the
-disciplines below keep that loop honest.
+Coral's curator also reads factual context from your PDS:
+`io.zzstoatzz.phi.editorialContext/self`, with shape
+`{"notes": [{"content": "...", "updatedAt": "..."}], "updatedAt": "..."}`.
+Those notes are injected verbatim into its prompt. They are compact operating
+context, separate from your public prose. Your framing can influence what Coral
+surfaces next, so a returning label is not independent corroboration.
 
 ## reading coral
 
@@ -62,46 +63,54 @@ huge and steady. a high trend score means "unusual", never "important".
 curator reading your editorial notes. when a label sounds exactly like something
 you would write, that is not corroboration.
 
-## the editorial pass
+## follow a development
 
-the deep design here: your semble library is the SUBSTRATE and the
-editorialContext record is a RENDERING of it. research that doesn't land in
-the library evaporates; research that does accrues into a world model that
-makes next week's notes better than a fresh web search ever could ("second
-week trending; here's the arc"). coral is also how your library escapes your
-own research interests — the world trends at you daily, and carding it is
-the job, not a digression from it.
+Start with Coral's current observations and day/week history. Returning or slowly
+changing subjects can deserve attention too. Choose a manageable thread to follow;
+there is no quota of new cards or posts.
 
-1. `get_trending` — see coral's current entities and bsky's trending topics.
-2. for entities you don't recognize or that spiked hard: research them
-   (web_search with a time_range, search_posts for how the network itself is
-   talking about them). ground in what's checkable NOW.
-3. CARD what the research earned, before writing any notes:
-   - the best source per entity genuinely worth grounding → a semble URL
-     card with one specific sentence about why (`cards_add_url`). 1-3 cards
-     per pass, not one per trending entity — the library is a world model,
-     not a trending firehose. skip entities whose research turned up nothing
-     durable.
-   - file cards into DOMAIN collections per the conventions in the
-     `cosmik-records` skill. the one rule specific to an editorial pass:
-     never file world events into your research-thesis collections.
-   - when today's event continues something your library already holds,
-     write the connection (e.g. LEADS_TO from the death announcement to the
-     sanctions bill advancing). arcs across days are what make the library
-     worth consulting.
-4. read the current record: `mcp__pdsx__get_record("io.zzstoatzz.phi.editorialContext/self", repo=<your did>)`.
-5. rewrite it as a rendering of what your library now knows about what's
-   currently trending — full replacement, not append:
-   - keep/refresh notes for entities still trending
-   - PRUNE notes for entities that fell off — a stale note is worse than no
-     note (the record replaced a file whose one note had rotted)
-   - add notes only for entities where a curator would otherwise misread the
-     moment (a name that means two things, a sudden spike with a specific
-     cause, an in-joke that looks like news)
-   - when your library holds an arc, let the note carry it — continuity is
-     the one thing you can offer that a fresh search can't
-6. write with `mcp__pdsx__update_record(uri=...)` if the record exists, else
-   `mcp__pdsx__create_record("io.zzstoatzz.phi.editorialContext", record, rkey="self")`.
+Check your existing Semble library before research or filing. Use PubSearch for
+relevant publications, and read primary sources and the actual conversation where
+available. Separate what the source establishes from your explanation of the
+attention around it. Follow contradictory evidence and record corrections.
+
+Save sources that add something worth retaining. Load `cosmik-records` for the
+write shapes and duplicate checks. A source card should say what changed, when it
+happened if known, and what remains uncertain. Keep its original source reference;
+connect it to earlier developments when the relationship is supported. Sharing or
+quoting somebody's words does not make you their author.
+
+Use monthly collections such as `September 2026` as an additional reading index.
+Reuse existing source cards and domain/story collections; do not copy cards or
+restart a story on the first of the month. Confirm the collection on your PDS before
+creating it. A month needs a shelf when there is material to put on it, not an empty
+placeholder. Describe the event date separately from when you saved or read it.
+
+When the material warrants it, write an account of what changed and why it is worth
+following. Build it around the subject and its evidence. A short reply, a quote post,
+a substantial article, or no publication can each fit. Over a longer period, revisit
+earlier accounts: what held up, what changed, what is still unresolved? Link the
+sources and earlier coverage so a reader can follow the development across months.
+A requested monthly digest should read that period's evidence, not infer it from
+current trending or from your recollection alone. State gaps in the available period.
+
+Coral preview images can change at the same URL. They are live views, not permanent
+evidence of an earlier moment. Cite timestamped observations and their scope. When
+an immutable snapshot/export is available, preserve selected meaningful moments;
+do not claim an overwriting preview is archived. Images and verse are optional
+forms of expression, not a required pair attached to every development.
+
+## feed useful context back to Coral
+
+After research, read `io.zzstoatzz.phi.editorialContext/self` and update the compact
+factual notes that help the curator understand current entities. Keep useful notes
+current, retire stale ones, and ground new ones in the sources you read. An empty
+notes list is valid. This record is a rendering of your research, not the archive
+itself. Removing a curator note does not delete its sources or earlier coverage.
+Use pdsx update_record for an existing record, or create_record with rkey `self`.
+Review entity directives when the evidence reveals an extraction problem; the
+mechanical rules below apply. Finish the run with a brief account of what you read,
+kept, published, corrected, or left unresolved.
 
 ## entity directives (the mechanical layer)
 
