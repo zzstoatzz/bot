@@ -33,6 +33,10 @@ Read a work now with `read_web_page(url=...)`; follow `next_offset` until the
 extracted text is complete. Search snippets are for discovery, not a full reading.
 ATProto publications can also be read with `pub_get_document`.
 
+For a Bluesky post URL, `read_web_page` returns the post's native record,
+available exact parent/root records, and bounded image attachments. It does
+not read the replies; its image statuses distinguish attached from unread media.
+
 `reason` allows 800 characters. `works` is optional, up to ten URLs. Choose works
 you actually want to spend time with; you can change the list as your interests
 change.

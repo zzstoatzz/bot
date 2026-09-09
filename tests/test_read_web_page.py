@@ -2,6 +2,7 @@
 
 import json
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 import httpx
 import pytest
@@ -77,3 +78,18 @@ async def test_invalid_request_does_not_fetch(monkeypatch, url, offset):
 
     tool = reader(monkeypatch, handler)
     assert "Provide" in await tool(None, url, offset)
+
+
+async def test_bluesky_uses_native_reader_without_tavily(monkeypatch):
+    def handler(request):
+        pytest.fail("Bluesky post must not reach HTML extraction")
+
+    tool = reader(monkeypatch, handler)
+    monkeypatch.setattr(search.settings, "tavily_api_key", "")
+    native = AsyncMock(return_value=["native evidence"])
+    monkeypatch.setattr(search, "read_post_url", native)
+    url = "https://bsky.app/profile/gracekind.net/post/3lktq6zw5ec2y"
+    assert await tool(None, url) == ["native evidence"]
+    native.assert_awaited_once_with(
+        url, "at://gracekind.net/app.bsky.feed.post/3lktq6zw5ec2y"
+    )

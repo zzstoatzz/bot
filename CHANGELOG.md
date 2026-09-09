@@ -1,5 +1,9 @@
 # changelog
 
+## 2026-09-08 — Read Bluesky links as posts
+
+`read_web_page` now recognizes Bluesky post URLs and reads native records instead of sending them to HTML extraction. The Grace influence trial returned a “JavaScript Required” page as extracted content, after which Phi continued from an old memory. The native path preserves post identity and link facets, checks cited parent/root versions, and attaches up to six images with explicit source labels and size limits. Unavailable context and unread media remain visible; replies are not claimed to have been read. Ordinary web extraction is unchanged.
+
 ## 2026-09-08 — Align context documentation with the running code
 
 Corrected module descriptions that still claimed recent post text was hidden, discovery injected humor coaching, and the operations log had a ten-write cap. The current code includes bounded top-level post previews, has removed that coaching, and uses a 48-hour operations window. These comments are also source material Phi can read; contradictory descriptions make self-inspection unreliable. Runtime behavior is unchanged.
