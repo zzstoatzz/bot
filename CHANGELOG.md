@@ -1,5 +1,14 @@
 # changelog
 
+## Web source captures
+
+Web-page continuation previously fetched the source again, allowing slices from
+different revisions to be combined. Reads now return a run-local capture ID,
+timestamp, and full-extraction hash. Passing that ID reads further slices from
+the immutable extraction; omitting it still fetches fresh content. A capture ID
+is sufficient without repeating the URL. This preserves evidence continuity,
+not the accuracy of Phi's interpretation or the completeness of extraction.
+
 ## Voice reset
 
 `VOICE_RESET=true` suspends normal model runs before context and tools are assembled, starts notification processing paused, refuses external triggers and resume, and suspends scheduled extraction. Diagnostic previews and background context-budget refreshes also skip instruction rendering and tool discovery. Existing stored records remain intact. Voice calibration starts separately from an empty request; normal context will be restored piecewise after operator acceptance.

@@ -1,6 +1,8 @@
 """Source reading returns complete, pageable evidence and explicit failures."""
 
 import json
+from dataclasses import FrozenInstanceError
+from hashlib import sha256
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -8,6 +10,11 @@ import httpx
 import pytest
 
 from bot.tools import search
+from bot.tools._helpers import PhiDeps
+
+
+def context():
+    return SimpleNamespace(deps=PhiDeps(author_handle="test.bsky.social"))
 
 
 def reader(monkeypatch, handler):
@@ -43,15 +50,73 @@ async def test_read_all_pages_without_loss(monkeypatch):
 
     tool = reader(monkeypatch, handler)
     parts = []
+    ctx = context()
     offset = 0
     while offset is not None:
-        page = json.loads(await tool(None, "https://example.org/story", offset))
+        page = json.loads(await tool(ctx, "https://example.org/story", offset))
         assert page["offset"] == offset
         assert page["total_chars"] == len(content)
         assert len(page["content"]) <= 12_000
         parts.append(page["content"])
         offset = page["next_offset"]
     assert "".join(parts) == content
+
+
+async def test_continuation_keeps_exact_source_while_page_changes(monkeypatch):
+    original = "é🦎\r\n  source\n\n" * 1600 + "last line without newline"
+    bodies = iter([original, "replacement"])
+    fetches = []
+
+    def handler(request):
+        fetches.append(request)
+        return httpx.Response(
+            200,
+            json={
+                "results": [
+                    {"raw_content": next(bodies), "url": "https://example.org/resolved"}
+                ]
+            },
+        )
+
+    tool = reader(monkeypatch, handler)
+    ctx = context()
+    url = "https://example.org/story"
+    first = json.loads(await tool(ctx, url))
+    fresh = json.loads(await tool(ctx, url))
+    assert fresh["content"] == "replacement"
+    assert fresh["source_id"] != first["source_id"]
+    chunks = [first["content"]]
+    offset = first["next_offset"]
+    while offset is not None:
+        page = json.loads(await tool(ctx, offset=offset, source_id=first["source_id"]))
+        assert page["source_id"] == first["source_id"]
+        assert page["captured_at"] == first["captured_at"]
+        assert page["content_sha256"] == sha256(original.encode()).hexdigest()
+        chunks.append(page["content"])
+        offset = page["next_offset"]
+    assert "".join(chunks) == original
+    assert len(fetches) == 2
+    with pytest.raises(FrozenInstanceError):
+        setattr(ctx.deps.web_sources[first["source_id"]], "content", "rewritten")
+
+
+async def test_invalid_capture_never_silently_fetches(monkeypatch):
+    fetches = []
+
+    def handler(request):
+        fetches.append(request)
+        return httpx.Response(200, json={"results": [{"raw_content": "original"}]})
+
+    tool = reader(monkeypatch, handler)
+    ctx = context()
+    url = "https://example.org/story"
+    first = json.loads(await tool(ctx, url))
+    ref = first["source_id"]
+    assert "does not match" in await tool(ctx, "https://other.org", source_id=ref)
+    assert "Unknown source_id" in await tool(context(), url, source_id=ref)
+    assert "Unknown source_id" in await tool(ctx, url, source_id="missing")
+    assert "Provide" in await tool(ctx)
+    assert len(fetches) == 1
 
 
 @pytest.mark.parametrize(

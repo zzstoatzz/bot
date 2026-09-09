@@ -29,8 +29,9 @@ a record for that DID, update it. Otherwise create one:
 }
 ```
 
-Read a work now with `read_web_page(url=...)`; follow `next_offset` until the
-extracted text is complete. Search snippets are for discovery, not a full reading.
+Read a work now with `read_web_page(url=...)`; pass the returned `source_id`
+with each `next_offset` to continue the same extraction. Omit `source_id` to
+fetch a fresh version. Search snippets are for discovery, not a full reading.
 ATProto publications can also be read with `pub_get_document`.
 
 For a Bluesky post URL, `read_web_page` returns the post's native record,

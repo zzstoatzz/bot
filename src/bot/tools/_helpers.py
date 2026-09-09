@@ -16,6 +16,17 @@ logger = logging.getLogger("bot.tools")
 # --- deps ---
 
 
+@dataclass(frozen=True)
+class WebSourceCapture:
+    """Exact extraction retained for continuation reads within one run."""
+
+    requested_url: str
+    url: str
+    captured_at: str
+    content_sha256: str
+    content: str
+
+
 @dataclass
 class PhiDeps:
     """Typed dependencies passed to every tool via RunContext."""
@@ -35,6 +46,7 @@ class PhiDeps:
     # blocks must render once per run (stable text keeps the message-history
     # cache prefix intact; several blocks hit the network).
     run_cache: dict[str, str] = field(default_factory=dict)
+    web_sources: dict[str, WebSourceCapture] = field(default_factory=dict)
     # open alert-incident keys rendered into this run's context. a post
     # that @-mentions the operator stamps them mentioned — structural, so
     # the repeat-tag question is never left to phi's self-report.

@@ -43,3 +43,12 @@ phi has two kinds of tools:
 - **MCP tools** (from remote servers) — stateless HTTP calls that don't need phi's internal state.
 
 the agent sees all tools uniformly and picks the right one for the task.
+
+The native `read_web_page` tool retains each complete web extraction in the
+current run's `PhiDeps.web_sources`. Returned slices identify the capture with
+`source_id`, `captured_at`, and a SHA-256 of the full extracted text. Continuing
+with that ID reads the same extraction without another network request; omitting
+it fetches fresh content. Unknown IDs and mismatched URLs fail explicitly.
+Captures are immutable, last only for the run, and are not public archive links.
+Bluesky URLs still use the native record and image reader. A capture hash proves
+which extracted text was read, not that extraction reproduced the entire page.
