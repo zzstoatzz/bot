@@ -103,7 +103,7 @@
 		<header class="page-heading">
 			<h1>Operator</h1>
 			<span class="mode" class:paused={live?.active}>
-				{live ? (live.active ? 'Public actions paused' : 'Public actions enabled') : (loaded ? 'Override status unavailable' : 'Reading status…')}
+				{live ? (live.active ? 'Operator override active' : 'Operator override off') : (loaded ? 'Override status unavailable' : 'Reading status…')}
 			</span>
 		</header>
 		<VoiceRequest />
@@ -123,7 +123,7 @@
 					<strong>Paused</strong>
 					<blockquote>{live.message}</blockquote>
 				{:else}
-					Public actions are enabled. Phi follows her normal policies.
+					The operator override is off. Runtime pauses and publication checks still apply.
 				{/if}
 			</div>
 		{/if}
