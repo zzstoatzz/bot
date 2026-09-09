@@ -86,7 +86,8 @@ async def test_judge_receives_actual_image_bytes_and_caption():
 
 @pytest.mark.parametrize("reply", [False, True])
 @pytest.mark.parametrize("blocked", [False, True])
-async def test_post_image_uses_policy_and_preserves_reply_refs(reply, blocked):
+@pytest.mark.parametrize("quote", [False, True])
+async def test_post_image_uses_policy_and_preserves_reply_refs(reply, blocked, quote):
     data, image = picture()
     captured = {}
     posting.register(
@@ -98,6 +99,22 @@ async def test_post_image_uses_policy_and_preserves_reply_refs(reply, blocked):
             posting, "get_override", AsyncMock(return_value={"active": False})
         ),
         patch.object(posting.bot_client, "authenticate", AsyncMock()),
+        patch.object(
+            posting.bot_client,
+            "get_posts",
+            AsyncMock(
+                return_value=SimpleNamespace(
+                    posts=[
+                        SimpleNamespace(
+                            uri=URI,
+                            cid=CID,
+                            author=SimpleNamespace(handle="source.test"),
+                            record=SimpleNamespace(text="the source claim"),
+                        )
+                    ]
+                )
+            ),
+        ),
         patch.object(
             posting.bot_client, "client", SimpleNamespace(me=SimpleNamespace(did=DID))
         ),
@@ -128,29 +145,92 @@ async def test_post_image_uses_policy_and_preserves_reply_refs(reply, blocked):
         ) as create,
     ):
         result = await captured["post"](
-            ctx, "caption", in_reply_to=URI if reply else "", images=[image]
+            ctx,
+            "caption",
+            in_reply_to=URI if reply else "",
+            images=[image],
+            quote=URI if quote else "",
         )
     assert judge.await_args is not None
     assert judge.await_args.kwargs["images"][0].data == data
     assert image.alt in judge.await_args.kwargs["action"]
+    if quote:
+        assert "the source claim" in judge.await_args.kwargs["action"]
+        assert "not authored by Phi" in judge.await_args.kwargs["action"]
     if blocked:
         create.assert_not_called()
         assert "blocked" in result
     else:
         assert create.await_args is not None
-        assert create.await_args.kwargs["embed"].images[0].image == image.blob
+        attached = create.await_args.kwargs["embed"]
+        if quote:
+            assert attached.record.record.uri == URI
+            assert attached.record.record.cid == CID
+            attached = attached.media
+        assert attached.images[0].image == image.blob
         if reply:
             ref = create.await_args.kwargs["reply_to"]
             assert ref.parent.uri == URI and ref.parent.cid == CID
             assert ref.root.uri == URI
 
 
+@pytest.mark.parametrize("available", [False, True])
+async def test_quote_without_images_requires_verified_source(available):
+    captured = {}
+    posting.register(
+        SimpleNamespace(tool=lambda fn: captured.setdefault(fn.__name__, fn))
+    )
+    source = SimpleNamespace(
+        uri=URI,
+        cid=CID,
+        author=SimpleNamespace(handle="source.test"),
+        record=SimpleNamespace(text="source text"),
+    )
+    ctx = SimpleNamespace(deps=PhiDeps(author_handle="friend.test"))
+    with (
+        patch.object(
+            posting, "get_override", AsyncMock(return_value={"active": False})
+        ),
+        patch.object(
+            posting.bot_client,
+            "get_posts",
+            AsyncMock(
+                return_value=SimpleNamespace(posts=[source] if available else [])
+            ),
+        ),
+        patch.object(
+            posting, "_policy_gate", AsyncMock(return_value=(None, ""))
+        ) as gate,
+        patch.object(posting, "_build_allowed_handles", AsyncMock(return_value=set())),
+        patch.object(posting, "coverage_note", AsyncMock(return_value="")),
+        patch.object(posting.bot_client, "create_post", AsyncMock()) as create,
+    ):
+        result = await captured["post"](ctx, "my response", quote=URI)
+    if available:
+        embed = create.await_args.kwargs["embed"]
+        assert isinstance(embed, models.AppBskyEmbedRecord.Main)
+        assert embed.record.uri == URI and embed.record.cid == CID
+        assert "source text" in gate.await_args.args[0]
+    else:
+        assert "could not be verified" in result
+        gate.assert_not_called()
+        create.assert_not_called()
+
+
 @pytest.mark.parametrize("reply", [False, True])
-async def test_split_thread_attaches_image_only_to_first_post(reply):
+@pytest.mark.parametrize("quote", [False, True])
+async def test_split_thread_attaches_image_only_to_first_post(reply, quote):
     _, image = picture()
     embed = models.AppBskyEmbedImages.Main(
         images=[models.AppBskyEmbedImages.Image(image=image.blob, alt=image.alt)]
     )
+    if quote:
+        embed = models.AppBskyEmbedRecordWithMedia.Main(
+            record=models.AppBskyEmbedRecord.Main(
+                record=models.ComAtprotoRepoStrongRef.Main(uri=URI, cid=CID)
+            ),
+            media=embed,
+        )
     client = BotClient.__new__(BotClient)
     client.authenticate = AsyncMock()
     client.client = SimpleNamespace(

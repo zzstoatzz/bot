@@ -350,6 +350,12 @@ def register(agent):
                 max_length=4,
             ),
         ] = None,
+        quote: Annotated[
+            str,
+            Field(
+                description="AT-URI of a post to quote. Its record is verified and shown to the policy judge. Can accompany a reply or images; attached once on the first post."
+            ),
+        ] = "",
     ) -> str:
         """Create a post on bluesky. Top-level or reply — one operation.
 
@@ -358,6 +364,8 @@ def register(agent):
         anyone else's verified post. To make an image reply, use generate_image
         then pass its blob in images with alt text describing the image and any
         visible writing. Images appear once, on the first post of a split thread.
+        To quote a post, pass its AT-URI as quote; the tool fetches its strong
+        reference. Quoting and replying are independent choices.
 
         Handles facet construction (your @mentions notify only allowlisted
         handles), reply-ref construction (parent + root) when ``in_reply_to``
@@ -386,8 +394,40 @@ def register(agent):
                     "post image preparation failed: %s", type(error).__name__
                 )
                 return "image attachment could not be read or validated; nothing was posted"
+        quote_description = ""
+        if quote:
+            parsed = _parse_at_uri(quote)
+            if not parsed or parsed[1] != "app.bsky.feed.post":
+                return "refused: quote must identify a Bluesky post by AT-URI; nothing was posted"
+            try:
+                response = await bot_client.get_posts([quote])
+                source = next((p for p in response.posts if p.uri == quote), None)
+                if source is None or not source.cid:
+                    return (
+                        "refused: quoted post could not be verified; nothing was posted"
+                    )
+                record_embed = models.AppBskyEmbedRecord.Main(
+                    record=models.ComAtprotoRepoStrongRef.Main(
+                        uri=source.uri, cid=source.cid
+                    )
+                )
+                embed = (
+                    models.AppBskyEmbedRecordWithMedia.Main(
+                        record=record_embed, media=embed
+                    )
+                    if embed
+                    else record_embed
+                )
+                quote_description = (
+                    f"\n[Quoted source, not authored by Phi: {source.uri}, CID {source.cid}, "
+                    f"author @{source.author.handle}]\n{source.record.text}\n[End quoted source]"
+                )
+            except Exception as error:
+                logger.warning("quote verification failed: %s", type(error).__name__)
+                return "refused: quoted post could not be read or validated; nothing was posted"
         post_options = {"embed": embed} if embed else {}
         action_text = text + ("\n" + image_description if image_description else "")
+        action_text += quote_description
         notifs = ctx.deps.notifications_context or {}
         unprompted = not notification_input(ctx.deps) and not ctx.deps.author_handle
 

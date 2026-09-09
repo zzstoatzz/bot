@@ -156,7 +156,10 @@ class BotClient:
         text: str,
         reply_to=None,
         allowed_handles: set[str] | None = None,
-        embed: models.AppBskyEmbedImages.Main | None = None,
+        embed: models.AppBskyEmbedImages.Main
+        | models.AppBskyEmbedRecord.Main
+        | models.AppBskyEmbedRecordWithMedia.Main
+        | None = None,
     ):
         """Create a new post or reply. Splits long text into a self-reply thread.
 

@@ -1,5 +1,9 @@
 # changelog
 
+## 2026-09-08 — Quote posts through the trusted publisher
+
+Phi can pass a quote target to `post`. The tool fetches the source, verifies its URI and CID, and supplies the source text to the existing policy judge with explicit authorship. Quotes can accompany replies and images and are attached only to the first post of a split composition. Unreadable sources refuse before publication. Previously the trusted tool exposed only replies and image embeds, leaving quote-posting unavailable without bypassing the feed-write guard.
+
 ## 2026-09-08 — Preserve evidence in post search
 
 Search results now include the full post text and labeled link destinations. Previously they stopped at 200 characters and discarded rich-text links, hiding the feed URLs behind the options in Grace's poll. Results remain raw appview JSON so unfamiliar embed types cannot break search. This restores evidence for investigation without prescribing a conclusion or changing personality.
