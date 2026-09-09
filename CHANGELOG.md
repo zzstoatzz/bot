@@ -2,7 +2,7 @@
 
 ## Voice reset
 
-`VOICE_RESET=true` suspends normal model runs before context and tools are assembled, starts notification processing paused, refuses external triggers and resume, and suspends scheduled extraction. Existing stored records remain intact. Voice calibration starts separately from an empty request; normal context will be restored piecewise after operator acceptance.
+`VOICE_RESET=true` suspends normal model runs before context and tools are assembled, starts notification processing paused, refuses external triggers and resume, and suspends scheduled extraction. Diagnostic previews and background context-budget refreshes also skip instruction rendering and tool discovery. Existing stored records remain intact. Voice calibration starts separately from an empty request; normal context will be restored piecewise after operator acceptance.
 
 ## 2026-09-09 — Return the created post reference
 

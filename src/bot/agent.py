@@ -1606,6 +1606,8 @@ class PhiAgent:
         from types import SimpleNamespace
         from typing import cast as _cast
 
+        if settings.voice_reset:
+            return []
         deps = PhiDeps(author_handle="", memory=self.memory)
         ctx = _cast(RunContext[PhiDeps], SimpleNamespace(deps=deps))
 
@@ -1644,6 +1646,9 @@ class PhiAgent:
         are connected the same way a run connects them and released after
         listing; one that is down costs its tools, not the listing."""
         from pydantic_ai.usage import RunUsage
+
+        if settings.voice_reset:
+            return []
 
         # a real RunContext: toolsets `replace()` it per tool and read
         # `retries`, so a stand-in namespace is not enough here
@@ -1697,7 +1702,9 @@ class PhiAgent:
         for origin, tool_def in await self.list_tool_definitions():
             sections.append(tool_section(tool_def, origin))
 
-        model = self.agent.model if not isinstance(self.agent.model, str) else None
+        model = None
+        if not settings.voice_reset and not isinstance(self.agent.model, str):
+            model = self.agent.model
         counting, prompt_total = await count_context_tokens(model, sections)
         limits = await lookup_model_limits(settings.agent_model)
         totals = {
@@ -1709,7 +1716,10 @@ class PhiAgent:
         last = next((r for r in reversed(cache_monitor.runs) if r.samples), None)
         return {
             "generated_at": datetime.now(UTC).isoformat(),
-            "path": "scheduled (no notifications batch)",
+            "path": "voice reset (context disabled)"
+            if settings.voice_reset
+            else "scheduled (no notifications batch)",
+            "voice_reset": settings.voice_reset,
             "model": limits.as_dict(),
             "counting": counting,
             "sections": [s.as_dict() for s in sections],

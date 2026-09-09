@@ -123,4 +123,4 @@ its extraction instructions without conversational personality.
 
 ## Voice reset
 
-With `VOICE_RESET=true`, normal agent runs stop before instruction callbacks or tool connections. No personality, memory, SELF, prior posts, goals, atlas, skills, or tool schemas reach a normal model request. Private voice calibration uses a separate empty request and explicitly supplied current message. This setting also keeps polling paused after restart and rejects external triggers/resume.
+With `VOICE_RESET=true`, normal agent runs stop before instruction callbacks or tool connections. No personality, memory, SELF, prior posts, goals, atlas, skills, or tool schemas reach a normal model request. Private voice calibration uses a separate empty request and explicitly supplied current message. This setting also keeps polling paused after restart and rejects external triggers/resume. Diagnostic previews and the context-budget refresh return no instruction blocks or tool definitions, so they cannot assemble the suspended context in the background.
