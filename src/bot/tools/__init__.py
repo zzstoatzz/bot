@@ -22,6 +22,7 @@ def register_all(agent, graze_client: GrazeClient):
         self_record,
         topchicken,
         traces,
+        workflows,
     )
 
     memory.register(agent)
@@ -39,6 +40,7 @@ def register_all(agent, graze_client: GrazeClient):
     media.register(agent)
     topchicken.register(agent)
     traces.register(agent)
+    workflows.register(agent)
 
 
 __all__ = ["PhiDeps", "_check_services_impl", "register_all"]

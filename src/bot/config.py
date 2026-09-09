@@ -1,7 +1,7 @@
 from typing import Literal, Self
 
 from atproto_client.models.string_formats import Did, Handle
-from pydantic import Field, model_validator
+from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from bot.logging_config import setup_logging
@@ -293,6 +293,14 @@ class Settings(BaseSettings):
     # Prefect flow monitoring — phi polls the prefect-server via the prefect
     # MCP to notice failed/crashed flows (ingest, brief, compact, etc.) and
     # flag persistent failures to the operator. Same pattern as relays.
+    workflow_request_url: str = Field(
+        default="https://heavypad.tailb660b6.ts.net:8443/workflows/request",
+        description="Scoped endpoint for requesting approved agent workflows",
+    )
+    workflow_request_token: SecretStr | None = Field(
+        default=None,
+        description="Dedicated workflow-request credential; cannot administer Prefect",
+    )
     prefect_mcp_url: str = Field(
         default="https://prefect-by-zzstoatzz.fastmcp.app/mcp",
         description="URL of the prefect MCP server (fastmcp.app deployment)",

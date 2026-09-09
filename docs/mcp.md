@@ -43,3 +43,19 @@ phi has two kinds of tools:
 - **MCP tools** (from remote servers) — stateless HTTP calls that don't need phi's internal state.
 
 the agent sees all tools uniformly and picks the right one for the task.
+
+## requesting agent workflows
+
+The native `request_workflow` tool sends an owner-authorized request to
+`/workflows/request` on heavypad. Phi requests the work; Prefect schedules it;
+Pi executes inside a worker-created Sprite using Aperture. The returned run ID
+can be followed through the existing read-only Prefect MCP tools.
+
+Phi uses a dedicated workflow-request credential. Prefect admin access stays
+on heavypad. The endpoint selects the deployment, pool, and agent capabilities;
+requests cannot supply commands, credentials, job variables, or deployment IDs.
+The operator override blocks requests. Retries reuse the same request key.
+
+This is a local bot draft, not yet deployed. The endpoint currently enables
+investigations only. Proposed changes remain disabled until the gardener patch,
+Phi review, Pi revision, and human merge-approval path is verified.

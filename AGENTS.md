@@ -111,3 +111,10 @@ Runtime skill `revise-personality` explains direct `write_personality` authorshi
 Live personality revisions are on Phi’s PDS under `io.zzstoatzz.phi.personality`;
 the repo personality file seeds an empty collection. Revisions take effect next
 run and remain available for restoration. Operational rules remain separate.
+
+## agent workflow spike
+
+`src/bot/tools/workflows.py` is Phi's native workflow-request capability. Phi
+requests Prefect runs and reads their results; Pi executes in Sprites. The
+requester, executor, patch author (gardener), reviewer (Phi), and human merge
+approver are distinct roles. Current local rollout limits are in docs/mcp.md.
