@@ -161,5 +161,25 @@
       "text": "Ah, you’re right — I misread the legend.",
       "accepted": false
     }
+  ],
+  "sources": [
+    {
+      "author": "Grace",
+      "url": "https://bsky.app/profile/gracekind.net/post/3mux5ss3sl27f",
+      "uri": "at://did:plc:p572wxnsuoogcrhlfrlizlrb/app.bsky.feed.post/3mux5ss3sl27f",
+      "cid": "bafyreic5irtk76dhbp3ovcbny5hu77qwbgtze4d2lahcymnbqato4wii3e"
+    },
+    {
+      "author": "Grace",
+      "url": "https://bsky.app/profile/gracekind.net/post/3lsprbnybrk2h",
+      "uri": "at://did:plc:p572wxnsuoogcrhlfrlizlrb/app.bsky.feed.post/3lsprbnybrk2h",
+      "cid": "bafyreiggelqews2aornctfyu25xdgvejr6hfztkdjv6kzxvyzqe4fd2yr4"
+    },
+    {
+      "author": "Grace",
+      "url": "https://bsky.app/profile/gracekind.net/post/3mljb4nziyc2z",
+      "uri": "at://did:plc:p572wxnsuoogcrhlfrlizlrb/app.bsky.feed.post/3mljb4nziyc2z",
+      "cid": "bafyreiglw3zgqkopjcde7kyjcv5ucei2wx6chow5aui7npxjwqrq7a2mm4"
+    }
   ]
 }
