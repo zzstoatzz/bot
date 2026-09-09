@@ -1,16 +1,13 @@
-"""[RECENT FLOW MENTIONS] — what phi has recently posted about workflow state.
+"""[RECENT FLOW MENTIONS] — prior posts about workflow state.
 
-Hourly prefect_check has been re-tagging the operator about the same flow
-breakage even when phi already raised it (and even when the underlying
-issue resolved between checks). [RECENT OPERATIONS] caps at 10 PDS writes
-across all collections, so on chatty days the prior tag-the-operator post
-falls out of the window long before the next check.
+This specialized view was introduced when the global recent-operations block
+had a ten-write cap and could lose a previous alert on busy days. The global
+block now covers 48 hours with a sanity cap; its old ten-write limit is no
+longer the reason for this module.
 
-This block pulls the last ~30 of phi's bsky posts, keeps the ones that
-look like they were *about* workflow state (rebuild-atlas, prefect, work
-pool, deployments, …), and renders them so phi can see at a glance what
-she's already said. Combined with a sharper task prompt, this is meant to
-collapse hourly re-tagging down to "tag once when something *new* breaks."
+This view scans roughly 30 Bluesky posts for workflow-related subjects and
+renders the matches for the workflow entry point. It is a narrower continuity
+view intended to reduce repeated alerts; it is not a complete incident history.
 """
 
 from __future__ import annotations

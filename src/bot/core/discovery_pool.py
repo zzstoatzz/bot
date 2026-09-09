@@ -1,34 +1,13 @@
 """[DISCOVERY POOL] — authors the operator has been liking lately.
 
-A generic, service-owned signal: the operator's likes are high-trust
-attention. The endpoint (hub) exposes recently-liked authors with sample
-posts; phi filters out anyone she's already exchanged with and surfaces
-the rest as warm leads — strangers worth considering, not cold outreach.
+The hub supplies recently liked authors and sample posts. Phi filters out
+accounts she has already interacted with. Notification runs rank the remaining
+samples against the incoming conversation; scheduled runs can browse the pool.
+The samples are other people's writing and a signal of the operator's taste.
 
-The block used to say "do not copy their phrasing", which collapsed two
-different instructions into one. Not lifting someone's sentences is a
-real rule and it stays. Not *learning* from writing is how you get an
-agent that has never read anything — and phi's context is otherwise
-sealed against exemplars by design: [RECENT OPERATIONS] strips her post
-bodies so it can't double as voice training, [SELF-AWARENESS] is written
-flat so its register isn't imitated. Each defence is individually right;
-together they left the samples here as nearly the only human writing she
-sees, under a do-not-imitate flag. These are also posts the operator
-chose to like, which makes them a taste signal and not only a list of
-leads — so the header now says both.
-
-It also names humor as doing real work in ordinary communication and
-points at the samples as evidence of it working. That is a claim about
-how people talk, not an instruction to be funny: the task it sets is
-*working out how someone landed one*, which is analysis, and it is
-often subtle enough to require real reading. Prescribing a register
-directly has been reverted four times in this repo's history (61bf9f8,
-7bb6cd2, 4a88145, 3ca6984) — each attempt became a tic, because a
-handed-down voice gets parroted while a noticed one gets learned.
-
-Coupling stays at the JSON contract: the source service owns the data
-model and refresh, phi owns the per-consumer filter. Renderer is split
-from fetch+filter so a future templating swap only touches `_render`.
+The rendered header identifies that source and asks for attribution rather
+than copied sentences. Earlier humor coaching was removed from the header;
+this module supplies material to notice, not a public speaking style.
 """
 
 import logging

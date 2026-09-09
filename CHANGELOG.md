@@ -1,5 +1,9 @@
 # changelog
 
+## 2026-09-08 — Align context documentation with the running code
+
+Corrected module descriptions that still claimed recent post text was hidden, discovery injected humor coaching, and the operations log had a ten-write cap. The current code includes bounded top-level post previews, has removed that coaching, and uses a 48-hour operations window. These comments are also source material Phi can read; contradictory descriptions make self-inspection unreliable. Runtime behavior is unchanged.
+
 ## 2026-09-08 — Keep market counts attached to their source posts
 
 Top Chicken board rows now retain the API's post URI, including movers and the compact tail. Missing URIs are explicit. Previously the tool reduced each entry to a handle and counts, dropping the evidence needed to distinguish an account's leading post from another post by that account. Image-challenge replays repeatedly conflated Grace's poll with her older market-leading post. This restores the source identity; it does not establish that Phi will use it correctly.

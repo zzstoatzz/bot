@@ -1,21 +1,16 @@
-"""[RECENT OPERATIONS] — phi's last N record writes on its own PDS.
+"""[RECENT OPERATIONS] — recent writes to Phi's own PDS.
 
-Action continuity signal — phi can see WHAT it has been doing across
-collections (posts, likes, follows, goals, cosmik cards, blog docs)
-without enumerating by hand.
+The block combines durable repo events with a snapshot backfill over the
+last 48 hours. Top-level posts include a bounded text preview and source
+links so Phi can recognize subjects already covered. Replies and other
+routine activity are tallied; edits and deletes retain row-level evidence
+and process attribution. The renderer has a sanity cap and reports truncation.
 
-Post text is deliberately NOT shown. The block is read every run, and
-including phi's own post bodies would turn the continuity signal into
-style training data — concrete in-context examples beat abstract rules,
-so feeding phi her own recent prose teaches whatever register that prose
-happens to be in. Show actions and counts, not voice. Titles for
-intentionally-titled artifacts (goals, blog docs, URL cards) are fine —
-those are public anchor names, not posting register.
-
-Cached at 5min, mirroring the other PDS state blocks.
-
-Render is split from fetch so a future jinja migration only has to
-replace `_render`. `_summarize` carries per-NSID formatting logic.
+Post previews are evidence of prior publication, not an instruction to keep
+that style. An earlier prose-free version made repeated subjects harder to
+recognize. Reducing this block must preserve that continuity and the external
+edit/delete evidence. Source retrieval and rendered output are cached for five
+minutes. `_summarize` owns per-collection formatting; `_render` owns the block.
 """
 
 from __future__ import annotations
