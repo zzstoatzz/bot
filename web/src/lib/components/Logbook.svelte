@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { logbook } from '$lib/state.svelte';
 	import { relativeWhen, whenTooltip } from '$lib/time';
+	import { memoryDate, exchangePreview } from '$lib/person-memory';
 	import { PHI_HANDLE, PHI_DID, OWNER_HANDLE, getUserView } from '$lib/api';
 	import ViewIn from './ViewIn.svelte';
 	import type {
@@ -214,7 +215,7 @@
 	<dialog bind:this={dialog} class="drawer" aria-label="logbook entry" use:openDialog oncancel={close}>
 		<header>
 			<div class="kind chrome">
-				{#if entry.kind === 'handle'}{entry.engaged ? 'in my memory' : 'on my radar'}{:else if entry.kind === 'goal'}goal{:else if entry.kind === 'docket'}promotion pressure{:else if entry.kind === 'activity'}emission · {entry.item.type}{:else if entry.kind === 'blog'}long form{:else if entry.kind === 'discovery'}on my radar{/if}
+				{#if entry.kind === 'handle'}conversations{:else if entry.kind === 'goal'}goal{:else if entry.kind === 'docket'}promotion pressure{:else if entry.kind === 'activity'}emission · {entry.item.type}{:else if entry.kind === 'blog'}long form{:else if entry.kind === 'discovery'}on my radar{/if}
 				{#if entry.kind === 'docket-list'}public candidates{:else if entry.kind === 'store'}memory store{/if}
 			</div>
 			<button class="close" onclick={close} aria-label="Close details">Close</button>
@@ -222,125 +223,51 @@
 
 		<div class="detail-body scroll">
 		{#if entry.kind === 'handle'}
-			{@const handleEntry = entry as {
-				kind: 'handle';
-				handle: string;
-				did?: string;
-				engaged: boolean;
-				payload: unknown;
-			}}
-			<h1 class="mono">@{handleEntry.handle}</h1>
-
-			{#if userViewLoading}
-				<p class="muted">recalling…</p>
+			<div class="person-heading">
+				<h1>@{entry.handle}</h1>
+				<a href={`https://bsky.app/profile/${entry.did || entry.handle}`} target="_blank" rel="noopener">Bluesky profile ↗</a>
+			</div>
+			{#if userViewLoading}<p class="muted" role="status">Loading conversations…</p>
 			{:else if userView}
-				<p class="muted">
-					{#if userView.is_stranger && userView.counts.observation === 0 && userView.counts.interaction === 0}
-						No stored observations or exchanges were returned.
-					{:else if userView.is_stranger}
-						Saved history is limited.
-					{:else}
-						Stored context is available.
-					{/if}
-				</p>
-
-				<!-- histogram: counts per kind -->
-				<div class="hist">
-					<div class="hist-cell">
-						<div class="hist-num mono">{userView.counts.observation}</div>
-						<div class="hist-lbl chrome">observation{userView.counts.observation === 1 ? '' : 's'}</div>
-					</div>
-					<div class="hist-cell">
-						<div class="hist-num mono">{userView.counts.interaction}</div>
-						<div class="hist-lbl chrome">exchange{userView.counts.interaction === 1 ? '' : 's'}</div>
-					</div>
-					<div class="hist-cell">
-						<div class="hist-num mono">{userView.counts.summary}</div>
-						<div class="hist-lbl chrome">impression{userView.counts.summary === 1 ? '' : 's'}</div>
-					</div>
-				</div>
-
-				{#if userView.first_seen}
-					<div class="span chrome faint">
-						first noted
-						<span title={whenTooltip(userView.first_seen)}>{relativeWhen(userView.first_seen)}</span>
-						{#if userView.last_seen && userView.last_seen !== userView.first_seen}
-							· last touched
-							<span title={whenTooltip(userView.last_seen)}>{relativeWhen(userView.last_seen)}</span>
-						{/if}
-					</div>
+				{#if userView.summary}
+					<section class="person-section orientation">
+						<h2>Phi’s summary</h2>
+						<p class="person-date">Written {memoryDate(userView.summary.created_at)}. May be out of date.</p>
+						<details class="summary-reading">
+							<summary aria-label="Toggle full summary"><span class="summary-preview">{userView.summary.content}</span><span class="read-toggle"><span class="read-open">Read full summary</span><span class="read-close">Close full summary</span></span></summary>
+							<p class="memory-prose">{userView.summary.content}</p>
+						</details>
+					</section>
+				{:else}<p class="muted">{userView.recent_observations.length || userView.recent_interactions?.length ? 'Phi hasn’t written a summary of these conversations yet.' : userView.recent_interactions == null ? 'No summary is available.' : 'No saved conversations or notes for this account yet.'}</p>{/if}
+				{#if userView.recent_observations.length}
+					<section class="person-section"><h2>Recent notes</h2>
+						<ul class="memory-notes">{#each userView.recent_observations as note}<li>
+							<p>{note.content}</p><div class="memory-links"><span>Saved {memoryDate(note.created_at)}</span>
+							{#each note.source_uris as uri, i}{@const link = bskyPostUrl(uri)}{#if link}<a href={link} target="_blank" rel="noopener">{note.source_uris.length === 1 ? 'Source' : `Post ${i + 1}`} ↗</a>{/if}{/each}</div>
+						</li>{/each}</ul>
+					</section>
 				{/if}
-
-				<section class="exchanges" aria-label="Stored exchanges">
-					<h2>Stored exchanges</h2>
-					{#if userView.recent_interactions == null}
-						<p>Exchange details are unavailable in this snapshot.</p>
-					{:else if userView.recent_interactions.length === 0}
-						<p>No stored exchanges were returned.</p>
-					{:else}
-						<p>Showing {userView.recent_interactions.length} recent stored exchange{userView.recent_interactions.length === 1 ? '' : 's'}. This history does not include every encounter.</p>
-						{#each userView.recent_interactions as exchange (exchange.id)}
-							<article class="exchange">
-								{#if exchange.created_at}<p>Stored {exchange.created_at}</p>{/if}
-								<div class="exchange-text">{exchange.content}</div>
-								{#if exchange.source_uris.length > 0}
-									<ul>
-										{#each exchange.source_uris as uri, i}
-											{@const postUrl = bskyPostUrl(uri)}
-											<li>{#if postUrl}<a href={postUrl} target="_blank" rel="noopener">Open source post {i + 1}</a>{:else}<span>{uri}</span>{/if}</li>
-										{/each}
-									</ul>
-								{:else}<p>No source links were stored for this exchange.</p>{/if}
-							</article>
-						{/each}
+				{#if userView.recent_interactions == null || userView.recent_interactions.length}
+				<section class="person-section"><h2>Conversations</h2>
+					{#if userView.recent_interactions == null}<p class="muted">Conversation history couldn’t be loaded.</p>
+					{:else if !userView.recent_interactions.length}<p class="muted">No saved exchanges yet.</p>
+					{:else}<p class="person-date">Latest {userView.recent_interactions.length} saved exchanges. Some encounters aren’t saved here.</p>
+						{#each userView.recent_interactions as exchange (exchange.id)}<details class="conversation">
+							<summary><span class="person-date">Saved {memoryDate(exchange.created_at)}</span><span>{exchangePreview(exchange.content)}</span></summary>
+							<p class="memory-prose">{exchange.content}</p>
+							<div class="memory-links">{#each exchange.source_uris as uri, i}{@const link = bskyPostUrl(uri)}{#if link}<a href={link} target="_blank" rel="noopener">Post {i + 1} ↗</a>{/if}{/each}</div>
+						</details>{/each}
 					{/if}
 				</section>
-
-				{#if userView.recent_observations.length > 0}
-					<div class="block">
-						<div class="block-label chrome">recent notes</div>
-						<ul class="obs-list">
-							{#each userView.recent_observations as obs (obs.created_at ?? obs.content)}
-								<li class="obs">
-									<div class="obs-text">{obs.content}</div>
-									<div class="obs-meta faint">
-										{#if obs.tags.length > 0}
-											<span class="tags mono">{obs.tags.slice(0, 3).join(' · ')}</span>
-										{/if}
-										{#if obs.created_at}
-											<span class="when" title={whenTooltip(obs.created_at)}
-												>{relativeWhen(obs.created_at)}</span
-											>
-										{/if}
-										{#if obs.source_uris.length > 0}
-											{@const sourceUrl = bskyPostUrl(obs.source_uris[0])}
-											{#if sourceUrl}
-												<a class="source-link" href={sourceUrl} target="_blank" rel="noopener">source</a>
-											{/if}
-										{/if}
-									</div>
-								</li>
-							{/each}
-						</ul>
-					</div>
 				{/if}
-
-				{#if userView.summary}
-					<div class="block synthesis">
-						<div class="block-label chrome">synthesized impression</div>
-						<div class="content">{userView.summary.content}</div>
-						<div class="synthesis-note faint">
-							Generated from carried notes; useful as orientation, not ground truth.
-						</div>
-					</div>
+				{#if userView.counts.observation || userView.counts.interaction || userView.counts.summary}
+				<details class="memory-coverage"><summary>About this history</summary>
+					<p>{userView.counts.observation} notes and {userView.counts.interaction} exchanges returned from saved memory. These counts aren’t a complete history of interactions.</p>
+					{#if userView.first_seen}<p>Earliest saved record: {memoryDate(userView.first_seen)}.</p>{/if}
+					{#if userView.last_seen}<p>Latest saved record: {memoryDate(userView.last_seen)}.</p>{/if}
+				</details>
 				{/if}
-			{:else}
-				<p class="muted">memory unreachable.</p>
-			{/if}
-
-			<div class="actions">
-				<ViewIn kind="profile" handle={handleEntry.handle} did={handleEntry.did} />
-			</div>
+			{:else}<p class="muted" role="status">Couldn’t load this conversation history. Close this panel and try again.</p>{/if}
 		{:else if entry.kind === 'goal'}
 			{@const goalE = entry as { kind: 'goal'; goal: Goal }}
 			{@const goalTs = goalE.goal.updated_at || goalE.goal.created_at}
@@ -692,31 +619,39 @@
 		{/if}
 
 		</div>
-		<footer class="chrome faint">a window into phi's experience</footer>
 	</dialog>
 {/if}
 
 <style>
-	.exchanges {
-		font-size: 14px;
-		line-height: 1.6;
-		overflow-wrap: anywhere;
-	}
-	.exchanges h2 {
-		font-size: 18px;
-	}
-	.exchange {
-		border-top: 1px solid var(--line-mid);
-		padding-block: 12px;
-	}
-	.exchange-text {
-		white-space: pre-wrap;
-	}
-	.exchange a {
-		display: inline-flex;
-		align-items: center;
-		min-height: 44px;
-	}
+	.person-heading { padding-block: 8px 12px; }
+	.person-heading h1 { font-size: 28px; overflow-wrap: anywhere; }
+	.person-heading a { display: inline-block; padding-block: 10px; color: var(--scan-hot); font-size: 13px; }
+	.person-section { padding-block: 12px; }
+	.person-section h2 { margin: 0 0 6px; font: 400 23px/1.2 var(--font-chrome); color: var(--scan-hot); }
+	.person-date { color: var(--text-dim); font-size: 12px; line-height: 1.5; margin: 0 0 12px; }
+	.orientation { border-top: 1px solid var(--line-scan); border-bottom: 1px solid var(--line-scan); }
+	.summary-reading summary { list-style: none; cursor: pointer; }
+	.summary-reading summary::-webkit-details-marker { display: none; }
+	.summary-preview { display: -webkit-box; line-clamp: 5; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; font-size: 15px; line-height: 1.65; }
+	.read-toggle { display: block; padding-block: 10px; font-size: 13px; color: var(--scan-hot); }
+	.summary-reading[open] .summary-preview { display: none; }
+	.read-close, .summary-reading[open] .read-open { display: none; }
+	.summary-reading[open] .read-close { display: inline; }
+	.memory-prose { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; line-height: 1.65; margin: 0 0 12px; }
+	.memory-notes { list-style: none; padding: 0; margin: 0; }
+	.memory-notes li { padding-block: 14px; border-bottom: 1px solid var(--line-dim); }
+	.memory-notes li:last-child { border: 0; }
+	.memory-notes p { margin: 0 0 6px; font-size: 14px; line-height: 1.6; }
+	.memory-links { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; color: var(--text-dim); font-size: 12px; }
+	.memory-links a { color: var(--scan-hot); display: inline-flex; align-items: center; min-height: 44px; }
+	.conversation { border-bottom: 1px solid var(--line-dim); }
+	.conversation summary { padding: 14px 22px 14px 0; cursor: pointer; font-size: 14px; line-height: 1.5; }
+	.conversation summary .person-date { display: block; margin-bottom: 5px; }
+	.conversation summary > span:last-child { display: -webkit-box; line-clamp: 2; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+	.conversation[open] summary > span:last-child { display: none; }
+	.memory-coverage { border-top: 1px solid var(--line-mid); margin-top: 16px; font-size: 12px; color: var(--text-dim); line-height: 1.6; }
+	.memory-coverage summary { padding-block: 16px; cursor: pointer; }
+	.summary-reading summary:focus-visible, .conversation summary:focus-visible, .memory-coverage summary:focus-visible { outline: 2px solid var(--hud-hot); outline-offset: 3px; }
 	.drawer::backdrop {
 		background: rgba(0, 0, 0, 0.4);
 	}
@@ -916,12 +851,6 @@
 		letter-spacing: 0.18em;
 	}
 
-	.span {
-		font-size: 10px;
-		letter-spacing: 0.1em;
-		margin: 0 0 2px;
-	}
-
 	.obs-list {
 		list-style: none;
 		padding: 0;
@@ -973,32 +902,6 @@
 	.tags {
 		color: var(--scan-mid);
 		font-size: 9px;
-	}
-
-	.when {
-		color: var(--text-dim);
-	}
-
-	.source-link {
-		color: var(--scan-mid);
-		text-decoration: none;
-		border-bottom: 1px solid rgba(126, 192, 212, 0.28);
-	}
-
-	.source-link:hover {
-		color: var(--scan-hot);
-		border-bottom-color: rgba(224, 144, 96, 0.5);
-	}
-
-	.synthesis {
-		border-left-color: rgba(224, 144, 96, 0.48);
-		background: linear-gradient(90deg, rgba(184, 107, 58, 0.06), transparent 58%);
-	}
-
-	.synthesis-note {
-		margin-top: 8px;
-		font-size: 10px;
-		line-height: 1.4;
 	}
 
 	.extlink {
@@ -1096,14 +999,6 @@
 
 	.person-meta {
 		font-size: 9px;
-	}
-
-	footer {
-		font-size: 9px;
-		color: var(--text-dim);
-		padding-top: 10px;
-		margin-top: auto;
-		border-top: 1px solid var(--line-dim);
 	}
 
 	@media (max-width: 760px) {

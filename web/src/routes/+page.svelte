@@ -171,18 +171,18 @@
 			</div>
 			<aside>
 				<section class="memory-section">
-					<h2>Stored memory</h2>
+					<h2>Conversations & notes</h2>
 					<p class="muted">
-						Look up a person to read stored exchanges, observations, and their sources.
+						Explore Phi’s conversations and the notes it kept.
 					</p>
 					<div class="lookup"><CommandK inline /></div>
 					{#if states.people === 'loading'}<p class="empty">
 							Loading people…
 						</p>{:else if states.people === 'error'}<p class="notice">
-							The people index could not be loaded. Person lookup is still available.
+							The people index could not be loaded. You can still search by name or handle.
 						</p>{:else}<details class="people-browser">
 							<summary>Browse {known.length} people</summary><label class="person-filter"
-								>Filter stored people<input
+								>Filter accounts<input
 									type="search"
 									placeholder="Filter by handle"
 									bind:value={query}

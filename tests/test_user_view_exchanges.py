@@ -4,12 +4,16 @@ import json
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
+import httpx
 import pytest
+from turbopuffer import NotFoundError
 
 import bot.main as main
 
 
-@pytest.mark.parametrize("mode", ["linked", "legacy", "empty", "unavailable"])
+@pytest.mark.parametrize(
+    "mode", ["linked", "legacy", "empty", "missing", "unavailable"]
+)
 async def test_user_view_exchange_evidence(monkeypatch, mode):
     references = [
         "at://did:plc:alice/app.bsky.feed.post/question",
@@ -29,6 +33,14 @@ async def test_user_view_exchange_evidence(monkeypatch, mode):
 
     def query(*, filters=None, include_attributes, **kwargs):
         if filters == {"kind": ["Eq", "interaction"]}:
+            if mode == "missing":
+                raise NotFoundError(
+                    "namespace missing",
+                    response=httpx.Response(
+                        404, request=httpx.Request("GET", "https://storage.test")
+                    ),
+                    body=None,
+                )
             if mode == "unavailable":
                 raise RuntimeError("storage unavailable")
             assert include_attributes is True
@@ -40,7 +52,9 @@ async def test_user_view_exchange_evidence(monkeypatch, mode):
     memory = Mock()
     memory.get_user_namespace.return_value = namespace
     memory.is_stranger = AsyncMock(return_value=True)
-    poller = SimpleNamespace(handler=SimpleNamespace(agent=SimpleNamespace(memory=memory)))
+    poller = SimpleNamespace(
+        handler=SimpleNamespace(agent=SimpleNamespace(memory=memory))
+    )
     monkeypatch.setattr(main.app.state, "poller", poller, raising=False)
     monkeypatch.setattr(main, "_user_view_cache", {})
     monkeypatch.setattr(main.bot_client, "authenticate", AsyncMock())
@@ -53,7 +67,7 @@ async def test_user_view_exchange_evidence(monkeypatch, mode):
     exchanges = body["recent_interactions"]
     if mode == "unavailable":
         assert exchanges is None
-    elif mode == "empty":
+    elif mode in {"empty", "missing"}:
         assert exchanges == []
     else:
         assert body["counts"]["interaction"] == 7

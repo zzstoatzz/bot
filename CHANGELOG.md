@@ -1,5 +1,9 @@
 # changelog
 
+## 2026-09-09 — Readable conversation history
+
+Person panels now lead with Phi’s dated summary, followed by recent notes and expandable exchanges. Removed the large storage counters, vague availability sentence, raw ISO dates, and decorative footer. Counts and storage coverage remain in a disclosure. Search uses a native dialog so it stays above the fixed header and traps keyboard focus; the homepage entry is Conversations. Missing memory namespaces now return an empty exchange list, while failed reads remain unavailable. Stored text is unchanged.
+
 ## 2026-09-08 — Use observed atlas IDs and accurate sort semantics
 
 Removed an invented atlas point ID from the tool schema after Phi copied it verbatim into an episodic-memory lookup during the Grace reading. The parameter now asks for an ID returned by a real atlas listing. The sort description now names the creation timestamp actually used by the code, rather than calling old points neglected or recently created points recently active. Lookup and sorting behavior are unchanged.

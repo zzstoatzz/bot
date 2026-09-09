@@ -1,19 +1,16 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { logbook } from '$lib/state.svelte';
+	import type { BskyAuthor } from '$lib/types';
 
 	let { inline = false }: { inline?: boolean } = $props();
 
-	interface Actor {
-		did: string;
-		handle: string;
-		displayName?: string;
-		avatar?: string;
-	}
 
 	let open = $state(false);
+	let palette = $state<HTMLDialogElement>();
+	function openPalette(node: HTMLDialogElement) { node.showModal(); inputEl?.focus(); }
 	let query = $state('');
-	let actors = $state<Actor[]>([]);
+	let actors = $state<BskyAuthor[]>([]);
 	let selected = $state(0);
 	let searching = $state(false);
 	let inputEl = $state<HTMLInputElement | null>(null);
@@ -34,6 +31,7 @@
 	}
 
 	function hide() {
+		palette?.close();
 		open = false;
 		launcher?.focus();
 	}
@@ -51,7 +49,7 @@
 			try {
 				const res = await fetch(`${TYPEAHEAD}?q=${encodeURIComponent(q.trim())}&limit=8`);
 				if (!res.ok) return;
-				const data: { actors: Actor[] } = await res.json();
+				const data: { actors: BskyAuthor[] } = await res.json();
 				if (mySeq === seq) {
 					actors = data.actors;
 					selected = 0;
@@ -64,7 +62,7 @@
 		}, 150);
 	}
 
-	function pick(actor: Actor) {
+	function pick(actor: BskyAuthor) {
 		hide();
 		logbook.set({
 			kind: 'handle',
@@ -111,17 +109,15 @@
 	class="launcher"
 	class:inline
 	onclick={show}
-	aria-label="search who phi knows"
+	aria-label="Search conversations"
 >
 	<span class="key mono">⌘K</span>
-	<span class="lbl">Look up a person</span>
+	<span class="lbl">Conversations</span>
 </button>
 
 {#if open}
-	<div class="veil" onclick={hide} role="presentation"></div>
-	<div
+	<dialog bind:this={palette} use:openPalette oncancel={hide}
 		class="palette cut"
-		role="dialog"
 		aria-label="find a person"
 		tabindex="-1"
 		onkeydown={handlePaletteKey}
@@ -132,7 +128,7 @@
 				bind:this={inputEl}
 				bind:value={query}
 				oninput={() => search(query)}
-				placeholder="handle or name — anyone on the network"
+				placeholder="Name or handle"
 				spellcheck="false"
 				autocomplete="off"
 			/>
@@ -141,7 +137,7 @@
 		{#if query.trim()}
 			<ul class="results" role="listbox">
 				{#if actors.length === 0}
-					<li class="empty mono">{searching ? 'scanning…' : 'nobody found'}</li>
+					<li class="empty">{searching ? 'Searching…' : 'No accounts found'}</li>
 				{:else}
 					{#each actors as actor, i (actor.did)}
 						<li>
@@ -166,11 +162,11 @@
 				{/if}
 			</ul>
 		{:else}
-			<div class="empty mono">
-				type to search the network — pick a person to see what phi remembers
+			<div class="empty">
+				Find an account to see its conversations with Phi.
 			</div>
 		{/if}
-	</div>
+	</dialog>
 {/if}
 
 <style>
@@ -213,16 +209,11 @@
 		padding: 1px 5px;
 	}
 
-	.veil {
-		position: fixed;
-		inset: 0;
-		z-index: 40;
-		background: rgba(7, 9, 15, 0.75);
-		backdrop-filter: blur(2px);
-		-webkit-backdrop-filter: blur(2px);
-	}
-
+	.palette::backdrop { background: rgba(7, 9, 15, 0.75); backdrop-filter: blur(2px); }
 	.palette {
+		margin: 0;
+		padding: 0;
+		color: var(--text);
 		position: fixed;
 		z-index: 41;
 		top: 16vh;
@@ -245,6 +236,7 @@
 		font-size: 13px;
 	}
 	input {
+		min-width: 0;
 		flex: 1;
 		background: transparent;
 		border: none;
@@ -309,7 +301,9 @@
 
 	.empty {
 		padding: 18px 14px;
-		font-size: 11px;
+		font-family: var(--font-content);
+		line-height: 1.5;
+		font-size: 14px;
 		color: var(--text-dim);
 	}
 
@@ -327,6 +321,9 @@
 			display: none;
 		}
 		.palette {
+		margin: 0;
+		padding: 0;
+		color: var(--text);
 			top: 10vh;
 		}
 	}

@@ -24,6 +24,7 @@ from fastapi.staticfiles import StaticFiles
 from slowapi import Limiter
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
+from turbopuffer import NotFoundError
 
 from bot.config import settings
 from bot.core import ops_log, prior_coverage, watchdog
@@ -517,8 +518,11 @@ async def user_view(handle: str):
                     }
                     for row in (resp.rows or [])[:5]
                 ]
+        except NotFoundError:
+            if kind == "interaction":
+                recent_interactions = []
         except Exception:
-            pass  # namespace may not exist yet; counts stay 0
+            pass  # A read failure stays distinct from an empty history.
 
     # first_seen / last_seen across all kinds.
     first_seen: str | None = None
