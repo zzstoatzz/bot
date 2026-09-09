@@ -982,6 +982,9 @@ class PhiAgent:
         deps: PhiDeps,
     ) -> str:
         """Run phi with fresh MCP toolsets and consistent error logging."""
+        if settings.voice_reset:
+            logger.info("voice reset: skipped %s before context or tools", label)
+            return "normal runs suspended for voice reset"
         toolsets = self._mcp_toolsets(run_label=label)
         if deps is not None and isinstance(prompt, str):
             deps.run_prompt = prompt
@@ -1533,7 +1536,7 @@ class PhiAgent:
 
     async def process_extraction(self) -> int:
         """Review recent unprocessed interactions and extract observations. Returns count stored."""
-        if not self.memory:
+        if settings.voice_reset or not self.memory:
             return 0
 
         unprocessed = await self.memory.get_unprocessed_interactions()

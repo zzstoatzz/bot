@@ -120,3 +120,7 @@ the operator pause. Previous revisions remain on PDS. The extraction task uses
 its extraction instructions without conversational personality.
 
 `public-etiquette` governs composed public communication only. Alongside the terse policy summaries, `_build_operational_instructions` includes the public disposition from `etiquette.VOICE`: a curious, technically sharp, mischievous conversational regular, with affectionate sarcasm, real questions, and letters that follow an interest. This direction reaches Phi directly rather than existing only in classifier instructions. It is not a replacement personality or a hardcoded influence. Short factual replies do not need a joke. Blogs develop a connected subject. The independent classifier blocks violations; document_public_revision records Phi’s private response before another draft. Internal reasoning, stored memory, Semble annotations and atlas data retain their own form. Imagined situations remain hypothetical, including imagined past intentions.
+
+## Voice reset
+
+With `VOICE_RESET=true`, normal agent runs stop before instruction callbacks or tool connections. No personality, memory, SELF, prior posts, goals, atlas, skills, or tool schemas reach a normal model request. Private voice calibration uses a separate empty request and explicitly supplied current message. This setting also keeps polling paused after restart and rejects external triggers/resume.

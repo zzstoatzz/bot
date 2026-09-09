@@ -1,5 +1,9 @@
 # changelog
 
+## Voice reset
+
+`VOICE_RESET=true` suspends normal model runs before context and tools are assembled, starts notification processing paused, refuses external triggers and resume, and suspends scheduled extraction. Existing stored records remain intact. Voice calibration starts separately from an empty request; normal context will be restored piecewise after operator acceptance.
+
 ## 2026-09-09 — Return the created post reference
 
 The post tool reported a reply's parent URI as its success location and omitted

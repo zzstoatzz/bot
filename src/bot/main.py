@@ -82,6 +82,9 @@ async def lifespan(app: FastAPI):
     await profile_manager.initialize()
     app.state.profile_manager = profile_manager
 
+    if settings.voice_reset:
+        bot_status.record_paused()
+
     # Start notification polling and its health monitors.
     poller = NotificationPoller(bot_client)
     app.state.poller = poller
@@ -243,6 +246,8 @@ async def resume(request: Request):
     """Resume notification processing. Queued notifications will be processed on next poll."""
     if err := _check_control_token(request):
         return err
+    if settings.voice_reset:
+        return JSONResponse({"error": "voice reset is active"}, status_code=409)
     bot_status.record_resumed()
     logger.info("resumed via API")
     if pm := getattr(app.state, "profile_manager", None):
@@ -276,6 +281,8 @@ async def trigger_slot(slot: str, request: Request, background_tasks: Background
     """Run a named scheduled pass in the background (bearer control token)."""
     if err := _check_control_token(request):
         return err
+    if settings.voice_reset:
+        return JSONResponse({"error": "voice reset is active"}, status_code=409)
     slot_fn = _TRIGGER_SLOTS.get(slot)
     if slot_fn is None:
         return JSONResponse(

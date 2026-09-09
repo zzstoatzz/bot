@@ -91,6 +91,11 @@ class Settings(BaseSettings):
         default="gcp-us-central1", description="The region for the TurboPuffer API"
     )
 
+    voice_reset: bool = Field(
+        default=False,
+        description="Suspend normal agent runs while voice is calibrated without context",
+    )
+
     # Model configuration
     agent_model: str = Field(
         default="anthropic:claude-sonnet-5",
