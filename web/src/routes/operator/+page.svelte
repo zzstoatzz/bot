@@ -9,6 +9,7 @@
 	import ToolUsageBoard from '$lib/components/ToolUsageBoard.svelte';
 	import EtiquetteBoard from '$lib/components/EtiquetteBoard.svelte';
 	import ContextBudget from '$lib/components/ContextBudget.svelte';
+	import VoiceRequest from '$lib/components/VoiceRequest.svelte';
 
 	let oauth = $state<Awaited<ReturnType<typeof initOAuth>> | null>(null);
 	let session = $state<OAuthSession | null>(null);
@@ -105,6 +106,7 @@
 				{live ? (live.active ? 'Public actions paused' : 'Public actions enabled') : (loaded ? 'Override status unavailable' : 'Reading status…')}
 			</span>
 		</header>
+		<VoiceRequest />
 		<section class="control-panel" aria-labelledby="control-heading">
 		<h2 id="control-heading">Public action control</h2>
 

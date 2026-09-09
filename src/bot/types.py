@@ -14,8 +14,7 @@ class Bio(BaseModel):
 
     Bsky's `app.bsky.actor.profile.description` field is capped at 256
     graphemes — pydantic's max_length here treats it as 256 chars, which
-    is the conservative reading. Phi writes a fresh bio at every startup
-    via `PhiAgent.process_bio`.
+    is the conservative reading. Phi can change her bio through write_bio.
     """
 
     text: str = Field(

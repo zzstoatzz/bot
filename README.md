@@ -1,56 +1,34 @@
-# phi
+# [phi](https://phi.zzstoatzz.io)
 
-a bluesky bot. listens, decides, posts, remembers, watches a few things in the background. personality is [public](personalities/phi.md).
+a Bluesky bot that reads, investigates, publishes and remembers. built with [PydanticAI](https://ai.pydantic.dev/), [AT Protocol](https://atproto.com/), [Turbopuffer](https://turbopuffer.com/) and [Semble](https://semble.so/). Phi owns her personality revisions on her PDS; the [repository personality](personalities/phi.md) seeds an empty collection.
 
-```
-notifications ── ┐
-schedule ─────── ├─→ phi (pydantic-ai) ─→ tools ─→ atproto / web / pds / memory
-self-state ───── ┘
-```
+**live:** [phi.zzstoatzz.io](https://phi.zzstoatzz.io)
 
-phi reads its own state (recent posts, goals, what it's pending, what's relevant from memory), looks at what's in front of it, and decides whether to act. actions happen as tool calls inside the agent run — there's no separate dispatch layer. public actions pass through a safety layer (written policies, an independent judge, an operator override) — see [docs/safety.md](docs/safety.md).
+## design
 
-## stack
+- **one agent loop** — notifications and scheduled attention supply different context to the same tool-calling agent.
+- **persistent evidence** — private memory retains encounters and source references; Semble holds a public reading library.
+- **separate controls** — public actions pass through policy checks and an operator override. Personality does not own those rules.
+- **inspectable requests** — Logfire records model and tool activity; the operator surface shows context, tool use and publication checks.
 
-- [pydantic-ai](https://ai.pydantic.dev/) for the agent loop and tool surface
-- [atproto](https://atproto.com) for everything social — posts, follows, threads, the firehose
-- [mcp](https://modelcontextprotocol.io/) for external capabilities (atproto record CRUD, publication search, the semble knowledge graph, prefect workflow state)
-- [turbopuffer](https://turbopuffer.com/) for private vector memory
-- [cosmik](https://cosmik.network) / [semble](https://semble.so) for public knowledge that anyone can discover
-- [tavily](https://tavily.com) for grounding in current web sources
-- [fly.io](https://fly.io) for hosting
-
-## quick start
+## develop
 
 ```bash
-uv sync
-cp .env.example .env  # edit with your credentials
-just run
+uv sync                 # install Python dependencies
+cp .env.example .env    # configure account and model-provider credentials
+just run                # run the API and bot
+just dev                # run with hot reload
+just check              # lint, typecheck and test
+just evals              # run model-backed behavioral tests
+just deploy             # manual Fly deployment; CI also deploys pushes to main
 ```
 
-required: `BLUESKY_HANDLE`, `BLUESKY_PASSWORD`, `ANTHROPIC_API_KEY`. see `.env.example` for the optional knobs.
-
-## development
-
-```bash
-just run        # run bot
-just dev        # hot-reload
-just check      # lint + typecheck + test
-just evals      # behavioral tests
-just deploy     # fly.io (the only deploy path)
-```
+The web client lives in `web/`; use `bun install` and `bun run dev` there. The bot requires `BLUESKY_HANDLE`, `BLUESKY_PASSWORD` and credentials for its configured model providers. See [.env.example](.env.example).
 
 ## docs
 
-- [architecture](docs/architecture.md) — data flow, scheduling, which model runs which agent, why the design
-- [memory](docs/memory.md) — thread context, private memory, public memory, how they compose
-- [system-prompt](docs/system-prompt.md) — every block in phi's context, where it comes from, when it refreshes
-- [mcp](docs/mcp.md) — how external tool servers are integrated
-- [safety](docs/safety.md) — policies, the judge, the operator override
-- [testing](docs/testing.md) — testing philosophy
-- [observability](docs/observability.md) — logfire integration and its sharp edges
-- [CHANGELOG](CHANGELOG.md) — what shipped, and what it cost to find out
+[docs/](docs/) describes the runtime, memory, publication controls and operational workflows. `VOICE_RESET` suspends normal runs for isolated calibration; see the system-prompt reference before restoring context.
 
-## reference projects
+---
 
-[void](https://tangled.sh/@cameron.pfiffer.org/void.git), [penelope](https://github.com/haileyok/penelope), [prefect-mcp-server](https://github.com/PrefectHQ/prefect-mcp-server).
+[changelog](CHANGELOG.md)

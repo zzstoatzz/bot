@@ -111,7 +111,7 @@
 			>
 		</header>
 		<p class="muted" role="status" aria-live="polite">
-			{loading ? 'Checking Top Chicken…' : refreshMessage}{#if updated}
+			{loading ? 'Checking Top Chicken…' : refreshMessage}{#if updated}{' '}
 				Checked {date(updated.getTime() / 1000, true)}.{/if}
 		</p>
 		{#if errors.length}<div class="notice" role="alert">

@@ -1,0 +1,673 @@
+{
+  "trace": "01a08486625475da355031bf856680a7",
+  "span": "745368c0f1a92e29",
+  "capturedAt": "2026-09-09T04:58:56.130490Z",
+  "sourceSha256": "8b6844d44d83bec7b9e2c3adab80e431aadd13fc7798864856ca3e09b565fa88",
+  "rows": [
+    {
+      "label": "Personality + public voice",
+      "color": "#f4b77f",
+      "chars": 2826,
+      "sections": [
+        {
+          "label": "Personality",
+          "chars": 1329
+        },
+        {
+          "label": "Public delivery instruction",
+          "chars": 1497
+        }
+      ],
+      "detail": "Both were present. The public direction asked for a mischievous, technically sharp conversational voice."
+    },
+    {
+      "label": "Memory + recent history",
+      "color": "#aa9fc8",
+      "chars": 33712,
+      "sections": [
+        {
+          "label": "Instruction 7: [RECENT OPERATIONS \u2014 your repo's last 48h, chronolog",
+          "chars": 5014
+        },
+        {
+          "label": "Instruction 11: [RECENT ENCOUNTERS \u2014 notification index time 2026-09",
+          "chars": 5502
+        },
+        {
+          "label": "Instruction 12: [PHI'S SYNTHESIZED IMPRESSION OF @zzstoatzzdevlog.bs",
+          "chars": 20603
+        },
+        {
+          "label": "Instruction 13: [RELEVANT MEMORIES \u2014 synthesized for this query]",
+          "chars": 1299
+        },
+        {
+          "label": "Instruction 17: [SELF \u2014 your own words, from your self record, writt",
+          "chars": 1294
+        }
+      ],
+      "detail": "Includes old replies, stored impressions, editorial feedback and SELF. Historical prose is being read again on this call."
+    },
+    {
+      "label": "Other instructions + skills",
+      "color": "#76a9aa",
+      "chars": 21406,
+      "sections": [
+        {
+          "label": "Operational rules",
+          "chars": 2742
+        },
+        {
+          "label": "Instruction 2",
+          "chars": 315
+        },
+        {
+          "label": "Instruction 3",
+          "chars": 66
+        },
+        {
+          "label": "Instruction 4",
+          "chars": 322
+        },
+        {
+          "label": "Instruction 5",
+          "chars": 858
+        },
+        {
+          "label": "Instruction 6",
+          "chars": 2654
+        },
+        {
+          "label": "Instruction 8",
+          "chars": 1445
+        },
+        {
+          "label": "Instruction 9",
+          "chars": 1110
+        },
+        {
+          "label": "Instruction 10",
+          "chars": 3221
+        },
+        {
+          "label": "Instruction 14",
+          "chars": 817
+        },
+        {
+          "label": "Instruction 15",
+          "chars": 904
+        },
+        {
+          "label": "Instruction 16",
+          "chars": 252
+        },
+        {
+          "label": "Instruction 18",
+          "chars": 463
+        },
+        {
+          "label": "Instruction 19",
+          "chars": 6237
+        }
+      ],
+      "detail": "Task notification context, clocks, goals, catalog and other runtime blocks. The initial user task is counted with the conversation."
+    },
+    {
+      "label": "Tool definitions",
+      "color": "#cba960",
+      "chars": 77873,
+      "sections": [
+        {
+          "label": "document_public_revision",
+          "chars": 651
+        },
+        {
+          "label": "search_encounters",
+          "chars": 451
+        },
+        {
+          "label": "read_encounter",
+          "chars": 329
+        },
+        {
+          "label": "search_memory",
+          "chars": 1248
+        },
+        {
+          "label": "read_memory",
+          "chars": 474
+        },
+        {
+          "label": "save_memory",
+          "chars": 1262
+        },
+        {
+          "label": "search_people",
+          "chars": 454
+        },
+        {
+          "label": "search_posts",
+          "chars": 961
+        },
+        {
+          "label": "read_web_page",
+          "chars": 795
+        },
+        {
+          "label": "web_search",
+          "chars": 1250
+        },
+        {
+          "label": "get_trending",
+          "chars": 440
+        },
+        {
+          "label": "coral_query",
+          "chars": 1065
+        },
+        {
+          "label": "manage_feeds",
+          "chars": 1439
+        },
+        {
+          "label": "read_feed",
+          "chars": 369
+        },
+        {
+          "label": "follow_user",
+          "chars": 518
+        },
+        {
+          "label": "get_own_posts",
+          "chars": 241
+        },
+        {
+          "label": "get_own_likes",
+          "chars": 252
+        },
+        {
+          "label": "check_urls",
+          "chars": 302
+        },
+        {
+          "label": "manage_account",
+          "chars": 779
+        },
+        {
+          "label": "check_infra",
+          "chars": 2414
+        },
+        {
+          "label": "write_bio",
+          "chars": 549
+        },
+        {
+          "label": "write_self",
+          "chars": 1159
+        },
+        {
+          "label": "persona",
+          "chars": 1052
+        },
+        {
+          "label": "write_personality",
+          "chars": 812
+        },
+        {
+          "label": "list_blog_posts",
+          "chars": 209
+        },
+        {
+          "label": "publish_blog_post",
+          "chars": 1042
+        },
+        {
+          "label": "list_goals",
+          "chars": 167
+        },
+        {
+          "label": "propose_goal_change",
+          "chars": 1481
+        },
+        {
+          "label": "update_goal_progress",
+          "chars": 1541
+        },
+        {
+          "label": "generate_image",
+          "chars": 930
+        },
+        {
+          "label": "post",
+          "chars": 2786
+        },
+        {
+          "label": "inspect_atlas",
+          "chars": 1424
+        },
+        {
+          "label": "inspect_record_media",
+          "chars": 1081
+        },
+        {
+          "label": "check_top_chicken",
+          "chars": 1710
+        },
+        {
+          "label": "update_chicken_strategy",
+          "chars": 1079
+        },
+        {
+          "label": "place_chicken_trade",
+          "chars": 1871
+        },
+        {
+          "label": "query_traces",
+          "chars": 991
+        },
+        {
+          "label": "list_skills",
+          "chars": 484
+        },
+        {
+          "label": "load_skill",
+          "chars": 870
+        },
+        {
+          "label": "read_skill_resource",
+          "chars": 1243
+        },
+        {
+          "label": "list_records",
+          "chars": 1246
+        },
+        {
+          "label": "describe_repo",
+          "chars": 407
+        },
+        {
+          "label": "get_record",
+          "chars": 514
+        },
+        {
+          "label": "query",
+          "chars": 1680
+        },
+        {
+          "label": "create_record",
+          "chars": 610
+        },
+        {
+          "label": "update_record",
+          "chars": 424
+        },
+        {
+          "label": "delete_record",
+          "chars": 335
+        },
+        {
+          "label": "whoami",
+          "chars": 309
+        },
+        {
+          "label": "pub_search",
+          "chars": 2103
+        },
+        {
+          "label": "pub_get_document",
+          "chars": 754
+        },
+        {
+          "label": "pub_find_similar",
+          "chars": 793
+        },
+        {
+          "label": "pub_discover_focal_post",
+          "chars": 955
+        },
+        {
+          "label": "pub_recommended_by_top_authors",
+          "chars": 1331
+        },
+        {
+          "label": "pub_describe_cluster",
+          "chars": 840
+        },
+        {
+          "label": "pub_author_profile",
+          "chars": 1016
+        },
+        {
+          "label": "semble_search",
+          "chars": 753
+        },
+        {
+          "label": "semble_get_schema",
+          "chars": 521
+        },
+        {
+          "label": "semble_execute",
+          "chars": 426
+        },
+        {
+          "label": "tangled_search",
+          "chars": 293
+        },
+        {
+          "label": "tangled_get_record",
+          "chars": 306
+        },
+        {
+          "label": "tangled_list_repos",
+          "chars": 255
+        },
+        {
+          "label": "tangled_get_repo",
+          "chars": 326
+        },
+        {
+          "label": "tangled_list_branches",
+          "chars": 370
+        },
+        {
+          "label": "tangled_list_tags",
+          "chars": 338
+        },
+        {
+          "label": "tangled_list_files",
+          "chars": 519
+        },
+        {
+          "label": "tangled_read_file",
+          "chars": 480
+        },
+        {
+          "label": "tangled_commit_log",
+          "chars": 452
+        },
+        {
+          "label": "tangled_compare",
+          "chars": 465
+        },
+        {
+          "label": "tangled_list_issues",
+          "chars": 484
+        },
+        {
+          "label": "tangled_get_issue",
+          "chars": 223
+        },
+        {
+          "label": "tangled_list_pulls",
+          "chars": 501
+        },
+        {
+          "label": "tangled_get_pull",
+          "chars": 405
+        },
+        {
+          "label": "tangled_list_pipelines",
+          "chars": 368
+        },
+        {
+          "label": "tangled_create_issue",
+          "chars": 629
+        },
+        {
+          "label": "tangled_create_pull",
+          "chars": 1542
+        },
+        {
+          "label": "tangled_update_issue",
+          "chars": 470
+        },
+        {
+          "label": "tangled_set_issue_state",
+          "chars": 320
+        },
+        {
+          "label": "tangled_get_pull_patch",
+          "chars": 394
+        },
+        {
+          "label": "tangled_get_pull_file",
+          "chars": 482
+        },
+        {
+          "label": "tangled_update_pull",
+          "chars": 973
+        },
+        {
+          "label": "tangled_set_pull_state",
+          "chars": 352
+        },
+        {
+          "label": "tangled_comment_on_issue",
+          "chars": 303
+        },
+        {
+          "label": "tangled_comment_on_pull",
+          "chars": 572
+        },
+        {
+          "label": "tangled_delete_issue",
+          "chars": 236
+        },
+        {
+          "label": "lexidraw_list",
+          "chars": 281
+        },
+        {
+          "label": "lexidraw_open",
+          "chars": 393
+        },
+        {
+          "label": "lexidraw_save",
+          "chars": 679
+        },
+        {
+          "label": "prefect_orientation",
+          "chars": 139
+        },
+        {
+          "label": "prefect_get_identity",
+          "chars": 298
+        },
+        {
+          "label": "prefect_get_dashboard",
+          "chars": 350
+        },
+        {
+          "label": "prefect_get_deployments",
+          "chars": 1284
+        },
+        {
+          "label": "prefect_get_flows",
+          "chars": 930
+        },
+        {
+          "label": "prefect_get_flow_runs",
+          "chars": 1334
+        },
+        {
+          "label": "prefect_get_flow_run_logs",
+          "chars": 641
+        },
+        {
+          "label": "prefect_get_task_runs",
+          "chars": 1241
+        },
+        {
+          "label": "prefect_get_work_pools",
+          "chars": 1097
+        },
+        {
+          "label": "prefect_read_events",
+          "chars": 1561
+        },
+        {
+          "label": "prefect_get_automations",
+          "chars": 1126
+        },
+        {
+          "label": "prefect_get_object_schema",
+          "chars": 284
+        },
+        {
+          "label": "prefect_docs_search_prefect",
+          "chars": 536
+        },
+        {
+          "label": "prefect_docs_get_release_notes",
+          "chars": 449
+        }
+      ],
+      "detail": "Names, descriptions and compact JSON parameter schemas. Internal Python signatures are excluded."
+    },
+    {
+      "label": "Conversation + source results",
+      "color": "#72c8e0",
+      "chars": 66258,
+      "sections": [
+        {
+          "label": "Message 1 \u00b7 user \u00b7 text",
+          "chars": 593
+        },
+        {
+          "label": "Message 2 \u00b7 assistant \u00b7 tool_call",
+          "chars": 76
+        },
+        {
+          "label": "Message 3 \u00b7 user \u00b7 tool_call_response",
+          "chars": 2130
+        },
+        {
+          "label": "Message 4 \u00b7 assistant \u00b7 tool_call",
+          "chars": 152
+        },
+        {
+          "label": "Message 4 \u00b7 assistant \u00b7 tool_call",
+          "chars": 54
+        },
+        {
+          "label": "Message 5 \u00b7 user \u00b7 tool_call_response",
+          "chars": 13004
+        },
+        {
+          "label": "Message 5 \u00b7 user \u00b7 tool_call_response",
+          "chars": 352
+        },
+        {
+          "label": "Message 6 \u00b7 assistant \u00b7 tool_call",
+          "chars": 76
+        },
+        {
+          "label": "Message 6 \u00b7 assistant \u00b7 tool_call",
+          "chars": 70
+        },
+        {
+          "label": "Message 7 \u00b7 user \u00b7 tool_call_response",
+          "chars": 2130
+        },
+        {
+          "label": "Message 7 \u00b7 user \u00b7 tool_call_response",
+          "chars": 867
+        },
+        {
+          "label": "Message 8 \u00b7 assistant \u00b7 tool_call",
+          "chars": 89
+        },
+        {
+          "label": "Message 8 \u00b7 assistant \u00b7 tool_call",
+          "chars": 81
+        },
+        {
+          "label": "Message 9 \u00b7 user \u00b7 tool_call_response",
+          "chars": 3247
+        },
+        {
+          "label": "Message 9 \u00b7 user \u00b7 tool_call_response",
+          "chars": 352
+        },
+        {
+          "label": "Message 10 \u00b7 assistant \u00b7 tool_call",
+          "chars": 83
+        },
+        {
+          "label": "Message 10 \u00b7 assistant \u00b7 tool_call",
+          "chars": 80
+        },
+        {
+          "label": "Message 10 \u00b7 assistant \u00b7 tool_call",
+          "chars": 68
+        },
+        {
+          "label": "Message 11 \u00b7 user \u00b7 tool_call_response",
+          "chars": 352
+        },
+        {
+          "label": "Message 11 \u00b7 user \u00b7 tool_call_response",
+          "chars": 42
+        },
+        {
+          "label": "Message 11 \u00b7 user \u00b7 tool_call_response",
+          "chars": 42
+        },
+        {
+          "label": "Message 12 \u00b7 assistant \u00b7 tool_call",
+          "chars": 90
+        },
+        {
+          "label": "Message 13 \u00b7 user \u00b7 tool_call_response",
+          "chars": 11295
+        },
+        {
+          "label": "Message 14 \u00b7 assistant \u00b7 tool_call",
+          "chars": 167
+        },
+        {
+          "label": "Message 15 \u00b7 user \u00b7 tool_call_response",
+          "chars": 13861
+        },
+        {
+          "label": "Message 16 \u00b7 assistant \u00b7 tool_call",
+          "chars": 167
+        },
+        {
+          "label": "Message 17 \u00b7 user \u00b7 tool_call_response",
+          "chars": 12503
+        },
+        {
+          "label": "Message 18 \u00b7 assistant \u00b7 tool_call",
+          "chars": 27
+        },
+        {
+          "label": "Message 19 \u00b7 user \u00b7 tool_call_response",
+          "chars": 3190
+        },
+        {
+          "label": "Message 20 \u00b7 assistant \u00b7 text",
+          "chars": 94
+        },
+        {
+          "label": "Message 20 \u00b7 assistant \u00b7 tool_call",
+          "chars": 454
+        },
+        {
+          "label": "Message 21 \u00b7 user \u00b7 tool_call_response",
+          "chars": 159
+        },
+        {
+          "label": "Message 22 \u00b7 assistant \u00b7 tool_call",
+          "chars": 150
+        },
+        {
+          "label": "Message 23 \u00b7 user \u00b7 tool_call_response",
+          "chars": 161
+        }
+      ],
+      "detail": "The actual exchange before publication: task, fetched sources, loaded instructions, prior model text and tool results. Missing hidden reasoning is not counted."
+    }
+  ],
+  "total": 202075
+}

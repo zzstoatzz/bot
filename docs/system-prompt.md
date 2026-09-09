@@ -4,17 +4,18 @@ what's actually injected into phi's context on every agent run, where it comes f
 
 phi is a [pydantic-ai](https://ai.pydantic.dev/) agent. its context is composed of three layers:
 
-1. a **static base** (personality + cross-cutting operational rules), set once at construction;
-2. a set of **dynamic system-prompt blocks** contributed by `@agent.system_prompt(dynamic=True)` functions — recomposed every run;
+1. a **personality and operational base**, rendered once per run;
+2. a set of **context blocks** registered through `@agent.instructions` and memoized within each run;
 3. **path-specific blocks** appended to the *user* message by the entry point (notifications / cycle / reflection), so they appear only on the path that needs them.
 
 tool definitions are surfaced separately by the framework — phi sees each tool's docstring and signature without us repeating them in the prompt.
 
-## 1. static base
+## 1. personality and operational base
 
-set in `PhiAgent.__init__`, refreshes on process restart only:
+registered in `PhiAgent.__init__` by `personality_instructions`, read once per run:
 
-- **personality** — `personalities/phi.md`, verbatim, prefixed "the following is your personality:".
+Personality is supplied by the per-run `personality_instructions` callback, using the newest PDS revision and falling back to the repository seed. See [authored personality revisions](#authored-personality-revisions).
+
 - **operational rules** — `_build_operational_instructions()`: cross-cutting constraints no single tool docstring can own (the posting/consent layer, memory provenance, the mention-consent allowlist, owner-like-as-approval, and the URIs-only-from-the-notifications-block rule).
 - **policies** — the same function renders phi's policy *norms* from `bot.core.policy.POLICY_SUMMARIES` (one line each for `uninvited-reply`, `bliss-attractor`, `pile-on`, `handle-hygiene`, `self-repeat`), plus a note that an independent judge reviews every `post` call before it executes. the judge alone reads the full `POLICIES` statute — phi holds the norm, the judge holds the letter (2026-08-07; the full text used to render here at ~1.9k chars). both dicts share the `PolicySlug` type and a test asserts full coverage. see [safety.md](safety.md).
 

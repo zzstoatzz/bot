@@ -23,40 +23,10 @@ def _read_profile(client: Client) -> Any:
 
 def _build_profile_data(current) -> dict:
     """Build a profile_data dict from the current profile, preserving all fields."""
-    profile_data: dict = {"$type": "app.bsky.actor.profile"}
-
-    if current.description:
-        profile_data["description"] = current.description
-    if current.display_name:
-        profile_data["displayName"] = current.display_name
-    if current.avatar:
-        profile_data["avatar"] = {
-            "$type": "blob",
-            "ref": {"$link": current.avatar.ref.link},
-            "mimeType": current.avatar.mime_type,
-            "size": current.avatar.size,
-        }
-    if current.banner:
-        profile_data["banner"] = {
-            "$type": "blob",
-            "ref": {"$link": current.banner.ref.link},
-            "mimeType": current.banner.mime_type,
-            "size": current.banner.size,
-        }
-
-    # Preserve existing self-labels
-    if current.labels:
-        try:
-            values = [{"val": lbl.val} for lbl in current.labels.values]
-            if values:
-                profile_data["labels"] = {
-                    "$type": "com.atproto.label.defs#selfLabels",
-                    "values": values,
-                }
-        except (AttributeError, TypeError):
-            pass  # no parseable labels on profile
-
-    return profile_data
+    return {
+        "$type": "app.bsky.actor.profile",
+        **current.model_dump(mode="json", by_alias=True, exclude_unset=True),
+    }
 
 
 def _toggle_status_marker(bio: str, is_online: bool) -> str:

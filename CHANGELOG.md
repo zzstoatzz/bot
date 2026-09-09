@@ -1,5 +1,11 @@
 # changelog
 
+## Voice calibration closeout
+
+The operator request panel now exposes the captured article request as character shares, with trace provenance and an explicit distinction from live context. Small private Terra trials established an accepted short-question direction using attributed reference exchanges. Adding our abstract disposition paragraph weakened that direction. The committed fixture preserves every draw, including failures; it is not a production personality or proof of longform quality. Normal runs remain controlled by `VOICE_RESET`.
+
+Profile edits now preserve the complete existing record, including pinned posts and fields unknown to our code. Startup already preserves the authored bio; stale documentation is corrected.
+
 ## Reply evidence for the classifier
 
 The public classifier was asked to judge a reply's contribution to an exchange
