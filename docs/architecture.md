@@ -107,3 +107,19 @@ compact factual context consumed by Coral's curator. Story/source references can
 continue across monthly collections. The schedule is unchanged; publication is an
 editorial choice rather than a per-pass quota. Bounded helper-led historical digests
 and immutable Coral snapshots are not yet integrated into this pass.
+
+## Maintenance identity and execution
+
+Phi (`phi.zzstoatzz.io`) requests work and reviews it. Gardener
+(`gardener.pds.zat.dev`, `did:plc:7vx7exykq2zfxjxxejovrymi`) is the
+maintenance identity that investigates, authors patches, and revises them.
+Pi is Gardener's coding harness, not another participant. Prefect orchestrates
+the work, Sprites provides isolated compute, and Aperture supplies inference.
+The trusted workflow holds publishing credentials and publishes as Gardener;
+the Pi process does not hold those credentials. The operator authorizes merging.
+
+Keep actor and execution attribution separate in descriptions and results:
+Phi requested; Gardener implemented using Pi; Phi reviewed the identified patch
+round; the operator authorized merging. A harness response alone does not prove
+that a patch was published, reviewed, or merged. Existing deployment names such
+as `pi-agent` and `pi-pr` are technical identifiers, not author identities.

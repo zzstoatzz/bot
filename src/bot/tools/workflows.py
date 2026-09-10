@@ -1,4 +1,4 @@
-"""Phi requests approved Prefect workflows; Pi executes them elsewhere."""
+"""Phi delegates approved maintenance work to Gardener through Prefect."""
 
 from typing import Annotated, Literal
 
@@ -29,7 +29,7 @@ def register(agent):
             str,
             Field(
                 min_length=1,
-                description="Self-contained task for Pi; include the facts and expected outcome",
+                description="Self-contained task for Gardener; include the facts and expected outcome",
             ),
         ],
         repo: Annotated[Repo, Field(description="Repository the workflow operates on")],
@@ -50,8 +50,9 @@ def register(agent):
     ) -> dict:
         """Queue an owner-authorized workflow and return its Prefect run ID.
 
-        Phi requests the work; Pi executes in a Sprite. Gardener publishes
-        proposed patches, Phi reviews them, and merging still requires a human.
+        Gardener (gardener.pds.zat.dev) investigates and proposes changes using
+        the Pi harness in a Sprite. Phi requests and reviews the work; the
+        trusted workflow publishes as Gardener. Merging requires the operator.
         Use prefect_get_flow_runs and prefect_get_flow_run_logs to follow the ID.
         Reuse request_key for retries so an uncertain response cannot duplicate work.
         """

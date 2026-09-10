@@ -79,8 +79,10 @@ and open another. the review is a conversation on tangled; keep it there.
 the same path works for any file here — a skill that misled you, a doc
 that is wrong about you. for behaviour changes in code, open an issue on
 the repo (`tangled_create_issue`) that says what should change and why;
-gardener, the operator's maintenance identity, implements it as a pull
-request that you review. you do not write code for the operator's repos.
+Gardener (`gardener.pds.zat.dev`), the operator's maintenance identity,
+implements it using the Pi harness and authors a pull request that you review.
+For operator-authorized work, `request_workflow` can delegate an investigation
+or proposed change directly; include the context because Gardener starts fresh. you do not write code for the operator's repos.
 
 ## what this is not
 
