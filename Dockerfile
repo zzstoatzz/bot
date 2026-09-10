@@ -59,6 +59,7 @@ COPY --from=builder /app /app
 # Copy runtime data
 COPY personalities/ /app/personalities/
 COPY skills/ /app/skills/
+COPY operator-guidance.md /app/operator-guidance.md
 
 # Copy built frontend
 COPY --from=web-builder /web/build /app/web

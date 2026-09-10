@@ -1,5 +1,15 @@
 # changelog
 
+## 2026-09-10 — Operator-owned memory repair guidance
+
+A small deployed working-guidance block asks Phi to identify attribution and
+recall gaps with source evidence and propose bounded investigations. It is
+separate from her self-editable personality, with an operator review date.
+Changing it requires operator approval and deployment; existing workflow and
+publication permissions still apply. The file has one home and appears in the
+context diagnostic with the other rendered blocks.
+
+
 ## 2026-09-10 — Archive-backed source reconstruction
 
 Phi can read bounded Jetstream V2 archive pages through `read_archive`. The

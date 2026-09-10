@@ -115,3 +115,9 @@ run and remain available for restoration. Operational rules remain separate.
 The architecture cockpit at `/architecture` uses a reviewed component manifest
 and an AST-derived source inventory. See `docs/architecture-map.md`. The existing
 runtime `own-source` skill explains inspecting and proposing updates to this model.
+
+`operator-guidance.md` contains short operator-owned working nudges and a review
+date. It is deployed into a separate prompt block; Phi may propose changes but
+operator approval is required before deployment. It does not belong in the live
+personality, SELF, or runtime skill instructions. Review or retire temporary
+notes at their stated review date; the date does not automatically remove them.

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import logging
 import time
+from pathlib import Path
 from typing import Any
 
 from bot.config import settings
@@ -51,3 +52,16 @@ async def get_operator_profile() -> dict[str, str] | None:
     _cache["profile"] = resolved
     _cache["fetched_at"] = now
     return resolved
+
+
+def get_operator_guidance_block() -> str:
+    """Render the operator-reviewed file shipped with this deployment."""
+    try:
+        text = Path("operator-guidance.md").read_text().strip()
+    except OSError:
+        logger.warning("operator guidance file unavailable in this deployment")
+        return "[OPERATOR WORKING GUIDANCE]\nGuidance unavailable; report the missing deployment file."
+    if not text:
+        logger.warning("operator guidance file is empty in this deployment")
+        return "[OPERATOR WORKING GUIDANCE]\nGuidance unavailable; the deployment file is empty."
+    return f"[OPERATOR WORKING GUIDANCE]\n{text}"

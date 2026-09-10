@@ -33,7 +33,7 @@ from bot.core.docket import get_docket_digest
 from bot.core.goals import list_goals as list_goal_records
 from bot.core.graze_client import GrazeClient
 from bot.core.mcp_guard import make_mcp_guard
-from bot.core.operator import get_operator_profile
+from bot.core.operator import get_operator_guidance_block, get_operator_profile
 from bot.core.owned_feeds import get_owned_feeds_block
 from bot.core.persona import get_persona_block
 from bot.core.personality import read_personality
@@ -491,6 +491,11 @@ class PhiAgent:
             handle = profile["handle"]
             did = profile["did"]
             return f"[OPERATOR]: {name} (@{handle}, {did})"
+
+        @_run_scoped
+        def inject_operator_guidance() -> str:
+            """Operator-reviewed working guidance, independent of profile lookup."""
+            return get_operator_guidance_block()
 
         @_run_scoped
         def inject_today() -> str:
