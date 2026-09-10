@@ -1,5 +1,15 @@
 # changelog
 
+## 2026-09-10 — Compact capability browser and distinct memory surfaces
+
+The capability index now stays beside a selected detail pane on desktop; phones
+open one detail at a time and restore list position and focus on return. The
+Mind sidebar separates compact conversation search, a preview of real atlas
+coordinates, and a short suggestions list. The preview shares the full atlas's
+record-kind palette. Search results keep names and handles together beside an
+avatar. Existing project UI references are recorded in the cockpit docs.
+
+
 ## 2026-09-10 — Mobile cockpit and current system evidence
 
 Capabilities now use a searchable, expanding list in the cockpit's shared

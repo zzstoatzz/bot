@@ -5,17 +5,20 @@
 
 	let { inline = false }: { inline?: boolean } = $props();
 
-
 	let open = $state(false);
 	let palette = $state<HTMLDialogElement>();
-	function openPalette(node: HTMLDialogElement) { node.showModal(); inputEl?.focus(); }
+	function openPalette(node: HTMLDialogElement) {
+		node.showModal();
+		inputEl?.focus();
+	}
 	let query = $state('');
 	let actors = $state<BskyAuthor[]>([]);
 	let selected = $state(0);
 	let searching = $state(false);
 	let inputEl = $state<HTMLInputElement | null>(null);
 
-	const TYPEAHEAD = 'https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead';
+	const TYPEAHEAD =
+		'https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead';
 
 	let debounceTimer: ReturnType<typeof setTimeout> | undefined;
 	let seq = 0;
@@ -47,7 +50,9 @@
 		debounceTimer = setTimeout(async () => {
 			const mySeq = ++seq;
 			try {
-				const res = await fetch(`${TYPEAHEAD}?q=${encodeURIComponent(q.trim())}&limit=8`);
+				const res = await fetch(
+					`${TYPEAHEAD}?q=${encodeURIComponent(q.trim())}&limit=8`,
+				);
 				if (!res.ok) return;
 				const data: { actors: BskyAuthor[] } = await res.json();
 				if (mySeq === seq) {
@@ -69,7 +74,7 @@
 			handle: actor.handle,
 			did: actor.did,
 			engaged: true,
-			payload: { handle: actor.handle, did: actor.did }
+			payload: { handle: actor.handle, did: actor.did },
 		});
 	}
 
@@ -99,7 +104,8 @@
 		window.addEventListener('keydown', handleGlobalKey);
 	});
 	onDestroy(() => {
-		if (typeof window !== 'undefined') window.removeEventListener('keydown', handleGlobalKey);
+		if (typeof window !== 'undefined')
+			window.removeEventListener('keydown', handleGlobalKey);
 	});
 </script>
 
@@ -112,13 +118,18 @@
 	aria-label="Search conversations"
 >
 	<span class="key mono">⌘K</span>
-	<span class="lbl">Conversations</span>
+	<span class="lbl"
+		>{inline ? 'Search by name or handle' : 'Conversations'}</span
+	>
 </button>
 
 {#if open}
-	<dialog bind:this={palette} use:openPalette oncancel={hide}
+	<dialog
+		bind:this={palette}
+		use:openPalette
+		oncancel={hide}
 		class="palette cut"
-		aria-label="find a person"
+		aria-label="Search conversations"
 		tabindex="-1"
 		onkeydown={handlePaletteKey}
 	>
@@ -132,12 +143,16 @@
 				spellcheck="false"
 				autocomplete="off"
 			/>
-			<button class="dismiss chrome" onclick={hide} aria-label="Close search">close</button>
+			<button class="dismiss chrome" onclick={hide} aria-label="Close search"
+				>close</button
+			>
 		</div>
 		{#if query.trim()}
 			<ul class="results" role="listbox">
 				{#if actors.length === 0}
-					<li class="empty">{searching ? 'Searching…' : 'No accounts found'}</li>
+					<li class="empty">
+						{searching ? 'Searching…' : 'No accounts found'}
+					</li>
 				{:else}
 					{#each actors as actor, i (actor.did)}
 						<li>
@@ -150,12 +165,19 @@
 								onmouseenter={() => (selected = i)}
 							>
 								{#if actor.avatar}
-									<img class="avatar" src={actor.avatar} alt="" loading="lazy" />
+									<img
+										class="avatar"
+										src={actor.avatar}
+										alt=""
+										loading="lazy"
+									/>
 								{:else}
 									<span class="avatar placeholder"></span>
 								{/if}
-								<span class="name">{actor.displayName || actor.handle}</span>
-								<span class="handle mono">@{actor.handle}</span>
+								<span class="identity"
+									><span class="name">{actor.displayName || actor.handle}</span
+									><span class="handle mono">@{actor.handle}</span></span
+								>
 							</button>
 						</li>
 					{/each}
@@ -198,6 +220,46 @@
 		border-radius: 0;
 		padding: 12px 16px;
 	}
+
+	.launcher.inline {
+		width: 100%;
+		margin: 0;
+		border: 1px solid #4a6977;
+		background: #0b1923;
+		box-shadow: inset 0 1px 2px #0006;
+		color: #cce4ee;
+		text-transform: none;
+		font: 15px var(--font-content);
+		padding: 12px;
+	}
+	.launcher.inline .key {
+		order: 2;
+		margin-left: auto;
+		color: #b9ced9;
+	}
+	.identity {
+		display: flex;
+		flex-direction: column;
+		gap: 3px;
+		min-width: 0;
+	}
+	.identity .handle {
+		margin-left: 0;
+		color: #a6c5d3;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.result {
+		min-height: 54px;
+	}
+	.result .avatar {
+		width: 32px;
+		height: 32px;
+	}
+	.palette input {
+		font-size: 16px;
+	}
 	.launcher:hover {
 		color: var(--hud-hot);
 		border-color: var(--hud-mid);
@@ -209,7 +271,10 @@
 		padding: 1px 5px;
 	}
 
-	.palette::backdrop { background: rgba(7, 9, 15, 0.75); backdrop-filter: blur(2px); }
+	.palette::backdrop {
+		background: rgba(7, 9, 15, 0.75);
+		backdrop-filter: blur(2px);
+	}
 	.palette {
 		margin: 0;
 		padding: 0;
@@ -321,9 +386,9 @@
 			display: none;
 		}
 		.palette {
-		margin: 0;
-		padding: 0;
-		color: var(--text);
+			margin: 0;
+			padding: 0;
+			color: var(--text);
 			top: 10vh;
 		}
 	}

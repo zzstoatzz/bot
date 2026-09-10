@@ -15,7 +15,7 @@ SPA: `ssr`/`prerender` disabled globally, unknown routes fall back to
 |---|---|
 | `/` | recent published activity, current goals, stored-memory lookup, and a separate atlas overlay. Published activity is explicitly distinguished from unrecorded encounters. The typeahead palette opens a person’s logbook and original sources, including web evidence and non-Bluesky AT records. Long citation lists collapse; missing sources and unavailable replacement history are explicit. |
 | `/docket` | daily promotion candidates from the docket flow |
-| `/capabilities` | searchable skills and native tools from `/api/skills` and `/api/abilities`, expanding inline. Partial reads and failures are explicit; MCP inventory is discovered separately during runs |
+| `/capabilities` | searchable skills and native tools from `/api/skills` and `/api/abilities`, with a compact index and a selected-detail pane. Phones show one view at a time; returning restores list position and focus. Partial reads and failures are explicit; MCP inventory is discovered separately during runs |
 | `/market` | current season, holdings, season-limited net worth, past-season results, and dated trades. Inspect the line chart directly by pointer, touch, or arrow keys. Missing quotes stay missing; historical buys do not fabricate current holdings. Reads the bot’s `/api/chicken/*` proxy. |
 | `/operator` | **operator override editor** — atproto OAuth login, write your `io.zzstoatzz.phi.override` record, see the live state phi obeys. see [../safety.md](../safety.md). current context (including working-guidance presence), tool use and public-check diagnostics follow the controls, with section links for mobile navigation. The September 8 voice capture is collapsed historical evidence. The **prompt cache** readout (`/api/cache`): one stacked bar per recent run — tokens read from cache / written at a premium / paid in full — plus collapse flags. public read, no auth |
 
@@ -33,6 +33,27 @@ The shared HUD and reading panels use the Metroid Prime-inspired amber/cyan
 palette, Saira Condensed chrome, Inter content, and JetBrains Mono references.
 Selected navigation has dark text on an amber surface; form controls have
 visible focus and touch targets. Operator diagnostics use the same palette.
+
+## UI references
+
+Before reshaping a surface, inspect the existing implementations:
+
+- `race38/docs/ui-rigor.md` and `web/ballot.ts`: primary controls stay together,
+  secondary editing collapses, obsolete requests cancel, and returning restores
+  the viewer’s position. The checkout is `~/tangled.org/zzstoatzz.io/race38`.
+- `typeahead/src/pages/home.ts` and `stats.ts`: compact search results and quiet
+  metadata. Use race38’s keyboard interaction rather than copying the demo’s
+  pointer-only result rows.
+- `noti/src/render/styles.ts` and `actors.ts`: a thin surface highlight, shallow
+  shadow, and compact avatar/name identity rows. Keep Phi’s own fonts and palette.
+- `coral/site/style.css`: give the visualization the space and disclose supporting
+  context around it. Pensieve’s `src/public/style.css` is another reference for
+  restrained controls and full-width mobile detail.
+
+The Mind atlas preview samples at most 600 real projected points and shares the
+full atlas’s record-kind colors. It opens the existing atlas, not a second graph
+implementation. Suggestions are a compact list; their full text remains in the
+logbook. Account browsing still loads only when opened and displays 12 at a time.
 
 ## oauth notes
 
