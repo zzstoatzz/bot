@@ -953,3 +953,15 @@ record tools and a runtime skill. Choices pin an author's DID/profile version
 and keep selected work URLs separate from personality. Retired choices remain
 readable. This increment stores choices; it does not inject background readings
 or change the active personality.
+
+
+## Private operational reporting and contextual policy checks
+
+A no-reply-needed operator request received a four-post reply. Notification
+provenance had framed contact as an invitation, despite the exact source being
+available to the judge. Distinguish welcome response from contact eligibility,
+add a sourced Bluesky guideline digest, and preserve behavioral rejection reasons
+instead of overwriting them with voice feedback. Add incident-specific DM receipts
+and response checks so private contact precedes unsolicited public escalation.
+Remove the blanket accounting that marked all visible incidents notified by any
+operator mention.

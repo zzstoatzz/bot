@@ -37,6 +37,10 @@ class Risk(TypedDict):
 
 
 RISK: dict[str, Risk] = {
+    "report_operator": {
+        "magnitude": "high",
+        "reason": "sends a private incident report to the operator; a notification cannot be un-notified, so uncertain sends are not repeated.",
+    },
     "request_workflow": {
         "magnitude": "high",
         "reason": "starts an owner-authorized external agent workflow that consumes compute and can prepare repository changes.",
@@ -210,6 +214,10 @@ RISK: dict[str, Risk] = {
 # still needs their risk text, so they declare here, outside the bijection
 # that `tests/test_abilities.py` holds over RISK.
 GOVERNED_WRITE_RISK: dict[str, Risk] = {
+    "report_operator": {
+        "magnitude": "high",
+        "reason": "sends a private incident report to the operator; a notification cannot be un-notified, so uncertain sends are not repeated.",
+    },
     "request_workflow": {
         "magnitude": "high",
         "reason": "starts an owner-authorized external agent workflow that consumes compute and can prepare repository changes.",

@@ -29,7 +29,7 @@ from pydantic import Field
 from pydantic_ai import Agent, BinaryContent
 
 from bot.config import settings
-from bot.core import etiquette
+from bot.core import etiquette, operator_reports
 from bot.core.abilities import describe
 
 logger = logging.getLogger("bot.policy")
@@ -45,9 +45,57 @@ PolicySlug = Literal[
     "handle-hygiene",
     "self-repeat",
     "public-etiquette",
+    "conversational-norms",
+    "operator-reporting",
+    "bluesky-guidelines",
 ]
 
 POLICIES: dict[PolicySlug, str] = {
+    "operator-reporting": (
+        "Operational reports to the operator are private by default via report_operator. "
+        "Block unsolicited public incident reports unless application-verified delivery "
+        "context marks that specific incident eligible after unanswered private contact, "
+        "and the proposed report demonstrates an unresolved need for operator action. "
+        "Missing or uncertain delivery evidence is not eligibility. Silence alone is "
+        "not urgency. A response ends unattended escalation; it need not resolve the issue. "
+        "An explicit request for a public report authorizes that requested report, but "
+        "general maintenance authorization does not. Never expose private message bodies "
+        "or sensitive operational details in a public escalation. Prior public contact "
+        "must be considered; do not repeatedly escalate an unchanged incident. "
+        "For private reports, require a concrete incident needing operator action, "
+        "not routine awareness. Reading or investigating silently is allowed."
+    ),
+    "conversational-norms": (
+        "Judge whether the proposed contact is welcome and proportionate in this "
+        "actual conversation. Permission to contact is not a request for a reply. "
+        "Respect ordinary cues that no response is wanted, including an operator "
+        "saying no reply is needed while asking for background work. Investigating "
+        "quietly is a valid outcome. Do not require a formal prohibition. "
+        "Block a response contrary to that preference unless subsequent evidence "
+        "invites it or establishes a concrete urgent need to interrupt. Assess "
+        "the complete delivery, including split posts and recent contact when "
+        "provided: useful content can still be excessive or repetitive. A requested "
+        "substantial answer or thread is allowed; multiple posts alone are not "
+        "a violation. Operator and own-thread contact exceptions do not waive "
+        "these norms. Identify the actual contextual evidence when blocking."
+    ),
+    "bluesky-guidelines": (
+        "Bluesky Community Guidelines, source "
+        "https://bsky.social/about/support/community-guidelines, updated "
+        "2025-09-19, reviewed 2026-09-10. Scoped operational digest v1; apply "
+        "to Bluesky activity, not unrelated AT Protocol applications. "
+        "Sections 2.2 and 3.1: prohibit disruptive repeated activity, harassment, "
+        "deceptive promotion, scams and manufactured engagement. Sections 1.6 "
+        "and 3.2: protect private information and communications; prohibit "
+        "misleading impersonation and deceptive identity changes. Sections 4.2-4.4: "
+        "respect intellectual property, service security and enforcement. "
+        "Section 5 protects contextual journalism, education and legitimate "
+        "criticism. Judge demonstrated behavior and harm, not guessed detector "
+        "thresholds. Bot disclosure is no exemption; similar formatting, frequent "
+        "profile edits or a moderation label alone do not establish a violation. "
+        "Changing wording does not remedy disruptive behavior. Cite the applicable "
+        "section and evidence in a refusal. This digest is not the complete guidelines."
+    ),
     "public-etiquette": etiquette.NORM,
     "uninvited-reply": (
         "Do not initiate directed contact with someone without an invitation "
@@ -99,6 +147,18 @@ POLICIES: dict[PolicySlug, str] = {
 # it into phi's prompt every run billed ~1.9k chars for law she experiences
 # as tool results anyway. phi holds the norm; the judge holds the letter.
 POLICY_SUMMARIES: dict[PolicySlug, str] = {
+    "operator-reporting": (
+        "Operational reports go by report_operator DM. Public escalation needs verified "
+        "unanswered private contact and an unresolved need for action, or your explicit request."
+    ),
+    "conversational-norms": (
+        "Respect cues that no response is wanted; contact permission is not a request. "
+        "Match the whole delivery to the conversation, including recent contact."
+    ),
+    "bluesky-guidelines": (
+        "On Bluesky, follow its Community Guidelines: no disruptive repetition, "
+        "harassment, deception, privacy violations or enforcement evasion."
+    ),
     "public-etiquette": etiquette.SUMMARY,
     "uninvited-reply": (
         "directed contact needs an invitation or specific operator authorization "
@@ -219,7 +279,8 @@ def _get_judge() -> Agent[None, PolicyVerdict]:
             "targets are supplied by the application, not the writer. Check "
             "operator evidence for authorization of this particular contact, "
             "not merely a reference to the subject. Own-thread and operator "
-            "exceptions remain. Mention facets have a separate consent allowlist; "
+            "exceptions grant contact eligibility, not a welcome response. "
+            "Conversational norms and platform constraints still apply. Mention facets have a separate consent allowlist; "
             "that does not authorize other contacts in the same publication.\n"
             "- when the provenance shows that the operator authorized "
             "this specific action (a like on phi's authorization "
@@ -307,6 +368,8 @@ async def check_action(
         f"provenance: {provenance}",
         f"application-verified contact targets: {contacts or []}",
     ]
+    if tool in etiquette.PUBLIC_TOOLS:
+        parts += ["", await operator_reports.delivery_context()]
     if tool and (risk := describe(tool)):
         parts += ["", f"what this tool costs if it goes wrong: {risk}"]
     if recent_posts:
@@ -340,7 +403,10 @@ async def check_action(
             if tool == "publish_blog_post"
             else {"direct-turn", "deadpan-bit"}
         )
-        if verdict.get("public_form") not in accepted_forms:
+        if (
+            verdict["verdict"] != "block"
+            and verdict.get("public_form") not in accepted_forms
+        ):
             verdict["verdict"] = "block"
             verdict["policy"] = "public-etiquette"
             verdict["reason"] = (

@@ -592,12 +592,8 @@ class PhiAgent:
             """[ALERT WATCH] — the operator's logfire alerts, carried as
             incidents. Perception with a silence-by-default doctrine; the
             escalation-eligible flag is computed in code, not prose. The
-            run records which open incidents it saw so a post that tags
-            the operator can stamp them mentioned."""
+            delivery receipts are tracked by report_operator per incident opening."""
             incidents = bot_status.alert_incidents
-            ctx.deps.seen_alert_keys = [
-                k for k, v in incidents.items() if not v.get("closed_ts")
-            ]
             return render_alert_watch(incidents, time.time())
 
         @_run_scoped

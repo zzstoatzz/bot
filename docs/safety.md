@@ -161,3 +161,28 @@ Missing authority is recorded in the existing public revision journal and
 returned to Phi before any post is written. Future delivery adapters must
 report their contact effects to this boundary rather than add policy exceptions
 for new interaction names.
+
+
+## Private operational reports
+
+Operational incidents requiring the operator's action use `report_operator`,
+which sends a Bluesky DM only to the configured owner DID. The tool checks the
+operator override and policy judge before sending. `/data/operator-reports.sqlite3`
+records the incident opening, attempted delivery, conversation/message receipt,
+and whether the operator subsequently responded. A send is reserved before the
+network call; uncertain delivery is held for investigation, never blindly retried.
+A reopened incident has a distinct identity. Private message bodies are not stored
+in this journal or included in public-action evidence.
+
+The public judge receives current delivery metadata. Six hours of unanswered
+private delivery permits considering public escalation only while the incident
+remains open and needs operator action. A response stops unattended escalation;
+it does not resolve the incident. Failed or incomplete chat-history reads do not
+prove silence. Explicit requests for public reports remain permitted. Normal
+mentions no longer mark every incident visible to the run as notified.
+
+`conversational-norms` applies alongside platform constraints and voice: contact
+eligibility does not imply a response is wanted. The exact parent message and
+complete split preview reach the judge. Behavioral refusal reasons survive the
+voice-form check. `bluesky-guidelines` is a versioned, sourced operational digest;
+it does not claim to reproduce all guidelines or identify proprietary detectors.

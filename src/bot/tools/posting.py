@@ -163,8 +163,9 @@ def _reply_provenance(uri: str, ctx_notifs: dict, root_uri: str = "") -> str:
         reason = entry.get("reason", "") or "unknown"
         return (
             f"reply target is in phi's current notification batch — "
-            f"@{author} engaged phi (reason: {reason}); phi was invited "
-            "into this thread."
+            f"@{author} generated a notification (reason: {reason}). "
+            "This establishes contact eligibility, not whether a reply is wanted; "
+            "judge that from the quoted source and conversational context."
         )
     parsed = _parse_at_uri(uri)
     did = parsed[0] if parsed else ""
@@ -503,8 +504,6 @@ def register(agent):
                     text, allowed_handles=allowed, **post_options
                 )
                 bot_status.record_response()
-                if f"@{settings.owner_handle}" in text:
-                    bot_status.record_operator_mention(ctx.deps.seen_alert_keys)
                 logger.info(f"posted: {text[:80]}")
                 return f"published: {result.uri}\ncid: {result.cid}" + warn_note
             except Exception as e:
@@ -558,8 +557,6 @@ def register(agent):
             return f"failed to post reply: {e}"
 
         bot_status.record_response()
-        if f"@{settings.owner_handle}" in text:
-            bot_status.record_operator_mention(ctx.deps.seen_alert_keys)
         target = f"@{author_handle}" if author_handle else in_reply_to
         logger.info(f"replied to {target}: {text[:80]}")
 

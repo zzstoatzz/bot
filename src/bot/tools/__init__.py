@@ -17,6 +17,7 @@ def register_all(agent, graze_client: GrazeClient):
         images,
         media,
         memory,
+        operator_reports,
         personality,
         posting,
         search,
@@ -26,6 +27,7 @@ def register_all(agent, graze_client: GrazeClient):
         workflows,
     )
 
+    operator_reports.register(agent)
     etiquette.register(agent)
     memory.register(agent)
     search.register(agent)

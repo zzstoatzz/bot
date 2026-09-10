@@ -62,9 +62,7 @@ async def fetch_alert_states() -> list[dict[str, Any]] | None:
             resp = await client.get("/v1/projects/")
             resp.raise_for_status()
             projects = [
-                p
-                for p in resp.json()
-                if not wanted or p.get("project_name") in wanted
+                p for p in resp.json() if not wanted or p.get("project_name") in wanted
             ]
             states: list[dict[str, Any]] = []
             for project in projects:
@@ -130,9 +128,10 @@ def parse_webhook(payload: Any) -> dict[str, Any] | None:
     detail = ""
     if rows:
         pairs = [f"{c}={v}" for c, v in zip(cols, rows[0])]
-        detail = " ".join(" ".join(pairs).split())[:240] or " ".join(
-            str(rows[:3]).split()
-        )[:240]
+        detail = (
+            " ".join(" ".join(pairs).split())[:240]
+            or " ".join(str(rows[:3]).split())[:240]
+        )
     return {
         "key": f"{project}:{alert_id}",
         "project": project,
@@ -218,8 +217,7 @@ def gate_firings(
     out: dict[str, dict[str, Any]] = {
         k: dict(v)
         for k, v in incidents.items()
-        if not v.get("closed_ts")
-        or now_ts - v["closed_ts"] < CLOSED_RETENTION_SECONDS
+        if not v.get("closed_ts") or now_ts - v["closed_ts"] < CLOSED_RETENTION_SECONDS
     }
     new_cursor = dict(cursor)
     for state in states:
@@ -334,10 +332,11 @@ def render_alert_watch(incidents: dict[str, dict[str, Any]], now_ts: float) -> s
         "(1) default is silence — an open incident here is yours to carry, "
         "not a prompt to speak; flapping, self-resolved, and known-cause "
         "firings get absorbed without a word. "
-        f"(2) only incidents marked ESCALATION-ELIGIBLE may reach the "
-        f"operator, via one {_owner_handle()} mention per incident — and "
-        "only when it looks like it needs their hands, not just their "
-        "awareness. never mention them twice for the same incident. "
+        "(2) only incidents marked ESCALATION-ELIGIBLE and needing the operator's "
+        "hands warrant a private report via report_operator with the exact incident key. "
+        "Check existing delivery before reporting. Public escalation requires verified "
+        "unanswered private contact and a continuing need for action; six hours "
+        "unanswered permits consideration, not automatic publication. "
         "(3) tuning observations ('this alert flaps but looks benign') "
         "belong in your daily reflection or retro, never a tag and never "
         "a standalone post.]"
@@ -349,15 +348,13 @@ def render_alert_watch(incidents: dict[str, dict[str, Any]], now_ts: float) -> s
         tally = f", {inc['count']} firings" if inc.get("count", 1) > 1 else ""
         detail = f" — {inc['detail']}" if inc.get("detail") else ""
         lines.append(
-            f"- {inc.get('project', '')}/{inc.get('name', key)}: firing, "
+            f"- [{key}] {inc.get('project', '')}/{inc.get('name', key)}: firing, "
             f"opened {age} ago{tally}{_escalation_flag(inc, now_ts)}{detail}"
         )
     if len(open_items) > RENDER_LIMIT:
         lines.append(f"- … and {len(open_items) - RENDER_LIMIT} more open")
     for key, inc in closed_items[:RENDER_LIMIT]:
-        ago = humanize_duration(
-            timedelta(seconds=max(0.0, now_ts - inc["closed_ts"]))
-        )
+        ago = humanize_duration(timedelta(seconds=max(0.0, now_ts - inc["closed_ts"])))
         tally = f" after {inc['count']} firings" if inc.get("count", 1) > 1 else ""
         lines.append(
             f"- {inc.get('project', '')}/{inc.get('name', key)}: quieted "

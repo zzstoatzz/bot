@@ -137,7 +137,7 @@ async def test_judge_failure_fails_closed_for_invited_public_text():
     assert note == ""
 
 
-def test_reply_provenance_batch_is_invited():
+def test_reply_provenance_batch_does_not_assume_response_is_wanted():
     notifs = {
         "at://did:plc:abc/app.bsky.feed.post/1": {
             "author_handle": "pds.dad",
@@ -145,7 +145,7 @@ def test_reply_provenance_batch_is_invited():
         }
     }
     p = _reply_provenance("at://did:plc:abc/app.bsky.feed.post/1", notifs)
-    assert "invited" in p
+    assert "not whether a reply is wanted" in p
     assert "@pds.dad" in p
 
 
@@ -411,3 +411,25 @@ def test_devlog_target_outside_batch_is_operator_even_if_profile_lookup_fails():
     assert "configured operator DID" in provenance
     assert "unprompted" not in provenance
     lookup.assert_not_called()
+
+
+async def test_behavioral_rejection_is_not_overwritten_by_voice(tmp_path):
+    from bot.core import etiquette, policy
+
+    rejected = {
+        "verdict": "block",
+        "policy": "conversational-norms",
+        "reason": "The operator asked for no reply.",
+        "public_form": "generic-quip",
+        "form_evidence": "Also contains a generic closing verdict.",
+    }
+    judge = SimpleNamespace(
+        run=AsyncMock(return_value=SimpleNamespace(output=rejected))
+    )
+    with (
+        patch.object(etiquette, "JOURNAL", tmp_path / "journal.sqlite3"),
+        patch.object(policy, "_get_judge", lambda: judge),
+    ):
+        result = await policy.check_action("reply", "no reply needed", tool="post")
+    assert result["policy"] == "conversational-norms"
+    assert result["reason"] == "The operator asked for no reply."

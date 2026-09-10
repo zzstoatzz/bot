@@ -50,7 +50,6 @@ class PhiDeps:
     # open alert-incident keys rendered into this run's context. a post
     # that @-mentions the operator stamps them mentioned — structural, so
     # the repeat-tag question is never left to phi's self-report.
-    seen_alert_keys: list[str] = field(default_factory=list)
     # the prompt that started this run. memory recall is keyed to this and
     # nothing else — the task cues the memory, the way a person's does.
     run_prompt: str = ""
@@ -189,7 +188,9 @@ def _format_episodic_results(results: list[dict]) -> list[str]:
         tags = f" [{', '.join(r['tags'])}]" if r.get("tags") else ""
         date = _short_date(r.get("created_at", ""))
         date_str = f" ({date})" if date else ""
-        parts.append(f"[note {r.get('id', 'unknown ID')}]{tags}{date_str} {r['content']}")
+        parts.append(
+            f"[note {r.get('id', 'unknown ID')}]{tags}{date_str} {r['content']}"
+        )
         parts.extend(f"  source: {uri}" for uri in r.get("source_uris", []))
     return parts
 
@@ -207,7 +208,9 @@ def _format_unified_results(results: list[dict], handle: str) -> list[str]:
             kind = r.get("kind", "unknown")
             parts.append(f"[@{handle} {kind}]{tag_str}{date_str} {content}")
         else:
-            parts.append(f"[note {r.get('id', 'unknown ID')}]{tag_str}{date_str} {content}")
+            parts.append(
+                f"[note {r.get('id', 'unknown ID')}]{tag_str}{date_str} {content}"
+            )
         parts.extend(f"  source: {uri}" for uri in r.get("source_uris", []))
     return parts
 
@@ -262,7 +265,9 @@ def _blocked_hosts(response: httpx.Response) -> list[str]:
     if not isinstance(body, dict) or body.get("error") != "blocked hosts":
         return []
     blocked = body.get("blocked")
-    return [u for u in blocked if isinstance(u, str)] if isinstance(blocked, list) else []
+    return (
+        [u for u in blocked if isinstance(u, str)] if isinstance(blocked, list) else []
+    )
 
 
 async def _check_services_impl() -> str:
