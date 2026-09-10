@@ -37,6 +37,10 @@ class Risk(TypedDict):
 
 
 RISK: dict[str, Risk] = {
+    "request_workflow": {
+        "magnitude": "high",
+        "reason": "starts an owner-authorized external agent workflow that consumes compute and can prepare repository changes.",
+    },
     "document_public_revision": {
         "magnitude": "low",
         "reason": "stores Phi’s exact private account of a rejected public attempt; does not publish or approve a draft.",
@@ -85,6 +89,10 @@ RISK: dict[str, Risk] = {
     "list_goals": {
         "magnitude": "none",
         "reason": "reads her goal records, which are also already summarised in her context every run.",
+    },
+    "read_archive": {
+        "magnitude": "none",
+        "reason": "reads bounded public archive pages; consumes archive bandwidth, but does not update memories or contact anyone.",
     },
     "query_traces": {
         "magnitude": "none",
@@ -202,6 +210,10 @@ RISK: dict[str, Risk] = {
 # still needs their risk text, so they declare here, outside the bijection
 # that `tests/test_abilities.py` holds over RISK.
 GOVERNED_WRITE_RISK: dict[str, Risk] = {
+    "request_workflow": {
+        "magnitude": "high",
+        "reason": "starts an owner-authorized external agent workflow that consumes compute and can prepare repository changes.",
+    },
     "document_public_revision": {
         "magnitude": "low",
         "reason": "stores Phi’s exact private account of a rejected public attempt; does not publish or approve a draft.",

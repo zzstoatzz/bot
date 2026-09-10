@@ -211,3 +211,20 @@ Missing/superseded targets are refused; the original text remains readable and
 source references are retained. Correction calls are serialized in Phi's process
 and recheck the target before writing; this is not a distributed compare-and-swap
 against external writers.
+
+## Historical source repair
+
+`read_archive` supplies bounded pages of public Jetstream V2 records from
+stream.waow.tech, across exact collections and one DID per call. Its
+`JETSTREAM_API_KEY` is held by the runtime, never supplied as a tool argument.
+`self-traces` explains when to use archive records, PDS state, or Logfire.
+Archive reads do not write memories, enqueue reviews, or grant contact authority.
+The reader pins a sealed snapshot and exposes continuation, errors, and coverage;
+bootstrap timestamps and delete compaction prevent claims of complete historical
+coverage. The v1 operational tail and notification processing are unchanged.
+
+Reads are serialized and limited to six calls per minute per process, 24 blocks,
+8 MiB downloaded, and 45 seconds per call. No automatic retries turn a 429 into
+a burst. Source records exceeding the output budget are explicitly omitted.
+Encounter-triggered context review and replacement of the Prefect summary writer
+are separate work, not effects of installing this reader.

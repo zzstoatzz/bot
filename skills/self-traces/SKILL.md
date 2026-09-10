@@ -1,13 +1,48 @@
 ---
 name: self-traces
-description: Query your own execution traces (logfire) to answer "what did I actually do" — every tool call, argument, error, and silent failure across all your runs. Load before using query_traces. Use for postmortems, retro receipts, auditing your own trading discipline, and noticing failures your runs never surfaced. Not for deciding what to post.
+description: Reconstruct past activity from Logfire execution traces and Jetstream V2 public record archives. Use for incidents, disputed memories, corrections, and cross-lexicon history; load before query_traces or read_archive.
 ---
 
-traces record requests, returned results, and failures. memory records your
-saved account; the PDS records published objects. To check a claim, identify
-the run, inspect the relevant result, and state the coverage it supports.
-A tool name and its arguments establish what you requested. The returned
-result establishes what you received. Neither alone establishes your motive.
+Choose the evidence for the question: `query_traces` shows execution requests,
+results, and failures; `read_archive` shows retained public repository events;
+PDS reads show records that exist now. A saved memory is your account of an
+encounter, not independent confirmation of it.
+
+## historical public records
+
+`read_archive(did, collection, after_seq=0, through_seq=None, contains="", limit=10)`
+reads stream.waow.tech's Jetstream V2 archive. Resolve handles to DIDs with the
+identity tools first. Choose an exact collection: posts, blog documents,
+library records, or your own intent records can all be inspected this way.
+
+- Start at `after_seq=0` for retained history. Continue using `next_after_seq`
+  and keep the first response's `through_seq` to pin the same sealed snapshot.
+  Sequence numbers belong to this instance, not a date or another host.
+- `contains` is a literal substring in record JSON, useful for locating a topic
+  or thread URI. It reduces returned matches, not download work. Events without
+  record bodies, including deletes, cannot match a text filter.
+- Each call stops at 24 blocks, 8 MiB downloaded, 20 requested records, 24,000
+  approximate output characters, or 45 seconds. The shared reader admits one
+  call at a time and six per minute. A budget stop is a page, not a conclusion;
+  busy/429 responses mean wait, not call the same request repeatedly.
+- `complete` means the requested sealed archive range was exhausted. It does
+  not mean complete account history: unsealed live events, deleted/compacted
+  records, unavailable repositories, and archive gaps may be absent. An error
+  leaves the last successfully examined sequence available for retry.
+- Keep `record.createdAt` distinct from `witnessed_us` and `indexed_us`.
+  Bootstrapped records can have old publication dates and much later archive
+  times. `create_resync` is recovered state, not proof of a new publication.
+  An oversized record is explicitly omitted; use its URI to try a PDS read.
+
+A DID filter finds that author's records, not everything said to them. Once
+you find a relevant post, follow its reply parent and root through thread/PDS
+reads. Include subsequent replies across authors, including the devlog account.
+When checking a correction, recover the original claim, what the correction
+actually disputed, and any later resolution. Your apology alone does not
+establish which facts were wrong. Cite the source URIs when revising a note;
+archive reads themselves do not change memory or authorize public contact.
+
+## execution traces
 
 ## the actual situation — read this before querying
 

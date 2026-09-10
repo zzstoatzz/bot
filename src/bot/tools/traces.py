@@ -6,6 +6,7 @@ across all her runs. The self-traces skill carries the wayfinding (span
 shapes, recipes, discipline); this module is just the pipe.
 """
 
+import json
 import logging
 from typing import Annotated
 
@@ -13,6 +14,7 @@ import httpx
 from pydantic import Field
 
 from bot.config import settings
+from bot.core.archive import read_archive_page
 
 logger = logging.getLogger("bot.tools.traces")
 
@@ -99,3 +101,66 @@ def register(agent):
         except Exception as e:
             logger.warning(f"query_traces failed: {e}")
             return f"trace query unavailable right now ({type(e).__name__})"
+
+    @agent.tool_plain
+    async def read_archive(
+        did: Annotated[
+            str,
+            Field(
+                description="Repository DID to inspect (resolve handles first).",
+                pattern=r"^did:[a-z]+:[A-Za-z0-9._:%-]+$",
+            ),
+        ],
+        collection: Annotated[
+            str,
+            Field(
+                description="Exact collection, e.g. app.bsky.feed.post. Other authors require their own read.",
+                pattern=r"^[A-Za-z][A-Za-z0-9.-]+\.[A-Za-z][A-Za-z0-9]+$",
+            ),
+        ],
+        after_seq: Annotated[
+            int,
+            Field(
+                ge=0,
+                description="Exclusive stream.waow.tech sequence cursor; 0 begins retained archive. Use returned next_after_seq to continue.",
+            ),
+        ] = 0,
+        through_seq: Annotated[
+            int | None,
+            Field(
+                ge=0,
+                description="Keep the first page's through_seq to pin the sealed snapshot across pages.",
+            ),
+        ] = None,
+        contains: Annotated[
+            str,
+            Field(
+                max_length=200,
+                description="Optional literal substring in record JSON; filters matches, not archive download work.",
+            ),
+        ] = "",
+        limit: Annotated[
+            int,
+            Field(ge=1, le=20, description="Maximum matching records in this page."),
+        ] = 10,
+    ) -> str:
+        """Read a bounded page of public historical repository records from Jetstream V2.
+
+        Load self-traces for coverage and thread reconstruction. Returns original
+        record data, archive times, and continuation state. No memory writes or
+        public actions. An incomplete page with no matches is not an empty history.
+        """
+        if not settings.jetstream_api_key:
+            return "archive access is not configured"
+        if through_seq is not None and through_seq < after_seq:
+            return "through_seq must be at least after_seq"
+        result = await read_archive_page(
+            settings.jetstream_api_key,
+            did=did,
+            collection=collection,
+            after_seq=after_seq,
+            through_seq=through_seq,
+            contains=contains,
+            limit=limit,
+        )
+        return json.dumps(result, ensure_ascii=False)

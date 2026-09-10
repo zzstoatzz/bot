@@ -1,5 +1,18 @@
 # changelog
 
+## 2026-09-10 — Archive-backed source reconstruction
+
+Phi can read bounded Jetstream V2 archive pages through `read_archive`. The
+extended `self-traces` skill distinguishes historical public records from
+execution traces and current PDS state, and follows corrections across authors.
+This addresses investigations where saved interaction pairs omit the later
+resolution. Pagination preserves the last examined sequence on failures;
+scan, output, concurrency, and request limits bound the work. No automatic
+memory rewriting or subscription changes accompany this capability.
+The release also records the workflow-request tool and pull-review provenance
+checks already running in production, preserving them across this deployment.
+
+
 ## Contact authority follows the recipient
 
 A discovered post was quoted because publication treated it as an exempt top-level post. The shared policy boundary now requires authority evidence for every application-derived contact target, independently of publication format. An invited parent cannot authorize an unrelated embedded target. Missing evidence blocks before the model judge and enters the existing revision journal; bot labels grant no permission.

@@ -226,6 +226,7 @@ dependencies = [
     { name = "anthropic" },
     { name = "atproto" },
     { name = "fastapi" },
+    { name = "libipld" },
     { name = "logfire", extra = ["fastapi"] },
     { name = "numpy" },
     { name = "openai" },
@@ -238,6 +239,7 @@ dependencies = [
     { name = "turbopuffer" },
     { name = "uvicorn" },
     { name = "websockets" },
+    { name = "zstandard" },
 ]
 
 [package.dev-dependencies]
@@ -253,6 +255,7 @@ requires-dist = [
     { name = "anthropic" },
     { name = "atproto", specifier = ">=0.0.71" },
     { name = "fastapi" },
+    { name = "libipld", specifier = ">=3" },
     { name = "logfire", extras = ["fastapi"] },
     { name = "numpy", specifier = ">=2.4.4" },
     { name = "openai" },
@@ -265,6 +268,7 @@ requires-dist = [
     { name = "turbopuffer" },
     { name = "uvicorn" },
     { name = "websockets", specifier = ">=15.0.1" },
+    { name = "zstandard", specifier = ">=0.23" },
 ]
 
 [package.metadata.requires-dev]
