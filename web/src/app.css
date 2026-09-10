@@ -12,6 +12,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@300;400;500;600&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@300;400&display=swap');
 
 :root {
+	color-scheme: dark;
 	/* ambient — never pure black, slight blue */
 	--bg-void: #07090f;
 	--bg-deep: #0d1119;
