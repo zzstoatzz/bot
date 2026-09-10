@@ -1044,6 +1044,25 @@ class PhiAgent:
                 logger.warning(f"episodic store after {label} failed: {e}")
         return summary
 
+    async def process_operator_dm(self, material: str, message_id: str) -> str:
+        """A private conversation, excluded from public memory extraction."""
+        return await self._run_agent(
+            label="operator-dm",
+            prompt=(
+                "You received private messages from the operator. Read the conversation "
+                "and decide what it needs, including silence. Use reply_operator_dm "
+                "if replying. Keep this conversation private; do not publish, forward, "
+                "or save its contents to public memory or PDS records without specific "
+                "authorization.\n[PRIVATE CONVERSATION]\n" + material
+            ),
+            deps=PhiDeps(
+                author_handle=settings.owner_handle,
+                memory=None,
+                private_message_id=message_id,
+                private_message_context=material,
+            ),
+        )
+
     async def process_notifications(
         self,
         notifications_context: dict,

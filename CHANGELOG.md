@@ -965,3 +965,9 @@ instead of overwriting them with voice feedback. Add incident-specific DM receip
 and response checks so private contact precedes unsolicited public escalation.
 Remove the blanket accounting that marked all visible incidents notified by any
 operator mention.
+
+
+Operator DM replies now reach the agent loop instead of serving only as an
+acknowledgement flag. Poll the existing operator conversation with durable incoming
+message deduplication and a private reply tool; exclude these runs from automatic
+public-memory extraction. Silence remains a valid completed turn.

@@ -47,9 +47,8 @@ class PhiDeps:
     # cache prefix intact; several blocks hit the network).
     run_cache: dict[str, str] = field(default_factory=dict)
     web_sources: dict[str, WebSourceCapture] = field(default_factory=dict)
-    # open alert-incident keys rendered into this run's context. a post
-    # that @-mentions the operator stamps them mentioned — structural, so
-    # the repeat-tag question is never left to phi's self-report.
+    private_message_id: str = ""
+    private_message_context: str = ""
     # the prompt that started this run. memory recall is keyed to this and
     # nothing else — the task cues the memory, the way a person's does.
     run_prompt: str = ""

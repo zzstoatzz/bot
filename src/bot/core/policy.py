@@ -62,8 +62,9 @@ POLICIES: dict[PolicySlug, str] = {
         "general maintenance authorization does not. Never expose private message bodies "
         "or sensitive operational details in a public escalation. Prior public contact "
         "must be considered; do not repeatedly escalate an unchanged incident. "
-        "For private reports, require a concrete incident needing operator action, "
-        "not routine awareness. Reading or investigating silently is allowed."
+        "For unsolicited private reports, require a concrete incident needing operator action, "
+        "not routine awareness. Replies to an incoming operator DM are ordinary private "
+        "conversation, not unsolicited incident reports. Reading or investigating silently is allowed."
     ),
     "conversational-norms": (
         "Judge whether the proposed contact is welcome and proportionate in this "

@@ -4,11 +4,13 @@ import time
 from typing import Annotated
 
 from pydantic import Field
+from pydantic_ai import RunContext
 
 from bot.core import operator_reports
 from bot.core.override import get_override, refusal_text
 from bot.core.policy import check_action
 from bot.status import bot_status
+from bot.tools._helpers import PhiDeps
 
 
 def register(agent):
@@ -61,3 +63,39 @@ def register(agent):
             return {
                 "error": "Private report status unavailable or delivery uncertain. Do not resend or escalate publicly until reconciled."
             }
+
+    @agent.tool
+    async def reply_operator_dm(
+        ctx: RunContext[PhiDeps],
+        text: Annotated[
+            str,
+            Field(
+                min_length=1,
+                max_length=1000,
+                description="Private reply to the current operator DM",
+            ),
+        ],
+    ) -> dict:
+        """Reply privately to the operator in the current DM conversation.
+
+        Silence is valid. One reply per incoming batch; an uncertain delivery is
+        held for inspection rather than sent again. Private context stays private.
+        """
+        if not ctx.deps.private_message_id:
+            return {"error": "This tool is only available in an operator DM run."}
+        override = await get_override()
+        if override["active"]:
+            return {"error": refusal_text(override)}
+        verdict = await check_action(
+            action=f"Private Bluesky reply to operator: {text}",
+            provenance=ctx.deps.private_message_context,
+            tool="reply_operator_dm",
+        )
+        if verdict["verdict"] != "allow":
+            return {"error": "Private reply withheld", "verdict": verdict}
+        try:
+            return await operator_reports.send_report(
+                f"dm-reply:{ctx.deps.private_message_id}", text
+            )
+        except Exception:
+            return {"error": "Delivery uncertain; do not resend."}

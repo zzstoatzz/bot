@@ -186,3 +186,12 @@ eligibility does not imply a response is wanted. The exact parent message and
 complete split preview reach the judge. Behavioral refusal reasons survive the
 voice-form check. `bluesky-guidelines` is a versioned, sourced operational digest;
 it does not claim to reproduce all guidelines or identify proprietary detectors.
+
+
+Operator DM replies are polled every 30 seconds from the existing one-to-one
+conversation, starting when private reporting began. Incoming message IDs are
+persisted after a successful run; pause/override prevents dispatch. The run uses
+`process_operator_dm` and `reply_operator_dm`, with private context excluded from
+the public notification/extraction pipeline and automatic episodic summaries.
+Private conversations remain visible in authorized operational traces. Responses
+are limited to one idempotent send per incoming batch. No response is required.

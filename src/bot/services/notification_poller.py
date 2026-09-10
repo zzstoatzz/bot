@@ -9,8 +9,10 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 import logfire
 
 from bot.config import settings
+from bot.core import operator_reports
 from bot.core.alert_watch import fetch_alert_states, gate_scoped
 from bot.core.atproto_client import BotClient
+from bot.core.override import get_override
 from bot.core.relay_watch import fetch_relay_states, is_relay_key, wake_material
 from bot.memory.encounters import ENCOUNTER_NAMESPACE
 from bot.services.encounter_recovery import recover_encounters
@@ -64,6 +66,8 @@ class NotificationPoller:
         self._next_alert_watch_poll = 0.0
         self._next_relay_watch_poll = 0.0
         self._next_review_poll = 0.0
+        self._next_dm_poll = 0.0
+        self._dm_task: asyncio.Task | None = None
 
     async def start(self) -> asyncio.Task:
         """Start polling for notifications."""
@@ -208,6 +212,13 @@ class NotificationPoller:
                 continue
             bot_status.record_tick()
 
+            if time.monotonic() >= self._next_dm_poll:
+                self._next_dm_poll = time.monotonic() + 30
+                if self._dm_task is None or self._dm_task.done():
+                    self._dm_task = asyncio.create_task(self._check_operator_messages())
+                    self._background_tasks.add(self._dm_task)
+                    self._dm_task.add_done_callback(self._background_tasks.discard)
+
             try:
                 if self._should_do_daily_post():
                     task = asyncio.create_task(self._maybe_daily_post())
@@ -258,6 +269,31 @@ class NotificationPoller:
             except asyncio.CancelledError:
                 logger.info("notification poller shutting down")
                 raise
+
+    async def _check_operator_messages(self):
+        try:
+            if (
+                bot_status.paused
+                or settings.voice_reset
+                or (await get_override())["active"]
+            ):
+                return
+            async with self._semaphore:
+                history, ids = await operator_reports.incoming_messages()
+                if not ids:
+                    return
+                material = "\n\n".join(
+                    f"{message['author']} [{message['id']}]: {message['text']}"
+                    for message in history
+                )
+                result = await self.handler.agent.process_operator_dm(material, ids[-1])
+                if result.startswith("operator-dm failed:"):
+                    self._next_dm_poll = time.monotonic() + 300
+                    logger.error("operator DM run failed; incoming messages retained")
+                    return
+                operator_reports.mark_messages_handled(ids)
+        except Exception as error:
+            logger.error("operator DM check failed: %s", type(error).__name__)
 
     async def _check_review_comments(self):
         """Wake phi for review comments on her pull requests that jetstream

@@ -156,3 +156,68 @@ async def delivery_context() -> str:
                 f"{key}: private delivery/response check failed; public escalation ineligible."
             )
     return "\n".join(lines)
+
+
+async def incoming_messages() -> tuple[list[dict], list[str]]:
+    """Read the existing operator conversation since private reporting began."""
+    with connect() as db:
+        db.execute("CREATE TABLE IF NOT EXISTS inbox (id TEXT PRIMARY KEY)")
+        start = db.execute(
+            "SELECT MIN(sent) FROM reports WHERE state='sent'"
+        ).fetchone()[0]
+        handled = {row[0] for row in db.execute("SELECT id FROM inbox")}
+    if start is None:
+        return [], []
+    available = await asyncio.to_thread(
+        chat().get_convo_availability, {"members": [settings.owner_did]}
+    )
+    if not available.convo:
+        return [], []
+    cursor = None
+    history = []
+    for _ in range(10):
+        params = {"convo_id": available.convo.id, "limit": 100}
+        if cursor:
+            params["cursor"] = cursor
+        page = await asyncio.to_thread(chat().get_messages, params)
+        reached_start = False
+        for message in page.messages:
+            if not getattr(message, "text", None) or not getattr(
+                message, "sender", None
+            ):
+                continue
+            sent = datetime.fromisoformat(
+                message.sent_at.replace("Z", "+00:00")
+            ).timestamp()
+            if sent < start:
+                reached_start = True
+                continue
+            history.append(
+                {
+                    "id": message.id,
+                    "author": message.sender.did,
+                    "text": message.text,
+                    "sent": sent,
+                }
+            )
+        if reached_start or not page.cursor:
+            break
+        cursor = page.cursor
+    else:
+        raise RuntimeError("Private history incomplete; refusing partial dispatch")
+    history.sort(key=lambda message: message["sent"])
+    unseen = [
+        message["id"]
+        for message in history
+        if message["author"] == settings.owner_did and message["id"] not in handled
+    ]
+    if not unseen:
+        return [], []
+    # Keep every new message, plus a bounded preceding conversation window.
+    first = next(i for i, message in enumerate(history) if message["id"] == unseen[0])
+    return history[max(0, first - 10) :], unseen
+
+
+def mark_messages_handled(ids: list[str]) -> None:
+    with connect() as db:
+        db.executemany("INSERT OR IGNORE INTO inbox VALUES (?)", [(id,) for id in ids])
