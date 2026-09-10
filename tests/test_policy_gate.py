@@ -433,3 +433,31 @@ async def test_behavioral_rejection_is_not_overwritten_by_voice(tmp_path):
         result = await policy.check_action("reply", "no reply needed", tool="post")
     assert result["policy"] == "conversational-norms"
     assert result["reason"] == "The operator asked for no reply."
+
+
+async def test_public_judge_sees_private_origin(tmp_path):
+    from bot.core import etiquette, policy
+
+    judge = SimpleNamespace(
+        run=AsyncMock(
+            return_value=SimpleNamespace(
+                output={
+                    "verdict": "allow",
+                    "public_form": "direct-turn",
+                    "form_evidence": "requested publication",
+                }
+            )
+        )
+    )
+    token = policy.private_conversation.set("Please keep this exchange private.")
+    try:
+        with (
+            patch.object(etiquette, "JOURNAL", tmp_path / "journal.sqlite3"),
+            patch.object(policy, "_get_judge", lambda: judge),
+        ):
+            await policy.check_action("public post", "operator present", tool="post")
+        prompt = judge.run.await_args.args[0]
+        assert "PRIVATE operator DM" in prompt
+        assert "Please keep this exchange private." in prompt
+    finally:
+        policy.private_conversation.reset(token)

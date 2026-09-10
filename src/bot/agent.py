@@ -37,6 +37,7 @@ from bot.core.operator import get_operator_guidance_block, get_operator_profile
 from bot.core.owned_feeds import get_owned_feeds_block
 from bot.core.persona import get_persona_block
 from bot.core.personality import read_personality
+from bot.core.policy import private_conversation
 from bot.core.prior_coverage import coverage_note
 from bot.core.public_memory import get_public_memory_block
 from bot.core.recent_flow_mentions import get_recent_flow_mentions_block
@@ -994,6 +995,9 @@ class PhiAgent:
             RunEvidence(deps.memory.client, label) if deps and deps.memory else None
         )
         token = current_run.set(evidence)
+        private_token = private_conversation.set(
+            deps.private_message_context if deps else ""
+        )
         try:
             if evidence:
                 await run_status(evidence, "started")
@@ -1022,6 +1026,7 @@ class PhiAgent:
             # a failed run still spent (and may have cached) input tokens
             cache_monitor.end_run()
             current_run.reset(token)
+            private_conversation.reset(private_token)
 
         if evidence:
             await run_status(evidence, "completed")

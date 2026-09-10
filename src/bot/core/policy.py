@@ -23,6 +23,7 @@ Other notification-batch actions retain their existing fail-open behavior.
 """
 
 import logging
+from contextvars import ContextVar
 from typing import Annotated, Literal, NotRequired, TypedDict
 
 from pydantic import Field
@@ -33,6 +34,7 @@ from bot.core import etiquette, operator_reports
 from bot.core.abilities import describe
 
 logger = logging.getLogger("bot.policy")
+private_conversation: ContextVar[str] = ContextVar("private_conversation", default="")
 
 # adding a policy is a two-line change: extend the Literal, add the dict
 # entry. the dict is typed against the Literal so the type checker keeps
@@ -370,6 +372,13 @@ async def check_action(
         f"application-verified contact targets: {contacts or []}",
     ]
     if tool in etiquette.PUBLIC_TOOLS:
+        if private_conversation.get():
+            parts += [
+                "This action was proposed during a PRIVATE operator DM conversation. "
+                "The DM is not public authorization unless it specifically requests "
+                "this publication. Do not disclose its contents merely to answer it.",
+                private_conversation.get(),
+            ]
         parts += ["", await operator_reports.delivery_context()]
     if tool and (risk := describe(tool)):
         parts += ["", f"what this tool costs if it goes wrong: {risk}"]
