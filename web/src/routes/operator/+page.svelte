@@ -106,7 +106,7 @@
 				{live ? (live.active ? 'Operator override active' : 'Operator override off') : (loaded ? 'Override status unavailable' : 'Reading status…')}
 			</span>
 		</header>
-		<VoiceRequest />
+		<nav class="operator-nav" aria-label="Operator sections"><a href="#control-heading">Controls</a><a href="#current-context">Context</a><a href="#tool-activity">Tool use</a><a href="#public-checks">Public checks</a></nav>
 		<section class="control-panel" aria-labelledby="control-heading">
 		<h2 id="control-heading">Public action control</h2>
 
@@ -170,14 +170,21 @@
 		{/if}
 
 		</section>
-		<ToolUsageBoard />
-		<EtiquetteBoard />
-		<ContextBudget />
+		<div id="current-context"><ContextBudget /></div>
+		<div id="tool-activity"><ToolUsageBoard /></div>
+		<div id="public-checks"><EtiquetteBoard /></div>
 		<CachePanel />
+		<details class="historical"><summary>Voice investigation · September 8</summary><p>A saved experiment from an earlier release. Current context is shown above.</p><VoiceRequest /></details>
 	</div>
 </main>
 
 <style>
+ .operator-nav { display:flex; flex-wrap:wrap; gap:8px 20px; margin:0 0 24px; }
+ .operator-nav a { display:flex; align-items:center; min-height:44px; }
+ #current-context, #tool-activity, #public-checks, #control-heading { scroll-margin-top:150px; }
+ .historical { border-top:1px solid #45616b; margin-top:24px; padding-top:16px; }
+ .historical > summary { min-height:44px; cursor:pointer; color:var(--scan-hot); }
+
 	.operator-page {
 		z-index: 1;
 	}

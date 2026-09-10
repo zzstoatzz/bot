@@ -107,7 +107,7 @@
 					<div class="section-heading">
 						<div>
 							<h2>Recent activity</h2>
-							<p class="muted">Published posts, notes, and saved links.</p>
+							<p class="muted">Top-level posts, their threads, and saved links.</p>
 						</div>
 					</div>
 					{#if states.activity === 'loading'}<p class="empty" role="status">

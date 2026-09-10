@@ -110,7 +110,7 @@
 				>{loading ? 'Refreshing…' : 'Refresh'}</button
 			>
 		</header>
-		<p class="muted" role="status" aria-live="polite">
+		<p class="muted refresh-status" role="status" aria-live="polite">
 			{loading ? 'Checking Top Chicken…' : refreshMessage}{#if updated}{' '}
 				Checked {date(updated.getTime() / 1000, true)}.{/if}
 		</p>
@@ -192,8 +192,10 @@
 										: price(p.avg_price_subc)}
 								</p>
 								<p class="muted">
-									Round {p.round_id ?? p.round ?? 'unavailable'}
+									Round {p.round_id || p.round ? roundDate(p.round_id ?? p.round ?? '') : 'unavailable'}
 								</p>
+							{#if p.value_subc != null}<p>Current value {money(p.value_subc)}</p>{/if}
+								{#if p.unrealized_subc != null}<p class:positive={p.unrealized_subc > 0} class:negative={p.unrealized_subc < 0}>{money(p.unrealized_subc, true)} unrealized</p>{/if}
 							</article>{/each}
 					</div>{/if}
 			</section>
@@ -289,6 +291,7 @@
 </main>
 
 <style>
+ .reading-page .refresh-status { margin-bottom:18px; }
 	.season-summary {
 		border-top: 0;
 		padding-top: 24px;

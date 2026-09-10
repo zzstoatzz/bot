@@ -1,5 +1,23 @@
 # changelog
 
+## 2026-09-10 — Mobile cockpit and current system evidence
+
+Capabilities now use a searchable, expanding list in the cockpit's shared
+reading style. Failed or malformed inventory reads are visible, with partial
+results retained. Operator controls and current context precede the collapsed
+historical voice experiment. The context panel identifies working guidance in
+its snapshot.
+
+Memory sources now include web links and non-Bluesky AT records; large citation
+sets collapse, and missing citations remain explicit. The activity feed names
+its top-level-post scope. The architecture model includes archive reads,
+operator guidance and outbound workflow requests, and opens on connections
+rather than the entire component directory.
+
+The market was discarding live position identity and average price because it
+expected trade-shaped field names. The boundary now reads the position fields
+returned by Top Chicken and displays available value and unrealized gain/loss.
+
 ## 2026-09-10 — Operator-owned memory repair guidance
 
 A small deployed working-guidance block asks Phi to identify attribution and

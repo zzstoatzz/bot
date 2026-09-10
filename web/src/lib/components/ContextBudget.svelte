@@ -96,6 +96,7 @@
 		return 'other';
 	}
 
+	const guidance = $derived(data?.sections.find(section => section.name === 'inject_operator_guidance'));
 	const window = $derived(data?.model.max_input_tokens ?? null);
 	const prompt = $derived(data?.totals.prompt ?? 0);
 	const counted = $derived(data?.counting === 'exact' ? 'counted' : 'estimated');
@@ -169,6 +170,7 @@
 		{#if err}
 			<p class="status" role="status">Refresh failed. Showing the previous snapshot. {err}</p>
 		{/if}
+		<p class="guidance-status">Operator working guidance: {guidance ? (guidance.error ? 'could not be rendered' : `${guidance.tokens.toLocaleString()} tokens in this snapshot`) : 'not listed in this snapshot'}. <a href="/diagnostic">Read the rendered context</a>.</p>
 		<div class="headline">
 			{#if window !== null}
 				<span class="big">{pctLabel(prompt, window)}</span>
@@ -396,6 +398,7 @@
 </section>
 
 <style>
+ .guidance-status { color:var(--text-mid); line-height:1.6; margin:16px 0; } .guidance-status a { color:var(--scan-hot); }
 	.ctx {
 		margin-top: 2.5rem;
 		padding-top: 1.5rem;

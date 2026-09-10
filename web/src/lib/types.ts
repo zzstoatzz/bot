@@ -304,6 +304,8 @@ export interface ChickenPosition {
 	shares?: number;
 	avg_price_subc?: number;
 	cost_subc?: number;
+	value_subc?: number;
+	unrealized_subc?: number;
 }
 
 export interface ChickenTrader {

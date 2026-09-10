@@ -13,11 +13,11 @@ SPA: `ssr`/`prerender` disabled globally, unknown routes fall back to
 
 | route | what |
 |---|---|
-| `/` | recent published activity, current goals, stored-memory lookup, and a separate atlas overlay. Published activity is explicitly distinguished from unrecorded encounters. The typeahead palette opens a person’s logbook and original sources. |
+| `/` | recent published activity, current goals, stored-memory lookup, and a separate atlas overlay. Published activity is explicitly distinguished from unrecorded encounters. The typeahead palette opens a person’s logbook and original sources, including web evidence and non-Bluesky AT records. Long citation lists collapse; missing sources and unavailable replacement history are explicit. |
 | `/docket` | daily promotion candidates from the docket flow |
-| `/capabilities` | phi's registered tools, from `/api/abilities` (ground truth, not hand-curated) |
+| `/capabilities` | searchable skills and native tools from `/api/skills` and `/api/abilities`, expanding inline. Partial reads and failures are explicit; MCP inventory is discovered separately during runs |
 | `/market` | current season, holdings, season-limited net worth, past-season results, and dated trades. Inspect the line chart directly by pointer, touch, or arrow keys. Missing quotes stay missing; historical buys do not fabricate current holdings. Reads the bot’s `/api/chicken/*` proxy. |
-| `/operator` | **operator override editor** — atproto OAuth login, write your `io.zzstoatzz.phi.override` record, see the live state phi obeys. see [../safety.md](../safety.md). below it, the **prompt cache** readout (`/api/cache`): one stacked bar per recent run — tokens read from cache / written at a premium / paid in full — plus collapse flags. public read, no auth |
+| `/operator` | **operator override editor** — atproto OAuth login, write your `io.zzstoatzz.phi.override` record, see the live state phi obeys. see [../safety.md](../safety.md). current context (including working-guidance presence), tool use and public-check diagnostics follow the controls, with section links for mobile navigation. The September 8 voice capture is collapsed historical evidence. The **prompt cache** readout (`/api/cache`): one stacked bar per recent run — tokens read from cache / written at a premium / paid in full — plus collapse flags. public read, no auth |
 
 `OverrideBanner` renders cockpit-wide when the operator's override is
 active (public read of the record, ~60s cadence), linking to `/operator`.

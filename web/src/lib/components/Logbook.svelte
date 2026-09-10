@@ -2,6 +2,7 @@
 	import { logbook } from '$lib/state.svelte';
 	import { relativeWhen, whenTooltip } from '$lib/time';
 	import { memoryDate, exchangePreview } from '$lib/person-memory';
+	import MemorySources from './MemorySources.svelte';
 	import { PHI_HANDLE, PHI_DID, OWNER_HANDLE, getUserView } from '$lib/api';
 	import ViewIn from './ViewIn.svelte';
 	import type {
@@ -39,14 +40,6 @@
 	function repoFromUri(uri: string): string {
 		const parts = uri.replace(/^at:\/\//, '').split('/');
 		return parts[0] ?? PHI_DID;
-	}
-
-	function bskyPostUrl(uri: string): string | null {
-		const collection = collectionFromUri(uri);
-		const repo = repoFromUri(uri);
-		const rkey = rkeyFromUri(uri);
-		if (collection !== 'app.bsky.feed.post' || !repo || !rkey) return null;
-		return `https://bsky.app/profile/${repo}/post/${rkey}`;
 	}
 
 	function atlasKindCounts(atlas: Atlas | null | undefined): [string, number][] {
@@ -232,7 +225,7 @@
 				{#if userView.summary}
 					<section class="person-section orientation">
 						<h2>Phi’s summary</h2>
-						<p class="person-date">Written {memoryDate(userView.summary.created_at)}. May be out of date.</p>
+						<p class="person-date">Written {memoryDate(userView.summary.created_at)}. This summary may not include later corrections.</p>
 						<details class="summary-reading">
 							<summary aria-label="Toggle full summary"><span class="summary-preview">{userView.summary.content}</span><span class="read-toggle"><span class="read-open">Read full summary</span><span class="read-close">Close full summary</span></span></summary>
 							<p class="memory-prose">{userView.summary.content}</p>
@@ -243,7 +236,7 @@
 					<section class="person-section"><h2>Recent notes</h2>
 						<ul class="memory-notes">{#each userView.recent_observations as note}<li>
 							<p>{note.content}</p><div class="memory-links"><span>Saved {memoryDate(note.created_at)}</span>
-							{#each note.source_uris as uri, i}{@const link = bskyPostUrl(uri)}{#if link}<a href={link} target="_blank" rel="noopener">{note.source_uris.length === 1 ? 'Source' : `Post ${i + 1}`} ↗</a>{/if}{/each}</div>
+							<MemorySources uris={note.source_uris} /></div>
 						</li>{/each}</ul>
 					</section>
 				{/if}
@@ -255,13 +248,13 @@
 						{#each userView.recent_interactions as exchange (exchange.id)}<details class="conversation">
 							<summary><span class="person-date">Saved {memoryDate(exchange.created_at)}</span><span>{exchangePreview(exchange.content)}</span></summary>
 							<p class="memory-prose">{exchange.content}</p>
-							<div class="memory-links">{#each exchange.source_uris as uri, i}{@const link = bskyPostUrl(uri)}{#if link}<a href={link} target="_blank" rel="noopener">Post {i + 1} ↗</a>{/if}{/each}</div>
+							<div class="memory-links"><MemorySources uris={exchange.source_uris} /></div>
 						</details>{/each}
 					{/if}
 				</section>
 				{/if}
 				{#if userView.counts.observation || userView.counts.interaction || userView.counts.summary}
-				<details class="memory-coverage"><summary>About this history</summary>
+				<details class="memory-coverage"><summary>About this history</summary><p>Replacement history is not available in this view yet. Dates show when notes were saved, not necessarily when events happened.</p>
 					<p>{userView.counts.observation} notes and {userView.counts.interaction} exchanges returned from saved memory. These counts aren’t a complete history of interactions.</p>
 					{#if userView.first_seen}<p>Earliest saved record: {memoryDate(userView.first_seen)}.</p>{/if}
 					{#if userView.last_seen}<p>Latest saved record: {memoryDate(userView.last_seen)}.</p>{/if}
@@ -643,7 +636,6 @@
 	.memory-notes li:last-child { border: 0; }
 	.memory-notes p { margin: 0 0 6px; font-size: 14px; line-height: 1.6; }
 	.memory-links { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; color: var(--text-dim); font-size: 12px; }
-	.memory-links a { color: var(--scan-hot); display: inline-flex; align-items: center; min-height: 44px; }
 	.conversation { border-bottom: 1px solid var(--line-dim); }
 	.conversation summary { padding: 14px 22px 14px 0; cursor: pointer; font-size: 14px; line-height: 1.5; }
 	.conversation summary .person-date { display: block; margin-bottom: 5px; }

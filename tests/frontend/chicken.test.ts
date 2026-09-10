@@ -135,3 +135,13 @@ test('missing history stays disconnected, including a freshly checked wallet', (
 	]);
 	assert.deepEqual(observationSegments([]), []);
 });
+
+test('live position field names preserve account identity and sub-cent prices', () => {
+	const parsed = parseTrader({ ...wallet, positions: [{ round: '2026-09-09', contender: 'did:plc:grace', handle: 'gracekind.net', shares: 2000, avg_subc: 95, value_subc: 40000, unrealized_subc: -150000 }] });
+	const position = parsed.positions[0];
+	assert.equal(position.contender_handle, 'gracekind.net');
+	assert.equal(position.contender_did, 'did:plc:grace');
+	assert.equal(price(position.avg_price_subc ?? NaN), '0.95¢');
+	assert.equal(money(position.value_subc ?? NaN), '$4.00');
+	assert.equal(money(position.unrealized_subc ?? NaN, true), '-$15.00');
+});

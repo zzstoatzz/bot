@@ -50,8 +50,8 @@
       "label": "Prefect & workflows",
       "lane": 0,
       "row": 4,
-      "summary": "External triggers and alerts",
-      "details": "my-prefect-server invokes control/trigger endpoints for focused passes. Workflow observations and alerts enter context; authenticated Prefect MCP access is conditional. A review verdict does not itself merge a pull: the external merge flow retains operator approval.",
+      "summary": "Requests, execution and returned reviews",
+      "details": "Phi can request an operator-authorized investigation or proposed patch. Prefect runs Pi in a Sprite; Gardener publishes proposals and Phi can review them. Merging requires a human. External flows also trigger focused passes and deliver observations and alerts. Workflow-request credentials are separate from optional Prefect MCP credentials.",
       "sources": [
         {
           "path": "src/bot/main.py",
@@ -70,6 +70,10 @@
           "repo": "my-prefect-server",
           "path": "flows/merge_approved.py",
           "symbol": ""
+        },
+        {
+          "path": "src/bot/tools/workflows.py",
+          "symbol": "request_workflow"
         }
       ],
       "tags": [
@@ -520,6 +524,52 @@
         "runtime"
       ],
       "status": "implemented"
+    },
+    {
+      "id": "archive",
+      "label": "Jetstream history",
+      "lane": 0,
+      "row": 1,
+      "summary": "Bounded reads of public record events",
+      "details": "read_archive retrieves archived public record events for an exact account and collection within bounded coverage. Continuation and completeness describe the portion read, not proof that nothing else happened. Archive events show public changes; Logfire shows what Phi attempted internally. Current PDS records are a third view.",
+      "sources": [
+        {
+          "path": "src/bot/core/archive.py",
+          "symbol": ""
+        },
+        {
+          "path": "skills/self-traces/SKILL.md",
+          "symbol": ""
+        }
+      ],
+      "tags": [
+        "memory",
+        "runtime"
+      ],
+      "status": "implemented"
+    },
+    {
+      "id": "guidance",
+      "label": "Operator working guidance",
+      "lane": 3,
+      "row": 5,
+      "summary": "Reviewed instructions, separate from personality",
+      "details": "operator-guidance.md is injected into the base context. The operator approves and deploys revisions; Phi may propose changes. Its review date requests review and does not expire the guidance. It grants no additional action permissions.",
+      "sources": [
+        {
+          "path": "src/bot/core/operator.py",
+          "symbol": "get_operator_guidance_block"
+        },
+        {
+          "path": "operator-guidance.md",
+          "symbol": ""
+        }
+      ],
+      "tags": [
+        "memory",
+        "runtime"
+      ],
+      "status": "implemented"
     }
   ],
   "edges": [
@@ -731,6 +781,30 @@
       "source": "atlas-builder",
       "target": "atlas",
       "label": "publish projection blob",
+      "planned": false
+    },
+    {
+      "source": "tools",
+      "target": "archive",
+      "label": "read_archive with bounded scope",
+      "planned": false
+    },
+    {
+      "source": "archive",
+      "target": "tools",
+      "label": "record events and coverage evidence",
+      "planned": false
+    },
+    {
+      "source": "tools",
+      "target": "prefect",
+      "label": "operator-authorized workflow request",
+      "planned": false
+    },
+    {
+      "source": "guidance",
+      "target": "context",
+      "label": "operator-owned working instructions",
       "planned": false
     }
   ]

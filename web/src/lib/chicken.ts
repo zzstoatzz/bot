@@ -40,11 +40,13 @@ export function parseTrader(value: unknown): ChickenTrader {
 			return {
 				round_id: optionalString(p.round_id),
 				round: optionalString(p.round),
-				contender_did: optionalString(p.contender_did),
-				contender_handle: optionalString(p.contender_handle),
+				contender_did: optionalString(p.contender ?? p.contender_did),
+				contender_handle: optionalString(p.handle ?? p.contender_handle),
 				shares: optionalNumber(p.shares),
-				avg_price_subc: optionalNumber(p.avg_price_subc),
-				cost_subc: optionalNumber(p.cost_subc)
+				avg_price_subc: optionalNumber(p.avg_subc ?? p.avg_price_subc),
+				cost_subc: optionalNumber(p.cost_subc),
+				value_subc: optionalNumber(p.value_subc),
+				unrealized_subc: optionalNumber(p.unrealized_subc)
 			};
 		}),
 		trades: array(v.trades).map((value) => {

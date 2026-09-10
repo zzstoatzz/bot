@@ -4,6 +4,7 @@
 //   3. external services: bsky public API, hub discovery pool, top chicken market
 
 import { parseTrader, parseMarket, parseResults } from './chicken';
+import { parseCapabilities, parseSkills } from './capabilities';
 
 import type {
 	ActivityItem,
@@ -132,15 +133,15 @@ export async function getHealth(): Promise<HealthInfo> {
 }
 
 export async function getCapabilities(): Promise<Capability[]> {
-	const res = await fetch('/api/abilities');
+	const res = await fetch('/api/abilities', { signal: AbortSignal.timeout(20_000) });
 	if (!res.ok) throw new Error(`abilities: ${res.status}`);
-	return await res.json();
+	return parseCapabilities(await res.json());
 }
 
 export async function getSkills(): Promise<Skill[]> {
-	const res = await fetch('/api/skills');
+	const res = await fetch('/api/skills', { signal: AbortSignal.timeout(20_000) });
 	if (!res.ok) throw new Error(`skills: ${res.status}`);
-	return await res.json();
+	return parseSkills(await res.json());
 }
 
 // phi's daily promotion docket — 5-15 work-item candidates emitted by the

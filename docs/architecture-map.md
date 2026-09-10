@@ -17,7 +17,7 @@ remembered material, not a map of the software that handles it.
   records and does not check external service health. External source references
   describe reviewed repository contracts, not a verified remote deployment.
 - `web/src/lib/architecture.ts` validates the response once. The Svelte page
-  renders a subsystem index and a focused input/component/output model. Nodes use
+  opens on a focused input/component/output model with a collapsible subsystem index. Nodes use
   content-sized layout; connections carry labels rather than crossing the overview.
   The source view exposes package dependencies separately from semantic flow.
 
@@ -26,6 +26,10 @@ an external Prefect flow publishes an atlas, that an override is operator-owned,
 or that selecting an influence is not yet connected to prompt composition.
 Source links follow repository main; discovered line numbers come from the
 running release. The runtime may lack a repository-only file; references say so.
+
+The model includes bounded Jetstream history reads, operator working guidance,
+and outbound workflow requests. Workflow-request authorization is distinct from
+optional Prefect MCP authentication.
 
 ## Maintaining the map
 
