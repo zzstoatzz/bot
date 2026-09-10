@@ -29,7 +29,7 @@
 
 <section class="tool-usage" id="tool-use" aria-labelledby="tool-use-title">
 	<header class="usage-heading">
-		<div><h2 id="tool-use-title">Tool use</h2>{#if data}<p class="observation">{number.format(total)} calls{#if data.since}{' since '}<time datetime={data.since} title={new Date(data.since).toLocaleString()}>{date.format(new Date(data.since))}</time>{/if}</p>{/if}</div>
+		<div><h2 id="tool-use-title">Tool use</h2>{#if data}<p class="observation">{number.format(total)} {total === 1 ? 'call' : 'calls'}{#if data.since}{' since '}<time datetime={data.since} title={new Date(data.since).toLocaleString()}>{date.format(new Date(data.since))}</time>{/if}</p>{/if}</div>
 		<button class="quiet-button" onclick={refresh} disabled={loading} aria-label="Refresh tool usage">{loading ? 'Refreshing…' : 'Refresh'}</button>
 	</header>
 	{#if error}<p class="error" role="alert">{error}. {data ? 'Showing the last successful read.' : 'Try refreshing.'}</p>{/if}
@@ -41,7 +41,7 @@
 					<li class:active={selected === row.name}>
 						<button class="tool-row" aria-expanded={selected === row.name} aria-controls={selected === row.name ? `tool-${row.name}` : undefined} onclick={() => selected = selected === row.name ? null : row.name}>
 							<span class="tool-name">{#each row.name.split('_') as part, index}{index ? '_' : ''}<wbr />{part}{/each}</span>
-							<span class="volume"><span class="bar" style:width={`${100 * row.calls / maxCalls}%`} aria-hidden="true"></span><span class="count">{number.format(row.calls)}<span class="sr-only"> calls</span></span></span><span class="disclosure" aria-hidden="true">{selected === row.name ? '−' : '+'}</span>
+							<span class="volume"><span class="bar" style:width={`${100 * row.calls / maxCalls}%`} aria-hidden="true"></span><span class="count">{number.format(row.calls)}<span class="sr-only"> {row.calls === 1 ? 'call' : 'calls'}</span></span></span><span class="disclosure" aria-hidden="true">{selected === row.name ? '−' : '+'}</span>
 						</button>
 						{#if selected === row.name}
 							{@const calls = data.recent.filter(call => call.name === row.name)}

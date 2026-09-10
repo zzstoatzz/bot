@@ -67,7 +67,7 @@
 		align-items: center;
 		gap: 24px;
 		padding: 14px 24px;
-		background: linear-gradient(180deg, #18222cef, #090f18fa);
+		background: linear-gradient(180deg, #18222c, #090f18);
 		border-top: 1px solid #71604b;
 		border-bottom: 1px solid #3a4b56;
 		box-shadow:
