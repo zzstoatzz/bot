@@ -1,5 +1,14 @@
 # changelog
 
+## 2026-09-11 — Provider cache controls and concurrent accounting
+
+Phi selects native cache settings for its configured provider: Anthropic keeps
+its explicit TTLs, while OpenAI receives a stable cache routing key. Overlapping
+runs now keep separate cache samples, prefix measurements, and trace attribution.
+The previous shared recorder could mistake another run’s cold request for a
+cache collapse and lose requests when either run ended. The rolling dashboard
+starts a fresh measurement window; old mixed-run statistics are not reused.
+
 ## 2026-09-11 — Keep deployment identifiers usable in workflow context
 
 Workflow context includes complete deployment UUIDs even when a display name is

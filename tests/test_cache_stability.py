@@ -1,6 +1,8 @@
 """Cache-stability monitoring: collapse detection and run accounting."""
 
+import asyncio
 import json
+from contextvars import ContextVar
 
 from pydantic_ai.usage import RequestUsage
 
@@ -21,10 +23,7 @@ def usage(*, uncached: int = 0, read: int = 0, write: int = 0) -> RequestUsage:
 def monitor() -> CacheMonitor:
     m = CacheMonitor.__new__(CacheMonitor)  # skip _load(): no disk in tests
     m.runs = __import__("collections").deque(maxlen=60)
-    m._current = None
-    m._marks = {}
-    m._latched = set()
-    m._last_seen = {}
+    m._state = ContextVar("test_cache_run", default=None)
     return m
 
 
@@ -261,8 +260,9 @@ def test_trace_id_is_taken_from_the_first_request_only():
     m.begin_run("cycle")
     with tracer.start_as_current_span("chat 1"):
         observe(m, uncached=100, write=5_000)
-    assert m._current is not None
-    first = m._current.trace_id
+    state = m._state.get()
+    assert state is not None
+    first = state.record.trace_id
     with tracer.start_as_current_span("chat 2"):
         observe(m, uncached=100, read=5_000)
     m.end_run()
@@ -363,3 +363,44 @@ def test_mixed_anthropic_models_do_not_combine_different_base_prices(
     assert all(r.saved is not None for r in m.runs)
     assert m.summary()["saved"] is None
     assert m.summary()["cache_read"] == 4000
+
+
+async def test_overlapping_runs_keep_samples_and_collapse_state_separate():
+    m = monitor()
+    first_ready = asyncio.Event()
+    second_ready = asyncio.Event()
+    first_done = asyncio.Event()
+
+    async def first():
+        m.begin_run("first")
+        observe(m, write=20_000)
+        first_ready.set()
+        await second_ready.wait()
+        observe(m, read=20_000)
+        m.end_run()
+        first_done.set()
+
+    async def second():
+        await first_ready.wait()
+        m.begin_run("second")
+        observe(m, write=4_000)
+        second_ready.set()
+        await first_done.wait()
+        observe(m, read=4_000)
+        m.end_run()
+
+    await asyncio.gather(first(), second())
+    assert [(r.label, r.requests, r.cache_read, r.collapses) for r in m.runs] == [
+        ("first", 2, 20_000, 0),
+        ("second", 2, 4_000, 0),
+    ]
+    assert all(r.samples[0].gap_seconds is None for r in m.runs)
+
+
+def test_legacy_mixed_run_history_is_not_used_for_new_statistics(monkeypatch, tmp_path):
+    from bot.core import cache_stability
+
+    path = tmp_path / "cache.json"
+    path.write_text(json.dumps({"runs": [{"label": "mixed historical run"}]}))
+    monkeypatch.setattr(cache_stability, "CACHE_FILE", path)
+    assert CacheMonitor().summary()["window_runs"] == 0

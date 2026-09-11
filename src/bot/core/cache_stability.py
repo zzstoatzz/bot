@@ -27,6 +27,7 @@ import logging
 from collections import deque
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -250,6 +251,14 @@ class RunRecord:
         }
 
 
+@dataclass
+class CacheRunState:
+    record: RunRecord
+    marks: dict[str, int] = field(default_factory=dict)
+    latched: set[str] = field(default_factory=set)
+    last_seen: dict[str, datetime] = field(default_factory=dict)
+
+
 class CacheMonitor:
     """Tracks cache read-back across requests, per run.
 
@@ -260,26 +269,20 @@ class CacheMonitor:
 
     def __init__(self) -> None:
         self.runs: deque[RunRecord] = deque(maxlen=MAX_RUNS)
-        self._current: RunRecord | None = None
-        # high-water prefix per (provider, model) within the current run
-        self._marks: dict[str, int] = {}
-        # latched keys: already warned about this collapse, stay quiet until
-        # a healthy read-back re-stabilizes
-        self._latched: set[str] = set()
-        # last request time per key, for the expiry-vs-moved-prefix hint
-        self._last_seen: dict[str, datetime] = {}
+        self._state: ContextVar[CacheRunState | None] = ContextVar(
+            "cache_run_state", default=None
+        )
         self._load()
 
     def begin_run(self, label: str) -> None:
-        self._current = RunRecord(label=label, started_at=datetime.now(UTC))
-        self._marks.clear()
-        self._latched.clear()
+        self._state.set(CacheRunState(RunRecord(label=label, started_at=datetime.now(UTC))))
 
     def end_run(self) -> None:
-        if self._current is None:
+        state = self._state.get()
+        if state is None:
             return
-        record = self._current
-        self._current = None
+        record = state.record
+        self._state.set(None)
         if not record.samples:
             return
         self.runs.append(record)
@@ -300,27 +303,30 @@ class CacheMonitor:
 
     def observe(self, usage: RequestUsage, model: str, provider: str) -> None:
         """Record one response's cache verdict and judge collapse."""
+        state = self._state.get()
+        if state is None:
+            return
         now = datetime.now(UTC)
         key = f"{provider}:{model}"
         gap = None
-        if last := self._last_seen.get(key):
+        if last := state.last_seen.get(key):
             gap = (now - last).total_seconds()
-        self._last_seen[key] = now
+        state.last_seen[key] = now
 
         read = usage.cache_read_tokens
         write = usage.cache_write_tokens
-        established = self._marks.get(key, 0)
+        established = state.marks.get(key, 0)
 
         collapsed = (
             provider == "anthropic"
             and established >= MIN_PREFIX_TOKENS
             and read < established * COLLAPSE_RATIO
-            and key not in self._latched
+            and key not in state.latched
         )
         maybe_expiry = bool(collapsed and gap is not None and gap > CACHE_TTL_SECONDS)
 
         if collapsed:
-            self._latched.add(key)
+            state.latched.add(key)
             gap_note = (
                 f" after a {gap:.0f}s gap (may be cache expiry rather than a moved prefix)"
                 if maybe_expiry
@@ -331,32 +337,31 @@ class CacheMonitor:
                 f"established prefix of {established}{gap_note}"
             )
         elif read >= established * COLLAPSE_RATIO:
-            self._latched.discard(key)
+            state.latched.discard(key)
 
-        self._marks[key] = max(established, read + write)
+        state.marks[key] = max(established, read + write)
 
-        if self._current is not None:
-            # capture the trace id HERE, not in begin_run — begin_run happens
-            # before agent.run(), where no span is active yet and the context
-            # is invalid. this call sits inside the model request, so the
-            # agent-run trace is guaranteed live.
-            if self._current.trace_id is None:
-                ctx = trace.get_current_span().get_span_context()
-                if ctx.is_valid:
-                    self._current.trace_id = format(ctx.trace_id, "032x")
-            self._current.samples.append(
-                RequestSample(
-                    at=now,
-                    model=model,
-                    provider=provider,
-                    input_tokens=usage.input_tokens,
-                    cache_read=read,
-                    cache_write=write,
-                    gap_seconds=gap,
-                    collapsed=collapsed,
-                    maybe_expiry=maybe_expiry,
-                )
+        # capture the trace id HERE, not in begin_run — begin_run happens
+        # before agent.run(), where no span is active yet and the context
+        # is invalid. this call sits inside the model request, so the
+        # agent-run trace is guaranteed live.
+        if state.record.trace_id is None:
+            ctx = trace.get_current_span().get_span_context()
+            if ctx.is_valid:
+                state.record.trace_id = format(ctx.trace_id, "032x")
+        state.record.samples.append(
+            RequestSample(
+                at=now,
+                model=model,
+                provider=provider,
+                input_tokens=usage.input_tokens,
+                cache_read=read,
+                cache_write=write,
+                gap_seconds=gap,
+                collapsed=collapsed,
+                maybe_expiry=maybe_expiry,
             )
+        )
 
     def request_sizes(self) -> dict[str, Any] | None:
         """How big real requests are, from the provider's own numbers: the
@@ -420,7 +425,7 @@ class CacheMonitor:
             return
         try:
             CACHE_FILE.write_text(
-                json.dumps({"runs": [r.as_dict() for r in self.runs]})
+                json.dumps({"version": 2, "runs": [r.as_dict() for r in self.runs]})
             )
         except Exception as e:
             logger.warning(f"failed to save cache stability: {e}")
@@ -430,6 +435,9 @@ class CacheMonitor:
             return
         try:
             data = json.loads(CACHE_FILE.read_text())
+            # Earlier recordings mixed concurrent runs and cannot establish reuse.
+            if data.get("version") != 2:
+                return
             for entry in data.get("runs", [])[-MAX_RUNS:]:
                 record = RunRecord(
                     label=entry["label"],
