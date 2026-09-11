@@ -1,6 +1,7 @@
 """Private operator reports: durable delivery receipts and acknowledgement evidence."""
 
 import asyncio
+import json
 import sqlite3
 from contextlib import contextmanager
 from datetime import UTC, datetime
@@ -221,3 +222,27 @@ async def incoming_messages() -> tuple[list[dict], list[str]]:
 def mark_messages_handled(ids: list[str]) -> None:
     with connect() as db:
         db.executemany("INSERT OR IGNORE INTO inbox VALUES (?)", [(id,) for id in ids])
+
+
+def conversation_material(history: list[dict], new_ids: list[str]) -> str:
+    """Trusted speaker roles and turn boundaries, separate from quoted message text."""
+    return json.dumps(
+        {
+            "channel": "private operator DM",
+            "operator_did": settings.owner_did,
+            "messages": [
+                {
+                    "id": message["id"],
+                    "speaker": "operator"
+                    if message["author"] == settings.owner_did
+                    else "phi",
+                    "did": message["author"],
+                    "new_incoming": message["id"] in new_ids,
+                    "sent_at": message["sent"],
+                    "text": message["text"],
+                }
+                for message in history
+            ],
+        },
+        ensure_ascii=False,
+    )

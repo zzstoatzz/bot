@@ -1,5 +1,13 @@
 # changelog
 
+## 2026-09-11 — Preserve speaker attribution in private conversations
+
+Private conversation context now identifies each speaker and marks new incoming
+messages. Previously, the classifier attributed Phi’s own “No reply needed”
+delivery test to the operator and blocked a later greeting. Both Phi and the
+classifier now receive the same structured conversation, preserving who said
+what and which turn prompted the run.
+
 ## 2026-09-10 — Compact capability browser and distinct memory surfaces
 
 The capability index now stays beside a selected detail pane on desktop; phones

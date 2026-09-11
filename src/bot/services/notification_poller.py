@@ -282,10 +282,7 @@ class NotificationPoller:
                 history, ids = await operator_reports.incoming_messages()
                 if not ids:
                     return
-                material = "\n\n".join(
-                    f"{message['author']} [{message['id']}]: {message['text']}"
-                    for message in history
-                )
+                material = operator_reports.conversation_material(history, ids)
                 result = await self.handler.agent.process_operator_dm(material, ids[-1])
                 if result.startswith("operator-dm failed:"):
                     self._next_dm_poll = time.monotonic() + 300

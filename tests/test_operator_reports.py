@@ -113,3 +113,22 @@ async def test_private_entrypoint_does_not_supply_public_memory():
     assert call["deps"].memory is None
     assert call["deps"].private_message_id == "message"
     assert "No reply needed." in call["prompt"]
+
+
+def test_conversation_preserves_speaker_and_new_turn():
+    import json
+
+    history = [
+        {"id": "old", "author": "did:plc:phi", "sent": 1, "text": "No reply needed."},
+        {
+            "id": "new",
+            "author": reports.settings.owner_did,
+            "sent": 2,
+            "text": "hey buddy",
+        },
+    ]
+    material = json.loads(reports.conversation_material(history, ["new"]))
+    assert material["messages"][0]["speaker"] == "phi"
+    assert not material["messages"][0]["new_incoming"]
+    assert material["messages"][1]["speaker"] == "operator"
+    assert material["messages"][1]["new_incoming"]
