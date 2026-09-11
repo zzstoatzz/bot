@@ -60,3 +60,27 @@ metric. Observation failures log errors and do not alter Phi's execution.
 The journal starts at deployment; older use is unknown there. Historical Logfire
 queries can investigate earlier activity, but cannot establish exposure from
 invocation counts alone. No tool-use quota or automatic retirement is implied.
+
+
+## Prompt caching: September 11 verification
+
+A private probe on the deployed Phi machine used captured production instructions
+and a read-only tool with the installed provider settings. Both Sonnet 5 and Luna
+completed two runs and invoked the tool. The second run reported 34,422 cache-read
+tokens of 34,870 input tokens on Sonnet, and 23,278 of 23,476 on Luna. These are
+usage totals across each tool loop, not unique prefix lengths. This verifies the
+transport/settings boundary, not a complete public-action run or voice evaluation.
+
+For September 10 18:00Z through September 11 18:00Z, Logfire recorded 173 main
+Phi requests: 14,100,879 input tokens, 13,097,244 cache reads (92.9%), and
+1,003,289 cache writes. The helper roles added 172,972 input tokens across 82
+requests; their inspected spans did not expose cache reads. Missing metrics are
+not evidence of zero cache use. No causal latency savings were established.
+
+The old `/api/cache` recorder shared mutable run state across concurrent tasks.
+Its per-run trace attribution and collapse counts were unreliable: a chicken
+run included response counts absent from that trace. The corrected recorder
+uses task-local state and starts a fresh versioned window. Historical snapshots
+must not be used to attribute a prompt regression. The conservative input-cost
+estimate prices all Anthropic writes at the longer TTL; it is not total invoice
+savings. Cross-provider totals have no cost estimate without model-specific rates.

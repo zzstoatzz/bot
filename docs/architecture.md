@@ -21,7 +21,25 @@ three settings, all full pydantic-ai `provider:model` strings:
 | `policy_model` | `phi-policy-judge` | `openai-responses:gpt-5.6-terra` |
 | `extraction_model` | `phi-episodic-selector`, `observation-reconciler`, `phi-posting-inventory` | `openai-responses:gpt-5.6-luna` |
 
-phi herself stays on one model deliberately. her live personality is the newest `io.zzstoatzz.phi.personality` revision on her PDS; [personalities/phi.md](../personalities/phi.md) seeds an empty collection, and `core/cache_stability.py` wraps `agent_model` only — the cache accounting reads Anthropic's `cache_read_tokens` / `cache_write_tokens` off each response, so it observes the main agent and nothing else. sub-agents produce *structured context*, not voice, which is why they can move independently.
+The main model is selected at process startup. Set `AGENT_MODEL` to
+`anthropic:claude-sonnet-5` or `openai-responses:gpt-5.6-luna`, then restart or
+redeploy. On Fly, `fly secrets set --app zzstoatzz-phi AGENT_MODEL=<spec>` rolls
+the configuration. Both provider credentials must already be configured.
+`POLICY_MODEL` and `EXTRACTION_MODEL` remain independent. Changing the main
+model also changes `phi-extractor`, as shown above.
+
+Phi's live personality remains the newest `io.zzstoatzz.phi.personality`
+revision; switching providers does not rewrite it. `model_cache_settings` in
+`core/cache_stability.py` supplies Anthropic's explicit 1h tool/instruction and
+5m message TTLs, or OpenAI's stable `phi:main` cache routing key. Caches warm
+separately for each provider/model. No cross-provider cache transfer is implied.
+The cache recorder observes the main agent, using provider-reported totals and
+cache reads/writes. Helper agents require separate trace inspection.
+
+Gardener's Pi worker has its own trusted model catalog and per-run `agent.model`
+selection. It routes through Aperture; Phi's PydanticAI calls still use their
+configured providers directly. Do not confuse switching Gardener with switching
+Phi. Native API compatibility must be verified before moving Phi through a gateway.
 
 **the `openai-responses:` prefix is load-bearing.** every sub-agent above has an `output_type`, which pydantic-ai sends as a function tool, and OpenAI reasoning models reject function tools on `/v1/chat/completions` when `reasoning_effort` is set. the chat-completions path fails with a 400 on every call, not intermittently. a new sub-agent pointed at an OpenAI reasoning model needs the same prefix.
 
