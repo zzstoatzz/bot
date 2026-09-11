@@ -50,6 +50,17 @@ def test_recent_success_after_failure_cluster_is_healthy():
     assert qualifier == ""
 
 
+def test_workflow_context_preserves_deployment_id_with_or_without_name():
+    deployment_id = "07cd54f0-725e-4e59-a34a-f73e73fd261f"
+    run = _run(state="FAILED", end_offset_h=1)
+    run["deployment_id"] = deployment_id
+    for deployments in ([], [{"id": deployment_id, "name": "studio"}]):
+        block = _compose({"runs": [run], "stuck": [], "deployments": deployments})
+        assert deployment_id in block
+        if deployments:
+            assert "studio" in block
+
+
 def test_most_recent_failed_with_no_recovery_is_broken():
     runs = [
         _run(state="FAILED", end_offset_h=1, msg="boom"),
@@ -153,7 +164,9 @@ def test_compose_orders_broken_before_healthy():
     ]
     block = _compose({"runs": runs, "stuck": [], "deployments": deployments})
     # broken comes before healthy; FAILED token leads the ingest line, COMPLETED leads atlas
-    assert block.find("- ingest: FAILED") < block.find("- rebuild-atlas: COMPLETED")
+    lines = [line for line in block.splitlines() if line.startswith("- ")]
+    assert lines[0].startswith("- ingest:") and "FAILED" in lines[0]
+    assert lines[1].startswith("- rebuild-atlas ") and "COMPLETED" in lines[1]
     assert "[broken — oops]" in block
     assert "[healthy]" in block
 

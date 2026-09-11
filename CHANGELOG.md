@@ -1,5 +1,12 @@
 # changelog
 
+## 2026-09-11 — Keep deployment identifiers usable in workflow context
+
+Workflow context includes complete deployment UUIDs even when a display name is
+available. Previously, a missing name reduced the identifier to eight characters;
+Phi then attempted an invalid lookup using that fragment. The rendered context
+now preserves the identifier needed to inspect the deployment directly.
+
 ## 2026-09-11 — Preserve speaker attribution in private conversations
 
 Private conversation context now identifies each speaker and marks new incoming

@@ -249,12 +249,13 @@ def _compose(raw: dict) -> str:
         status, latest, qualifier = _classify(dep_runs, stuck_ids)
         if not status:
             continue
-        name = dep_names.get(dep_id, dep_id[:8])
+        name = dep_names.get(dep_id, dep_id)
+        identity = f"{name} (deployment_id={dep_id})" if name != dep_id else dep_id
         # Format: "- name: LATEST_RUN [status — qualifier]"
         # The most-recent run is the leading fact; the bracketed classification
         # is the decision label phi acts on.
         bracket = f"[{status} — {qualifier}]" if qualifier else f"[{status}]"
-        entries.append((status, name, f"- {name}: {latest} {bracket}"))
+        entries.append((status, name, f"- {identity}: {latest} {bracket}"))
 
     if not entries:
         return ""
