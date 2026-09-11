@@ -54,9 +54,11 @@ def test_workflow_context_preserves_deployment_id_with_or_without_name():
     deployment_id = "07cd54f0-725e-4e59-a34a-f73e73fd261f"
     run = _run(state="FAILED", end_offset_h=1)
     run["deployment_id"] = deployment_id
+    run["id"] = "2d98f714-7b4d-4ade-8a2f-1664541df47f"
     for deployments in ([], [{"id": deployment_id, "name": "studio"}]):
         block = _compose({"runs": [run], "stuck": [], "deployments": deployments})
         assert deployment_id in block
+        assert f"run_id={run['id']}" in block
         if deployments:
             assert "studio" in block
 

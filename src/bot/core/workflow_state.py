@@ -166,6 +166,7 @@ def _classify(runs: list[dict], stuck_ids: set[str]) -> tuple[str, str, str]:
             when = relative_when(start) if start else ""
             state = _state_type(r).upper() or "PENDING"
             latest = f"{state} since {when}" if when else state
+            latest += f" (run_id={r['id']})"
             qualifier = (
                 "work not picked up"
                 if state == "PENDING"
@@ -186,6 +187,7 @@ def _classify(runs: list[dict], stuck_ids: set[str]) -> tuple[str, str, str]:
         most_recent.get("start_time", "")
     )
     latest = f"{most_recent_state} {most_recent_when}".strip()
+    latest += f" (run_id={most_recent['id']})"
 
     if most_recent_state == "COMPLETED":
         # Healthy unless the recent fail rate is high enough to flag
