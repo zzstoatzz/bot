@@ -135,3 +135,10 @@ See [directed contact](safety.md#directed-contact).
 `conversational-norms` distinguishes contact eligibility from a welcome response, including operator requests to work without replying. `bluesky-guidelines` is a sourced operational digest of Bluesky platform constraints (source updated 2025-09-19, reviewed 2026-09-10), separate from voice and conversational norms. The judge receives the exact reply parent and complete split preview; notification provenance does not presume a response is wanted. The digest is scoped, not a complete reproduction of the guidelines.
 
 `operator-reporting` routes actionable incidents through `report_operator` DMs. The public judge reads delivery and response metadata from the durable operator-report journal, never private message bodies. Public escalation requires verified unanswered private delivery and a continuing need for action; an explicit public-report request remains valid. Generic mentions no longer mark every visible incident as delivered.
+
+Provider cache settings are selected by `model_cache_settings` in
+`core/cache_stability.py`. Anthropic retains the shared `CACHE_TTLS` breakpoints
+for tools, static instructions, and message history. OpenAI receives the stable
+`phi:main` prompt cache key without Anthropic-specific settings. No extended
+OpenAI retention is requested by default. Provider switching does not reuse a
+cache across providers; each provider must warm its own matching prompt prefix.

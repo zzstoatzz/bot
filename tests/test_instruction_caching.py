@@ -99,13 +99,12 @@ def test_agent_cache_settings():
     }
 
 
-def test_agent_settings_are_built_from_cache_ttls():
-    """The wiring itself — agent.py must read the dict, not restate it."""
-    import inspect
+def test_agent_settings_are_built_from_cache_ttls(monkeypatch):
+    """The provider settings consume the shared policy rather than copying TTLs."""
+    from bot.core.cache_stability import CACHE_TTLS, model_cache_settings
 
-    import bot.agent as agent_mod
-
-    src = inspect.getsource(agent_mod)
-    assert 'anthropic_cache_tool_definitions=CACHE_TTLS["tool_definitions"]' in src
-    assert 'anthropic_cache_instructions=CACHE_TTLS["instructions"]' in src
-    assert 'anthropic_cache_messages=CACHE_TTLS["messages"]' in src
+    monkeypatch.setitem(CACHE_TTLS, "instructions", "5m")
+    configured = model_cache_settings("anthropic")
+    assert configured["anthropic_cache_instructions"] == "5m"
+    assert configured["anthropic_cache_tool_definitions"] == CACHE_TTLS["tool_definitions"]
+    assert configured["anthropic_cache_messages"] == CACHE_TTLS["messages"]

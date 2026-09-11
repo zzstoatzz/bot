@@ -40,6 +40,8 @@ from pydantic_ai.models import (
     ModelRequestParameters,
     StreamedResponse,
 )
+from pydantic_ai.models.anthropic import AnthropicModelSettings
+from pydantic_ai.models.openai import OpenAIResponsesModelSettings
 from pydantic_ai.models.wrapper import WrapperModel
 from pydantic_ai.settings import ModelSettings
 from pydantic_ai.usage import RequestUsage
@@ -59,6 +61,25 @@ CACHE_TTLS = {
 """The caching strategy itself — one source, read by both the agent (which
 turns it into `AnthropicModelSettings`) and the cockpit (which reports on
 it). Changing a TTL here changes what phi does *and* what the panel says."""
+
+def model_cache_settings(provider: str, role: str = "main") -> ModelSettings:
+    """Select native cache controls without changing the prompt or its order."""
+    if provider == "anthropic":
+        return AnthropicModelSettings(
+            anthropic_cache_tool_definitions=CACHE_TTLS["tool_definitions"],
+            anthropic_cache_instructions=CACHE_TTLS["instructions"],
+            anthropic_cache_messages=CACHE_TTLS["messages"],
+            max_tokens=32000,
+            timeout=600.0,
+        )
+    if provider == "openai":
+        return OpenAIResponsesModelSettings(
+            openai_prompt_cache_key=f"phi:{role}",
+            max_tokens=32000,
+            timeout=600.0,
+        )
+    return ModelSettings(max_tokens=32000, timeout=600.0)
+
 
 PRICE = {
     "uncached": 1.0,

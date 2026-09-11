@@ -13,7 +13,6 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic_ai import Agent, ImageUrl, RunContext
 from pydantic_ai.mcp import MCPServerStdio, MCPServerStreamableHTTP
-from pydantic_ai.models.anthropic import AnthropicModelSettings
 from pydantic_ai.tools import ToolDefinition
 from pydantic_ai.toolsets import AbstractToolset
 from pydantic_ai_skills import SkillsToolset
@@ -24,9 +23,9 @@ from bot.core.alert_watch import render_alert_watch
 from bot.core.atlas import get_atlas_digest
 from bot.core.atproto_client import bot_client, get_identity_block
 from bot.core.cache_stability import (
-    CACHE_TTLS,
     CacheObservingModel,
     cache_monitor,
+    model_cache_settings,
 )
 from bot.core.discovery_pool import get_discovery_pool_block
 from bot.core.docket import get_docket_digest
@@ -415,24 +414,11 @@ class PhiAgent:
         # the provider's own cache verdict off each response so a regression
         # (a block that stops memoizing, a reordered prefix) surfaces as a
         # warning instead of a silently larger bill (core/cache_stability.py).
+        observed_model = CacheObservingModel(settings.agent_model)
         self.agent = Agent[PhiDeps, str](
             name="phi",
-            model=CacheObservingModel(settings.agent_model),
-            model_settings=AnthropicModelSettings(
-                # TTLs live in CACHE_TTLS so the cockpit reports the policy
-                # phi is actually running, not a copy of it
-                anthropic_cache_tool_definitions=CACHE_TTLS["tool_definitions"],
-                anthropic_cache_instructions=CACHE_TTLS["instructions"],
-                anthropic_cache_messages=CACHE_TTLS["messages"],
-                # adaptive thinking counts against max_tokens, and a hard
-                # task can burn >16k thinking alone before any tool call is
-                # emitted — three 2026-08-12 lexidraw runs died exactly there
-                # (8192 twice, then 16000). The SDK refuses non-streaming
-                # requests ≥24k unless an explicit timeout suppresses its
-                # 10-minute guard, so both are set together.
-                max_tokens=32000,
-                timeout=600.0,
-            ),
+            model=observed_model,
+            model_settings=model_cache_settings(observed_model.system),
             output_type=str,
             deps_type=PhiDeps,
             toolsets=[self.skills_toolset],
