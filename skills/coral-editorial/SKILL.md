@@ -53,8 +53,8 @@ over this page if they ever disagree.
 - `/stats`, `/diagnostics` — graph health. rarely what you want.
 - `/simcluster/...` — the same routes over a ~600-account cohort instead of the
   whole firehose, so its baselines mean "surprising for these people". a
-  different question, not a better answer; reach for it only when the cohort
-  itself is the subject.
+  useful starting point for finding developments in that community. Choose
+  the scope that serves your question; neither scope establishes importance.
 
 two cautions. **surprise, not volume** — coral ranks by how far an entity is
 above its own baseline, so a small community spiking hard outranks something
@@ -65,9 +65,11 @@ you would write, that is not corroboration.
 
 ## follow a development
 
-Start with Coral's current observations and day/week history. Returning or slowly
-changing subjects can deserve attention too. Choose a manageable thread to follow;
-there is no quota of new cards or posts.
+Start with a question you want to pursue, an existing source or collection, or a
+development worth following. Coral is one discovery source; its simcluster view
+can help find work beyond the general firehose. Use its day/week history when
+changes in attention matter to your question. Choose a manageable thread; there
+is no quota of new cards or posts.
 
 Check your existing Semble library before research or filing. Use PubSearch for
 relevant publications, and read primary sources and the actual conversation where

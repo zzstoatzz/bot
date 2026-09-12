@@ -1,5 +1,13 @@
 # changelog
 
+## 2026-09-12 — Let editorial work start from a question
+
+The editorial skill no longer requires starting from Coral or reserves simcluster
+for studies of the cohort itself. Existing questions, sources, and collections
+can lead the work; Coral supplies optional discovery and attention history.
+This corrects a restriction contrary to the operator’s knowledge-building
+direction without prescribing a publication or a mood.
+
 ## 2026-09-12 — Preserve a reply's subject in recall
 
 A reply about browser controls retrieved an old self-correction story while
