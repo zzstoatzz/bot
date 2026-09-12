@@ -1002,3 +1002,8 @@ Alert context distinguishes grouped notification history from current workload
 failure. Quiet observations no longer render as firing while awaiting closure;
 legacy incidents carry unknown observation state, and alert evaluation timestamps
 remain separate from the last matching error detail.
+
+Semble context now refreshes after library operations. Overlapping runs receive
+current library context before retrying a stale call, and collection/membership
+operations are retained in the existing PDS operation history. Library attempts
+are correlated with run evidence without equating tool returns with saved records.

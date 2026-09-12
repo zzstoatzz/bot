@@ -46,6 +46,8 @@ RECORD_KEPT_NSIDS: frozenset[str] = frozenset(
     {
         "app.bsky.feed.post",
         "io.zzstoatzz.phi.goal",
+        "network.cosmik.collection",
+        "network.cosmik.collectionLink",
         "network.cosmik.card",
         "network.cosmik.connection",
         "app.greengale.document",
@@ -94,7 +96,18 @@ def _iso_from_us(time_us: int) -> str:
     return datetime.fromtimestamp(time_us / 1_000_000, tz=UTC).isoformat()
 
 
+library_revision = 0
+
+
+def library_changed() -> None:
+    """Invalidate local library snapshots after an observed or possible write."""
+    global library_revision
+    library_revision += 1
+
+
 def append_op(row: OpRow) -> None:
+    if row["nsid"].startswith("network.cosmik."):
+        library_changed()
     path = _log_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as f:

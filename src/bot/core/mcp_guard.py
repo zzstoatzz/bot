@@ -20,11 +20,16 @@ import logging
 import re
 from datetime import UTC, datetime
 from typing import Any
+from uuid import uuid4
 
 import logfire
 
+from bot.core import ops_log
+from bot.core.atproto_client import bot_client
 from bot.core.override import get_override, refusal_text
 from bot.core.prior_coverage import coverage_note
+from bot.core.public_memory import get_public_memory_block
+from bot.memory.run_evidence import library_call
 
 logger = logging.getLogger("bot.mcp_guard")
 
@@ -341,7 +346,33 @@ def make_mcp_guard(server: str, run_label: str = ""):
         # calls race on its side.
         if server == "semble" and name.endswith("execute"):
             async with _semble_execute_lock:
-                result = await _invoke(call_tool, server, name, tool_args, run_label)
+                deps = getattr(ctx, "deps", None)
+                seen = getattr(deps, "library_revision", None)
+                if deps is not None and seen != ops_log.library_revision:
+                    try:
+                        block = await get_public_memory_block(bot_client)
+                    except Exception:
+                        block = ""
+                    if not block:
+                        return "Library changed since this run started; fresh state unavailable. No call executed. Read the library before retrying."
+                    deps.library_revision = ops_log.library_revision
+                    return (
+                        "Library changed since your previous snapshot. No call executed. "
+                        "Reconsider this request against the current library; earlier messages "
+                        "describe earlier state, and another run may have done the work.\n" + block
+                    )
+                call_id = str(uuid4())
+                code = str(tool_args.get("code", ""))
+                await library_call("started", call_id, code)
+                try:
+                    result = await _invoke(call_tool, server, name, tool_args, run_label)
+                    await library_call("returned", call_id, code)
+                finally:
+                    # Code-mode can partially write before returning an error.
+                    # Invalidate conservatively; this is not a success receipt.
+                    ops_log.library_changed()
+                    if deps is not None:
+                        deps.library_revision = ops_log.library_revision
         else:
             result = await _invoke(call_tool, server, name, tool_args, run_label)
         return await _with_coverage(ctx, result)

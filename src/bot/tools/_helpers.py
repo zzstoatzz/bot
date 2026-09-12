@@ -46,6 +46,7 @@ class PhiDeps:
     # blocks must render once per run (stable text keeps the message-history
     # cache prefix intact; several blocks hit the network).
     run_cache: dict[str, str] = field(default_factory=dict)
+    library_revision: int | None = None
     web_sources: dict[str, WebSourceCapture] = field(default_factory=dict)
     private_message_id: str = ""
     private_message_context: str = ""

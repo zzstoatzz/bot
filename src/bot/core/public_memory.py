@@ -16,6 +16,7 @@ import logging
 import time
 from typing import Any
 
+from bot.core import ops_log
 from bot.core.atproto_client import BotClient
 from bot.utils.time import relative_when
 
@@ -37,7 +38,7 @@ def _list_records(client: BotClient, did: str, nsid: str) -> list[Any]:
             )
         except Exception as e:
             logger.debug(f"list {nsid} failed: {e}")
-            return records
+            raise
         records.extend(response.records or [])
         cursor = response.cursor
         if not cursor:
@@ -101,7 +102,11 @@ def _render(
 async def get_public_memory_block(client: BotClient) -> str:
     """Fetch + render the [SEMBLE] block. Cached 5min."""
     now = time.time()
-    if _block_cache["text"] and now - _block_cache["fetched_at"] < _BLOCK_TTL_SECONDS:
+    if (
+        _block_cache["text"]
+        and _block_cache.get("revision") == ops_log.library_revision
+        and now - _block_cache["fetched_at"] < _BLOCK_TTL_SECONDS
+    ):
         return _block_cache["text"]
 
     try:
@@ -120,4 +125,5 @@ async def get_public_memory_block(client: BotClient) -> str:
     block = _render(collections, links, cards, len(connections))
     _block_cache["text"] = block
     _block_cache["fetched_at"] = now
+    _block_cache["revision"] = ops_log.library_revision
     return block

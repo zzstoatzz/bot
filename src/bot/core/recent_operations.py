@@ -38,6 +38,8 @@ MEANINGFUL_COLLECTIONS: tuple[str, ...] = (
     "app.bsky.feed.repost",
     "app.bsky.graph.follow",
     "io.zzstoatzz.phi.goal",
+    "network.cosmik.collection",
+    "network.cosmik.collectionLink",
     "network.cosmik.card",
     "network.cosmik.connection",
     "app.greengale.document",
@@ -146,6 +148,12 @@ def _summarize(nsid: str, value: dict) -> str:
         updated = value.get("updated_at", "")
         verb = "updated" if (updated and created and updated != created) else "created"
         return f"goal {verb}: {title!r}"
+    if nsid == "network.cosmik.collection":
+        return f"collection: {value.get('name', 'untitled')}"
+    if nsid == "network.cosmik.collectionLink":
+        card = value.get("card") or {}
+        collection = value.get("collection") or {}
+        return f"filed {card.get('uri', '?')} into {collection.get('uri', '?')}"
     if nsid == "network.cosmik.card":
         kind = (value.get("type") or "").upper()
         if kind == "URL":
@@ -377,7 +385,11 @@ async def get_operations_block(client: BotClient) -> str:
     missed while the process was down.
     """
     now = time.time()
-    if _block_cache["text"] and now - _block_cache["fetched_at"] < _BLOCK_TTL_SECONDS:
+    if (
+        _block_cache["text"]
+        and _block_cache.get("revision") == ops_log.library_revision
+        and now - _block_cache["fetched_at"] < _BLOCK_TTL_SECONDS
+    ):
         return _block_cache["text"]
 
     try:
@@ -414,4 +426,5 @@ async def get_operations_block(client: BotClient) -> str:
     block = _render(merged[-MAX_ROWS:], truncated=truncated)
     _block_cache["text"] = block
     _block_cache["fetched_at"] = now
+    _block_cache["revision"] = ops_log.library_revision
     return block

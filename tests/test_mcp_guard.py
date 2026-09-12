@@ -19,11 +19,12 @@ The operator override lived only in `tools/posting.py` and
 server went around it.
 """
 
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from bot.core import mcp_guard
+from bot.core import mcp_guard, ops_log
 from bot.core.mcp_guard import _semble_writes, make_mcp_guard
 
 
@@ -439,3 +440,30 @@ def test_a_missing_record_is_correctable_not_an_outage():
         "Error calling tool 'get_record': Response(success=False, status_code=400, "
         "content=XrpcError(error='RecordNotFound', message='Could not locate record'))"
     )
+
+
+async def test_staggered_library_runs_reconsider_before_executing(monkeypatch):
+    monkeypatch.setattr(mcp_guard, "get_override", override(False))
+    monkeypatch.setattr(ops_log, "library_revision", 0)
+    monkeypatch.setattr(mcp_guard, "get_public_memory_block", AsyncMock(return_value="[SEMBLE] five collections"))
+    contexts = [SimpleNamespace(deps=SimpleNamespace(library_revision=0, memory=None)) for _ in range(3)]
+    calls = []
+    guard = make_mcp_guard("semble", "curation")
+    args = {"code": "collections_create(name='new subject')"}
+    await guard(contexts[0], call_tool_stub(calls), "semble_execute", args)
+    assert len(calls) == 1
+    for ctx in contexts[1:]:
+        result = await guard(ctx, call_tool_stub(calls), "semble_execute", args)
+        assert "No call executed" in result
+        assert "five collections" in result
+    assert len(calls) == 1
+
+
+async def test_library_error_invalidates_other_run_snapshot(monkeypatch):
+    monkeypatch.setattr(mcp_guard, "get_override", override(False))
+    monkeypatch.setattr(ops_log, "library_revision", 0)
+    ctx = SimpleNamespace(deps=SimpleNamespace(library_revision=0, memory=None))
+    async def partial(*args):
+        raise TimeoutError("possibly committed")
+    await make_mcp_guard("semble", "curation")(ctx, partial, "semble_execute", {"code": "collections_create()"})
+    assert ops_log.library_revision == 1

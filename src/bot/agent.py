@@ -18,6 +18,7 @@ from pydantic_ai.toolsets import AbstractToolset
 from pydantic_ai_skills import SkillsToolset
 
 from bot.config import settings
+from bot.core import ops_log
 from bot.core.abilities import risk_of
 from bot.core.alert_watch import render_alert_watch
 from bot.core.atlas import get_atlas_digest
@@ -797,12 +798,14 @@ class PhiAgent:
                 return ""
 
         @_run_scoped
-        async def inject_public_memory() -> str:
+        async def inject_public_memory(ctx: RunContext[PhiDeps]) -> str:
             """[SEMBLE] — collection names + recent cards, so live phi
             knows what its library holds when deciding whether and where
             to save. See core/public_memory.py."""
             try:
-                return await get_public_memory_block(bot_client)
+                block = await get_public_memory_block(bot_client)
+                ctx.deps.library_revision = ops_log.library_revision if block else None
+                return block
             except Exception as e:
                 logger.debug(f"public memory inject failed: {e}")
                 return ""

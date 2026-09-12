@@ -142,3 +142,9 @@ for tools, static instructions, and message history. OpenAI receives the stable
 `phi:main` prompt cache key without Anthropic-specific settings. No extended
 OpenAI retention is requested by default. Provider switching does not reuse a
 cache across providers; each provider must warm its own matching prompt prefix.
+
+Library context is invalidated after Semble execution and observed cosmik writes.
+An overlapping run with an older library revision receives refreshed context in
+the tool result instead of executing that call. This is local-process coordination,
+not a distributed transaction; external writes become visible when observed on
+Jetstream. Tool receipts record attempts/returns, not proof of successful mutation.

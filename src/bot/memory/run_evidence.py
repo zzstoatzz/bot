@@ -91,3 +91,17 @@ async def run_status(run: RunEvidence, status: str) -> None:
             "recorded_at": timestamp(),
         },
     )
+
+
+async def library_call(status: str, call_id: str, code: str) -> None:
+    """Correlate a library attempt with a run; returned is not verified mutation."""
+    run = current_run.get()
+    if run is None:
+        return
+    await save_receipt(run, {
+        "id": f"{run.id}-library-{call_id}-{status}",
+        "kind": "library_call",
+        "status": status,
+        "code_sha256": hashlib.sha256(code.encode()).hexdigest(),
+        "recorded_at": timestamp(),
+    })
