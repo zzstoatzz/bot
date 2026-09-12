@@ -218,7 +218,7 @@ def test_mention_disarms_then_rearms():
     assert "ESCALATION-ELIGIBLE" not in just_after.split("]", 1)[1]
 
     rearmed = render_alert_watch(incidents, t_eligible + ESCALATION_SECONDS)
-    assert "still firing long after the last mention" in rearmed
+    assert "alert history warrants rechecking after the last mention" in rearmed
 
 
 def test_mark_mentioned_skips_closed_and_missing():
@@ -242,3 +242,21 @@ def test_render_quieted_history():
     out = render_alert_watch(incidents, T0 + 200)
     assert "quieted" in out
     assert "after 4 firings" in out
+
+
+def test_quiet_observation_is_not_a_current_failure():
+    incidents, cursor = gate_firings([_state()], {}, {}, T0)
+    incidents, _ = gate_firings([_state(has_matches=False)], incidents, cursor, T0 + 60)
+    rendered = render_alert_watch(incidents, T0 + ESCALATION_SECONDS)
+    assert "latest observation: no matches" in rendered
+    assert "[ESCALATION-ELIGIBLE]" not in rendered
+    assert "not failed runs" in rendered
+    assert "last matching detail" in rendered
+
+
+def test_legacy_alert_does_not_claim_still_firing():
+    old = {"p:x": {"opened_ts": T0, "count": 10, "detail": "old entrypoint failure"}}
+    rendered = render_alert_watch(old, T0 + 60600)
+    assert "unknown; historical record" in rendered
+    assert "[ESCALATION-ELIGIBLE]" not in rendered
+    assert "10 alert observations (not failed runs)" in rendered

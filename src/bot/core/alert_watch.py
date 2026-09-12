@@ -186,12 +186,18 @@ def _apply_firing(
             "opened_ts": now_ts,
             "last_seen_ts": now_ts,
             "count": 1,
+            "observation": "matches",
+            "observed_ts": now_ts,
+            "evaluation_at": last_run,
             "name": state["name"],
             "project": state["project"],
             "detail": state["detail"],
         }
         return True
     inc["last_seen_ts"] = now_ts
+    inc["observation"] = "matches"
+    inc["observed_ts"] = now_ts
+    inc["evaluation_at"] = last_run
     if observed:
         inc["count"] = inc.get("count", 0) + 1
     if state["detail"]:
@@ -230,6 +236,13 @@ def gate_firings(
         )
         if not firing:
             inc = out.get(state["key"])
+            if inc:
+                inc["observation"] = (
+                    "no matches" if state["active"] and not state["snoozed"]
+                    else "monitor inactive or snoozed"
+                )
+                inc["observed_ts"] = now_ts
+                inc["evaluation_at"] = state.get("last_run") or ""
             if (
                 inc
                 and not inc.get("closed_ts")
@@ -240,6 +253,9 @@ def gate_firings(
         _apply_firing(state, out, new_cursor, now_ts)
     live_keys = {state["key"] for state in states}
     for key, inc in out.items():
+        if key not in live_keys:
+            inc["observation"] = "absent from alert snapshot"
+            inc["observed_ts"] = now_ts
         if (
             key not in live_keys
             and not inc.get("closed_ts")
@@ -290,12 +306,14 @@ def mark_mentioned(
 
 
 def _escalation_flag(inc: dict[str, Any], now_ts: float) -> str:
+    if inc.get("observation") != "matches":
+        return ""
     age_s = max(0.0, now_ts - inc.get("opened_ts", now_ts))
     mentioned = inc.get("mentioned_ts")
     if mentioned:
         since = now_ts - mentioned
         if since >= ESCALATION_SECONDS:
-            return " [ESCALATION-ELIGIBLE — still firing long after the last mention]"
+            return " [ESCALATION-ELIGIBLE — alert history warrants rechecking after the last mention]"
         ago = humanize_duration(timedelta(seconds=max(0.0, since)))
         return f" [operator notified {ago} ago — do not mention them again]"
     if age_s >= ESCALATION_SECONDS:
@@ -328,7 +346,11 @@ def render_alert_watch(incidents: dict[str, dict[str, Any]], now_ts: float) -> s
         return ""
     lines = [
         "[ALERT WATCH — the operator's logfire alerts. they have MUTED the "
-        "raw channels and trust you to absorb this stream. doctrine: "
+        "raw channels and trust you to absorb this stream. "
+        "Alert age/count describe grouped notifications, not failure duration or retry count. "
+        "Matching rows may describe old failures. Check subsequent runs for the affected "
+        "workload before claiming a continuing failure or recovery. No matches, a snoozed "
+        "monitor, or quiet closure does not establish workload recovery. doctrine: "
         "(1) default is silence — an open incident here is yours to carry, "
         "not a prompt to speak; flapping, self-resolved, and known-cause "
         "firings get absorbed without a word. "
@@ -345,11 +367,14 @@ def render_alert_watch(incidents: dict[str, dict[str, Any]], now_ts: float) -> s
         age = humanize_duration(
             timedelta(seconds=max(0.0, now_ts - inc.get("opened_ts", now_ts)))
         )
-        tally = f", {inc['count']} firings" if inc.get("count", 1) > 1 else ""
-        detail = f" — {inc['detail']}" if inc.get("detail") else ""
+        tally = f", {inc.get('count', 1)} alert observations (not failed runs)"
+        detail = f"; last matching detail: {inc['detail']}" if inc.get("detail") else ""
+        observation = inc.get("observation", "unknown; historical record")
+        evaluation = inc.get("evaluation_at") or "unknown"
         lines.append(
-            f"- [{key}] {inc.get('project', '')}/{inc.get('name', key)}: firing, "
-            f"opened {age} ago{tally}{_escalation_flag(inc, now_ts)}{detail}"
+            f"- [{key}] {inc.get('project', '')}/{inc.get('name', key)}: "
+            f"alert history opened {age} ago{tally}; latest observation: {observation}; "
+            f"evaluation at {evaluation}{_escalation_flag(inc, now_ts)}{detail}"
         )
     if len(open_items) > RENDER_LIMIT:
         lines.append(f"- … and {len(open_items) - RENDER_LIMIT} more open")

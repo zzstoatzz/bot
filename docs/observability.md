@@ -84,3 +84,12 @@ uses task-local state and starts a fresh versioned window. Historical snapshots
 must not be used to attribute a prompt regression. The conservative input-cost
 estimate prices all Anthropic writes at the longer TTL; it is not total invoice
 savings. Cross-provider totals have no cost estimate without model-specific rates.
+
+### Alert observations and workload recovery
+
+`ALERT WATCH` groups observations by alert ID. Its age and count describe that
+notification history, not the duration or number of failures of one flow. The
+block carries the latest observation and alert evaluation time separately from
+the last matching detail. A quiet, missing, or disabled alert does not prove
+workload recovery. Check subsequent runs of the affected workload before
+reporting that an old failure is continuing or has recovered.

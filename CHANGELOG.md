@@ -995,3 +995,10 @@ Operator DM replies now reach the agent loop instead of serving only as an
 acknowledgement flag. Poll the existing operator conversation with durable incoming
 message deduplication and a private reply tool; exclude these runs from automatic
 public-memory extraction. Silence remains a valid completed turn.
+
+## 2026-09-12
+
+Alert context distinguishes grouped notification history from current workload
+failure. Quiet observations no longer render as firing while awaiting closure;
+legacy incidents carry unknown observation state, and alert evaluation timestamps
+remain separate from the last matching error detail.
