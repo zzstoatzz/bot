@@ -11,6 +11,8 @@ confused hop from liking herself.
 
 from unittest.mock import AsyncMock, patch
 
+import pytest
+
 from bot.config import settings
 from bot.core import mcp_guard
 from bot.core.mcp_guard import make_mcp_guard
@@ -93,6 +95,7 @@ async def test_guard_completes_and_writes_like_for_other_author():
     with (
         patch.object(mcp_guard, "get_override", AsyncMock(return_value=_inactive())),
         patch("bot.tools.posting._policy_gate", AsyncMock(return_value=_allow())),
+        patch.object(mcp_guard.bot_client, "require_unmuted_thread", AsyncMock()),
     ):
         result = await make_mcp_guard("pdsx")(
             _ctx(notifs), call_tool, "create_record", _like_args(OTHER_URI)
@@ -166,4 +169,37 @@ async def test_update_of_reaction_still_refused():
         {"collection": "app.bsky.feed.like", "rkey": "3k", "record": {}},
     )
     assert "refused" in result
+    call_tool.assert_not_called()
+
+
+@pytest.mark.parametrize("collection", ["app.bsky.feed.like", "app.bsky.feed.repost"])
+@pytest.mark.parametrize("reason", ["thread is muted", "thread state unavailable"])
+async def test_reaction_stops_at_delivery_when_thread_not_confirmed(collection, reason):
+    call_tool = AsyncMock()
+    with (
+        patch.object(mcp_guard, "get_override", AsyncMock(return_value=_inactive())),
+        patch(
+            "bot.tools.posting._resolve_post_ref",
+            AsyncMock(
+                return_value=(
+                    "bafyother",
+                    OTHER_URI,
+                    "bafyroot",
+                    "other.example",
+                    "text",
+                )
+            ),
+        ),
+        patch("bot.tools.posting._policy_gate", AsyncMock(return_value=_allow())),
+        patch.object(
+            mcp_guard.bot_client,
+            "require_unmuted_thread",
+            AsyncMock(side_effect=ValueError(reason)),
+        ) as check,
+    ):
+        args = _like_args(OTHER_URI)
+        args["collection"] = collection
+        result = await make_mcp_guard("pdsx")(_ctx(), call_tool, "create_record", args)
+    assert result.startswith("refused:")
+    check.assert_awaited_once_with(OTHER_URI)
     call_tool.assert_not_called()

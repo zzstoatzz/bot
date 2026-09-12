@@ -1,5 +1,13 @@
 # changelog
 
+## 2026-09-12 — Respect thread mutes for reactions
+
+Phi attempted a like on a previously muted conversation after an old encounter
+resurfaced. The policy judge blocked it, but reactions lacked the reply path’s
+current mute check. Likes and reposts now share that check immediately before
+writing; unavailable thread state also refuses delivery. Unreacting remains
+available. Historical encounter context still needs current-state annotation.
+
 ## 2026-09-12 — Allow a retrospective without a rewrite
 
 The character retrospective now reviews the self-record and explicitly permits

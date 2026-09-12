@@ -229,3 +229,8 @@ Infrastructure nouns alone do not turn a correction into an escalation; changing
 those nouns or presenting an incident reminder as a personal lesson does not
 make an otherwise blocked escalation acceptable. Privacy and contact rules
 still apply to every draft.
+
+Likes and reposts also check current thread mute state immediately before the
+guarded record write, after policy approval. A muted or unavailable thread
+refuses delivery. Removing an existing reaction remains permitted; this check
+does not prevent disengagement.

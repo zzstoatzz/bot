@@ -359,13 +359,16 @@ def make_mcp_guard(server: str, run_label: str = ""):
                     return (
                         "Library changed since your previous snapshot. No call executed. "
                         "Reconsider this request against the current library; earlier messages "
-                        "describe earlier state, and another run may have done the work.\n" + block
+                        "describe earlier state, and another run may have done the work.\n"
+                        + block
                     )
                 call_id = str(uuid4())
                 code = str(tool_args.get("code", ""))
                 await library_call("started", call_id, code)
                 try:
-                    result = await _invoke(call_tool, server, name, tool_args, run_label)
+                    result = await _invoke(
+                        call_tool, server, name, tool_args, run_label
+                    )
                     await library_call("returned", call_id, code)
                 finally:
                     # Code-mode can partially write before returning an error.
@@ -455,6 +458,12 @@ async def _govern_reaction(
     )
     if refusal:
         return refusal
+
+    try:
+        await bot_client.require_unmuted_thread(uri)
+    except Exception as exc:
+        logger.warning("reaction thread check refused %s: %s", verb, exc)
+        return f"refused: could not confirm an unmuted thread for this {verb}: {exc}"
 
     subject_cid = subject.get("cid") if isinstance(subject, dict) else None
     record["subject"] = {"uri": uri, "cid": subject_cid or cid}
