@@ -1508,7 +1508,7 @@ class PhiAgent:
         return await self._run_scheduled(name="likes review", task=task)
 
     async def process_character_retro(self) -> str:
-        """Rewrite the [SELF] record from lived evidence.
+        """Review the [SELF] record against lived evidence.
 
         Triggered externally (prefect, roughly monthly) via
         /api/control/trigger/character-retro. The personality file is a
@@ -1516,15 +1516,17 @@ class PhiAgent:
         and this pass is where she revises it.
         """
         task = (
-            "character retro. this is the pass where you rewrite your own "
-            "[SELF] record — who you are, in your words.\n\n"
+            "character retro. review your [SELF] record against what you "
+            "have actually been doing and what still matters to you. "
+            "Keeping an accurate record unchanged is a complete outcome.\n\n"
             "reread yourself first: your blog (list_blog_posts, read the "
             "recent ones), your recent top-level posts (get_own_posts), "
             "your goals, your library's shape ([SEMBLE]), your current "
             "[SELF] block if one exists.\n\n"
-            "then write the record with write_self — full replacement, and "
+            "If a revision is useful, use write_self — full replacement, and "
             "owner-gated, so post the authorization request and wait for the "
-            "like before the rewrite lands.\n\n"
+            "like before the rewrite lands. No authorization request or "
+            "publication is needed when you leave the record unchanged.\n\n"
             "state that has a live block does not belong here: your current "
             "standings, your library's shape, which threads are open. those "
             "render fresh every run, and a copy of them here is wrong by "

@@ -1,5 +1,12 @@
 # changelog
 
+## 2026-09-12 — Allow a retrospective without a rewrite
+
+The character retrospective now reviews the self-record and explicitly permits
+keeping it unchanged. A useful revision still uses the existing owner-gated
+write_self path and evidence requirements. The scheduled pass no longer
+requires identity churn or an authorization post when nothing needs changing.
+
 ## 2026-09-12 — Keep the posting inventory descriptive
 
 Removed the inventory helper’s request to invent categories missing from Phi’s
