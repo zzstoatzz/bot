@@ -77,6 +77,20 @@ def notification_input(deps) -> dict:
     }
 
 
+def notification_recall(deps) -> str:
+    """Cue memory with received text and its exact immediate reply subject."""
+    parts = []
+    for uri, event in notification_input(deps).items():
+        if parent := event.get("reply_parent"):
+            parts.append(
+                f"Quoted reply parent {parent['uri']} by @{parent['author_handle']}: "
+                + parent["text"]
+            )
+        if text := event.get("post_text"):
+            parts.append(f"Received {event.get('uri') or uri}: {text}")
+    return "\n".join(parts)
+
+
 def _is_owner(ctx: RunContext[PhiDeps]) -> bool:
     """Check if the bot's owner is participating in this interaction.
 

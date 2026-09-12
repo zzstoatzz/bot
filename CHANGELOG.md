@@ -1,5 +1,15 @@
 # changelog
 
+## 2026-09-12 — Preserve a reply's subject in recall
+
+A reply about browser controls retrieved an old self-correction story while
+the preceding message about a game was absent from the selector's input.
+Incoming replies now carry their exact immediate parent into episodic recall;
+unavailable or changed parents are omitted without dropping the message.
+The friendship record was also reoriented from a completed count and stale
+backfill task to an ongoing interest, with the earlier record preserved.
+
+
 ## 2026-09-12 — Show the blog judge the request
 
 The blog gate previously supplied only “Phi proposes a public blog document,”

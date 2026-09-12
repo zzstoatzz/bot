@@ -153,3 +153,9 @@ Private context curation: `retire_memory` removes a read episodic note from
 ordinary retrieval without erasing its evidence; `restore_memory` reverses that
 choice. Exact `read_memory` includes retired state and reason. These tools do
 not change personality, operator guidance, or action policies.
+
+For incoming replies, episodic recall includes the verified immediate parent
+post (URI, CID, author, and text) beside the received text. This resolves cues
+such as “that site” without using the entire historical thread as the search
+query. Missing or changed parent records are omitted; the incoming message
+still reaches Phi. Parent evidence grants no additional action permission.

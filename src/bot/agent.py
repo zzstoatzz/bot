@@ -56,7 +56,7 @@ from bot.memory.namespace_memory import InteractionRow
 from bot.memory.run_evidence import RunEvidence, current_run, run_status
 from bot.status import bot_status
 from bot.tools import PhiDeps, _check_services_impl, register_all
-from bot.tools._helpers import notification_input
+from bot.tools._helpers import notification_input, notification_recall
 from bot.tools.bluesky import fetch_relay_names
 from bot.utils.time import humanize_duration
 
@@ -705,12 +705,7 @@ class PhiAgent:
             # same catalog itch every slot — memory as amplifier, not cue.
             notifs = notification_input(ctx.deps)
             if notifs:
-                texts = [
-                    e.get("post_text", "")
-                    for e in notifs.values()
-                    if e.get("post_text")
-                ]
-                query = " ".join(texts)
+                query = notification_recall(ctx.deps)
             else:
                 query = ctx.deps.event_material or ctx.deps.run_prompt
             if not query.strip():
@@ -1253,7 +1248,10 @@ class PhiAgent:
             label="alert fired",
             prompt="an incident just opened — check [ALERT WATCH]. "
             "most firings need nothing from you.\n\n"
-            + (workflows or "[WORKFLOW STATE unavailable — workload recovery is unknown]"),
+            + (
+                workflows
+                or "[WORKFLOW STATE unavailable — workload recovery is unknown]"
+            ),
             deps=PhiDeps(
                 author_handle="",
                 memory=self.memory,

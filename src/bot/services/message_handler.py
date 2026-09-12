@@ -163,6 +163,33 @@ class MessageHandler:
         except Exception as e:
             logger.warning(f"failed to fetch thread context for {thread_uri}: {e}")
 
+        reply_parent = None
+        reply = getattr(post.record, "reply", None)
+        if reply:
+            try:
+                parents = await self.client.get_posts([reply.parent.uri])
+                parent = next(
+                    (
+                        p
+                        for p in parents.posts
+                        if p.uri == reply.parent.uri and p.cid == reply.parent.cid
+                    ),
+                    None,
+                )
+                if parent:
+                    reply_parent = {
+                        "uri": parent.uri,
+                        "cid": parent.cid,
+                        "author_handle": parent.author.handle,
+                        "text": resolve_facet_links(parent.record),
+                    }
+            except Exception as error:
+                logger.debug(
+                    "reply parent unavailable for %s: %s",
+                    post_uri,
+                    type(error).__name__,
+                )
+
         cited_refs = extract_cited_references(post.record)
 
         return {
@@ -172,6 +199,7 @@ class MessageHandler:
             "author_handle": author_handle,
             "author_did": getattr(post.author, "did", ""),
             "post_text": text,
+            "reply_parent": reply_parent,
             "embed_desc": embed_desc or "",
             "image_urls": image_urls,
             "root_uri": root_uri,
