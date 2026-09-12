@@ -621,7 +621,6 @@ class PhiAgent:
             recent = await read_recent_encounters(
                 ctx.deps.memory.client,
                 ENCOUNTER_NAMESPACE,
-                encounter_thread_states,
                 since=until - timedelta(hours=48),
                 until=until,
                 limit=8,
