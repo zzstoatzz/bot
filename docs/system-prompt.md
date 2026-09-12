@@ -159,3 +159,9 @@ post (URI, CID, author, and text) beside the received text. This resolves cues
 such as “that site” without using the entire historical thread as the search
 query. Missing or changed parent records are omitted; the incoming message
 still reaches Phi. Parent evidence grants no additional action permission.
+
+Recent encounter rendering overlays current authenticated thread mute state for
+displayed post events. Shared roots are checked once per run, concurrently with
+a five-second await bound. Original event records stay unchanged. A failed read
+is marked unavailable, and unmuted does not imply contact consent. Delivery
+checks remain authoritative if the thread changes during a run.

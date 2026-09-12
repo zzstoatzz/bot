@@ -1,5 +1,12 @@
 # changelog
 
+## 2026-09-12 — Show disengagement beside historical encounters
+
+Old replies were resurfacing without the current thread mute state. The recent
+encounter block now annotates displayed threads from authenticated AppView reads,
+without rewriting the captured events. Reads share roots and run concurrently;
+unknown state stays explicit. Delivery still checks again before acting.
+
 ## 2026-09-12 — Respect thread mutes for reactions
 
 Phi attempted a like on a previously muted conversation after an old encounter

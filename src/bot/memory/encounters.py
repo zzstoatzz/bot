@@ -8,6 +8,7 @@ import asyncio
 import hashlib
 import json
 import logging
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from typing import Literal, TypedDict
 
@@ -163,7 +164,9 @@ async def read_recent_encounters(
     return result
 
 
-def render_recent_encounters(result: RecentEncounters) -> str:
+def render_recent_encounters(
+    result: RecentEncounters, thread_states: dict[str, str] | None = None
+) -> str:
     """Render received events without implying a response or a decision."""
     if result["status"] == "unavailable":
         return "[RECENT ENCOUNTERS] storage read failed; recent history is unavailable."
@@ -184,8 +187,44 @@ def render_recent_encounters(result: RecentEncounters) -> str:
             f"indexed {row['indexed_at']}; captured {row['captured_at']}; source created "
             f"{row.get('source_created_at') or 'unknown'}"
         )
+        if thread_states and row["id"] in thread_states:
+            lines.append(f"  current thread state: {thread_states[row['id']]}")
         if content := row.get("content"):
             preview = content if len(content) <= 240 else content[:239] + "…"
             lines.append(f"  source text: {json.dumps(preview, ensure_ascii=False)}")
         lines.extend(f"  source: {uri}" for uri in row.get("source_uris", []))
     return "\n".join(lines)
+
+
+async def encounter_thread_states(
+    result: RecentEncounters,
+    read_state: Callable[[str], Awaitable[tuple[str, bool]]],
+) -> dict[str, str]:
+    """Live annotations for displayed events; never persisted as event facts."""
+    targets: dict[str, str] = {}
+    for row in result["rows"]:
+        try:
+            record = json.loads(row.get("record_json") or "{}")
+            root = ((record.get("reply") or {}).get("root") or {}).get("uri")
+            uri = root or row.get("event_uri", "")
+            if "/app.bsky.feed.post/" in uri:
+                targets[row["id"]] = uri
+        except (TypeError, ValueError, AttributeError):
+            continue
+
+    async def inspect(uri: str) -> tuple[str, str]:
+        try:
+            _, muted = await asyncio.wait_for(read_state(uri), timeout=5)
+            state = (
+                "muted; disengaged, do not contact this thread"
+                if muted
+                else "unmuted; contact permissions still apply"
+            )
+        except Exception:
+            state = "unavailable; not permission to contact"
+        return uri, state
+
+    states = dict(
+        await asyncio.gather(*(inspect(uri) for uri in set(targets.values())))
+    )
+    return {event_id: states[uri] for event_id, uri in targets.items()}

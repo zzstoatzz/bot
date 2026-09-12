@@ -48,6 +48,7 @@ from bot.core.tool_usage import ToolUsage
 from bot.core.workflow_state import get_workflow_state_block
 from bot.memory.encounters import (
     ENCOUNTER_NAMESPACE,
+    encounter_thread_states,
     read_recent_encounters,
     render_recent_encounters,
 )
@@ -620,13 +621,15 @@ class PhiAgent:
             recent = await read_recent_encounters(
                 ctx.deps.memory.client,
                 ENCOUNTER_NAMESPACE,
+                encounter_thread_states,
                 since=until - timedelta(hours=48),
                 until=until,
                 limit=8,
             )
             if evidence := current_run.get():
                 evidence.event_ids.update(row["id"] for row in recent["rows"])
-            return render_recent_encounters(recent)
+            states = await encounter_thread_states(recent, bot_client.thread_mute_state)
+            return render_recent_encounters(recent, states)
 
         @_run_scoped
         async def inject_user_memory(ctx: RunContext[PhiDeps]) -> str:

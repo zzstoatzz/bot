@@ -157,14 +157,16 @@ class BotClient:
         if not uri.startswith("at://") or "/app.bsky.feed.post/" not in uri:
             raise ValueError("provide a Bluesky post AT-URI")
         await self.authenticate()
-        response = self.client.app.bsky.feed.get_post_thread({"uri": uri, "depth": 0})
+        response = await asyncio.to_thread(
+            self.client.app.bsky.feed.get_post_thread, {"uri": uri, "depth": 0}
+        )
         if not isinstance(response.thread, models.AppBskyFeedDefs.ThreadViewPost):
             raise ValueError("thread is unavailable")
         post = response.thread.post
         root = post.record.reply.root.uri if post.record.reply else post.uri
         if root != post.uri:
-            response = self.client.app.bsky.feed.get_post_thread(
-                {"uri": root, "depth": 0}
+            response = await asyncio.to_thread(
+                self.client.app.bsky.feed.get_post_thread, {"uri": root, "depth": 0}
             )
             if not isinstance(response.thread, models.AppBskyFeedDefs.ThreadViewPost):
                 raise ValueError("thread root is unavailable")
