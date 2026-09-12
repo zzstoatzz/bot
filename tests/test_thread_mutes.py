@@ -148,3 +148,28 @@ async def test_unmuted_reply_delivers(monkeypatch):
         ),
     )
     bot.client.send_post.assert_called_once()
+
+
+async def test_new_root_retries_index_delay_without_resending(monkeypatch):
+    bot, feed = client(monkeypatch)
+    monkeypatch.setattr("bot.core.atproto_client.asyncio.sleep", AsyncMock())
+    uri = "at://did:plc:test/app.bsky.feed.post/new"
+    feed.get_post_thread.side_effect = [RuntimeError("NotFound"), view(uri, False)]
+    bot.client.send_post.return_value = SimpleNamespace(uri=uri, cid="new")
+    await bot.create_post("a " * 220)
+    assert bot.client.send_post.call_count == 2
+    assert feed.get_post_thread.call_count == 2
+
+
+async def test_new_root_never_treats_missing_state_as_unmuted(monkeypatch):
+    bot, feed = client(monkeypatch)
+    sleep = AsyncMock()
+    monkeypatch.setattr("bot.core.atproto_client.asyncio.sleep", sleep)
+    feed.get_post_thread.side_effect = RuntimeError("NotFound")
+    bot.client.send_post.return_value = SimpleNamespace(
+        uri="at://did:plc:test/app.bsky.feed.post/new", cid="new"
+    )
+    with pytest.raises(ValueError, match="partial publication: 1"):
+        await bot.create_post("a " * 220)
+    assert bot.client.send_post.call_count == 1
+    assert sleep.await_count == 4

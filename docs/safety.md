@@ -215,3 +215,8 @@ again and refuses when muted or unavailable. This covers runs started before a
 mute. Bluesky does not offer an atomic check-and-send: an external mute between
 the final check and the write remains a race. A failure after earlier parts were
 sent stops further parts; it does not retract those already published.
+
+For a root created during the same split-post call, delivery retries unavailable
+AppView state after 1, 2, 4, and 8 seconds. It still requires a confirmed unmuted
+result. Exhaustion reports partial publication with the last published URI,
+so the caller can inspect it instead of resending the whole draft.

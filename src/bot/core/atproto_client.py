@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from pathlib import Path
 
@@ -172,9 +173,18 @@ class BotClient:
             raise ValueError("authenticated thread mute state is unavailable")
         return root, post.viewer.thread_muted
 
-    async def require_unmuted_thread(self, uri: str) -> None:
+    async def require_unmuted_thread(
+        self, uri: str, *, newly_created: bool = False
+    ) -> None:
         """Check fresh state at delivery, including work queued before a mute."""
-        _, muted = await self.thread_mute_state(uri)
+        for attempt in range(5 if newly_created else 1):
+            try:
+                _, muted = await self.thread_mute_state(uri)
+                break
+            except Exception:
+                if not newly_created or attempt == 4:
+                    raise
+                await asyncio.sleep(2**attempt)
         if muted:
             raise ValueError("thread is muted; leave it alone without a closing reply")
 
@@ -243,7 +253,17 @@ class BotClient:
                 thread_ref = models.AppBskyFeedPost.ReplyRef(
                     parent=parent_ref, root=root_ref
                 )
-                await self.require_unmuted_thread(root_ref.uri)
+                try:
+                    await self.require_unmuted_thread(
+                        root_ref.uri, newly_created=reply_to is None
+                    )
+                except Exception as error:
+                    raise ValueError(
+                        f"partial publication: {i} part(s) already sent; last post "
+                        f"{last_result.uri}. Remaining parts stopped because thread "
+                        "state could not be confirmed unmuted. Do not resend the "
+                        "whole draft; inspect the published posts first."
+                    ) from error
                 last_result = self.client.send_post(
                     text=chunk, reply_to=thread_ref, facets=facets
                 )

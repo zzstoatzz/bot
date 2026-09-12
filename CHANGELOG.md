@@ -1075,3 +1075,10 @@ the runtime skill for metadata search, stateless execution, and scoped paginatio
 A live comparison found 16 PDS connection records versus 3 endpoint results; the
 skill now uses PDS inventory for complete graph work without treating that one
 endpoint as a measure of all search coverage or recreating omitted edges.
+
+### Fresh-thread indexing delay
+
+A production split post stopped after publishing its root because AppView had
+not indexed it yet. Retry mute-state reads for roots created in the same call,
+without bypassing the guard or repeating writes. If checks still fail, report
+which part was already published instead of a misleading whole-post failure.
