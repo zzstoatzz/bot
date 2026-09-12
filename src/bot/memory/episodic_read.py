@@ -39,5 +39,7 @@ async def read_note(namespace, note_id: str) -> dict:
             "tags": list(getattr(row, "tags", []) or []),
             "source_uris": list(getattr(row, "source_uris", []) or []),
             "supersedes": getattr(row, "supersedes", None),
+            "retired_reason": getattr(row, "retired_reason", None),
+            "retired_at": getattr(row, "retired_at", None),
         },
     }

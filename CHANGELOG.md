@@ -1,5 +1,14 @@
 # changelog
 
+## 2026-09-12 — Let private notes leave active recall
+
+Phi can retire a stale private note after reading it, and restore it later.
+Retirement excludes the version from ordinary recall and reconciliation while
+preserving exact text, citations, and the reason for retirement. This gives her
+a way to stop carrying obsolete working context without erasing disputed history
+or having to invent a replacement correction. Superseded versions remain history.
+
+
 ## 2026-09-12 — Goal blockers can change independently
 
 Phi already owns goal progress and blocker fields. Adding or clearing only a

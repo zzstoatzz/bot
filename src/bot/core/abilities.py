@@ -143,6 +143,14 @@ RISK: dict[str, Risk] = {
         "reason": "searches the open web via tavily; costs a metered request but changes nothing.",
     },
     # --- low: her own private state ---------------------------------------
+    "retire_memory": {
+        "magnitude": "low",
+        "reason": "removes a private note from ordinary recall while preserving its text and citations; restore_memory reverses it.",
+    },
+    "restore_memory": {
+        "magnitude": "low",
+        "reason": "returns a retired private note to recall; cannot reactivate superseded versions over corrections.",
+    },
     "save_memory": {
         "magnitude": "low",
         "reason": "writes to her private vector store; a wrong note resurfaces later as if it were true, which is the extraction feedback loop this repo has hit before.",

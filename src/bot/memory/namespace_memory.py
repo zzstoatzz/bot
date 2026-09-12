@@ -661,7 +661,7 @@ class NamespaceMemory:
             results = []
             if response.rows:
                 for row in response.rows:
-                    if getattr(row, "status", None) == "superseded":
+                    if getattr(row, "status", None) in {"superseded", "retired"}:
                         continue
                     results.append(
                         {
@@ -812,6 +812,36 @@ class NamespaceMemory:
         logger.info(f"stored episodic memory [{source}]: {content[:80]}")
         return saved
 
+    async def set_memory_retired(
+        self, note_id: str, retired: bool, reason: str = ""
+    ) -> dict:
+        """Remove a private note from recall without erasing its evidence."""
+        if retired and not reason.strip():
+            raise ValueError("A retirement reason is required. Nothing written.")
+        async with _correction_lock:
+            existing = await read_note(self.namespaces["episodic"], note_id)
+            if existing["status"] != "ok":
+                raise ValueError(f"Memory {existing['status']}; nothing written.")
+            note = existing["note"]
+            if note["status"] == "superseded":
+                raise ValueError(
+                    "Superseded history cannot be reactivated. Read its successor."
+                )
+            state = "retired" if retired else "active"
+            if note["status"] == state or (not retired and note["status"] is None):
+                return existing
+            change = {"id": note_id, "status": state}
+            if retired:
+                change.update(
+                    retired_reason=reason.strip(), retired_at=datetime.now().isoformat()
+                )
+            await asyncio.to_thread(
+                self.namespaces["episodic"].write,
+                patch_rows=[change],
+                schema=EPISODIC_SCHEMA,
+            )
+            return await read_note(self.namespaces["episodic"], note_id)
+
     async def correct_episodic_memory(
         self,
         note_id: str,
@@ -827,9 +857,9 @@ class NamespaceMemory:
                     f"Correction target {note_id}: {existing['status']}; nothing written"
                 )
             note = existing["note"]
-            if note["status"] == "superseded":
+            if note["status"] in {"superseded", "retired"}:
                 raise ValueError(
-                    "Correction target is superseded; read the current version first. Nothing written."
+                    "Correction target is inactive; restore a retired note or read the current version first. Nothing written."
                 )
             embedding = await self._get_embedding(content)
             current = await read_note(self.namespaces["episodic"], note_id)
@@ -900,7 +930,7 @@ class NamespaceMemory:
         )
         rows = []
         for row in response.rows or []:
-            if getattr(row, "status", None) == "superseded":
+            if getattr(row, "status", None) in {"superseded", "retired"}:
                 continue
             rows.append(
                 {
@@ -932,7 +962,7 @@ class NamespaceMemory:
             results = []
             if response.rows:
                 for row in response.rows:
-                    if getattr(row, "status", None) == "superseded":
+                    if getattr(row, "status", None) in {"superseded", "retired"}:
                         continue
                     created_at = getattr(row, "created_at", "") or ""
                     results.append(
@@ -1003,7 +1033,7 @@ class NamespaceMemory:
                 results = []
                 if response.rows:
                     for row in response.rows:
-                        if getattr(row, "status", None) == "superseded":
+                        if getattr(row, "status", None) in {"superseded", "retired"}:
                             continue
                         results.append(
                             {
@@ -1042,7 +1072,7 @@ class NamespaceMemory:
                 results = []
                 if response.rows:
                     for row in response.rows:
-                        if getattr(row, "status", None) == "superseded":
+                        if getattr(row, "status", None) in {"superseded", "retired"}:
                             continue
                         created_at = getattr(row, "created_at", "") or ""
                         results.append(

@@ -149,6 +149,8 @@ EPISODIC_SCHEMA = {
     "source_uris": {"type": "[]string"},  # AT-URIs backing this memory (optional)
     "created_at": {"type": "string"},
     "status": {"type": "string", "filterable": True},  # active, superseded
+    "retired_reason": {"type": "string"},
+    "retired_at": {"type": "string"},
     "supersedes": {"type": "string"},  # id of the episodic row this replaces
 }
 

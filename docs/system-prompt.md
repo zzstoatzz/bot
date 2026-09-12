@@ -148,3 +148,8 @@ An overlapping run with an older library revision receives refreshed context in
 the tool result instead of executing that call. This is local-process coordination,
 not a distributed transaction; external writes become visible when observed on
 Jetstream. Tool receipts record attempts/returns, not proof of successful mutation.
+
+Private context curation: `retire_memory` removes a read episodic note from
+ordinary retrieval without erasing its evidence; `restore_memory` reverses that
+choice. Exact `read_memory` includes retired state and reason. These tools do
+not change personality, operator guidance, or action policies.

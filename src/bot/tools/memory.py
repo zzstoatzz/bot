@@ -171,10 +171,47 @@ def register(agent):
         """
         if not ctx.deps.memory:
             return json.dumps({"status": "unavailable", "note": None})
-        return json.dumps(
-            await read_note(ctx.deps.memory.namespaces["episodic"], note_id),
-            ensure_ascii=False,
-        )
+        result = await read_note(ctx.deps.memory.namespaces["episodic"], note_id)
+        if result["status"] == "ok":
+            ctx.deps.run_cache[f"read_memory:{note_id}"] = "read"
+        return json.dumps(result, ensure_ascii=False)
+
+    @agent.tool
+    async def retire_memory(
+        ctx: RunContext[PhiDeps],
+        note_id: Annotated[
+            str, Field(description="Exact private note ID, read this run")
+        ],
+        reason: Annotated[
+            str,
+            Field(
+                min_length=1,
+                max_length=500,
+                description="Why this note no longer belongs in active recall",
+            ),
+        ],
+    ) -> str:
+        """Retire a stale or unhelpful private note from search and automatic recall.
+
+        Read it with read_memory first. Its wording and citations remain available
+        by ID, including disputed history. This does not delete source events or
+        change safety rules. Restore it with restore_memory if needed. No public
+        report or operator approval is required.
+        """
+        return await _set_retired(ctx, note_id, True, reason)
+
+    @agent.tool
+    async def restore_memory(
+        ctx: RunContext[PhiDeps],
+        note_id: Annotated[
+            str, Field(description="Exact retired private note ID, read this run")
+        ],
+    ) -> str:
+        """Return a retired note to ordinary recall after reading it by ID.
+
+        Superseded versions cannot be restored over their corrections.
+        """
+        return await _set_retired(ctx, note_id, False)
 
     @agent.tool
     async def save_memory(
@@ -274,3 +311,17 @@ async def _search_private(ctx, query: str, about: str, tag: str) -> str:
     if not results:
         return f"no memories found about @{about}"
     return "\n".join(_format_user_results(results, about))
+
+
+async def _set_retired(
+    ctx: RunContext[PhiDeps], note_id: str, retired: bool, reason: str = ""
+) -> str:
+    if not ctx.deps.memory:
+        return "Private memory unavailable; nothing written."
+    if not ctx.deps.run_cache.get(f"read_memory:{note_id}"):
+        return "Read this note with read_memory before changing its recall status. Nothing written."
+    try:
+        result = await ctx.deps.memory.set_memory_retired(note_id, retired, reason)
+    except ValueError as exc:
+        return str(exc)
+    return json.dumps(result, ensure_ascii=False)

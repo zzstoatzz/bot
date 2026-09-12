@@ -10,7 +10,7 @@ from turbopuffer import Turbopuffer
 from bot.tools import memory as memory_tools
 
 
-@pytest.mark.parametrize("stored_status", ["active", "superseded", None])
+@pytest.mark.parametrize("stored_status", ["active", "superseded", "retired", None])
 async def test_exact_reader_opens_version_without_rewriting_or_returning_vector(
     stored_status,
 ):
@@ -43,9 +43,10 @@ async def test_exact_reader_opens_version_without_rewriting_or_returning_vector(
         )
         ctx = SimpleNamespace(
             deps=SimpleNamespace(
+                run_cache={},
                 memory=SimpleNamespace(
                     namespaces={"episodic": client.namespace("notes")}
-                )
+                ),
             )
         )
         result = json.loads(await tools["read_memory"](ctx, "version-1"))
@@ -81,9 +82,10 @@ async def test_absence_and_backend_failure_are_distinct(code, expected):
         )
         ctx = SimpleNamespace(
             deps=SimpleNamespace(
+                run_cache={},
                 memory=SimpleNamespace(
                     namespaces={"episodic": client.namespace("notes")}
-                )
+                ),
             )
         )
         result = json.loads(await tools["read_memory"](ctx, "missing-version"))

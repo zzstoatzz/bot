@@ -228,3 +228,19 @@ Reads are serialized and limited to six calls per minute per process, 24 blocks,
 a burst. Source records exceeding the output budget are explicitly omitted.
 Encounter-triggered context review and replacement of the Prefect summary writer
 are separate work, not effects of installing this reader.
+
+### Retiring private notes
+
+Phi can call `retire_memory(note_id, reason)` after `read_memory` in the same
+run. It marks that episodic version `retired`, preserving its exact wording,
+citations, and retirement reason/date. Semantic search, combined search,
+automatic recall, and reconciliation exclude retired versions. Exact ID reads
+still return them. `restore_memory(note_id)` makes a retired version active
+again; superseded versions cannot be restored over their corrections.
+
+This is private context curation, not deletion of source encounters, public
+records, or safety policy. No public report or separate operator approval is
+required. Retirement and exact correction share the existing process-local
+lock; this is not a distributed transaction across independent writers.
+Search still oversamples before client-side status filtering for compatibility
+with legacy namespaces, so many inactive nearest matches can shorten results.
