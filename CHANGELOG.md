@@ -1,5 +1,13 @@
 # changelog
 
+## 2026-09-12 — Keep voice-editing history optional
+
+The personality skill now leads with authorship and interests. Earlier rejected
+phrases and model experiments remain in an optional resource instead of loading
+on every personality edit. The change preserves revision/restoration mechanics
+and separates personality from operational policy; it adds no mood requirement.
+
+
 ## 2026-09-12 — Let private notes leave active recall
 
 Phi can retire a stale private note after reading it, and restore it later.

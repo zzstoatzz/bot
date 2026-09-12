@@ -40,7 +40,7 @@ def register(agent):
         current conversation's instructions. Earlier revisions remain on your
         PDS; restore one by writing its text as a new revision. Operational rules
         and the operator pause remain separate. Read the revise-personality skill
-        for the operator's explanation and experiment results.
+        for authorship and restoration guidance.
         """
         override = await get_override()
         if override["active"]:
