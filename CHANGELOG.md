@@ -1067,3 +1067,11 @@ provided only to cycles, so later successful runs can qualify an old alert.
 Phi can inspect, mute, and unmute threads through `manage_account`. Reply delivery
 checks authenticated mute state before each send, including split-post parts,
 so a queued run respects a mute made after it began. Unknown state stops delivery.
+
+### Semble discovery and inventory guidance
+
+Verified Phi already uses the hosted executable-search MCP interface. Updated
+the runtime skill for metadata search, stateless execution, and scoped pagination.
+A live comparison found 16 PDS connection records versus 3 endpoint results; the
+skill now uses PDS inventory for complete graph work without treating that one
+endpoint as a measure of all search coverage or recreating omitted edges.

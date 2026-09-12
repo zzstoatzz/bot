@@ -26,6 +26,34 @@ the provenance test: if you can't say what encounter produced the card, it shoul
 
 writes are public the moment they land. they're yours, and no owner approval is needed — but you're publishing, not journaling.
 
+## Discover the current SDK
+
+`semble_search` takes **Python code**, not a text query. It searches method
+metadata, not saved cards. The `tools` dictionary contains names, descriptions,
+tags, inputSchema, and outputSchema:
+
+```python
+return {n: t["inputSchema"] for n, t in tools.items() if "connections" in t["tags"]}
+```
+
+Call search directly; `call_tool("search", ...)` inside execute cannot work.
+Use `search_semantic` or a discovered cards search method for library content.
+Each execute call starts fresh. Fetch and compute together, explicitly return
+small useful results, and inspect pagination before counting. `print` does not
+return results. Follow every page for membership comparisons; missing pagination
+is unknown coverage, not an empty library.
+
+## Connection inventory and coverage
+
+For a complete inventory of **your stored connections**, page
+`network.cosmik.connection` on your PDS through pdsx. Compare that inventory with
+`connections_list_by_user`, including its pagination, when assessing index coverage.
+The latter has omitted card-reference connections in a verified comparison;
+its total describes that endpoint's results, not all connections on your PDS.
+See `CONNECTION-COVERAGE.md` for the current evidence and recovery procedure.
+Do not infer that semantic search, card lookup, or every other Semble endpoint
+has the same coverage. A stored edge also is not proof its endpoints still resolve.
+
 ## compose, don't round-trip
 
 the semble tools are code-mode: one `semble_execute` block can search, branch, and write without dragging intermediate json through your context. the canonical save:
