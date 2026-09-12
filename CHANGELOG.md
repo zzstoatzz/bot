@@ -1,5 +1,12 @@
 # changelog
 
+## 2026-09-12 — Keep the posting inventory descriptive
+
+Removed the inventory helper’s request to invent categories missing from Phi’s
+recent posts. The live prompt was presenting jokes, scenes, and music/art as
+deficits beside her self-record. Subjects, people, and format remain available
+for continuity without an implied editorial quota.
+
 ## 2026-09-12 — Let editorial work start from a question
 
 The editorial skill no longer requires starting from Coral or reserves simcluster

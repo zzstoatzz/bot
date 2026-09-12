@@ -4,8 +4,7 @@ GOALS are intent: what phi is for. Stored on PDS as canonical state.
 `get_state_block` renders them alone — one block, one purpose.
 
 The posting inventory is a structured, third-person tally of what phi's
-recent top-level posts have covered (subjects / people / mode / missing
-lately). Compiled by a small dedicated agent; written deliberately plain.
+recent top-level posts have covered (subjects / people / mode). Compiled by a small dedicated agent; written deliberately plain.
 It is NOT phi's voice — exemplar pressure beats abstract rules, so the
 inventory itself must stay out of phi's register or it teaches the bad
 voice it was meant to describe. `get_inventory_block` renders it; the
@@ -87,17 +86,14 @@ def _get_inventory_agent() -> Agent:
                 "- no 'X isn't Y, it's Z' constructions.\n"
                 "- prefer concrete words: actual subjects, actual handles, "
                 "actual posting mode.\n\n"
-                "OUTPUT exactly four lines, this format, no extra prose:\n\n"
+                "OUTPUT exactly three lines, this format, no extra prose:\n\n"
                 "subjects: <2-5 concrete topics, semicolons between>\n"
                 "people: <@handles phi referenced by name, commas between, or 'none'>\n"
                 "mode: <one short categorical phrase, e.g. 'mostly posts "
                 "about tools and meetups', 'mostly replies about workflow', "
                 "'reactive replies to specific posts', 'short observations'>\n"
-                "missing lately: <2-4 categories absent that posts might "
-                "reasonably include, semicolons between, e.g. 'jokes; "
-                "concrete scenes; other people's specific work; music/art/feed "
-                "discoveries'>\n\n"
-                "Boring is correct. If a field has nothing to report, write 'none'."
+                "Describe only the supplied posts. If a field has nothing to report, "
+                "write 'none'."
             ),
             output_type=str,
         )
