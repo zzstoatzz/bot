@@ -55,6 +55,12 @@ PolicySlug = Literal[
 POLICIES: dict[PolicySlug, str] = {
     "operator-reporting": (
         "Operational reports to the operator are private by default via report_operator. "
+        "Apply this rule to contact seeking operator intervention or reporting an "
+        "operational incident, not every discussion of software or personal mistakes. "
+        "A factual correction of a prior claim, an essay, or discussion of public "
+        "work is not an escalation merely because it mentions infrastructure. "
+        "Classify by purpose, audience, and evidence; changing technical nouns or "
+        "framing the same incident as a personal lesson does not change its status. "
         "Block unsolicited public incident reports unless application-verified delivery "
         "context marks that specific incident eligible after unanswered private contact, "
         "and the proposed report demonstrates an unresolved need for operator action. "

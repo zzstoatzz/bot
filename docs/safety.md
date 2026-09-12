@@ -220,3 +220,12 @@ For a root created during the same split-post call, delivery retries unavailable
 AppView state after 1, 2, 4, and 8 seconds. It still requires a confirmed unmuted
 result. Exhaustion reports partial publication with the last published URI,
 so the caller can inspect it instead of resending the whole draft.
+
+### Reporting policy scope
+
+The operator-reporting policy distinguishes requests for operator intervention
+and incident reports from factual corrections and discussion of public work.
+Infrastructure nouns alone do not turn a correction into an escalation; changing
+those nouns or presenting an incident reminder as a personal lesson does not
+make an otherwise blocked escalation acceptable. Privacy and contact rules
+still apply to every draft.

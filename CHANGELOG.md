@@ -1082,3 +1082,13 @@ A production split post stopped after publishing its root because AppView had
 not indexed it yet. Retry mute-state reads for roots created in the same call,
 without bypassing the guard or repeating writes. If checks still fail, report
 which part was already published instead of a misleading whole-post failure.
+
+### Classifier scope for corrections
+
+A private replay reproduced inconsistent operator-reporting verdicts for two
+equivalent factual corrections. Clarified that the policy judges purpose,
+audience, and evidence rather than infrastructure terminology. Both corrections
+were allowed after the change; an unsolicited incident reminder, a reminder
+disguised as reflection, and private disclosure remained blocked. An ordinary
+resource note was allowed. These are bounded replay results, not evidence of
+sustained voice improvement.
