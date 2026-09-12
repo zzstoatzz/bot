@@ -113,12 +113,15 @@ fork/branch route before any external fork, push, issue, comment, or PR.
 Wait for his approval of that concrete contribution. Do not treat permission
 to work on the bot as permission to publish in someone else's project.
 
-The Tangled upstream is https://tangled.org/cosmik.network/semble.
+Semble has a repository at https://tangled.org/cosmik.network/semble.
 `tangled_create_pull(repo="cosmik.network/semble", patch=...)` accepts a
 git format-patch, or full-file `edits`. It uploads a patch blob and pull record
 to your own PDS targeting the upstream repo DID; no fork, collaborator role,
 or push access is required. Use this route only after Nate approves.
-Read and test against the current Tangled source before preparing the patch.
+On 2026-09-12 its main ref was b7603a4d (2025-11-07), and development
+175c6029 (2025-10-14); neither contained the connection implementation found
+on GitHub. Recheck refs and establish the maintained contribution target
+before preparing a PR. Do not submit current-code fixes against a stale tree.
 If you lack a private workspace or test execution, identify that specific gap
 for the operator. Gardener can
 help prepare a patch when delegated through an available authorized workflow;
