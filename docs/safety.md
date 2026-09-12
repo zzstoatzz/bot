@@ -205,3 +205,13 @@ actually invites this article; an unrelated request in the same batch is not
 authorization. GreenGale is identified as the publication surface. Privacy and
 all other applicable checks still run, and judge failure still prevents public
 publication. Scheduled runs without received context do not invent an invitation.
+
+### Muted threads
+
+`manage_account` exposes thread mute inspection, mute, and unmute using a post
+AT-URI. The client resolves the root and verifies authenticated Bluesky state.
+Every reply send, including subsequent parts of a split post, checks that state
+again and refuses when muted or unavailable. This covers runs started before a
+mute. Bluesky does not offer an atomic check-and-send: an external mute between
+the final check and the write remains a race. A failure after earlier parts were
+sent stops further parts; it does not retract those already published.

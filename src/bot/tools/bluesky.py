@@ -148,9 +148,10 @@ def register(agent):
     async def manage_account(
         ctx: RunContext[PhiDeps],
         setting: Annotated[
-            Literal["labels", "mentionable"],
+            Literal["labels", "mentionable", "thread"],
             Field(
                 description=(
+                    "thread: inspect (list), mute (add), or unmute (remove) a thread by post AT-URI. "
                     "labels: self-labels on your profile (e.g. 'bot'). "
                     "mentionable: who has opted in to being @mentioned by you "
                     "(owner-only)."
@@ -163,15 +164,35 @@ def register(agent):
         ],
         value: Annotated[
             str,
-            Field(description="[add/remove] the label value or handle to add/remove"),
+            Field(description="Label, handle, or [thread: all actions] post AT-URI"),
         ] = "",
     ) -> str:
-        """Manage your account settings: profile self-labels or the mention opt-in list.
+        """Manage thread mutes, profile self-labels, or the mention opt-in list.
+
+        Thread mutes are private and reversible. Use any post AT-URI in the
+        thread. Muting disengages quietly; do not send a farewell. Do not
+        undo an operator-requested mute without their approval.
 
         The mentionable list is OWNER-ONLY — when someone tells you "you can
         tag me", ask the operator to confirm before adding them; never add
         someone without operator approval.
         """
+        if setting == "thread":
+            try:
+                root, muted = await bot_client.thread_mute_state(value)
+                if action != "list":
+                    desired = action == "add"
+                    if muted != desired:
+                        graph = bot_client.client.app.bsky.graph
+                        method = graph.mute_thread if desired else graph.unmute_thread
+                        method({"root": root})
+                    _, muted = await bot_client.thread_mute_state(root)
+                    if muted != desired:
+                        return "thread change could not be verified; inspect before retrying"
+                return f"thread: {root}\nmuted: {muted}"
+            except Exception as error:
+                return f"thread operation failed: {error}"
+
         if setting == "labels":
             from bot.core.profile_manager import (
                 add_self_label,

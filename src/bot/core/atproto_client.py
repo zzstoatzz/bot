@@ -151,6 +151,33 @@ class BotClient:
         # Use the params format instead of data
         self.client.app.bsky.notification.update_seen({"seenAt": seen_at})
 
+    async def thread_mute_state(self, uri: str) -> tuple[str, bool]:
+        """Resolve a post's root and read its authenticated mute state."""
+        if not uri.startswith("at://") or "/app.bsky.feed.post/" not in uri:
+            raise ValueError("provide a Bluesky post AT-URI")
+        await self.authenticate()
+        response = self.client.app.bsky.feed.get_post_thread({"uri": uri, "depth": 0})
+        if not isinstance(response.thread, models.AppBskyFeedDefs.ThreadViewPost):
+            raise ValueError("thread is unavailable")
+        post = response.thread.post
+        root = post.record.reply.root.uri if post.record.reply else post.uri
+        if root != post.uri:
+            response = self.client.app.bsky.feed.get_post_thread(
+                {"uri": root, "depth": 0}
+            )
+            if not isinstance(response.thread, models.AppBskyFeedDefs.ThreadViewPost):
+                raise ValueError("thread root is unavailable")
+            post = response.thread.post
+        if post.viewer is None or post.viewer.thread_muted is None:
+            raise ValueError("authenticated thread mute state is unavailable")
+        return root, post.viewer.thread_muted
+
+    async def require_unmuted_thread(self, uri: str) -> None:
+        """Check fresh state at delivery, including work queued before a mute."""
+        _, muted = await self.thread_mute_state(uri)
+        if muted:
+            raise ValueError("thread is muted; leave it alone without a closing reply")
+
     async def create_post(
         self,
         text: str,
@@ -173,6 +200,7 @@ class BotClient:
         if len(text) <= 300:
             facets = create_facets(text, self.client, allowed_handles)
             if reply_to:
+                await self.require_unmuted_thread(reply_to.root.uri)
                 result = self.client.send_post(
                     text=text,
                     reply_to=reply_to,
@@ -194,6 +222,8 @@ class BotClient:
             facets = create_facets(chunk, self.client, allowed_handles)
 
             if i == 0:
+                if reply_to:
+                    await self.require_unmuted_thread(reply_to.root.uri)
                 last_result = self.client.send_post(
                     text=chunk,
                     reply_to=reply_to,
@@ -213,6 +243,7 @@ class BotClient:
                 thread_ref = models.AppBskyFeedPost.ReplyRef(
                     parent=parent_ref, root=root_ref
                 )
+                await self.require_unmuted_thread(root_ref.uri)
                 last_result = self.client.send_post(
                     text=chunk, reply_to=thread_ref, facets=facets
                 )

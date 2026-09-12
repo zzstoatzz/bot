@@ -235,6 +235,7 @@ async def test_split_thread_attaches_image_only_to_first_post(reply, quote):
         )
     client = BotClient.__new__(BotClient)
     client.authenticate = AsyncMock()
+    client.thread_mute_state = AsyncMock(return_value=(URI, False))
     client.client = SimpleNamespace(
         send_post=Mock(
             side_effect=[

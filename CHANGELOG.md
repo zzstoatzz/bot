@@ -1061,3 +1061,9 @@ are correlated with run evidence without equating tool returns with saved record
 
 Alert-triggered runs now receive fresh deterministic workflow health, previously
 provided only to cycles, so later successful runs can qualify an old alert.
+
+### Thread disengagement
+
+Phi can inspect, mute, and unmute threads through `manage_account`. Reply delivery
+checks authenticated mute state before each send, including split-post parts,
+so a queued run respects a mute made after it began. Unknown state stops delivery.

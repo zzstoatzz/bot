@@ -166,7 +166,7 @@ RISK: dict[str, Risk] = {
     },
     "manage_account": {
         "magnitude": "moderate",
-        "reason": "edits the mention-consent allowlist, which decides whose notifications phi is able to reach at all.",
+        "reason": "manages private thread mutes, public self-labels, and the owner-gated mention-consent allowlist.",
     },
     "propose_goal_change": {
         "magnitude": "moderate",

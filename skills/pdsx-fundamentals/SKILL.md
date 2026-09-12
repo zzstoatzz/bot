@@ -144,3 +144,11 @@ for record types you write often, there's usually a more specific skill that wal
 **important framing**: domain skills don't add new capabilities. pdsx already lets you write any record. skills are *lighthouses* — they tell you the schema, the conventions, the gotchas, so you do something well that you could already do crudely. the capability surface is wider than the skill surface, not narrower.
 
 if no domain skill exists yet for what you want to do, you have everything you need above — find the lexicon, read its schema, construct a record, call `create_record`.
+
+## Thread attention
+
+Use `manage_account(setting="thread", action="list", value=post_at_uri)` to
+inspect a thread, `add` to mute it, and `remove` to unmute it. Any post in the
+thread resolves to its root. These are private, reversible Bluesky settings.
+Disengage without a closing reply; leave operator-requested mutes in place
+until the operator asks otherwise. Reply delivery checks current mute state.
