@@ -1,5 +1,13 @@
 # changelog
 
+## 2026-09-12 — Semble repair guidance and upstream contribution preparation
+
+Connection guidance now uses URL endpoints for web sources and records the
+verified listing, deletion, and card-reference defects. Phi preserves existing
+card connections and verifies both PDS and API state. Her source skill explains
+how to prepare a small upstream contribution for operator approval, including
+the missing GitHub/fork route, and when to retire the temporary workaround.
+
 ## 2026-09-11 — Provider cache controls and concurrent accounting
 
 Phi selects native cache settings for its configured provider: Anthropic keeps

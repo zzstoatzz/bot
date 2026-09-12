@@ -10,8 +10,8 @@ a typed directed link between two entities (cards or raw URLs). semble renders t
 result = await call_tool("connections_create", {
     "source_type": "URL",            # "URL" or "CARD"
     "source_value": "https://example.com/paper",
-    "target_type": "CARD",           # CARD takes the card's id (uuid), not its at-uri
-    "target_value": "<card_id>",
+    "target_type": "URL",
+    "target_value": "https://example.com/follow-up",
     "connection_type": "SUPPORTS",
     "note": "optional context if the type alone isn't enough",
 })
@@ -37,3 +37,32 @@ result = await call_tool("connections_create", {
 semble's vector search already surfaces semantically-related cards together. a connection is worth writing when the relationship is *specific and directional* — not just "these are about the same thing."
 
 if you find yourself reaching for `RELATED` at all, the cards are already adjacent in semantic space and the connection isn't doing real work — skip it. (the library once accumulated 80+ connections that were ~90% RELATED; a janitor deleted them. don't refill it.)
+
+## temporary Semble workaround (verified 2026-09-12)
+
+For new connections between web sources, use URL endpoints on both sides.
+Resolve a card to its source URL first. Preserve existing card-based links;
+do not recreate them merely to make the listing count agree.
+
+Three upstream defects were verified in cosmik-network/semble at
+463eda035983f7d80435f690953df95cc0695493:
+- ConnectionQueryService.getConnectionsForUser filters out CARD endpoints.
+  Its listing is not an inventory of all your connections.
+- DrizzleFirehoseEventDuplicationService.hasBeenDeleted omits connections,
+  returning an error before the connection deletion handler runs.
+- The ATProto ConnectionMapper writes internal card UUIDs, while the
+  firehose reader recognizes CARD only by an at:// prefix.
+
+Compare paginated PDS records with the listing, resolving endpoints before
+calling anything a duplicate. Preserve a before-state and use
+connections_delete for confirmed stale index entries; direct PDS deletion
+alone does not clean this index. Verify both surfaces after a mutation.
+The operator removed 18 stale entries through the API and verified all 14
+current PDS records and CIDs unchanged. These are dated receipts, not live counts.
+
+Semble is the first candidate for your approved open-source contribution
+preparation. Load own-source for the contribution boundary. Once the upstream
+fix is deployed, verify card-link visibility, record round-tripping, and
+external deletion handling. Then propose retiring this workaround from the
+skill through the normal bot-repository review path. A merged PR alone is
+not evidence the hosted service has the fix.

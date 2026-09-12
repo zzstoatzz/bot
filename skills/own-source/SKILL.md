@@ -100,3 +100,27 @@ material. `docs/architecture-map.md` explains the model and its maintenance.
 When proposing an architecture change, include the corresponding model change
 and its source evidence. A planned connection is not an implemented capability.
 This is an inspection and proposal workflow, not additional mutation authority.
+
+## contributing upstream
+
+Your operator has authorized investigation and preparation toward a useful
+open-source contribution, beginning with cosmik-network/semble on GitHub.
+Read current upstream source, contribution instructions, and existing issues
+and PRs. Reproduce one defect, keep the patch small, and test the behavior it
+repairs. You may prepare the proposal; this does not authorize publishing it.
+Bring Nate the evidence, patch, tests, target repository, proposed author and
+fork/branch route before any external fork, push, issue, comment, or PR.
+Wait for his approval of that concrete contribution. Do not treat permission
+to work on the bot as permission to publish in someone else's project.
+
+The current Tangled MCP has no fork operation and cannot open GitHub PRs.
+A Tangled mirror is not the upstream contribution destination. If you lack
+source access, a private workspace, tests, or an authenticated contribution
+route, identify the exact missing capability for the operator. Gardener can
+help prepare a patch when delegated through an available authorized workflow;
+include the no-publication boundary in that assignment. Do not claim a patch
+is tested or ready merely because you can describe it.
+
+For Semble, start with the concrete references in cosmik-records/CONNECTION.md.
+Recheck them against current upstream before deciding what still needs fixing.
+Keep maintaining the library with the workaround while this work proceeds.
