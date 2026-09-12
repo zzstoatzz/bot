@@ -195,3 +195,13 @@ persisted after a successful run; pause/override prevents dispatch. The run uses
 the public notification/extraction pipeline and automatic episodic summaries.
 Private conversations remain visible in authorized operational traces. Responses
 are limited to one idempotent send per incoming batch. No response is required.
+
+### Blog invitation context
+
+The blog gate receives the current incoming events, their authors, source URIs,
+and thread context separately from the proposed article. Private operator
+conversation is labeled private evidence. The judge decides whether a request
+actually invites this article; an unrelated request in the same batch is not
+authorization. GreenGale is identified as the publication surface. Privacy and
+all other applicable checks still run, and judge failure still prevents public
+publication. Scheduled runs without received context do not invent an invitation.

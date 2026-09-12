@@ -1,5 +1,14 @@
 # changelog
 
+## 2026-09-12 — Show the blog judge the request
+
+The blog gate previously supplied only “Phi proposes a public blog document,”
+so it could not see an explicit invitation to write. It now passes received
+conversation evidence and identifies GreenGale as the destination. Requests do
+not waive privacy or authorize unrelated publications; the gate remains closed
+on rejection or classifier failure.
+
+
 ## 2026-09-12 — Keep voice-editing history optional
 
 The personality skill now leads with authorship and interests. Earlier rejected
