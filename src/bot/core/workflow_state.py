@@ -287,10 +287,10 @@ def _compose(raw: dict) -> str:
     )
 
 
-async def get_workflow_state_block() -> str:
+async def get_workflow_state_block(*, fresh: bool = False) -> str:
     """Compose [WORKFLOW STATE] — per-deployment health, anchored by NOW."""
     now = time.time()
-    if _cache["text"] and now - _cache["fetched_at"] < _TTL_SECONDS:
+    if not fresh and _cache["text"] and now - _cache["fetched_at"] < _TTL_SECONDS:
         return _cache["text"]
 
     raw = await _fetch_raw()

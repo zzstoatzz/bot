@@ -1,5 +1,8 @@
 """Incident math for the logfire alert watch (core/alert_watch.py)."""
 
+from unittest.mock import AsyncMock
+
+from bot.agent import PhiAgent
 from bot.core.alert_watch import (
     CLOSED_RETENTION_SECONDS,
     ESCALATION_SECONDS,
@@ -260,3 +263,14 @@ def test_legacy_alert_does_not_claim_still_firing():
     assert "unknown; historical record" in rendered
     assert "[ESCALATION-ELIGIBLE]" not in rendered
     assert "10 alert observations (not failed runs)" in rendered
+
+
+async def test_alert_wakeup_includes_fresh_workload_evidence(monkeypatch):
+    phi = PhiAgent.__new__(PhiAgent)
+    phi.memory = None
+    phi._run_agent = AsyncMock(return_value="checked")
+    read = AsyncMock(return_value="[WORKFLOW STATE] watcher: COMPLETED (run_id=later-success)")
+    monkeypatch.setattr("bot.agent.get_workflow_state_block", read)
+    await phi.process_alerts("old entrypoint failure")
+    read.assert_awaited_once_with(fresh=True)
+    assert "later-success" in phi._run_agent.call_args.kwargs["prompt"]

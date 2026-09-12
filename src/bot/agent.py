@@ -1248,10 +1248,12 @@ class PhiAgent:
         firings need nothing — the block's own doctrine carries the
         escalation rules.
         """
+        workflows = await get_workflow_state_block(fresh=True)
         return await self._run_agent(
             label="alert fired",
             prompt="an incident just opened — check [ALERT WATCH]. "
-            "most firings need nothing from you.",
+            "most firings need nothing from you.\n\n"
+            + (workflows or "[WORKFLOW STATE unavailable — workload recovery is unknown]"),
             deps=PhiDeps(
                 author_handle="",
                 memory=self.memory,

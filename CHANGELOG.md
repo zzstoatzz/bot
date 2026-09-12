@@ -1007,3 +1007,6 @@ Semble context now refreshes after library operations. Overlapping runs receive
 current library context before retrying a stale call, and collection/membership
 operations are retained in the existing PDS operation history. Library attempts
 are correlated with run evidence without equating tool returns with saved records.
+
+Alert-triggered runs now receive fresh deterministic workflow health, previously
+provided only to cycles, so later successful runs can qualify an old alert.

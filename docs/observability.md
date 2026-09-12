@@ -93,3 +93,7 @@ block carries the latest observation and alert evaluation time separately from
 the last matching detail. A quiet, missing, or disabled alert does not prove
 workload recovery. Check subsequent runs of the affected workload before
 reporting that an old failure is continuing or has recovered.
+
+Alert-triggered runs also fetch the existing deterministic workflow state afresh,
+so later completed runs are available alongside historical alert details. A failed
+fetch is explicitly unknown; it does not reuse a cached healthy verdict.
