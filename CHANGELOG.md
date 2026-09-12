@@ -1,5 +1,12 @@
 # changelog
 
+## 2026-09-12 — Goal blockers can change independently
+
+Phi already owns goal progress and blocker fields. Adding or clearing only a
+blocker was discarded by the unchanged-state check; those changes now persist.
+Tool guidance asks for the dependency and what would unblock it, while allowing
+other work to continue.
+
 ## 2026-09-12 — Semble repair guidance and upstream contribution preparation
 
 Connection guidance now uses URL endpoints for web sources and records the

@@ -38,3 +38,31 @@ async def test_changed_state_writes():
         )
     assert result == "at://g/3g"
     client.client.com.atproto.repo.put_record.assert_called_once()
+
+
+async def test_blocker_can_be_added_and_cleared_without_changing_state():
+    for before, after in [
+        ("", "Need maintained upstream ref"),
+        ("Waiting for ref", ""),
+    ]:
+        client = _client_with({})
+        client.client.com.atproto.repo.put_record.return_value = Mock(uri="at://g/3g")
+        existing = {
+            "current_state": "same",
+            "next_step": "same next",
+            "blocked_by": before,
+        }
+        with patch.object(goals, "get_goal", AsyncMock(return_value=existing)):
+            result = await goals.update_goal_progress(
+                client,
+                "3g",
+                current_state="same",
+                next_step="same next",
+                last_step="checked refs",
+                blocked_by=after,
+            )
+        assert result == "at://g/3g"
+        written = client.client.com.atproto.repo.put_record.call_args.kwargs["data"][
+            "record"
+        ]
+        assert written["blocked_by"] == after

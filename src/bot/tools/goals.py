@@ -136,7 +136,9 @@ def register(agent):
         ],
         blocked_by: Annotated[
             str,
-            Field(description="optional: why progress is stalled, if it is."),
+            Field(
+                description="What prevents progress and what would unblock it. Empty clears the blocker."
+            ),
         ] = "",
         evidence_uri: Annotated[
             str,
@@ -159,6 +161,8 @@ def register(agent):
         """Update your own progress on a goal or interest — NOT owner-gated.
 
         Record the latest step, current state, next step, and progress measure.
+        You may record or clear a blocker without approval. Name the dependency
+        and what would unblock it; continue other useful work while waiting.
         Keep the measure consistent with cited evidence. Changes to title,
         description, metabolism, or kind require propose_goal_change.
 
@@ -202,7 +206,7 @@ def register(agent):
             if uri is None:
                 return (
                     f"unchanged — not written: {rkey} already holds this "
-                    "current_state and next_step. your run summary is "
+                    "state, next step, and blocker. your run summary is "
                     "recorded automatically; update the goal when its state "
                     "actually moves."
                 )

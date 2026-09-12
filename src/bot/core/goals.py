@@ -151,7 +151,7 @@ async def update_goal_progress(
     it just did, where things stand, the next concrete step). Sets
     last_step_at to now so the [GOALS AND INTERESTS] block can show staleness.
 
-    Returns None without writing when current_state and next_step match the
+    Returns None without writing when state, next step, and blocker match the
     stored record — re-recording an unchanged state is journaling, and the
     journal is episodic memory (run summaries land there unconditionally).
     """
@@ -163,6 +163,7 @@ async def update_goal_progress(
     if (
         existing.get("current_state") == current_state
         and existing.get("next_step") == next_step
+        and (existing.get("blocked_by") or "") == blocked_by
     ):
         return None
     now = datetime.now(UTC).isoformat()
