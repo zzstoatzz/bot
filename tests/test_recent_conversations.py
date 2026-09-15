@@ -13,9 +13,9 @@ five times. Two defects, both here:
 """
 
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, Mock
 
-from bot.agent import render_recent_conversations
+from bot.agent import PhiAgent, render_recent_conversations
 from bot.memory.namespace_memory import NamespaceMemory
 
 
@@ -113,3 +113,32 @@ def test_account_directory_never_reads_person_memory():
     assert len(handles) == 179
     assert handles[-1] == "h178.bsky.social"
     mem.client.namespace.assert_not_called()
+
+
+async def test_scheduled_prompts_include_completed_reply(monkeypatch):
+    phi = PhiAgent.__new__(PhiAgent)
+    phi.memory = Mock()
+    phi.memory.get_recent_interactions = AsyncMock(
+        return_value=[
+            {
+                "handle": "zzstoatzzdevlog.bsky.social",
+                "created_at": "2026-09-14T19:50:21Z",
+                "content": "user: explain the subscript\nbot: the trick is unicode subscript modifier letters",
+                "source_uris": ["at://example/app.bsky.feed.post/answered"],
+            }
+        ]
+    )
+    phi._run_agent = AsyncMock(return_value="done")
+    monkeypatch.setattr(
+        "bot.agent.get_workflow_state_block", AsyncMock(return_value="")
+    )
+    monkeypatch.setattr(
+        "bot.agent.get_recent_flow_mentions_block", AsyncMock(return_value="")
+    )
+    monkeypatch.setattr("bot.agent._check_services_impl", AsyncMock(return_value=""))
+    for method in (phi.process_cycle, phi.process_reflection, phi.process_people):
+        await method()
+        prompt = phi._run_agent.call_args.kwargs["prompt"]
+        assert "[RECENT CONVERSATIONS — exchanges you already had" in prompt
+        assert 'you replied "the trick is unicode subscript modifier letters"' in prompt
+        assert "at://example/app.bsky.feed.post/answered" in prompt

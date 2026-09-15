@@ -1134,6 +1134,17 @@ class PhiAgent:
             deps=deps,
         )
 
+    async def _recent_conversations_block(self) -> str:
+        """Completed exchanges, alongside the received-event index."""
+        if not self.memory:
+            return "[RECENT CONVERSATIONS] storage unavailable."
+        try:
+            recent = await self.memory.get_recent_interactions(top_k=5)
+        except Exception:
+            logger.exception("failed to read recent conversations")
+            return "[RECENT CONVERSATIONS] unavailable; prior replies are unknown."
+        return render_recent_conversations(recent)
+
     async def _run_scheduled(
         self,
         *,
@@ -1155,7 +1166,7 @@ class PhiAgent:
 
     async def process_reflection(self) -> str:
         """Generate a daily reflection post from recent memory."""
-        context_blocks: list[str] = []
+        context_blocks: list[str] = [await self._recent_conversations_block()]
         try:
             service_health = await _check_services_impl()
         except Exception:
@@ -1185,7 +1196,7 @@ class PhiAgent:
         minute — one about, say, mushrooms, one about a workflow failure.
         One cycle = one integrated read.
         """
-        context_blocks: list[str] = []
+        context_blocks: list[str] = [await self._recent_conversations_block()]
 
         try:
             wf = await get_workflow_state_block()
@@ -1378,7 +1389,7 @@ class PhiAgent:
                 "you have not met most of these people. don't perform "
                 "familiarity you haven't earned."
             ),
-            context_blocks=[],
+            context_blocks=[await self._recent_conversations_block()],
         )
 
     async def process_chicken_precheck(self) -> str:

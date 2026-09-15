@@ -62,9 +62,11 @@ assembled by the entry point and appended to the *task prompt*, not the system p
 | **cycle** | `[WORKFLOW STATE]`, `[RECENT FLOW MENTIONS]` | `core/workflow_state.py`, `core/recent_flow_mentions.py` |
 | **daily reflection** | `[SERVICE HEALTH]` | `_check_services_impl` |
 
-`[RECENT ENCOUNTERS]` replaces the scheduled-only recent-conversation block. It
-contains received source events across people, including encounters without a
-reply, rather than replaying both sides of Phi's recent exchanges. The time
+`[RECENT ENCOUNTERS]` contains received source events across people, including
+encounters without a reply. Cycle, reflection, and people passes also receive
+`[RECENT CONVERSATIONS]`: the five latest stored exchanges, including both sides
+and source references. The existing namespace reader runs off the event loop.
+These are complementary views; received events alone do not show completed work. The time
 window is a context bound, not a claim of capture completeness. Each result ID
 can be opened with `read_encounter`; `search_encounters` searches captured text
 across people. Existing per-person and episodic memories remain accessible

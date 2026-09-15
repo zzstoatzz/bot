@@ -1228,7 +1228,10 @@ class NamespaceMemory:
         return {"nodes": nodes, "edges": edges}
 
     async def get_recent_interactions(self, top_k: int = 10) -> list[dict]:
-        """Get recent interactions across all user namespaces for reflection."""
+        """Read completed exchanges without blocking notification polling."""
+        return await asyncio.to_thread(self._get_recent_interactions, top_k)
+
+    def _get_recent_interactions(self, top_k: int) -> list[dict]:
         user_prefix = f"{self.NAMESPACES['users']}-"
         results: list[dict] = []
         try:

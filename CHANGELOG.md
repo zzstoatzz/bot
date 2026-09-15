@@ -1,5 +1,15 @@
 # changelog
 
+## 2026-09-14 — Restore completed conversations to scheduled context
+
+A scheduled cycle answered an operator request six hours after Phi had already
+replied. The September 5 encounter migration removed the completed-conversation
+block while leaving its name in the cycle instructions. Restore the existing
+dated request/reply view to cycle, reflection, and people passes, alongside
+received encounters. Run its synchronous namespace reads off the event loop.
+A regression test exercises all three entry points through prompt assembly.
+This restores recent stored context; it is not an atomic duplicate-action lock.
+
 ## 2026-09-12 — Show disengagement beside historical encounters
 
 Old replies were resurfacing without the current thread mute state. The recent
