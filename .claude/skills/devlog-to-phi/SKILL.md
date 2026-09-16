@@ -99,3 +99,11 @@ Not for: changing phi's behavior (edit code/personality), inspecting phi
   is the authorization; deliver what they said, don't editorialize.
 - General record CRUD via pdsx is covered in the `pdsx-fundamentals` skill;
   this skill is just the phi-mention recipe on top of it.
+
+## follow through after posting
+
+Monitor for Phi’s reply after sending a devlog message; posting the link is not
+the end of the exchange. Read the reply in thread context and check material
+claims against evidence before reporting back. If the reply has not arrived
+before the turn ends, arrange a quiet, bounded follow-up when scheduling is
+available. Notify Nate about substantive replies or blockers, not unchanged polls.
