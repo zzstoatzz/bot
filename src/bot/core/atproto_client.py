@@ -4,6 +4,7 @@ from pathlib import Path
 
 import httpx
 from atproto import Client, Session, SessionEvent
+from atproto_client import exceptions as atproto_exceptions
 from atproto_client import models
 
 from bot.config import settings
@@ -13,6 +14,9 @@ from bot.core.rich_text import create_facets
 logger = logging.getLogger("bot.atproto_client")
 
 SESSION_FILE = Path(".session")
+
+LOGIN_ATTEMPTS = 6
+LOGIN_BACKOFF_BASE_SECONDS = 2.0
 
 
 def _get_session_string() -> str | None:
@@ -96,6 +100,29 @@ class BotClient:
         self.client.on_session_change(_on_session_change)
         self._authenticated = False
 
+    async def _login_with_retry(self, **kwargs) -> None:
+        """Call client.login, retrying transport failures with exponential backoff.
+
+        Startup exits on any authenticate() exception, and fly burns its
+        restart budget in about two minutes, so a transient PDS/AppView
+        timeout here has taken phi down for hours. Only NetworkError (which
+        includes InvokeTimeoutError and 5xx responses) is retried;
+        credential problems surface immediately.
+        """
+        for attempt in range(1, LOGIN_ATTEMPTS + 1):
+            try:
+                self.client.login(**kwargs)
+                return
+            except atproto_exceptions.NetworkError as e:
+                if attempt == LOGIN_ATTEMPTS:
+                    raise
+                delay = LOGIN_BACKOFF_BASE_SECONDS**attempt
+                logger.warning(
+                    f"login attempt {attempt}/{LOGIN_ATTEMPTS} failed "
+                    f"({type(e).__name__}); retrying in {delay:.0f}s"
+                )
+                await asyncio.sleep(delay)
+
     async def authenticate(self):
         """Authenticate with Bluesky, reusing session if available."""
         if self._authenticated:
@@ -106,10 +133,12 @@ class BotClient:
         if session_string:
             try:
                 logger.info("reusing saved session")
-                self.client.login(session_string=session_string)
+                await self._login_with_retry(session_string=session_string)
                 self._authenticated = True
                 logger.info("session restored")
                 return
+            except atproto_exceptions.NetworkError:
+                raise
             except Exception as e:
                 logger.warning(f"failed to reuse session: {e}, creating new one")
                 # Delete invalid session file
@@ -118,7 +147,9 @@ class BotClient:
 
         # Create new session if no valid session exists
         logger.info("creating new session")
-        self.client.login(settings.bluesky_handle, settings.bluesky_password)
+        await self._login_with_retry(
+            login=settings.bluesky_handle, password=settings.bluesky_password
+        )
         self._authenticated = True
         logger.info("new session created")
 
