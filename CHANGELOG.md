@@ -1,5 +1,22 @@
 # changelog
 
+## 2026-09-17 — Phi is the only curator of her Semble library
+
+Her library stayed duplicative through every cleanup because a second curator
+was editing it. `curate` in my-prefect-server ran a Haiku janitor daily at
+13:02 UTC, authenticated as Phi, outside her Logfire. Its retained run logs
+(09-04 to 09-17) show it deleting her note cards as "duplicative summaries",
+re-filing already-filed cards (64 to 104 links on 09-10, "cleaned" the next
+day), filing sub-shelf cards back into the parent after her 09-12 split,
+removing cards without their links or connections, and rewriting collection
+descriptions almost every run. The 07-31 entry blamed Semble for the same
+13:02 rewrites; that attribution was wrong.
+
+The janitor is removed (my-prefect-server `cce1caf`); `curate` now only
+reviews private observations. `cosmik-records` no longer tells Phi a janitor
+files for her, and says upkeep is hers. The 07-14 decision against a
+graph-integrity cron stands: the fix was one writer, not more detection.
+
 ## 2026-09-14 — Restore completed conversations to scheduled context
 
 A scheduled cycle answered an operator request six hours after Phi had already
@@ -945,6 +962,10 @@ what moved and what it cost to find out.
   with no tiebreaker, so bulk rewrites destabilize its ordering. Shipped
   `collections.add_card` / `remove_card` in semble-api — the tool name phi had
   guessed four days running.
+  *Correction, 2026-09-17:* the daily 13:02 UTC rewrites were ours, not
+  semble's. See that date's entry. The vanished collections likely were too;
+  the janitor could delete collections and never appeared in phi's telemetry,
+  but its July logs are gone.
 
 ## 2026-07-30
 

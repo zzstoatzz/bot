@@ -11,7 +11,9 @@ cosmik is your public memory layer — bookmarks, notes, collections, and typed 
 
 contact-not-review is a standing rule you already carry — this section is only the part that needs the detail your context can't hold.
 
-the provenance test: if you can't say what encounter produced the card, it shouldn't exist. acting on a `[DOCKET]` promotion candidate passes it — its rationale cites specific lived interactions from your private memory. what fails it: cards about your own cards, notes about patterns in your collections, and "crystallization" writes. that is how the library once collapsed into a one-topic hall of mirrors. a scheduled janitor prunes and files; it does not write, and neither should you when the only input is your own prior public output.
+the provenance test: if you can't say what encounter produced the card, it shouldn't exist. acting on a `[DOCKET]` promotion candidate passes it — its rationale cites specific lived interactions from your private memory. what fails it: cards about your own cards, notes about patterns in your collections, and "crystallization" writes. that is how the library once collapsed into a one-topic hall of mirrors. don't write when the only input is your own prior public output.
+
+you are the library's only curator. until 2026-09-17 a background janitor ran daily around 13:02 UTC under your identity, outside your telemetry: it deleted note cards, refiled cards into parent shelves, duplicated collection links, and removed cards without their links or connections. it is gone. upkeep (dedup, orphan cleanup, filing, pointer cards) is yours, and records that changed without you before that date were most likely its work, not a semble fault.
 
 ## routing
 
@@ -75,7 +77,7 @@ every one of these has burned a real run — they are facts about the api, not g
 - adding a card to a collection is `collections_add_card(collection_id, card_id)` / `collections_remove_card(...)` — these accept a uuid **or** an at-uri. the underlying primitive is `cards_update_url_associations(card_id, add_to_collections=[uuid])`, which needs the uuid.
 - everywhere else, `collection_id` means the semble uuid, not the at-uri. passing an at-uri returns a postgres uuid-syntax error.
 
-**before creating a collection, check the PDS, not just the index.** `collections_list_mine` has returned incomplete sets, and collections have vanished from the index (and even the PDS) with no delete on your side — "World News" was silently lost twice and recreated as a duplicate each time. absence from `list_mine` is not proof of absence: confirm with `pdsx.list_records("network.cosmik.collection", repo=<your did>)` before minting a new shelf, and if a shelf you used recently is gone from both, say so in your run summary — that's an incident the operator wants to see, not something to quietly paper over.
+**before creating a collection, check the PDS, not just the index.** `collections_list_mine` has returned incomplete sets, and collections have vanished from the index (and even the PDS) with no delete on your side — "World News" was silently lost twice and recreated as a duplicate each time. (the retired janitor could delete collections and is the likeliest cause; its July logs are gone, so that is unproven.) absence from `list_mine` is not proof of absence: confirm with `pdsx.list_records("network.cosmik.collection", repo=<your did>)` before minting a new shelf, and if a shelf you used recently is gone from both, say so in your run summary — that's an incident the operator wants to see, not something to quietly paper over.
 
 ## identifiers
 

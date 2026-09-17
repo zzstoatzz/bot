@@ -30,7 +30,7 @@ stores:
 | repo event | the same tail, 48h | `[RECENT OPERATIONS]` — edits and deletes visible | high |
 | self · goal · persona | gated tools (`propose_goal_change` like-as-approval; self-record judge) | `[SELF]` `[GOALS]` `[PERSONA EXPERIMENT]` | highest |
 | atlas · docket | prefect `phi-atlas`, daily — reads every turbopuffer namespace | `[ATLAS]` `[DOCKET]` | derived |
-| card · collection · connection | semble tools, live-first; the `curate` flow only deletes | `[SEMBLE]` | higher — intentional, public |
+| card · collection · connection | semble tools, live; phi is the only writer | `[SEMBLE]` | higher — intentional, public |
 
 two things the picture makes obvious: `phi-users-{handle}` is three rows with
 three writers with distinct provenance sharing one namespace, and the two
@@ -113,10 +113,11 @@ to add the draft key.
   exact stored wording, dates, tags and source references. Old instructions stay
   dated history. The helper cannot report what is currently in Phi's context.
   Per-author observations are reconciled on write.
-- **writes to the library are live-first.** cards originate in the moment;
-  the `curate` flow deletes, files, and trims and has no create tools. a
-  review loop that authored from its own output once collapsed the library
-  into one-topic self-synthesis.
+- **the library has one writer.** cards originate in the moment, and upkeep
+  is phi's too. a review loop that authored from its own output once collapsed
+  the library into one-topic self-synthesis; the delete-only janitor that
+  replaced it (`curate`, removed 2026-09-17) then spent months undoing her
+  shelving from outside her telemetry. no background flow writes here.
 - **residue was removed (2026-08-15).** a 7-item decaying buffer of
   "what runs left behind" carried claims with no ground truth, each carry
   reset its TTL, and the reflection copied them into goals; two resolved
