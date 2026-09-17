@@ -12,9 +12,15 @@ removing cards without their links or connections, and rewriting collection
 descriptions almost every run. The 07-31 entry blamed Semble for the same
 13:02 rewrites; that attribution was wrong.
 
-The janitor is removed (my-prefect-server `cce1caf`); `curate` now only
-reviews private observations. `cosmik-records` no longer tells Phi a janitor
-files for her, and says upkeep is hers. The 07-14 decision against a
+The janitor is removed (my-prefect-server `cce1caf`), and then the rest of
+`curate` with it (`4026459`): its other half was a Haiku agent hard-deleting
+rows from her per-person memory, about 100 in its last two weeks by its own
+summaries, with no undo and no trace in her telemetry. Phi's own reconciler
+already handles observations and keeps retired versions readable. The flow,
+its deployment, and its trigger automation are deleted. `cosmik-records` no
+longer tells Phi a janitor files for her, and says upkeep is hers. Phi then
+cleaned the library herself: 13 orphan links, 5 exact duplicates, and 23
+parent/sub double filings, verified against her PDS. The 07-14 decision against a
 graph-integrity cron stands: the fix was one writer, not more detection.
 
 ## 2026-09-14 — Restore completed conversations to scheduled context

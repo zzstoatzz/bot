@@ -118,6 +118,10 @@ to add the draft key.
   the library into one-topic self-synthesis; the delete-only janitor that
   replaced it (`curate`, removed 2026-09-17) then spent months undoing her
   shelving from outside her telemetry. no background flow writes here.
+- **observations have one reviewer.** the same `curate` flow also ran an
+  agent that hard-deleted observation rows, invisible from this repo and
+  missing from the table above. it is gone; reconciliation on write, with
+  retired versions kept readable, is the only thing that revises them.
 - **residue was removed (2026-08-15).** a 7-item decaying buffer of
   "what runs left behind" carried claims with no ground truth, each carry
   reset its TTL, and the reflection copied them into goals; two resolved
