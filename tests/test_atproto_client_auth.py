@@ -12,20 +12,23 @@ from bot.core import atproto_client as mod
 
 
 @pytest.fixture
-def client(monkeypatch):
-    monkeypatch.setattr(mod, "_get_session_string", lambda: None)
-    sleeps: list[float] = []
+def sleeps(monkeypatch) -> list[float]:
+    recorded: list[float] = []
 
     async def fake_sleep(delay: float) -> None:
-        sleeps.append(delay)
+        recorded.append(delay)
 
     monkeypatch.setattr(mod.asyncio, "sleep", fake_sleep)
-    bot = mod.BotClient()
-    bot.sleeps = sleeps
-    return bot
+    return recorded
 
 
-async def test_login_retries_transient_timeouts(client):
+@pytest.fixture
+def client(monkeypatch, sleeps):
+    monkeypatch.setattr(mod, "_get_session_string", lambda: None)
+    return mod.BotClient()
+
+
+async def test_login_retries_transient_timeouts(client, sleeps):
     calls = 0
 
     def flaky_login(**kwargs):
@@ -40,10 +43,10 @@ async def test_login_retries_transient_timeouts(client):
 
     assert client._authenticated
     assert calls == 3
-    assert client.sleeps == [2.0, 4.0]
+    assert sleeps == [2.0, 4.0]
 
 
-async def test_login_gives_up_after_max_attempts(client):
+async def test_login_gives_up_after_max_attempts(client, sleeps):
     calls = 0
 
     def always_timeout(**kwargs):
@@ -57,11 +60,11 @@ async def test_login_gives_up_after_max_attempts(client):
         await client.authenticate()
 
     assert calls == mod.LOGIN_ATTEMPTS
-    assert len(client.sleeps) == mod.LOGIN_ATTEMPTS - 1
+    assert len(sleeps) == mod.LOGIN_ATTEMPTS - 1
     assert not client._authenticated
 
 
-async def test_bad_credentials_do_not_retry(client):
+async def test_bad_credentials_do_not_retry(client, sleeps):
     calls = 0
 
     def unauthorized(**kwargs):
@@ -75,7 +78,7 @@ async def test_bad_credentials_do_not_retry(client):
         await client.authenticate()
 
     assert calls == 1
-    assert client.sleeps == []
+    assert sleeps == []
 
 
 async def test_network_error_during_session_restore_keeps_session_file(
