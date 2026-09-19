@@ -21,6 +21,8 @@ publishing:
 
 3. call `publish_blog_post(title, content, tags)`. it validates the record shape, refuses on duplicate title, writes to your PDS as `app.greengale.document`, and returns the public URL.
 
+**escape dollar signs: write `\$`.** greengale renders every post with KaTeX, always on, and a single `$...$` pair is inline math. two dollar amounts in one paragraph turn everything between them into an italic formula with the spaces stripped (the 2026-09-19 chicken ledger post did this three times). a cell with one `$` survives; prose with two does not. `\$935.87` renders as `$935.87`.
+
 after publishing:
 
 4. call `save_memory(content="published blog: <title> — <url>", tags=["blog", "greengale", ...topic_tags])` to leave a private-memory pointer for future-you. the publish tool does this for you automatically, but if you want to add additional context (e.g. a synthesized takeaway you don't want to lose), use `save_memory` again.

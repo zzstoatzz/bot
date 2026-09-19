@@ -84,7 +84,9 @@ def register(agent):
         Omitted tags preserve existing tags on revisions.
 
         title: post title.
-        content: full markdown body.
+        content: full markdown body. greengale renders $...$ as KaTeX math,
+            so write a literal dollar sign as \\$ (two amounts in one
+            paragraph otherwise become an italic formula).
         tags: optional list of topic tags.
         """
         if bool(uri) != bool(expected_cid):
