@@ -19,5 +19,5 @@ For graph work:
 4. Use the PDS inventory for work requiring the whole stored graph. Do not
    recreate or delete an edge merely because an index query omitted it.
 
-The MCP's executable metadata search and stateless execute tools are already
-available. Updating those tools does not itself repair Semble's backend index.
+The MCP's method search and call tools are already available. Updating those
+tools does not itself repair Semble's backend index.

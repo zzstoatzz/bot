@@ -8,6 +8,7 @@ sends a valid record" question is downstream of the skill-loading
 question; if she doesn't load the skill, no construction will work.
 """
 
+import json
 import os
 from collections import defaultdict
 from pathlib import Path
@@ -94,40 +95,48 @@ def skills_agent(settings):
         )
         return f'{{"uri": "at://did:plc:test/{collection}/3xxxxx", "cid": "bafytest"}}'
 
-    @agent.tool
-    async def semble_search(ctx: RunContext[None], query: str) -> str:
-        """Find semble api methods by keyword. Returns method names you can
-        inspect with semble_get_schema and call inside semble_execute."""
-        _spy.record("semble_search", query=query)
-        return (
-            "cards_add_url, cards_get_library_status, cards_list_mine, "
-            "search_semantic, connections_create, collections_create, "
-            "actors_get_my_profile"
-        )
+    _SCHEMAS = {
+        "cards_add_url": {
+            "name": "cards_add_url",
+            "description": "save a url to your library with an optional note",
+            "inputSchema": {
+                "properties": {
+                    "url": {"type": "string"},
+                    "note": {"type": ["string", "null"]},
+                    "collection_ids": {"type": ["array", "null"]},
+                },
+                "required": ["url"],
+            },
+        },
+        "cards_get_library_status": {
+            "name": "cards_get_library_status",
+            "description": "is this url already in your library",
+            "inputSchema": {
+                "properties": {"url": {"type": "string"}},
+                "required": ["url"],
+            },
+        },
+    }
 
     @agent.tool
-    async def semble_get_schema(ctx: RunContext[None], tools: list[str]) -> str:
-        """Get parameter schemas for semble api methods by name."""
-        _spy.record("semble_get_schema", tools=tools)
-        schemas = {
-            "cards_add_url": (
-                "cards_add_url(url: str, *, note: str | None = None, "
-                "collection_ids: list[str] | None = None) -> "
-                '{"urlCardId": str, "noteCardId": str | None}'
-            ),
-            "cards_get_library_status": (
-                'cards_get_library_status(url: str) -> {"inLibrary": bool}'
-            ),
-        }
-        return "\n".join(schemas.get(t, f"{t}: (schema available)") for t in tools)
+    async def semble_search_tools(ctx: RunContext[None], query: str) -> str:
+        """Find the tools that carry out a request.
+
+        Returns the best-fitting tool definitions, best first, in the
+        same format as list_tools. Returns nothing when no tool fits."""
+        _spy.record("semble_search_tools", query=query)
+        return json.dumps(list(_SCHEMAS.values()))
 
     @agent.tool
-    async def semble_execute(ctx: RunContext[None], code: str) -> str:
-        """Run python code composing semble api methods in a sandbox.
-        Call methods with `await call_tool("method_name", {...})`; the last
-        expression or `return` value is the result. Use for reads and writes
-        against your public knowledge graph (semble/cosmik)."""
-        _spy.record("semble_execute", code=code)
+    async def semble_call_tool(
+        ctx: RunContext[None], name: str, arguments: dict | None = None
+    ) -> str:
+        """Call a tool by name with the given arguments.
+
+        Use this to execute tools discovered via search_tools."""
+        _spy.record("semble_call_tool", method=name, arguments=arguments or {})
+        if name == "cards_get_library_status":
+            return '{"inLibrary": false}'
         return '{"urlCardId": "11111111-2222-3333-4444-555555555555", "noteCardId": "66666666-7777-8888-9999-000000000000"}'
 
     class SkillsTestAgent:
@@ -179,8 +188,8 @@ async def test_loads_cosmik_skill_when_saving_a_url(skills_agent):
     )
 
 
-async def test_saves_url_via_semble_execute(skills_agent):
-    """Phi should save a URL through semble_execute (cards_add_url), not raw pdsx."""
+async def test_saves_url_via_semble_call_tool(skills_agent):
+    """Phi should save a URL through semble's call tool (cards_add_url), not raw pdsx."""
     await skills_agent.process_request(
         "save this URL to your public memory: "
         "https://transformer-circuits.pub/2026/emotions/ — anthropic's emotion "
@@ -189,10 +198,12 @@ async def test_saves_url_via_semble_execute(skills_agent):
     )
 
     spy = skills_agent.spy
-    assert spy.was_called("semble_execute"), "semble_execute was not called"
-    code = "\n".join(c["code"] for c in spy.calls["semble_execute"])
-    assert "cards_add_url" in code, f"cards_add_url not in executed code: {code}"
-    assert "transformer-circuits.pub" in code, f"URL not in executed code: {code}"
+    assert spy.was_called("semble_call_tool"), "semble_call_tool was not called"
+    saves = [c for c in spy.calls["semble_call_tool"] if c["method"] == "cards_add_url"]
+    assert saves, f"cards_add_url not called: {spy.calls['semble_call_tool']}"
+    assert any(
+        "transformer-circuits.pub" in str(c["arguments"].get("url", "")) for c in saves
+    ), f"URL not in save arguments: {saves}"
     assert not spy.was_called("mcp__pdsx__create_record"), (
         "URL save should route through semble, not raw pdsx create_record: "
         f"{spy.calls['mcp__pdsx__create_record']}"

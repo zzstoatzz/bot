@@ -445,8 +445,15 @@ def test_a_missing_record_is_correctable_not_an_outage():
 async def test_staggered_library_runs_reconsider_before_executing(monkeypatch):
     monkeypatch.setattr(mcp_guard, "get_override", override(False))
     monkeypatch.setattr(ops_log, "library_revision", 0)
-    monkeypatch.setattr(mcp_guard, "get_public_memory_block", AsyncMock(return_value="[SEMBLE] five collections"))
-    contexts = [SimpleNamespace(deps=SimpleNamespace(library_revision=0, memory=None)) for _ in range(3)]
+    monkeypatch.setattr(
+        mcp_guard,
+        "get_public_memory_block",
+        AsyncMock(return_value="[SEMBLE] five collections"),
+    )
+    contexts = [
+        SimpleNamespace(deps=SimpleNamespace(library_revision=0, memory=None))
+        for _ in range(3)
+    ]
     calls = []
     guard = make_mcp_guard("semble", "curation")
     args = {"code": "collections_create(name='new subject')"}
@@ -463,7 +470,108 @@ async def test_library_error_invalidates_other_run_snapshot(monkeypatch):
     monkeypatch.setattr(mcp_guard, "get_override", override(False))
     monkeypatch.setattr(ops_log, "library_revision", 0)
     ctx = SimpleNamespace(deps=SimpleNamespace(library_revision=0, memory=None))
+
     async def partial(*args):
         raise TimeoutError("possibly committed")
-    await make_mcp_guard("semble", "curation")(ctx, partial, "semble_execute", {"code": "collections_create()"})
+
+    await make_mcp_guard("semble", "curation")(
+        ctx, partial, "semble_execute", {"code": "collections_create()"}
+    )
     assert ops_log.library_revision == 1
+
+
+# --- semble jev mode: one sdk call per turn through call_tool ---------------
+# 2026-09-19: the hosted server switched from code mode (search / get_schema /
+# execute) to jev mode (search_tools / call_tool). Every write now arrives as
+# `semble_call_tool` with the sdk method in `arguments.name`, which the guard
+# read as "not execute, so a read": safe mode stopped gating library writes
+# and provenance stopped being logged.
+
+
+async def test_override_blocks_a_semble_call_tool_write(monkeypatch, calls):
+    monkeypatch.setattr(mcp_guard, "get_override", override(True))
+    guard = make_mcp_guard("semble", "test")
+    result = await guard(
+        None,
+        call_tool_stub(calls),
+        "semble_call_tool",
+        {"name": "cards_add_url", "arguments": {"url": "https://example.com"}},
+    )
+    assert "operator override is active" in result
+    assert calls == []
+
+
+async def test_override_passes_semble_call_tool_reads(monkeypatch, calls):
+    monkeypatch.setattr(mcp_guard, "get_override", override(True))
+    guard = make_mcp_guard("semble", "test")
+    for args in [
+        {"name": "cards_list_mine", "arguments": {"limit": 5}},
+        {"name": "actors_get_my_profile", "arguments": None},
+        {"name": "search_semantic", "arguments": {"query": "x"}},
+    ]:
+        assert (
+            await guard(None, call_tool_stub(calls), "semble_call_tool", args) == "ok"
+        ), args
+    assert (
+        await guard(
+            None, call_tool_stub(calls), "semble_search_tools", {"query": "save a url"}
+        )
+        == "ok"
+    )
+    assert len(calls) == 4
+
+
+async def test_override_blocks_an_unknown_semble_method(monkeypatch, calls):
+    """Deny by default on the credentialed server, same as every other one."""
+    monkeypatch.setattr(mcp_guard, "get_override", override(True))
+    guard = make_mcp_guard("semble", "test")
+    result = await guard(
+        None, call_tool_stub(calls), "semble_call_tool", {"name": "cards_frobnicate"}
+    )
+    assert "operator override is active" in result
+    assert calls == []
+
+
+async def test_logger_records_call_tool_writes(monkeypatch):
+    monkeypatch.setattr(mcp_guard, "get_override", override(False))
+    call_tool = AsyncMock(return_value="ok")
+    process = make_mcp_guard("semble", "batch")
+    args = {"name": "connections_create", "arguments": {"source_type": "URL"}}
+    with patch("bot.core.mcp_guard.logfire") as mock_logfire:
+        result = await process(None, call_tool, "semble_call_tool", args)
+    assert result == "ok"
+    call_tool.assert_awaited_once_with("semble_call_tool", args, None)
+    kwargs = mock_logfire.info.call_args.kwargs
+    assert kwargs["server"] == "semble"
+    assert kwargs["changes"] == ["connections_create"]
+
+
+async def test_call_tool_write_invalidates_the_library_snapshot(monkeypatch):
+    monkeypatch.setattr(mcp_guard, "get_override", override(False))
+    monkeypatch.setattr(ops_log, "library_revision", 0)
+    ctx = SimpleNamespace(deps=SimpleNamespace(library_revision=0, memory=None))
+    calls = []
+    await make_mcp_guard("semble", "curation")(
+        ctx,
+        call_tool_stub(calls),
+        "semble_call_tool",
+        {"name": "collections_create", "arguments": {"name": "x"}},
+    )
+    assert len(calls) == 1
+    assert ops_log.library_revision == 1
+    assert ctx.deps.library_revision == 1
+
+
+async def test_call_tool_read_leaves_the_library_snapshot_alone(monkeypatch):
+    monkeypatch.setattr(mcp_guard, "get_override", override(False))
+    monkeypatch.setattr(ops_log, "library_revision", 0)
+    ctx = SimpleNamespace(deps=SimpleNamespace(library_revision=0, memory=None))
+    calls = []
+    await make_mcp_guard("semble", "curation")(
+        ctx,
+        call_tool_stub(calls),
+        "semble_call_tool",
+        {"name": "collections_list_mine"},
+    )
+    assert len(calls) == 1
+    assert ops_log.library_revision == 0

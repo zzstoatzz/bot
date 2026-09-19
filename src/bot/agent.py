@@ -896,8 +896,9 @@ class PhiAgent:
                 tool_prefix="pub",
                 process_tool_call=make_mcp_guard("pub-search", run_label),
             ),
-            # Semble code-mode server (search/get_schema/execute). Keyless =
-            # public reads only; the header makes writes attribute to phi.
+            # Semble jev-mode server (search_tools/call_tool; one sdk method
+            # per call). Keyless = public reads only; the header makes
+            # writes attribute to phi.
             MCPServerStreamableHTTP(
                 url=settings.semble_mcp_url,
                 timeout=30,
@@ -908,7 +909,7 @@ class PhiAgent:
                     else {}
                 ),
                 # observational: every library write leaves a logfire event
-                # with the run label + executed code (bot/core/mcp_guard.py)
+                # with the run label + the sdk method (bot/core/mcp_guard.py)
                 process_tool_call=make_mcp_guard("semble", run_label),
             ),
             # Tangled code-collab server. Reads (repos, files, commits,

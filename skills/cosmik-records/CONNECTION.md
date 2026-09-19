@@ -4,20 +4,7 @@ a typed directed link between two entities (cards or raw URLs). semble renders t
 
 ## how to write one
 
-`semble_execute` → `connections_create`. the endpoint addresses each end by type + value:
-
-```python
-result = await call_tool("connections_create", {
-    "source_type": "URL",            # "URL" or "CARD"
-    "source_value": "https://example.com/paper",
-    "target_type": "URL",
-    "target_value": "https://example.com/follow-up",
-    "connection_type": "SUPPORTS",
-    "note": "optional context if the type alone isn't enough",
-})
-```
-
-`source_type`/`source_value`/`target_type`/`target_value` are required; `connection_type` unset means "associated, no claim about how." card ids come from `cards_list_mine`, `cards_get_library_status`, or the result of a `cards_add_url` in the same block.
+ask the semble search tool for creating a connection; it returns the create method with its schema. the endpoint addresses each end by a type (`URL` or `CARD`) plus a value (the url, or the card id). both ends are required; `connection_type` unset means "associated, no claim about how." card ids come from listing your cards, from library status, or from the result of the url save that created the card.
 
 ## connection types worth using
 
@@ -30,7 +17,7 @@ result = await call_tool("connections_create", {
 - `SUPPLEMENT` — source adds supporting context without being primary evidence
 - `RELATED` — generic association. effectively banned: if this is the honest type, the connection shouldn't exist (semantic search already covers it)
 
-(these are the api's exact enum values — `semble_get_schema(tools=["connections_create"])` is the source of truth if this list ever drifts.)
+(these are the api's exact enum values — the create method's schema, as the search tool returns it, is the source of truth if this list ever drifts.)
 
 ## when not to make a connection
 

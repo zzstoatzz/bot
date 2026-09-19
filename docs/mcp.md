@@ -1,6 +1,6 @@
 # mcp integration
 
-phi uses the [model context protocol](https://modelcontextprotocol.io) to access external tools hosted as remote servers, connected via `MCPServerStreamableHTTP` (pydantic-ai). the authoritative list is `_mcp_toolsets` in `src/bot/agent.py`; currently: pdsx (atproto record CRUD, phi's credentials), pub-search (long-form publication search), semble (code-mode surface over phi's public knowledge graph), tangled (code collab — repos, issues, PRs), and prefect (workflow state, only when auth is configured).
+phi uses the [model context protocol](https://modelcontextprotocol.io) to access external tools hosted as remote servers, connected via `MCPServerStreamableHTTP` (pydantic-ai). the authoritative list is `_mcp_toolsets` in `src/bot/agent.py`; currently: pdsx (atproto record CRUD, phi's credentials), pub-search (long-form publication search), semble (ranked search + call surface over phi's public knowledge graph), tangled (code collab — repos, issues, PRs), and prefect (workflow state, only when auth is configured).
 
 ## why mcp
 
@@ -26,14 +26,15 @@ async with contextlib.AsyncExitStack() as stack:
 surfaces are not permission boundaries — a server that accepts phi's credentials will do whatever the credentials allow. where the boundary matters, it lives in a `process_tool_call` hook on the toolset (`src/bot/core/mcp_guard.py`):
 
 - **pdsx**: structural guard. raw `app.bsky.feed.*` writes refuse with a pointer to the trusted posting tools, so the consent layer / policy judge / operator override can't be bypassed (see `docs/safety.md`).
-- **semble**: observational logger. every library write leaves a logfire event with the run label and executed code, so card provenance is queryable.
+- **semble**: observational logger. every library write leaves a logfire event with the run label and the sdk method called, so card provenance is queryable. safe mode refuses the write.
 
 ## notes on semble
 
-semble's code-mode server (`search` / `get_schema` / `execute`) exposes the whole sdk behind three meta-tools — the anti-sprawl move (`docs/tool-sprawl.md`). two facts worth keeping:
+semble's hosted server exposes the whole sdk (51 methods) behind two meta-tools: `search_tools` ranks the methods against a plain-language request with TypeSafe's jev model and returns the best fits with schemas; `call_tool` runs one by name. that is jev mode (since 2026-09-19). before it the server ran code mode (`search` / `get_schema` / `execute`, a python sandbox composing sdk calls); the operator can switch the hosted instance back with one command, and the guard still understands both surfaces. either way it is the anti-sprawl move (`docs/tool-sprawl.md`). facts worth keeping:
 
 - **appview writes are protocol-native.** writes through the semble api land as real `network.cosmik.*` records on the repo of the account behind the api key, and deletes propagate to the pds. verified experimentally 2026-06-11 (write via api → read the record straight off the pds → delete via api → gone from the pds).
-- **`execute` with a key is arbitrary sandboxed code with the key's full read/write power.** the consent story for semble writes is norms + the write logger, not a structural gate; writes there are public and attributed to phi.
+- **a call with a key carries the key's full read/write power.** the consent story for semble writes is norms + the write logger + the operator override, not a structural gate; writes there are public and attributed to phi. the guard reads the sdk method out of `call_tool`'s arguments (or out of the submitted code in code mode) to decide whether a call mutates; unknown methods count as writes.
+- **jev mode returns every record into context.** one sdk call per turn, no sandbox to aggregate in. tasks that page across many records (six libraries, ~1,200 cards) are the known gap; pages cap at 100.
 
 ## native tools vs MCP tools
 

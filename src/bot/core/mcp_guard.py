@@ -16,6 +16,7 @@ override), profile records — passes through untouched.
 """
 
 import asyncio
+import json
 import logging
 import re
 from datetime import UTC, datetime
@@ -98,15 +99,17 @@ def _pdsx_collection(args: dict[str, Any]) -> str:
 def _mutations(server: str, name: str, tool_args: dict[str, Any]) -> list[str]:
     """What this call would change. Empty means it only reads.
 
-    semble is code-mode, so the mutation lives inside the submitted code
-    rather than the tool name; everything else is named by its verb.
+    semble hides the sdk behind meta-tools, so the mutation lives in the
+    arguments rather than the tool name: inside the submitted code in code
+    mode (``execute``), in ``arguments.name`` in jev mode (``call_tool``).
+    Everything else is named by its verb.
     """
     if server == "semble":
-        return (
-            _semble_writes(str(tool_args.get("code", "")))
-            if name.endswith("execute")
-            else []
-        )
+        if name.endswith("execute"):
+            return _semble_writes(str(tool_args.get("code", "")))
+        if (call := _semble_call(name, tool_args)) is not None:
+            return [] if _semble_is_read(call[0]) else [call[0]]
+        return []
     if server == "pdsx":
         return (
             [f"{name} {tool_args.get('collection', '')}".strip()]
@@ -163,8 +166,18 @@ def _structural_refusal(
     )
 
 
-_SEMBLE_TOOL_RE = re.compile(r"\b(?:actors|cards|collections|connections)_[a-z_]+")
+_SEMBLE_TOOL_RE = re.compile(
+    r"\b(?:actors|cards|collections|connections|feeds|graph|notifications|search)_[a-z_]+"
+)
 _SEMBLE_READ_VERBS = ("get", "list", "search", "describe")
+
+
+def _semble_is_read(method: str) -> bool:
+    """sdk methods are ``<resource>_<verb>...``; the search resource's own
+    ``search_semantic`` is the one whose read verb is the resource name."""
+    verb = method.split("_", 1)[1] if "_" in method else method
+    return method.startswith(_SEMBLE_READ_VERBS) or verb.startswith(_SEMBLE_READ_VERBS)
+
 
 # semble's backend has no unique constraint on collection names, and code-mode
 # blocks do check-then-create — two execute calls running concurrently (the
@@ -173,11 +186,29 @@ _SEMBLE_READ_VERBS = ("get", "list", "search", "describe")
 _semble_execute_lock = asyncio.Lock()
 
 
+def _semble_call(
+    name: str, tool_args: dict[str, Any]
+) -> tuple[str, dict[str, Any]] | None:
+    """The sdk method and arguments behind a jev-mode ``call_tool``."""
+    if not name.endswith("call_tool"):
+        return None
+    arguments = tool_args.get("arguments")
+    return str(tool_args.get("name", "")), (
+        arguments if isinstance(arguments, dict) else {}
+    )
+
+
+def _semble_call_text(name: str, tool_args: dict[str, Any]) -> str:
+    """What phi asked semble to run, rendered for the provenance receipt."""
+    if (call := _semble_call(name, tool_args)) is not None:
+        return f"{call[0]}({json.dumps(call[1], sort_keys=True, ensure_ascii=False)})"
+    return str(tool_args.get("code", ""))
+
+
 def _semble_writes(code: str) -> list[str]:
     """Tool names in a code-mode block that mutate the library."""
-    calls = set(_SEMBLE_TOOL_RE.findall(code))
     return sorted(
-        c for c in calls if not c.split("_", 1)[1].startswith(_SEMBLE_READ_VERBS)
+        c for c in set(_SEMBLE_TOOL_RE.findall(code)) if not _semble_is_read(c)
     )
 
 
@@ -208,8 +239,6 @@ def _is_correctable(detail: str) -> bool:
 
 def _repository_provenance(ctx: Any, run_label: str, tool_args: dict[str, Any]) -> str:
     """Keep the application run's purpose separate from tool-supplied claims."""
-    import json
-
     deps = getattr(ctx, "deps", None)
     context = {
         "application_run_label": run_label,
@@ -342,9 +371,10 @@ def make_mcp_guard(server: str, run_label: str = ""):
                 )
                 return await _with_coverage(ctx, result)
 
-        # semble's code-mode server is single-flight: concurrent execute
-        # calls race on its side.
-        if server == "semble" and name.endswith("execute"):
+        # semble's server is single-flight: concurrent writes race on its
+        # side. Any execute block can write; a call_tool only when its
+        # method mutates.
+        if server == "semble" and (name.endswith("execute") or changes):
             async with _semble_execute_lock:
                 deps = getattr(ctx, "deps", None)
                 seen = getattr(deps, "library_revision", None)
@@ -363,7 +393,7 @@ def make_mcp_guard(server: str, run_label: str = ""):
                         + block
                     )
                 call_id = str(uuid4())
-                code = str(tool_args.get("code", ""))
+                code = _semble_call_text(name, tool_args)
                 await library_call("started", call_id, code)
                 try:
                     result = await _invoke(

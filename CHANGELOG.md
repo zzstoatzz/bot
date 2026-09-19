@@ -1,5 +1,25 @@
 # changelog
 
+## 2026-09-19 — Semble moved to jev mode; the guard follows
+
+The hosted Semble MCP switched from code mode (`search` / `get_schema` /
+`execute`, a Python sandbox composing sdk calls) to jev mode: `search_tools`
+ranks the 51 sdk methods against a plain-language request with TypeSafe's jev
+model and returns the fits with schemas, and `call_tool` runs one method by
+name. Phi noticed the same night, from the change in her own function list,
+and said her `cosmik-records` skill was stale. It was, and so was the guard:
+`mcp_guard` recognised a library write only as an `execute` call carrying
+`code`, so every write through `semble_call_tool` passed as a read. Safe mode
+no longer stopped her writing cards, no mutation event or run receipt was
+logged, and the write lock and library-snapshot invalidation never ran.
+
+The guard now reads the sdk method out of `call_tool`'s arguments, treats
+unknown methods as writes, and keeps the code-mode path for the one-command
+rollback. The skill drops its hardcoded method names and Python blocks — the
+search tool serves names and schemas, so the skill carries only routing,
+conventions, and the traps that cost retries. `docs/mcp.md`, the agent
+comment, and the skills eval stubs describe the new surface.
+
 ## 2026-09-17 — Phi is the only curator of her Semble library
 
 Her library stayed duplicative through every cleanup because a second curator

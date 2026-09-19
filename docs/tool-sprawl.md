@@ -32,6 +32,8 @@ philosophy as the cosmik.py deletion, one level up: a generic capability plus
 the `cosmik-records` skill as wayfinding, instead of one bespoke tool per
 operation. URL cards, collections, and connections now write through it;
 standalone NOTE cards remain on pdsx (no appview endpoint for those).
+(2026-09-19: the hosted server moved to jev mode, `semble_search_tools` /
+`semble_call_tool` — still two meta-tools over the whole api; see `docs/mcp.md`.)
 
 ## concrete misplacements that jump out
 
