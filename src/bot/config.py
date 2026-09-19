@@ -261,6 +261,15 @@ class Settings(BaseSettings):
             "and the policy judge treats it as authorization for the reply."
         ),
     )
+    operator_handles: tuple[Handle, ...] = Field(
+        default=("zzstoatzz.io", "zzstoatzzdevlog.bsky.social"),
+        description=(
+            "Handles of the operator_dids, in the same order. The policy judge "
+            "is told these are the operator, so a reply or mention that reaches "
+            "them needs no invitation (2026-09-19: a reply mentioning the owner "
+            "under the devlog's post was blocked as uninvited contact)."
+        ),
+    )
     reviewer_dids: tuple[Did, ...] = Field(
         default=(
             "did:plc:xbtmt2zjwlrfegqvch7fboei",  # zzstoatzz.io

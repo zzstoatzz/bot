@@ -17,7 +17,13 @@ def register(agent):
     @agent.tool_plain
     async def report_operator(
         incident_key: Annotated[
-            str, Field(description="Exact incident key from ALERT WATCH")
+            str,
+            Field(
+                description=(
+                    "Exact incident key from ALERT WATCH, or note:<slug> for "
+                    "anything that has no alert (a stale doc, a blocked route)"
+                )
+            ),
         ],
         text: Annotated[
             str,
@@ -27,18 +33,26 @@ def register(agent):
             ),
         ] = "",
     ) -> dict:
-        """Check a private report or send one actionable incident to the operator by DM.
+        """Send one private message to the operator by DM, or check its delivery.
 
-        Report only issues needing their hands. Delivery is recorded once per
-        incident opening. An uncertain send must be investigated, never retried
+        Report only issues needing their hands. An alert incident is keyed
+        by its opening; anything else takes a note: key you choose, sent
+        once per key. An uncertain send must be investigated, never retried
         under another key. Acknowledgement means contact, not resolution.
         Public escalation is only eligible after six unanswered hours and still
         needs a concrete reason to interrupt; eligibility is not an instruction.
         """
-        incident = bot_status.alert_incidents.get(incident_key)
-        if not incident or incident.get("closed_ts"):
-            return {"error": "Incident is absent or closed; no message sent."}
-        key = f"{incident_key}:{incident['opened_ts']}"
+        if incident_key.startswith("note:"):
+            incident = {"note": incident_key}
+            key = incident_key
+        else:
+            incident = bot_status.alert_incidents.get(incident_key)
+            if not incident or incident.get("closed_ts"):
+                return {
+                    "error": "Incident is absent or closed; no message sent. "
+                    "For something without an alert, use a note:<slug> key."
+                }
+            key = f"{incident_key}:{incident['opened_ts']}"
         try:
             report = await operator_reports.report_state(key)
             if text.strip() and report["state"] == "not-sent":
@@ -56,7 +70,7 @@ def register(agent):
             return {
                 **report,
                 "public_escalation_eligible": operator_reports.public_eligible(
-                    report, time.time(), open_incident=True
+                    report, time.time(), open_incident="note" not in incident
                 ),
             }
         except Exception:
@@ -82,7 +96,10 @@ def register(agent):
         held for inspection rather than sent again. Private context stays private.
         """
         if not ctx.deps.private_message_id:
-            return {"error": "This tool is only available in an operator DM run."}
+            return {
+                "error": "This tool only answers an operator DM. To reach the "
+                "operator from here, use report_operator with a note:<slug> key."
+            }
         override = await get_override()
         if override["active"]:
             return {"error": refusal_text(override)}

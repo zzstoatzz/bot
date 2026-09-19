@@ -80,15 +80,17 @@ async def test_old_home_deployment_is_not_silently_used(harness):
 async def test_nonowner_cannot_queue(harness, monkeypatch):
     request, calls, _ = harness
     monkeypatch.setattr(workflows, "_is_owner", lambda ctx: False)
-    assert not (
-        await request(
-            None,
-            workflow="investigate",
-            instructions="Explain",
-            repo="bot",
-            request_key="one",
-        )
-    )["queued"]
+    result = await request(
+        None,
+        workflow="investigate",
+        instructions="Explain",
+        repo="bot",
+        request_key="one",
+    )
+    assert not result["queued"]
+    # 2026-09-19: "require operator authorization" read as a routing puzzle;
+    # phi went looking for the route in public and got blocked. say who.
+    assert "operator" in result["reason"] and "ask" in result["reason"]
     assert calls == []
 
 

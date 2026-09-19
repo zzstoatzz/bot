@@ -1,5 +1,28 @@
 # changelog
 
+## 2026-09-19 — A private route to the operator from any run
+
+Phi found her cosmik-records skill stale, drafted the fix, and could not
+get it anywhere. `tangled_create_pull` was refused by the repository gate,
+`request_workflow` is owner-only and said "require operator authorization",
+which she read as a routing puzzle, and every public attempt to ask the
+operator for the route was blocked as an operational report. The policy
+told her to go private via `report_operator`, but that tool needed an alert
+incident key and `reply_operator_dm` only works inside a run the operator's
+DM started. She parked the note in memory for a DM run only the operator can
+begin. Two further blocks were wrong: a reply under the devlog's post that
+mentioned the owner was refused as uninvited contact, because the judge was
+never told the owner handle is the operator, and one of two likes on the
+devlog's posts three seconds apart was refused on identical evidence.
+
+`report_operator` now takes a `note:<slug>` key for anything without an
+alert, sent once per key through the same judge, override, and delivery
+journal; the DM-reply and workflow refusals name it. The judge's prompt
+lists the operator identities (`operator_handles`, paired with
+`operator_dids`) as contacts that need no invitation, and those handles are
+always mention-safe. The workflow refusal says who can queue and that asking
+is fine.
+
 ## 2026-09-19 — Semble moved to jev mode; the guard follows
 
 The hosted Semble MCP switched from code mode (`search` / `get_schema` /

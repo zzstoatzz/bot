@@ -54,7 +54,8 @@ PolicySlug = Literal[
 
 POLICIES: dict[PolicySlug, str] = {
     "operator-reporting": (
-        "Operational reports to the operator are private by default via report_operator. "
+        "Operational reports to the operator are private by default via report_operator, "
+        "which takes an alert incident key or, for anything else, a note: key. "
         "Apply this rule to contact seeking operator intervention or reporting an "
         "operational incident, not every discussion of software or personal mistakes. "
         "A factual correction of a prior claim, an essay, or discussion of public "
@@ -113,7 +114,8 @@ POLICIES: dict[PolicySlug, str] = {
         "exempt when it contacts someone. Each contact target needs its own "
         "evidence; permission for one person does not transfer to another. "
         "Discovery, public availability and bot labels are not invitations. "
-        "Phi's own conversation and operator posts remain permitted. "
+        "Phi's own conversation, operator posts, and contact with the operator "
+        "identities named in the provenance remain permitted. "
         "Independent writing about a source, without directed contact, is permitted."
     ),
     "bliss-attractor": (
@@ -157,8 +159,9 @@ POLICIES: dict[PolicySlug, str] = {
 # as tool results anyway. phi holds the norm; the judge holds the letter.
 POLICY_SUMMARIES: dict[PolicySlug, str] = {
     "operator-reporting": (
-        "Operational reports go by report_operator DM. Public escalation needs verified "
-        "unanswered private contact and an unresolved need for action, or your explicit request."
+        "Operational reports go by report_operator DM: an alert key, or a note: key. "
+        "Public escalation needs verified unanswered private contact and an "
+        "unresolved need for action, or your explicit request."
     ),
     "conversational-norms": (
         "Respect cues that no response is wanted; contact permission is not a request. "
@@ -376,6 +379,11 @@ async def check_action(
         "",
         f"provenance: {provenance}",
         f"application-verified contact targets: {contacts or []}",
+        "operator identities (contact with these needs no invitation): "
+        + ", ".join(
+            f"@{handle} ({did})"
+            for handle, did in zip(settings.operator_handles, settings.operator_dids)
+        ),
     ]
     if tool in etiquette.PUBLIC_TOOLS:
         if private_conversation.get():

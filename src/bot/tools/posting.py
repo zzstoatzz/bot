@@ -52,7 +52,7 @@ async def _build_allowed_handles(*extra: str) -> set[str]:
     via the mentionConsent record on phi's PDS. Extra handles (e.g. conversation
     participants) are added on top.
     """
-    base = {settings.owner_handle, settings.bluesky_handle}
+    base = {settings.owner_handle, settings.bluesky_handle, *settings.operator_handles}
     try:
         base.update(await get_mentionable_handles())
     except Exception as e:

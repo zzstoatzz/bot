@@ -59,7 +59,9 @@ def register(agent):
         if not _is_owner(ctx):
             return {
                 "queued": False,
-                "reason": "Workflow requests require operator authorization",
+                "reason": "Only the operator can queue a workflow from this run. "
+                "It is fine to ask them; report_operator with a note: key is "
+                "the private route.",
             }
         override = await get_override()
         if override["active"]:
