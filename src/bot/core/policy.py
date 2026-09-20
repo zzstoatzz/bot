@@ -141,7 +141,12 @@ POLICIES: dict[PolicySlug, str] = {
         "handle."
     ),
     "self-repeat": (
-        "this policy applies to top-level posts only. when prior coverage "
+        "this policy applies to top-level posts and replies. For replies, compare "
+        "only published answers to the same parent supplied in prior coverage; "
+        "answering another person with similar information is not repetition. "
+        "A correction or specifically requested follow-up is allowed. An incidental "
+        "number changing without changing the answer is not by itself a new "
+        "development warranting another unsolicited reply. when prior coverage "
         "is supplied, it lists phi's own earlier posts nearest the proposed "
         "text. block when an earlier post already makes the same "
         "observation about the same referent — same link, same person and "
@@ -186,7 +191,7 @@ POLICY_SUMMARIES: dict[PolicySlug, str] = {
         "use DID, clean display name, or 'another account'"
     ),
     "self-repeat": (
-        "a top-level post that restates one of your earlier posts is that "
+        "a top-level post or same-parent reply that restates an earlier answer is that "
         "post again; return to a subject only with a development"
     ),
 }
@@ -342,7 +347,8 @@ async def check_action(
 
     `prior_coverage` is the rendered [PRIOR COVERAGE] note for the proposed
     text itself — phi's own posts nearest the draft, from the semantic index
-    in bot/core/prior_coverage.py. It is the evidence for `self-repeat`;
+    in bot/core/prior_coverage.py, or exact-parent replies from Microcosm via
+    bot/core/reply_coverage.py. It is the evidence for `self-repeat`;
     the judge never sees the index directly.
     """
     if tool in etiquette.PUBLIC_TOOLS and (waiting := etiquette.pending()):

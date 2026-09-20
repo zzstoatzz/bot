@@ -316,7 +316,7 @@ class TestSelfRepeat:
         assert "you said this on the 16th." in result
         create.assert_not_called()
 
-    async def test_reply_does_not_query_coverage(self):
+    async def test_reply_uses_exact_parent_coverage_not_semantic_recall(self):
         from bot.tools._helpers import PhiDeps
 
         captured = {}
@@ -334,6 +334,9 @@ class TestSelfRepeat:
                 posting, "get_override", AsyncMock(return_value={"active": False})
             ),
             patch.object(posting, "coverage_note", AsyncMock()) as recall,
+            patch.object(
+                posting, "reply_coverage", AsyncMock(return_value=self.COVERAGE)
+            ) as replies,
             patch.object(
                 posting,
                 "_resolve_post_ref",
@@ -359,7 +362,10 @@ class TestSelfRepeat:
             )
 
         recall.assert_not_called()
-        assert judge.await_args.kwargs["prior_coverage"] == ""
+        replies.assert_awaited_once_with(
+            posting.bot_client, "at://did:plc:x/app.bsky.feed.post/r"
+        )
+        assert judge.await_args.kwargs["prior_coverage"] == self.COVERAGE
 
     async def test_judge_prompt_carries_coverage_as_evidence(self):
         from bot.core import policy

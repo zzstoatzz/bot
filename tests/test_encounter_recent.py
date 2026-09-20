@@ -81,7 +81,7 @@ async def test_global_recent_view_names_people_dates_evidence_and_truncation():
     assert "source created 2026-07-22" in text
     assert "captured 2026-09-05" in text
     assert row("alice")["source_uris"][0] in text
-    assert "responses and decisions are not represented" in text
+    assert "Historical context, not pending tasks" in text
 
 
 async def test_recovery_capture_does_not_displace_recently_indexed_encounters():

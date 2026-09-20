@@ -165,7 +165,9 @@ async def read_recent_encounters(
 
 
 def render_recent_encounters(
-    result: RecentEncounters, thread_states: dict[str, str] | None = None
+    result: RecentEncounters,
+    thread_states: dict[str, str] | None = None,
+    replies: dict[str, str] | None = None,
 ) -> str:
     """Render received events without implying a response or a decision."""
     if result["status"] == "unavailable":
@@ -177,7 +179,11 @@ def render_recent_encounters(
         f"[RECENT ENCOUNTERS — notification index time {result['since']} through {result['until']}; "
         f"{len(rows)} shown, newest indexed first"
         f"{'; more records in this window' if result['has_more'] else ''}. "
-        "Received events; responses and decisions are not represented here.]"
+        "Received events are historical evidence. Attached reply coverage shows "
+        "published answers where available, not resolution or approval. "
+        "Historical context, not pending tasks or renewed requests. A displayed "
+        "request may already be answered; inspect its current thread before "
+        "following up. NEW NOTIFICATIONS identifies this run's incoming events.]"
     ]
     if not rows:
         lines.append("No captured encounters in this window.")
@@ -193,6 +199,8 @@ def render_recent_encounters(
             preview = content if len(content) <= 240 else content[:239] + "…"
             lines.append(f"  source text: {json.dumps(preview, ensure_ascii=False)}")
         lines.extend(f"  source: {uri}" for uri in row.get("source_uris", []))
+        if replies and row["id"] in replies:
+            lines.append(replies[row["id"]])
     return "\n".join(lines)
 
 

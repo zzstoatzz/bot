@@ -39,6 +39,7 @@ from bot.core.override import get_override, refusal_text
 from bot.core.policy import ContactTarget, check_action
 from bot.core.post_images import PostImage, prepare_images
 from bot.core.prior_coverage import coverage_note
+from bot.core.reply_coverage import reply_coverage
 from bot.status import bot_status
 from bot.tools._helpers import PhiDeps, notification_input
 
@@ -534,6 +535,7 @@ def register(agent):
             )
             + _operator_authorization_note(notification_input(ctx.deps)),
             unprompted=unprompted,
+            prior_coverage=await reply_coverage(bot_client, in_reply_to),
             images=image_pixels,
             publication_text=text,
             contacts=[*contacts, _publication_contact(in_reply_to, notifs, root_uri)],

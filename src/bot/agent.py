@@ -42,6 +42,7 @@ from bot.core.prior_coverage import coverage_note
 from bot.core.public_memory import get_public_memory_block
 from bot.core.recent_flow_mentions import get_recent_flow_mentions_block
 from bot.core.recent_operations import get_operations_block
+from bot.core.reply_coverage import encounter_replies
 from bot.core.self_record import get_self_block
 from bot.core.self_state import get_inventory_block, get_state_block
 from bot.core.tool_usage import ToolUsage
@@ -628,7 +629,8 @@ class PhiAgent:
             if evidence := current_run.get():
                 evidence.event_ids.update(row["id"] for row in recent["rows"])
             states = await encounter_thread_states(recent, bot_client.thread_mute_state)
-            return render_recent_encounters(recent, states)
+            replies = await encounter_replies(bot_client, recent["rows"])
+            return render_recent_encounters(recent, states, replies)
 
         @_run_scoped
         async def inject_user_memory(ctx: RunContext[PhiDeps]) -> str:
