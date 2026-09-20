@@ -58,3 +58,7 @@ max_lines = 547
 [[rules]]
 path = "src/bot/core/architecture.json"
 max_lines = 737
+
+[[rules]]
+path = "evals/jev/cases.json"
+max_lines = 770

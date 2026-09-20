@@ -1,0 +1,604 @@
+{
+  "observed_at": "2026-09-19T20:57:44.444690+00:00",
+  "public_probes": [
+    {
+      "url": "https://api.plyr.fm/health",
+      "observed_at": "2026-09-19T20:54:57.813436+00:00",
+      "status": 200,
+      "body": {
+        "status": "ok"
+      }
+    },
+    {
+      "url": "https://moderation.plyr.fm/health",
+      "observed_at": "2026-09-19T20:54:57.937528+00:00",
+      "status": 200,
+      "body": {
+        "status": "ok",
+        "labeler_enabled": true
+      }
+    },
+    {
+      "url": "https://plyr.fm",
+      "observed_at": "2026-09-19T20:54:58.225796+00:00",
+      "status": 200,
+      "body": {
+        "bytes": 15502
+      }
+    },
+    {
+      "url": "https://api.plyr.fm/stats",
+      "status": 200,
+      "body": {
+        "total_plays": 15700,
+        "total_tracks": 1091,
+        "total_artists": 111,
+        "total_duration_seconds": 493981
+      },
+      "observed_at": "2026-09-19T20:55:58.819339+00:00"
+    }
+  ],
+  "costs": {
+    "source": "https://hub.waow.tech/api/costs.json",
+    "generated_at": "2026-09-19T08:00:20.460883Z",
+    "period_start": "2026-08-20T08:00:11.507648Z",
+    "period_end": "2026-09-19T08:00:11.507648Z",
+    "line_items": [
+      {
+        "note": "current started-machine inventory extrapolated at July 2026 list prices; excludes stopped rootfs and actual uptime",
+        "usage": "3 started machine(s): shared-1x/1024MB, shared-1x/2048MB, shared-1x/1024MB; 2 stopped machine rootfs unmeasured",
+        "amount": 2295,
+        "project": "plyr.fm",
+        "service": "relay-api:compute",
+        "provider": "fly",
+        "estimated": true
+      },
+      {
+        "note": "current started-machine inventory extrapolated at July 2026 list prices; excludes stopped rootfs and actual uptime",
+        "usage": "3 started machine(s): shared-1x/1024MB, shared-1x/1024MB, shared-1x/1024MB; 1 stopped machine rootfs unmeasured",
+        "amount": 1776,
+        "project": "plyr.fm",
+        "service": "relay-api-staging:compute",
+        "provider": "fly",
+        "estimated": true
+      },
+      {
+        "note": "current started-machine inventory extrapolated at July 2026 list prices; excludes stopped rootfs and actual uptime",
+        "usage": "1 started machine(s): shared-1x/256MB",
+        "amount": 202,
+        "project": "plyr.fm",
+        "service": "plyr-moderation:compute",
+        "provider": "fly",
+        "estimated": true
+      },
+      {
+        "note": "current started-machine inventory extrapolated at July 2026 list prices; excludes stopped rootfs and actual uptime",
+        "usage": "1 started machine(s): shared-1x/256MB",
+        "amount": 202,
+        "project": "plyr.fm",
+        "service": "plyr-redis:compute",
+        "provider": "fly",
+        "estimated": true
+      },
+      {
+        "note": "provisioned capacity at $0.15/GB-month; billed even unattached",
+        "usage": "1 volume(s): 1 GB",
+        "amount": 15,
+        "project": "plyr.fm",
+        "service": "plyr-redis:volumes",
+        "provider": "fly",
+        "estimated": true
+      },
+      {
+        "note": "allocated share of snapshot storage after Fly's 10 GB organization free tier",
+        "usage": "5 snapshot(s): 0.56 GB stored",
+        "amount": 4,
+        "project": "plyr.fm",
+        "service": "plyr-redis:snapshots",
+        "provider": "fly",
+        "estimated": true
+      },
+      {
+        "note": "current started-machine inventory extrapolated at July 2026 list prices; excludes stopped rootfs and actual uptime",
+        "usage": "1 started machine(s): shared-1x/256MB",
+        "amount": 202,
+        "project": "plyr.fm",
+        "service": "plyr-redis-stg:compute",
+        "provider": "fly",
+        "estimated": true
+      },
+      {
+        "note": "provisioned capacity at $0.15/GB-month; billed even unattached",
+        "usage": "1 volume(s): 1 GB",
+        "amount": 15,
+        "project": "plyr.fm",
+        "service": "plyr-redis-stg:volumes",
+        "provider": "fly",
+        "estimated": true
+      },
+      {
+        "note": "allocated share of snapshot storage after Fly's 10 GB organization free tier",
+        "usage": "5 snapshot(s): 0.56 GB stored",
+        "amount": 4,
+        "project": "plyr.fm",
+        "service": "plyr-redis-stg:snapshots",
+        "provider": "fly",
+        "estimated": true
+      },
+      {
+        "note": "current started-machine inventory extrapolated at July 2026 list prices; excludes stopped rootfs and actual uptime",
+        "usage": "1 started machine(s): shared-1x/256MB",
+        "amount": 202,
+        "project": "plyr.fm",
+        "service": "plyr-redis-next:compute",
+        "provider": "fly",
+        "estimated": true
+      },
+      {
+        "note": "plyr.fm domain registration",
+        "amount": 100,
+        "project": "plyr.fm",
+        "service": "plyr.fm",
+        "provider": "cloudflare",
+        "estimated": false
+      },
+      {
+        "note": "share of neon launch base ($19/mo); overage not computed",
+        "usage": "launch plan",
+        "amount": 380,
+        "project": "plyr.fm",
+        "service": "plyr-moderation",
+        "provider": "neon",
+        "estimated": true
+      },
+      {
+        "note": "share of neon launch base ($19/mo); overage not computed",
+        "usage": "launch plan",
+        "amount": 380,
+        "project": "plyr.fm",
+        "service": "plyr-stg",
+        "provider": "neon",
+        "estimated": true
+      },
+      {
+        "note": "share of neon launch base ($19/mo); overage not computed",
+        "usage": "launch plan",
+        "amount": 380,
+        "project": "plyr.fm",
+        "service": "plyr-dev",
+        "provider": "neon",
+        "estimated": true
+      },
+      {
+        "note": "share of neon launch base ($19/mo); overage not computed",
+        "usage": "launch plan",
+        "amount": 380,
+        "project": "plyr.fm",
+        "service": "plyr-prd",
+        "provider": "neon",
+        "estimated": true
+      }
+    ],
+    "dashboard_source": "https://api.plyr.fm/stats/costs",
+    "dashboard_generated_at": "2026-09-19T20:05:17.732881Z",
+    "infra_as_of": "2026-09-19T08:00:20.460883Z",
+    "monthly_estimate_usd": 70.37
+  },
+  "machines": [
+    {
+      "id": "e82632db310d38",
+      "state": "started",
+      "region": "iad",
+      "process": "jetstream",
+      "guest": {
+        "cpu_kind": "shared",
+        "cpus": 1,
+        "memory_mb": 1024
+      },
+      "source_sha": "085c0cc089b0e7cfca0947741b599ba05bf59f3f",
+      "standbys": []
+    },
+    {
+      "id": "91859e9f9e1908",
+      "state": "started",
+      "region": "iad",
+      "process": "app",
+      "guest": {
+        "cpu_kind": "shared",
+        "cpus": 1,
+        "memory_mb": 1024
+      },
+      "source_sha": "085c0cc089b0e7cfca0947741b599ba05bf59f3f",
+      "standbys": []
+    },
+    {
+      "id": "82d1e6dc204168",
+      "state": "stopped",
+      "region": "iad",
+      "process": "app",
+      "guest": {
+        "cpu_kind": "shared",
+        "cpus": 1,
+        "memory_mb": 1024
+      },
+      "source_sha": "085c0cc089b0e7cfca0947741b599ba05bf59f3f",
+      "standbys": []
+    },
+    {
+      "id": "6e8204deb36148",
+      "state": "started",
+      "region": "iad",
+      "process": "worker",
+      "guest": {
+        "cpu_kind": "shared",
+        "cpus": 1,
+        "memory_mb": 2048
+      },
+      "source_sha": "085c0cc089b0e7cfca0947741b599ba05bf59f3f",
+      "standbys": []
+    },
+    {
+      "id": "185e299c956608",
+      "state": "stopped",
+      "region": "iad",
+      "process": "worker",
+      "guest": {
+        "cpu_kind": "shared",
+        "cpus": 1,
+        "memory_mb": 2048
+      },
+      "source_sha": "085c0cc089b0e7cfca0947741b599ba05bf59f3f",
+      "standbys": [
+        "6e8204deb36148"
+      ]
+    }
+  ],
+  "prefect": [
+    {
+      "id": "fb012d28-b91e-48f9-af2a-e55fc2ce1b4d",
+      "name": "fleet-health",
+      "work_pool_name": "home-pool",
+      "entrypoint": "flows/fleet_health.py:fleet_health",
+      "parameter_openapi_schema": {
+        "title": "Parameters",
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "id": "ec0cc6dc-bed2-4b93-80ba-41c15cb2a5cb",
+      "name": "pi-pr",
+      "work_pool_name": "home-pool",
+      "entrypoint": "flows/pi_pr.py:pi_pr",
+      "parameter_openapi_schema": {
+        "title": "Parameters",
+        "type": "object",
+        "properties": {
+          "task": {
+            "position": 0,
+            "title": "task",
+            "type": "string"
+          },
+          "title": {
+            "position": 1,
+            "title": "title",
+            "type": "string"
+          },
+          "body": {
+            "position": 2,
+            "title": "body",
+            "type": "string"
+          },
+          "repo": {
+            "default": "my-prefect-server",
+            "enum": [
+              "my-prefect-server",
+              "find-bufo",
+              "bot",
+              "tangled-mcp"
+            ],
+            "position": 3,
+            "title": "repo",
+            "type": "string"
+          },
+          "agent": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Agent"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "position": 4,
+            "title": "agent"
+          },
+          "dry_run": {
+            "default": false,
+            "position": 5,
+            "title": "dry_run",
+            "type": "boolean"
+          },
+          "requested_by": {
+            "default": "",
+            "position": 6,
+            "title": "requested_by",
+            "type": "string"
+          }
+        },
+        "required": [
+          "task",
+          "title",
+          "body"
+        ],
+        "definitions": {
+          "Agent": {
+            "description": "The Aperture model authorized by the execution grant.",
+            "properties": {
+              "provider": {
+                "const": "aperture",
+                "default": "aperture",
+                "position": 0,
+                "title": "Provider",
+                "type": "string"
+              },
+              "model": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "position": 1,
+                "title": "Model"
+              },
+              "thinking": {
+                "default": "medium",
+                "enum": [
+                  "off",
+                  "minimal",
+                  "low",
+                  "medium",
+                  "high",
+                  "xhigh"
+                ],
+                "position": 2,
+                "title": "Thinking",
+                "type": "string"
+              }
+            },
+            "title": "Agent",
+            "type": "object"
+          }
+        }
+      }
+    },
+    {
+      "id": "f63100bc-2bab-4917-9393-9955bcd3a023",
+      "name": "pi-agent",
+      "work_pool_name": "home-pool",
+      "entrypoint": "flows/pi_agent_local.py:pi_agent_local",
+      "parameter_openapi_schema": {
+        "title": "Parameters",
+        "type": "object",
+        "properties": {
+          "prompt": {
+            "position": 0,
+            "title": "prompt",
+            "type": "string"
+          },
+          "workspace": {
+            "$ref": "#/definitions/Workspace",
+            "default": {
+              "repo": null,
+              "ref": "main"
+            },
+            "position": 1,
+            "title": "workspace"
+          },
+          "agent": {
+            "$ref": "#/definitions/Agent",
+            "default": {
+              "provider": "anthropic",
+              "model": null,
+              "thinking": "medium",
+              "tool_mode": "read-only",
+              "toolset": null
+            },
+            "position": 2,
+            "title": "agent"
+          },
+          "timeout_seconds": {
+            "default": 1500,
+            "position": 3,
+            "title": "timeout_seconds",
+            "type": "integer"
+          },
+          "instructions": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "position": 4,
+            "title": "instructions"
+          }
+        },
+        "required": [
+          "prompt"
+        ],
+        "definitions": {
+          "Agent": {
+            "description": "which brain pi gets, and which hands.",
+            "properties": {
+              "provider": {
+                "default": "anthropic",
+                "description": "Pi provider; credentials must already be configured on the worker",
+                "position": 0,
+                "title": "Provider",
+                "type": "string"
+              },
+              "model": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "model id (e.g. claude-haiku-4-5-20251001); empty = provider default",
+                "position": 1,
+                "title": "Model"
+              },
+              "thinking": {
+                "default": "medium",
+                "enum": [
+                  "off",
+                  "minimal",
+                  "low",
+                  "medium",
+                  "high",
+                  "xhigh"
+                ],
+                "position": 2,
+                "title": "Thinking",
+                "type": "string"
+              },
+              "tool_mode": {
+                "default": "read-only",
+                "description": "full = read/bash/edit/write (pi can modify the workspace and run commands as the worker user); read-only = read,grep,find,ls; none = pure text",
+                "enum": [
+                  "full",
+                  "read-only",
+                  "none"
+                ],
+                "position": 3,
+                "title": "Tool Mode",
+                "type": "string"
+              },
+              "toolset": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Toolset"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Explicit tools and installed extensions; overrides tool_mode when set"
+              }
+            },
+            "title": "Agent",
+            "type": "object"
+          },
+          "Toolset": {
+            "description": "Explicit Pi tool names and worker-installed extension entrypoints.",
+            "properties": {
+              "names": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Names",
+                "type": "array"
+              },
+              "extensions": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Extensions",
+                "type": "array"
+              }
+            },
+            "title": "Toolset",
+            "type": "object"
+          },
+          "Workspace": {
+            "description": "where pi works. picking a repo gives it a fresh shallow clone as cwd.",
+            "properties": {
+              "repo": {
+                "anyOf": [
+                  {
+                    "enum": [
+                      "my-prefect-server",
+                      "find-bufo",
+                      "plyr.fm",
+                      "bot"
+                    ],
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "repo pi operates in (fresh shallow clone); empty = scratch dir",
+                "position": 0,
+                "title": "Repo"
+              },
+              "ref": {
+                "default": "main",
+                "description": "branch or tag to check out",
+                "position": 1,
+                "title": "Ref",
+                "type": "string"
+              }
+            },
+            "title": "Workspace",
+            "type": "object"
+          }
+        }
+      }
+    },
+    {
+      "id": "140f6561-de9d-4c82-a230-24da3be1c291",
+      "name": "costs",
+      "work_pool_name": "home-pool",
+      "entrypoint": "flows/costs.py:costs",
+      "parameter_openapi_schema": {
+        "title": "Parameters",
+        "type": "object",
+        "properties": {
+          "config": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/CostsConfig"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "position": 0,
+            "title": "config"
+          }
+        },
+        "definitions": {
+          "CostsConfig": {
+            "properties": {
+              "dry_run": {
+                "default": true,
+                "description": "print the snapshot JSON instead of writing it to PDS",
+                "position": 0,
+                "title": "Dry Run",
+                "type": "boolean"
+              }
+            },
+            "title": "CostsConfig",
+            "type": "object"
+          }
+        }
+      }
+    }
+  ]
+}

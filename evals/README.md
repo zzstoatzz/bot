@@ -46,3 +46,10 @@ are supposed to shape. tool routing, owner-gating, and write-path policy
 (what phi saves, when, and why) are the standing categories. enumerate the
 specifics in the tests themselves, not here; this file describes the
 approach, and docs that list test files rot the moment tests change.
+
+## bounded jev research
+
+[Operational microcosms](jev/README.md) compare three narrow jev judgments with
+the current public-action judge using synthetic/public fixtures. The standalone
+runner is opt-in, enforces request and spending reservations, and cannot post or
+dispatch work. Its results do not authorize replacing the production gate.
