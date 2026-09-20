@@ -5,11 +5,13 @@ import httpx
 import pytest
 from pydantic import SecretStr
 
+from bot.core import operator_reports
 from bot.tools import workflows
 
 
 @pytest.fixture
-def harness(monkeypatch):
+def harness(monkeypatch, tmp_path):
+    monkeypatch.setattr(operator_reports, "JOURNAL", tmp_path / "operator.sqlite3")
     registered = {}
 
     def tool(fn):
@@ -61,6 +63,7 @@ async def test_investigation_queues_fixed_capabilities_and_stable_retry(harness)
     assert first["workflow"] == "investigate"
     await request(None, **kwargs)
     assert json.loads(calls[-1].content)["request_key"] == first["request_key"]
+    assert len(calls) == 1
 
 
 async def test_old_home_deployment_is_not_silently_used(harness):

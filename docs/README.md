@@ -4,6 +4,8 @@ deeper dive into phi's design.
 
 ## contents
 
+- [internal/operator-workflow.md](internal/operator-workflow.md) — current local operator path, private workflow receipts, and explicit migration boundaries
+
 - [lore.md](lore.md) — dated background about the account, with who supplied each account
 
 - [architecture.md](architecture.md) — entry points, scheduling, which model runs which agent, why this shape
@@ -18,6 +20,22 @@ deeper dive into phi's design.
 - [patterns.md](patterns.md) — recurring lessons from the git history (deletion, feedback loops, DotDict, voice vs structure, silently-empty blocks, prescription in task prompts, attention shapes voice)
 - [lexicons.md](lexicons.md) — phi's custom `io.zzstoatzz.phi.*` schemas, how they're published, and the DNS authority record they need
 - [internal/cockpit.md](internal/cockpit.md) — the web UI (internal, operator-facing)
+
+- [internal/operator-consolidation-2026-09-19.md](internal/operator-consolidation-2026-09-19.md) — consolidation evidence, documentation audit, and verification
+
+## proposed work
+
+- [internal/waow-stewardship.md](internal/waow-stewardship.md) — waow.tech stewardship vision, gradual Gardener expansion, and the first offline jev evaluation milestone (2026-09-19; not deployed behavior)
+
+- [internal/operator-interaction-design.md](internal/operator-interaction-design.md) — consolidate conversation, evidence, and scoped decisions before broader stewardship
+
+- [internal/plyr-stewardship-2026-09-19.md](internal/plyr-stewardship-2026-09-19.md) — verified service inventory, capability gaps, cost/health limits, and the selected next expansion
+
+- [internal/jev-microcosms-2026-09-19.md](internal/jev-microcosms-2026-09-19.md) — first real-provider pilot: corpus, held-out results, limitations, and decision to keep jev offline
+
+- [internal/jev-historical-review-2026-09-19.md](internal/jev-historical-review-2026-09-19.md) — real Logfire examples, wrapper failure, historical routing fixes, and next semantic distinctions
+
+- [internal/jev-purpose-results-2026-09-19.md](internal/jev-purpose-results-2026-09-19.md) — frozen historical-purpose evaluation and verified form-gate feedback fix
 
 ## reading order
 

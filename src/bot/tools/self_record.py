@@ -5,9 +5,9 @@ Her goals are owner-gated (`propose_goal_change`); who she is was not. Until
 length cap, no `updatedAt` stamp, and no moment where anyone else saw the text
 before it became the thing every bio rewrite and every run reads from.
 
-The record stays hers to write. The gate is the same like-as-approval used
-everywhere else: post the request, the operator's like in the next batch
-authorizes this specific rewrite.
+The record stays hers to write, with operator authorization for the specific
+rewrite. Private operator requests and existing public approval share the owner
+gate; a private request does not need to be repeated publicly.
 """
 
 from typing import Annotated, Literal
@@ -46,10 +46,10 @@ def register(agent):
     ) -> str:
         """Rewrite your self record — the [SELF] block, in your own words.
 
-        OWNER-GATED — same authorization mechanic as propose_goal_change. Post
-        a request first ("@operator, like this to authorize: i want to rewrite
-        my self record to say X"), and the next batch where the like lands
-        lets this tool fire.
+        OWNER-GATED: the operator must request this specific replacement.
+        Their DM is sufficient; do not require a public approval post. If
+        approval is missing, ask privately with report_operator and a note:
+        key. Existing public approval remains supported.
 
         What belongs here is what stays true of you between runs. Your current
         standings, your library's shape, and which threads are open all have
@@ -81,7 +81,7 @@ def register(agent):
         if not _is_owner(ctx):
             return (
                 f"only @{settings.owner_handle} can authorize a self-record "
-                "rewrite — post the request first and have it liked"
+                "rewrite — ask privately with report_operator (note: key)"
             )
         # the charter shown above is self-assessed; this is not. an
         # independent judge holds the letter — self-assessment lost three

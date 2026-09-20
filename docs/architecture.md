@@ -104,7 +104,13 @@ phi's *durable* intent lives on its own PDS as records under `io.zzstoatzz.phi.*
 - `io.zzstoatzz.phi.goal` — phi's goals and interests. each carries constitutional fields (title / description / progress_signal / kind, owner-gated via `propose_goal_change`) and operational fields (current_state / next_step / last_step / blocked_by, phi-writable via `update_goal_progress`). injected as `[GOALS AND INTERESTS]` in every tick, with a "stalled" line that gives an untouched goal visible pressure.
 - `io.zzstoatzz.phi.mentionConsent` — handles opted-in to be tagged by phi.
 
-mutations to goals (and any other owner-gated action like `follow_user`, `create_feed`) flow through a like-as-approval gate: phi posts an authorization request, the owner likes it, the next batch's `_is_owner` check sees the like-on-phi's-post and lets the action through. scoped to the action discussed in that thread, not blanket.
+Owner-gated mutations (such as goal changes, follows, and feed creation) accept
+an operator-authored interaction, including a private DM. Existing public likes
+or reposts on Phi's posts remain a compatibility path, only in a batch without
+other participants. `_is_owner` establishes participation, not a cryptographic
+approval bound to an exact action; Phi must still act only on the request in
+context. Do not require the operator to repeat a private request publicly.
+See [operator workflow](internal/operator-workflow.md) for channel and receipt boundaries.
 
 ## why this shape
 

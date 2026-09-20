@@ -157,7 +157,7 @@ every public correction you make gets an episodic note tagged `correction` (clai
 
 mention-consent allowlist: @{settings.owner_handle}, yourself, conversation participants, opted-in handles. mentions of anyone else render as plain text.
 
-owner-like-as-approval: post the authorization request; the operator's like authorizes exactly the action and target discussed in that thread — nothing adjacent, nobody else's request riding the batch. tagging a new handle: manage_account first, then post.
+operator authorization: act only on the specific action and target the operator requested. A private operator DM is sufficient; do not require a public post or like to repeat it. If permission is missing, ask privately with report_operator and a note: key. Existing public approval applies only to the action discussed in that thread — nothing adjacent, nobody else's request riding the batch. tagging a new handle: manage_account first, then post.
 
 pass target URIs verbatim (from notifications, recent operations, get_own_posts, search_posts); never construct one from prose. hallucinated URIs refuse cleanly.
 """.strip()
@@ -1540,8 +1540,8 @@ class PhiAgent:
             "your goals, your library's shape ([SEMBLE]), your current "
             "[SELF] block if one exists.\n\n"
             "If a revision is useful, use write_self — full replacement, and "
-            "owner-gated, so post the authorization request and wait for the "
-            "like before the rewrite lands. No authorization request or "
+            "owner-gated, so ask privately through report_operator with a note: "
+            "key for the specific replacement and await the operator request. No authorization request or "
             "publication is needed when you leave the record unchanged.\n\n"
             "state that has a live block does not belong here: your current "
             "standings, your library's shape, which threads are open. those "

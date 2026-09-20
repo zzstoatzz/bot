@@ -1,5 +1,34 @@
 # changelog
 
+## 2026-09-19 — Show prior answers before answering again
+
+Two runs triggered by unrelated notifications repeated an already-answered chicken
+question resurfaced in recent encounters. The original notification was not replayed.
+Recent encounters now carry Phi’s exact-parent reply history from Constellation,
+hydrated by AppView; the posting check rereads the same evidence. The existing
+self-repeat policy now covers redundant same-parent replies, with corrections and
+requested follow-ups preserved. Index gaps remain unknown, not “never answered.”
+
+## 2026-09-19 — Keep operator work in its private conversation
+
+Goal and self-record tools no longer ask the operator to repeat a private request
+through a public like. The owner gate is unchanged. Workflow requests keep private
+receipts in the existing operator journal: confirmed retries reuse the run ID and
+a changed payload cannot silently reuse a request key. An owner-DM-only status
+tool retrieves receipts and current Prefect state without dispatching anything.
+The cockpit explains this path and keeps private receipts off its public surface.
+Discord notifications and Prefect merge approval remain explicit compatibility
+boundaries, not silently migrated channels.
+
+## 2026-09-19 — Explain form-gate refusals accurately
+
+A recorded trade update received a self-repeat warning and a positive assessment
+of its explanatory form, but the post wrapper rejected that form and returned
+the positive assessment as the rejection reason. The wrapper now identifies the
+original verdict, selected form, and accepted forms when it vetoes publication.
+It keeps the descriptive evidence separate. Eligibility is unchanged; replay
+coverage checks both returned feedback and the persisted journal entry.
+
 ## 2026-09-19 — A private route to the operator from any run
 
 Phi found her cosmik-records skill stale, drafted the fix, and could not

@@ -106,12 +106,12 @@
 				{live ? (live.active ? 'Operator override active' : 'Operator override off') : (loaded ? 'Override status unavailable' : 'Reading status…')}
 			</span>
 		</header>
-		<nav class="operator-nav" aria-label="Operator sections"><a href="#control-heading">Controls</a><a href="#current-context">Context</a><a href="#tool-activity">Tool use</a><a href="#public-checks">Public checks</a></nav>
+		<nav class="operator-nav" aria-label="Operator sections"><a href="#control-heading">Controls</a><a href="#working-together">Work with Phi</a><a href="#current-context">Context</a><a href="#tool-activity">Tool use</a><a href="#public-checks">Public checks</a></nav>
 		<section class="control-panel" aria-labelledby="control-heading">
 		<h2 id="control-heading">Public action control</h2>
 
 		<p class="explainer">
-			An active override pauses Phi's public actions and puts your message in her context.
+			An active override blocks Phi's actions and stops operator DM processing. Your saved directive is public.
 			Phi follows the override on Nate's account. Signing in with another account only lets
 			you edit that account's record.
 		</p>
@@ -170,6 +170,25 @@
 		{/if}
 
 		</section>
+        <section class="working-together" aria-labelledby="working-together">
+            <h2 id="working-together">Work with Phi</h2>
+            <p>Use your private Bluesky conversation for operational requests and follow-up.
+                Public conversations can stay public; a private request does not need a public like.</p>
+            <a class="conversation-link" href="https://bsky.app/messages" target="_blank" rel="noopener">Open Bluesky messages ↗</a>
+            <ol>
+                <li><strong>Ask for specific work.</strong> Name the service, what you want investigated or changed, and the limits.</li>
+                <li><strong>Keep the receipt.</strong> A queued workflow has a request key and run ID. Ask Phi for its status in the same private conversation.</li>
+                <li><strong>Review the outcome.</strong> A completed run is not proof of a fix, merge, or deployment. Ask for the evidence; approve those steps separately.</li>
+            </ol>
+            <details>
+                <summary>Where the other surfaces fit</summary>
+                <p>This page provides controls and public diagnostics. It does not display private conversations or approve maintenance work.
+                    Discord currently carries workflow notifications; the linked workflow or pull remains the source for its state.
+                    Evergreen is the public service health and cost view.</p>
+                <p>Workflow lookup covers receipts recorded after it was enabled. Older work may need its original run link.
+                    An uncertain request or reply must be reconciled before retrying under a new identity.</p>
+            </details>
+        </section>
 		<div id="current-context"><ContextBudget /></div>
 		<div id="tool-activity"><ToolUsageBoard /></div>
 		<div id="public-checks"><EtiquetteBoard /></div>
@@ -181,7 +200,13 @@
 <style>
  .operator-nav { display:flex; flex-wrap:wrap; gap:8px 20px; margin:0 0 24px; }
  .operator-nav a { display:flex; align-items:center; min-height:44px; }
- #current-context, #tool-activity, #public-checks, #control-heading { scroll-margin-top:150px; }
+ #current-context, #tool-activity, #public-checks, #control-heading, #working-together { scroll-margin-top:150px; }
+ .working-together { border-top:1px solid #45616b; padding:24px; margin-top:24px; }
+ .working-together p, .working-together li { max-width:70ch; line-height:1.65; color:var(--text-mid); }
+ .working-together li { padding:6px 0; }
+ .working-together strong { color:var(--text); }
+ .conversation-link, .working-together summary { display:block; padding:12px 0; min-height:44px; box-sizing:border-box; color:var(--scan-hot); }
+ .working-together summary { cursor:pointer; }
  .historical { border-top:1px solid #45616b; margin-top:24px; padding-top:16px; }
  .historical > summary { min-height:44px; cursor:pointer; color:var(--scan-hot); }
 

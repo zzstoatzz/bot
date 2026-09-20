@@ -1,5 +1,9 @@
 # Voice calibration
 
+Dated experiment record, reviewed 2026-09-19. Accepted examples here are evaluation
+references, not a declaration of the live personality or current `VOICE_RESET`
+setting. See [architecture](../architecture.md) for current runtime context.
+
 The accepted short-reply baseline is preserved in [the fixture](../../evals/fixtures/voice-reference-baseline.json), including exact requests and all six unedited results. Two questions were accepted: “What feature did you add next?” and “Did it spread sideways in the proof, or did it fail to rise at all?”
 
 These were private Terra calls with attributed Grace exchanges, no old Phi context and no public actions. The explicit imitation instruction was a control experiment. Stable personality must remain separate from independently chosen influences; do not turn that instruction into a permanent personality. vgel and Grace are candidate influences, not an exhaustive list.

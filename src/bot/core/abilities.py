@@ -37,6 +37,10 @@ class Risk(TypedDict):
 
 
 RISK: dict[str, Risk] = {
+    "operator_workflow_status": {
+        "magnitude": "none",
+        "reason": "reads private workflow receipts and current run state only in the operator DM; does not dispatch, retry, merge, or deploy work.",
+    },
     "reply_operator_dm": {
         "magnitude": "high",
         "reason": "sends one private reply to an incoming operator DM; it reaches their notifications and cannot be un-notified.",
@@ -226,6 +230,10 @@ RISK: dict[str, Risk] = {
 # still needs their risk text, so they declare here, outside the bijection
 # that `tests/test_abilities.py` holds over RISK.
 GOVERNED_WRITE_RISK: dict[str, Risk] = {
+    "operator_workflow_status": {
+        "magnitude": "none",
+        "reason": "reads private workflow receipts and current run state only in the operator DM; does not dispatch, retry, merge, or deploy work.",
+    },
     "request_workflow": {
         "magnitude": "high",
         "reason": "starts an owner-authorized external agent workflow that consumes compute and can prepare repository changes.",

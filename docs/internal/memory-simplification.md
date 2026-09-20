@@ -1,8 +1,14 @@
 # memory simplification plan (internal)
 
-> **internal** — a plan, dated 2026-08-21. none of it is built. each section
-> names the cut, what it removes, what must survive, the files, the tests,
-> and what would make us stop. order is the recommended build order.
+> **Archived proposal — 2026-08-21; reviewed 2026-09-19.** This is historical
+> design material, not the current implementation or an active work order.
+> Current behavior belongs in [memory](../memory.md) and
+> [safety](../safety.md). The claim below that judgment evidence exists only in
+> Logfire is obsolete: `core/public_etiquette.py` persists attempts and revisions,
+> and the cockpit exposes public-check diagnostics. Relationship summaries still
+> exist; episodic retrieval already excludes `run-summary` tags. Do not build the
+> proposed ledger or retire flows from this plan without re-evaluating current code.
+> The original proposal below is retained to explain the alternatives considered.
 
 context: [../memory.md](../memory.md) and its three diagrams. the loop is
 ten rows; this plan removes one row, regroups the readers, and adds one

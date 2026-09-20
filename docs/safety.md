@@ -234,3 +234,24 @@ Likes and reposts also check current thread mute state immediately before the
 guarded record write, after policy approval. A muted or unavailable thread
 refuses delivery. Removing an existing reaction remains permitted; this check
 does not prevent disengagement.
+
+## Private workflow receipts
+
+`request_workflow` stores dispatch identity and confirmation in the existing private
+operator journal. Reusing a confirmed key returns the recorded run; changing its
+payload is refused. Unconfirmed delivery does not establish that no work started.
+`operator_workflow_status` is available only in an owner DM, reads receipts and
+current Prefect state, and cannot dispatch. No public cockpit endpoint exposes the
+journal. It retains identifiers and an action fingerprint, not task prose. The
+existing owner gate and operator override still govern new workflow requests.
+See [operator workflow](internal/operator-workflow.md) for scope and migration limits.
+
+## Repeated answers
+
+Reply checks receive exact-parent published reply evidence through Constellation
+(`reply.parent.uri`, filtered by Phi's DID), hydrated and identity-checked against
+AppView. The existing self-repeat policy applies to redundant same-parent answers,
+while allowing corrections and specifically requested follow-ups. Recent encounters
+carry this evidence before drafting as well. Index lag, pagination bounds, and
+unavailable records remain explicit; this is not an exactly-once publication lock.
+The lookup discovers public interactions, not private decisions or task completion.

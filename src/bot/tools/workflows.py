@@ -7,6 +7,7 @@ from pydantic import Field
 from pydantic_ai import RunContext
 
 from bot.config import settings
+from bot.core import workflow_receipts
 from bot.core.override import get_override, refusal_text
 from bot.tools._helpers import PhiDeps, _is_owner
 
@@ -55,6 +56,9 @@ def register(agent):
         trusted workflow publishes as Gardener. Merging requires the operator.
         Use prefect_get_flow_runs and prefect_get_flow_run_logs to follow the ID.
         Reuse request_key for retries so an uncertain response cannot duplicate work.
+        In an operator DM, use operator_workflow_status to recover receipts and
+        check progress. The request permits only the described investigation or
+        proposal; it does not authorize merging or deployment.
         """
         if not _is_owner(ctx):
             return {
@@ -77,6 +81,31 @@ def register(agent):
                 "queued": False,
                 "reason": "Workflow authentication is not configured",
             }
+        payload = {
+            "workflow": workflow,
+            "instructions": instructions,
+            "repo": repo,
+            "request_key": request_key,
+            "title": title.strip(),
+            "body": body.strip(),
+        }
+        try:
+            receipt = workflow_receipts.reserve(
+                payload, getattr(getattr(ctx, "deps", None), "private_message_id", "")
+            )
+        except ValueError:
+            return {
+                "queued": False,
+                "reason": "This request key identifies different work. Review the changed action with the operator before using a new key.",
+            }
+        if receipt["state"] == "queued":
+            return {
+                "queued": True,
+                "flow_run_id": receipt["flow_run_id"],
+                "name": receipt["run_name"],
+                "workflow": workflow,
+                "request_key": request_key,
+            }
         try:
             async with httpx.AsyncClient(timeout=30) as http:
                 response = await http.post(
@@ -85,25 +114,78 @@ def register(agent):
                         "Authorization": "Bearer "
                         + settings.workflow_request_token.get_secret_value()
                     },
-                    json={
-                        "workflow": workflow,
-                        "instructions": instructions,
-                        "repo": repo,
-                        "request_key": request_key,
-                        "title": title.strip(),
-                        "body": body.strip(),
-                    },
+                    json=payload,
                 )
                 response.raise_for_status()
                 run = response.json()
-        except httpx.HTTPError:
+                if not isinstance(run, dict) or not all(
+                    isinstance(run.get(k), str) and run[k]
+                    for k in ("flow_run_id", "name")
+                ):
+                    raise ValueError("Incomplete workflow receipt")
+        except (httpx.HTTPError, ValueError):
             return {
                 "queued": False,
                 "reason": "Prefect did not confirm the request; retry with the same request_key",
             }
+        workflow_receipts.confirm(request_key, run["flow_run_id"], run["name"])
         return {
+            "request_key": request_key,
             "queued": True,
             "flow_run_id": run["flow_run_id"],
             "name": run["name"],
             "workflow": workflow,
+        }
+
+    @agent.tool
+    async def operator_workflow_status(
+        ctx: RunContext[PhiDeps],
+        request_key: Annotated[
+            str,
+            Field(
+                description="Exact request key; omit to inspect the ten latest local workflow receipts"
+            ),
+        ] = "",
+    ) -> dict:
+        """Inspect requested work and current Prefect state in the operator DM.
+
+        Receipts are private. Queued is not completed; completed is not merged
+        or deployed. Inspect the run's evidence before claiming an outcome.
+        No dispatch or retry occurs here. An unconfirmed receipt may represent
+        accepted work; do not create another request to find out.
+        """
+        if not _is_owner(ctx) or not ctx.deps.private_message_id:
+            return {
+                "error": "Workflow receipts are only available in the private operator conversation."
+            }
+        receipts = workflow_receipts.recent(request_key)
+        auth = settings.prefect_api_auth_string
+        async with httpx.AsyncClient(timeout=15) as http:
+            for receipt in receipts:
+                run_id = receipt["flow_run_id"]
+                if not run_id or not auth or ":" not in auth:
+                    receipt["live_status"] = "unavailable"
+                    continue
+                try:
+                    response = await http.get(
+                        f"{settings.prefect_api_url.rstrip('/')}/flow_runs/{run_id}",
+                        auth=httpx.BasicAuth(
+                            auth.split(":", 1)[0], auth.split(":", 1)[1]
+                        ),
+                    )
+                    response.raise_for_status()
+                    run = response.json()
+                    if not isinstance(run, dict) or not isinstance(
+                        run.get("state_type"), str
+                    ):
+                        raise ValueError("Incomplete workflow state")
+                    receipt["live_status"] = {
+                        k: run.get(k)
+                        for k in ("state_type", "state_name", "start_time", "end_time")
+                    }
+                except (httpx.HTTPError, ValueError):
+                    receipt["live_status"] = "unavailable"
+        return {
+            "requests": receipts,
+            "coverage": "Local receipts since this feature was enabled; absence is not proof that no earlier work exists.",
         }

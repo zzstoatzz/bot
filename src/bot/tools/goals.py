@@ -79,10 +79,10 @@ def register(agent):
     ) -> str:
         """Add or update one of your goals on PDS.
 
-        OWNER-GATED — same authorization mechanic as follow_user. Post a
-        request first ("@operator, like this to authorize: i want to add a
-        goal for X"), and the next batch where the like lands will let this
-        tool fire. Without an owner-like in the batch, this tool refuses.
+        OWNER-GATED: act only on the operator's request for this specific
+        change. An operator DM is sufficient; do not ask them to repeat it
+        publicly. If approval is missing, use report_operator with a note:
+        key to ask privately. Existing public approval remains supported.
 
         Keep a small set of goals; revise existing ones as the work develops.
 
@@ -92,7 +92,7 @@ def register(agent):
         if not _is_owner(ctx):
             return (
                 f"only @{settings.owner_handle} can change goals — "
-                "post the authorization request first and have it liked"
+                "ask privately with report_operator (note: key) for this specific change"
             )
         try:
             uri = await goals.upsert_goal(

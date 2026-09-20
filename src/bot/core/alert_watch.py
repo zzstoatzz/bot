@@ -1,11 +1,10 @@
 """phi watches the operator's logfire alerts so the operator doesn't have to.
 
-The raw alert channels on Discord are muted; phi polls logfire's alert API
-across all the operator's projects and carries the churn as incidents. The
-contract with the operator: anything genuinely needing their hands reaches
-them as one @-mention per incident; everything else — flapping, self-resolved,
-known-cause — is absorbed silently. Tuning observations accumulate in phi's
-reflective surfaces, never as tags.
+Phi carries grouped Logfire firings as incidents. Actionable incidents use
+private reports; public escalation separately requires verified unanswered
+private contact and a continuing need for action. The alert-age marker alone
+never authorizes publication. Notification transport and mute state are separate
+from incident state; inspect live automations before claiming a channel is retired.
 
 The unit of news is the incident, not the recurrence — doctrine inherited
 from the retired prefect-specific workflow_failures monitor, whose job now
@@ -31,9 +30,9 @@ CLOSED_RETENTION_SECONDS = 24 * 3600
 """A quieted incident stays visible for a day as recent history, then drops."""
 
 ESCALATION_SECONDS = 6 * 3600
-"""An incident may reach the operator only after this long open — and after a
-mention, only after this long *again* (still firing) may it bump them once
-more. The re-bump cadence is code, not judgment."""
+"""Age before an incident warrants private attention or renewed inspection.
+Public eligibility is separately checked against private delivery receipts.
+"""
 
 QUIET_CLOSE_SECONDS = 6 * 3600
 """An incident closes after this long without matches; the next firing is
@@ -238,7 +237,8 @@ def gate_firings(
             inc = out.get(state["key"])
             if inc:
                 inc["observation"] = (
-                    "no matches" if state["active"] and not state["snoozed"]
+                    "no matches"
+                    if state["active"] and not state["snoozed"]
                     else "monitor inactive or snoozed"
                 )
                 inc["observed_ts"] = now_ts
