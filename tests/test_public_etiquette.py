@@ -236,3 +236,42 @@ async def test_long_form_has_its_own_judgment_unit(monkeypatch, tool, form, expe
     verdict = await policy.check_action("draft", "invited", tool=tool)
     assert verdict["verdict"] == expected
     assert etiquette.board()["counts"] == {expected: 1}
+
+
+@pytest.mark.parametrize(
+    "form,expected", [("explanation", "block"), ("direct-turn", "warn")]
+)
+async def test_historical_warning_keeps_form_veto_distinct(monkeypatch, form, expected):
+    evidence = (
+        "Across the two-post composition, it explains a specific trade outcome "
+        "and derives a concrete revision to the entry rule from the failed "
+        "velocity signal; the conclusion is tied to the reported recheck "
+        "rather than serving as a portable verdict."
+    )
+    recorded = {
+        "verdict": "warn",
+        "policy": "self-repeat",
+        "public_form": form,
+        "form_evidence": evidence,
+        "reason": "This is a genuinely new development on a recently covered subject.",
+    }
+    judge = Agent(
+        TestModel(custom_output_args=recorded), output_type=policy.PolicyVerdict
+    )
+    monkeypatch.setattr(policy, "_judge", judge)
+    verdict = await policy.check_action("trade update", "scheduled cycle", tool="post")
+    assert verdict["verdict"] == expected
+    assert verdict["form_evidence"] == evidence
+    if expected == "block":
+        assert verdict["policy"] == "public-etiquette"
+        assert "judge returned warn" in verdict["reason"]
+        assert "'explanation'" in verdict["reason"]
+        assert "direct-turn" in verdict["reason"]
+        assert evidence not in verdict["reason"]
+        with etiquette.connect() as db:
+            stored = db.execute("SELECT outcome, reason FROM attempts").fetchone()
+        assert stored["outcome"] == "block"
+        assert stored["reason"] == verdict["reason"]
+    else:
+        assert verdict["policy"] == "self-repeat"
+        assert verdict["reason"] == recorded["reason"]

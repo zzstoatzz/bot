@@ -431,11 +431,15 @@ async def check_action(
             verdict["verdict"] != "block"
             and verdict.get("public_form") not in accepted_forms
         ):
+            judge_verdict = verdict["verdict"]
             verdict["verdict"] = "block"
             verdict["policy"] = "public-etiquette"
             verdict["reason"] = (
-                verdict.get("form_evidence")
-                or "The classifier did not establish a specific public contribution."
+                f"The judge returned {judge_verdict}, but selected public form "
+                f"{verdict.get('public_form')!r}; this tool's form gate accepts only "
+                f"{', '.join(sorted(accepted_forms))}. Publication was refused by "
+                "the form gate. The judge's descriptive form assessment is not "
+                "an additional rejection reason."
             )
 
         if verdict.get("policy") == "public-etiquette" and verdict["verdict"] == "warn":
