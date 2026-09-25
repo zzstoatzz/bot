@@ -102,8 +102,13 @@ no poll iteration has completed in `health_stale_after` seconds (default 30x
 failing machine; fly restarts a machine when its process exits (`[[restart]]`
 policy `on-failure`). so `core/watchdog.py` applies the same decision every 15s
 and exits the process non-zero. the check's `grace_period` covers startup (auth,
-schedule seeding — 60s is Fly's cap; bios are preserved across startup) so a booting machine
+schedule seeding — 60s is Fly's cap; bio refresh runs in the background) so a booting machine
 is not marked failing.
+
+Bio authoring runs on the first unpaused poll tick and every 24 hours through
+`process_bio` and the classified `write_bio` tool. It does not block startup.
+Profile descriptions have their own public form; factual self-description does
+not need a joke. Failed writes preserve the existing bio and report failure.
 
 secrets via `fly secrets set` or `fly secrets import` (pipe `grep ^KEY .env` into it to keep values off the terminal).
 

@@ -13,7 +13,7 @@ max_lines = 10000
 
 [[rules]]
 path = "src/bot/agent.py"
-max_lines = 1767
+max_lines = 1788
 
 [[rules]]
 path = "src/bot/memory/namespace_memory.py"
@@ -37,7 +37,7 @@ max_lines = 700
 
 [[rules]]
 path = "src/bot/services/notification_poller.py"
-max_lines = 534
+max_lines = 596
 
 [[rules]]
 path = "web/src/lib/components/ContextBudget.svelte"
@@ -62,3 +62,7 @@ max_lines = 737
 [[rules]]
 path = "evals/jev/cases.json"
 max_lines = 770
+
+[[rules]]
+path = "src/bot/core/policy.py"
+max_lines = 568

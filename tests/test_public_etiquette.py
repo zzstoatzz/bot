@@ -210,6 +210,10 @@ async def test_complete_split_preview_is_checked_before_any_publication(monkeypa
 @pytest.mark.parametrize(
     ("tool", "form", "expected"),
     [
+        ("write_bio", "profile-description", "allow"),
+        ("write_bio", "generic-quip", "block"),
+        ("post", "profile-description", "block"),
+        ("publish_blog_post", "profile-description", "block"),
         ("publish_blog_post", "developed-piece", "allow"),
         ("publish_blog_post", "deadpan-set", "block"),
         ("publish_blog_post", "deadpan-bit", "block"),

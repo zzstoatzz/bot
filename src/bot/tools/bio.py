@@ -9,7 +9,8 @@ wrong-but-plausible text.
 
 The 256-char cap is enforced structurally via `Annotated[str, Field(...)]`
 on the tool parameter — pydantic refuses to dispatch the call if phi
-overruns. Phi chooses when to rewrite it; startup preserves the current text.
+overruns. A background pass refreshes it at startup and every 24 hours;
+Phi can also rewrite it during any run.
 """
 
 from typing import Annotated
@@ -43,9 +44,10 @@ def register(agent):
     ) -> str:
         """Rewrite your bsky profile bio.
 
-        Public etiquette applies to this text. A bio can be a single bit;
-        it need not list your capabilities. Read [OPERATOR] for an accurate
-        attribution. The 256-character cap is structurally enforced.
+        Describe yourself, your interests or capabilities accurately. A plain
+        description is welcome; humor is optional. Read [OPERATOR] for accurate
+        attribution. Avoid volatile numbers unless freshly verified. Public
+        policies apply. The 256-character cap is structurally enforced.
         """
         override = await get_override()
         if override["active"]:

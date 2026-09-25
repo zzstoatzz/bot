@@ -79,6 +79,13 @@ async def test_set_online_status_skips_write_without_marker():
     client.com.atproto.repo.put_record.assert_not_called()
 
 
+async def test_description_write_failure_reaches_the_caller():
+    pm, client = _manager_with_bio(PHI_AUTHORED_BIO)
+    client.com.atproto.repo.put_record.side_effect = RuntimeError("PDS unavailable")
+    with pytest.raises(RuntimeError, match="PDS unavailable"):
+        await pm.set_description("a new bio")
+
+
 @pytest.mark.parametrize("operation", ["status", "description", "label"])
 async def test_profile_updates_preserve_pinned_post_and_unrecognized_fields(operation):
     pm, client = _manager_with_bio(PHI_AUTHORED_BIO)

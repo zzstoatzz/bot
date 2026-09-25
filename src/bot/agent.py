@@ -1038,6 +1038,13 @@ class PhiAgent:
                 logger.warning(f"episodic store after {label} failed: {e}")
         return summary
 
+    async def process_bio(self) -> str:
+        return await self._run_agent(
+            label="bio rewrite",
+            prompt="Refresh your Bluesky profile bio using write_bio.",
+            deps=PhiDeps(author_handle="", memory=self.memory),
+        )
+
     async def process_operator_dm(self, material: str, message_id: str) -> str:
         """A private conversation, excluded from public memory extraction."""
         return await self._run_agent(

@@ -138,6 +138,7 @@ class ProfileManager:
             logger.info(f"updated profile bio (phi-authored): {text}")
         except Exception as e:
             logger.error(f"failed to set bio: {e}")
+            raise
 
     async def set_online_status(self, is_online: bool):
         """Flip the 🟢/🔴 marker in the current bio to reflect status."""

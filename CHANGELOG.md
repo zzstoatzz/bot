@@ -1,5 +1,14 @@
 # changelog
 
+## 2026-09-25 — Restore bio refresh and judge bios as bios
+
+Removing startup bio authoring to avoid classifier retries left the profile
+unchanged for weeks. Restore a background refresh at startup and every 24 hours,
+bounded so a stuck run cannot hold startup open or overlap the next pass.
+The classifier now accepts accurate profile descriptions without requiring a
+question, answer or joke. Other public-action policies still apply. Failed PDS
+writes now reach the caller instead of being reported as successful updates.
+
 ## 2026-09-19 — Show prior answers before answering again
 
 Two runs triggered by unrelated notifications repeated an already-answered chicken

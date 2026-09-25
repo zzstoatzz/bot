@@ -68,6 +68,8 @@ class NotificationPoller:
         self._next_review_poll = 0.0
         self._next_dm_poll = 0.0
         self._dm_task: asyncio.Task | None = None
+        self._bio_task: asyncio.Task | None = None
+        self._next_bio_refresh = 0.0
 
     async def start(self) -> asyncio.Task:
         """Start polling for notifications."""
@@ -97,6 +99,8 @@ class NotificationPoller:
             except asyncio.CancelledError:
                 pass
         if self._background_tasks:
+            if self._bio_task:
+                self._bio_task.cancel()
             await asyncio.gather(*self._background_tasks, return_exceptions=True)
 
     async def _recovery_loop(self):
@@ -211,6 +215,7 @@ class NotificationPoller:
                 await asyncio.sleep(settings.notification_poll_interval)
                 continue
             bot_status.record_tick()
+            self._schedule_bio_refresh()
 
             if time.monotonic() >= self._next_dm_poll:
                 self._next_dm_poll = time.monotonic() + 30
@@ -269,6 +274,30 @@ class NotificationPoller:
             except asyncio.CancelledError:
                 logger.info("notification poller shutting down")
                 raise
+
+    def _schedule_bio_refresh(self):
+        if bot_status.paused or settings.voice_reset:
+            return
+        if time.monotonic() < self._next_bio_refresh:
+            return
+        if self._bio_task and not self._bio_task.done():
+            return
+        self._next_bio_refresh = time.monotonic() + 24 * 60 * 60
+        self._bio_task = asyncio.create_task(self._refresh_bio(), name="bio-refresh")
+        self._background_tasks.add(self._bio_task)
+        self._bio_task.add_done_callback(self._background_tasks.discard)
+
+    async def _refresh_bio(self):
+        try:
+            async with self._semaphore:
+                if bot_status.paused or settings.voice_reset:
+                    return
+                if (await get_override())["active"]:
+                    return
+                async with asyncio.timeout(180):
+                    await self.handler.agent.process_bio()
+        except Exception:
+            logger.exception("bio refresh failed; keeping the existing profile")
 
     async def _check_operator_messages(self):
         try:

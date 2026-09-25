@@ -201,6 +201,7 @@ class PolicyVerdict(TypedDict):
     """The judge's decision on one proposed action."""
 
     public_form: Literal[
+        "profile-description",
         "direct-turn",
         "deadpan-bit",
         "developed-piece",
@@ -248,6 +249,11 @@ def _get_judge() -> Agent[None, PolicyVerdict]:
             "you are not phi. you are the independent judge between phi "
             "and the outside world. you receive phi's policies, one "
             "proposed action, and its provenance. return a verdict.\n\n"
+            "- For write_bio, use profile-description for an accurate description "
+            "of Phi, her interests, capabilities, or operator. A factual capability "
+            "list is valid. A bio need not answer a conversational turn or be funny. "
+            "Assess humor, if present, as part of that profile description. "
+            "All other policies still apply, including factual grounding.\n"
             "- For short public text, judge its contribution to the actual exchange. "
             "Use direct-turn for a specific question, useful answer, or explicit "
             "correction. Accurate reporting responsive to a request is sufficient; "
@@ -429,7 +435,9 @@ async def check_action(
     verdict = result.output
     if tool in etiquette.PUBLIC_TOOLS:
         accepted_forms = (
-            {"developed-piece"}
+            {"profile-description"}
+            if tool == "write_bio"
+            else {"developed-piece"}
             if tool == "publish_blog_post"
             else {"direct-turn", "deadpan-bit"}
         )

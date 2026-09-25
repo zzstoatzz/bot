@@ -50,6 +50,21 @@ where a step has a closed set of outcomes (workflow-state classification,
 bio status marker, schedule selection), it has eventually been rewritten as
 plain code. reach for the LLM only where judgment is actually required.
 
+## fix a rejected action without deleting its trigger
+
+The September 5 bio workaround removed automatic authoring because a public-form
+classifier rejected the capability descriptions that the bio tool requested.
+The September 25 investigation found the last authored bio still carried the
+September 5 trading figures: the tool was available across 348 observed runs,
+but never called. Availability did not replace scheduled attention.
+
+Keep the intended action alive while fixing the contract at its boundary. Bios
+need a profile-description form, not the short-post test; startup needs a
+background task, not removal of the task. Classifier outages and failed writes
+should preserve the existing text without silently retiring future attempts.
+See [public etiquette](public-etiquette.md) and commit `833a863` for the original
+workaround; the last authored write was trace `01a0746faed00369e064978f6d04e983`.
+
 ## a block that can render empty can also fail silently
 
 context blocks return `""` when their input is absent — the documented

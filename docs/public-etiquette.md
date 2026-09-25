@@ -59,10 +59,14 @@ influence record is rewritten. Both live failures now reject in offline replay.
 The board retains their original approvals and identifies each attempt's rule
 version rather than rewriting the history of this experiment.
 
-Startup now preserves the authored bio and only toggles its status marker.
-The previous automatic rewrite held startup open while the classifier rejected
-capability lists requested by the bio tool itself. That conflicting instruction
-and the automatic authoring entry point have been retired.
+The September 5 workaround removed automatic bio authoring because classifier
+rejections held startup open. That dropped the refresh behavior and left dated
+trading figures in the profile. September 25 restores authoring in the background
+at startup and every 24 hours. The `curious-regular-v9` classifier gives bios a
+`profile-description` form: accurate identity, interests, capabilities and operator
+attribution are sufficient; humor is optional. Other policies and fail-closed
+publication still apply. This form is accepted only for `write_bio`, not posts
+or blogs. PDS errors reach the tool caller instead of yielding false success.
 
 Split Bluesky threads are reviewed as one composition, with a numbered preview
 of every exact chunk from the existing splitter (deadpan-v6). Nothing is sent
