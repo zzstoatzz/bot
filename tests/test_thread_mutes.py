@@ -25,7 +25,7 @@ def client(monkeypatch):
     bot = BotClient()
     monkeypatch.setattr(bot, "authenticate", AsyncMock())
     feed = SimpleNamespace(get_post_thread=Mock())
-    bot.client = SimpleNamespace(
+    bot.client = Mock(
         app=SimpleNamespace(bsky=SimpleNamespace(feed=feed)), send_post=Mock()
     )
     return bot, feed

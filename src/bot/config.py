@@ -69,6 +69,10 @@ class Settings(BaseSettings):
     anthropic_api_key: str | None = Field(
         default=None, description="The API key for the Anthropic API"
     )
+    typesafe_api_key: SecretStr | None = None
+    typesafe_model: str = "jev-1.13.0"
+    typesafe_base_url: str = "https://api.typesafe.ai"
+    typesafe_timeout: float = Field(default=5.0, gt=0, le=30)
     # Reads the github mirror of this repo for check_infra(aspect="changelog").
     # Unauthenticated, the GitHub API allows 60 requests/hour *per IP* — one
     # busy run can exhaust it, and phi's fly machine does not have that IP to

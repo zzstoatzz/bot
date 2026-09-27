@@ -2,7 +2,7 @@
 
 import json
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 
 import httpx
 import pytest
@@ -46,7 +46,7 @@ async def test_retire_read_restore_and_search_paths():
         mem = NamespaceMemory.__new__(NamespaceMemory)
         mem.namespaces = {"episodic": client.namespace("notes")}
         mem._get_embedding = AsyncMock(return_value=[0.1])
-        mem.get_user_namespace = lambda _: client.namespace("unused")
+        mem.get_user_namespace = Mock(return_value=client.namespace("unused"))
         tools = {}
         memory_tools.register(
             SimpleNamespace(tool=lambda fn: tools.setdefault(fn.__name__, fn))

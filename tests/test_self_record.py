@@ -21,6 +21,8 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from pydantic import ValidationError
 from pydantic_ai import Agent, RunContext
+from pydantic_ai.models.test import TestModel
+from pydantic_ai.usage import RunUsage
 
 from bot.config import settings
 from bot.core import self_record
@@ -130,9 +132,7 @@ def _tool(name: str):
 
 
 def _ctx(author_handle: str) -> RunContext[PhiDeps]:
-    return SimpleNamespace(  # type: ignore[return-value]
-        deps=PhiDeps(author_handle=author_handle, memory=None)
-    )
+    return RunContext(deps=PhiDeps(author_handle=author_handle, memory=None), model=TestModel(), usage=RunUsage())
 
 
 async def test_a_stranger_cannot_rewrite_who_phi_is(monkeypatch):

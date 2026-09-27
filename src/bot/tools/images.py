@@ -25,6 +25,12 @@ logger = logging.getLogger("bot.tools.images")
 # keeps one generated image usable everywhere (grain, avatar, banner)
 _MAX_BLOB_BYTES = 950_000
 
+_API_SIZES: dict[str, Literal["1024x1024", "1024x1536", "1536x1024"]] = {
+    "square": "1024x1024",
+    "portrait": "1024x1536",
+    "landscape": "1536x1024",
+}
+
 _SIZES: dict[str, tuple[int, int]] = {
     "square": (1024, 1024),
     "portrait": (1024, 1536),
@@ -93,11 +99,13 @@ def register(agent):
             result = await client.images.generate(
                 model="gpt-image-1",
                 prompt=prompt,
-                size=f"{w}x{h}",
+                size=_API_SIZES[aspect],
                 quality="high",
             )
             import base64
 
+            if not result.data or not result.data[0].b64_json:
+                raise ValueError("image generation returned no image bytes")
             raw = base64.b64decode(result.data[0].b64_json)
         except Exception as e:
             logger.warning(f"image generation failed: {e}")

@@ -14,10 +14,12 @@ from typing import Literal, TypedDict
 
 from atproto import models
 from turbopuffer import NotFoundError, Turbopuffer
+from turbopuffer.types import AttributeSchemaConfigParam
+from turbopuffer.types.custom import Filter
 
 ENCOUNTER_NAMESPACE = "phi-encounters"
 logger = logging.getLogger("bot.memory.encounters")
-ENCOUNTER_SCHEMA = {
+ENCOUNTER_SCHEMA: dict[str, str | AttributeSchemaConfigParam] = {
     "content": {"type": "string", "full_text_search": True},
     "event_ids": {"type": "[]string"},
     "recorded_at": {"type": "string"},
@@ -107,8 +109,8 @@ async def append_encounters(
         unique.setdefault(encounter["id"], encounter)
     result = await asyncio.to_thread(
         client.namespace(namespace).write,
-        upsert_rows=list(unique.values()),
-        upsert_condition=["id", "Eq", None],
+        upsert_rows=[dict(row) for row in unique.values()],
+        upsert_condition=("id", "Eq", None),
         schema=ENCOUNTER_SCHEMA,
     )
     return result.rows_affected
@@ -139,9 +141,9 @@ async def read_recent_encounters(
     start, end = (
         t.astimezone(UTC).isoformat(timespec="microseconds") for t in (since, until)
     )
-    filters: list = [["indexed_at", "Gte", start], ["indexed_at", "Lte", end]]
+    filters: list[Filter] = [("indexed_at", "Gte", start), ("indexed_at", "Lte", end)]
     if actor_did:
-        filters.append(["actor_did", "Eq", actor_did])
+        filters.append(("actor_did", "Eq", actor_did))
     result = RecentEncounters(
         status="ok", since=start, until=end, rows=[], has_more=False
     )
@@ -149,7 +151,7 @@ async def read_recent_encounters(
         response = await asyncio.to_thread(
             client.namespace(namespace).query,
             rank_by=("indexed_at", "desc"),
-            filters=["And", filters],
+            filters=("And", filters),
             top_k=limit + 1,
             include_attributes=True,
         )

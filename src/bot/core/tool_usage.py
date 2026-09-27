@@ -132,7 +132,7 @@ def trace_id():
     return format(span.trace_id, "032x") if span.is_valid else ""
 
 
-class ToolUsage(AbstractCapability):
+class ToolUsage(AbstractCapability[Any]):
     async def before_model_request(
         self, ctx: RunContext, request_context: ModelRequestContext
     ) -> ModelRequestContext:

@@ -101,7 +101,7 @@ def settings():
 def phi_agent(settings):
     """Test agent without MCP tools to prevent posting."""
     if not settings.anthropic_api_key:
-        pytest.skip("Requires ANTHROPIC_API_KEY")
+        raise pytest.skip.Exception("Requires ANTHROPIC_API_KEY")
 
     if settings.anthropic_api_key and not os.environ.get("ANTHROPIC_API_KEY"):
         os.environ["ANTHROPIC_API_KEY"] = settings.anthropic_api_key
@@ -177,7 +177,7 @@ CANNED_FEEDS = [
 def feed_agent(settings):
     """Test agent with mocked graze feed tools."""
     if not settings.anthropic_api_key:
-        pytest.skip("Requires ANTHROPIC_API_KEY")
+        raise pytest.skip.Exception("Requires ANTHROPIC_API_KEY")
 
     if settings.anthropic_api_key and not os.environ.get("ANTHROPIC_API_KEY"):
         os.environ["ANTHROPIC_API_KEY"] = settings.anthropic_api_key
@@ -252,7 +252,7 @@ _consumer_spy = ToolCallSpy()
 def feed_consumer_agent(settings):
     """Test agent with mocked feed consumption, following, and owner-gated tools."""
     if not settings.anthropic_api_key:
-        pytest.skip("Requires ANTHROPIC_API_KEY")
+        raise pytest.skip.Exception("Requires ANTHROPIC_API_KEY")
 
     if settings.anthropic_api_key and not os.environ.get("ANTHROPIC_API_KEY"):
         os.environ["ANTHROPIC_API_KEY"] = settings.anthropic_api_key
@@ -331,7 +331,7 @@ def feed_consumer_agent(settings):
 def feed_consumer_agent_empty(settings):
     """Test agent where read_timeline returns the empty-timeline message."""
     if not settings.anthropic_api_key:
-        pytest.skip("Requires ANTHROPIC_API_KEY")
+        raise pytest.skip.Exception("Requires ANTHROPIC_API_KEY")
 
     if settings.anthropic_api_key and not os.environ.get("ANTHROPIC_API_KEY"):
         os.environ["ANTHROPIC_API_KEY"] = settings.anthropic_api_key

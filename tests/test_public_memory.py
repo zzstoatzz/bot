@@ -11,8 +11,8 @@ from bot.core.public_memory import _card_line, _render
 
 
 def _rec(uri: str, value: dict) -> models.ComAtprotoRepoListRecords.Record:
-    return models.ComAtprotoRepoListRecords.Response(
-        records=[{"uri": uri, "cid": "bafyreitest", "value": value}]
+    return models.ComAtprotoRepoListRecords.Response.model_validate(
+        {"records": [{"uri": uri, "cid": "bafyreitest", "value": value}]}
     ).records[0]
 
 

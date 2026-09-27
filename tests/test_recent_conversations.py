@@ -43,6 +43,7 @@ def test_user_namespace_ids_spans_every_page():
     ids = [f"{prefix}h{i:03d}" for i in range(167)]
     mem = _mem_with_namespaces(ids)
     assert len(mem._user_namespace_ids()) == 167
+    assert isinstance(mem.client, Mock)
     mem.client.namespaces.assert_called_once_with(prefix=prefix)
 
 
@@ -112,6 +113,7 @@ def test_account_directory_never_reads_person_memory():
     handles = mem.list_user_handles()
     assert len(handles) == 179
     assert handles[-1] == "h178.bsky.social"
+    assert isinstance(mem.client, Mock)
     mem.client.namespace.assert_not_called()
 
 

@@ -31,7 +31,7 @@ from contextvars import ContextVar
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from opentelemetry import trace
 from pydantic_ai._run_context import RunContext
@@ -40,6 +40,7 @@ from pydantic_ai.models import (
     Model,
     ModelRequestParameters,
     StreamedResponse,
+    infer_model,
 )
 from pydantic_ai.models.anthropic import AnthropicModelSettings
 from pydantic_ai.models.openai import OpenAIResponsesModelSettings
@@ -54,7 +55,7 @@ logger = logging.getLogger("bot.cache")
 
 CACHE_FILE = Path("/data/cache_stability.json")
 
-CACHE_TTLS = {
+CACHE_TTLS: dict[str, Literal["5m", "1h"]] = {
     "tool_definitions": "1h",
     "instructions": "1h",
     "messages": "5m",
@@ -474,7 +475,7 @@ class CacheObservingModel(WrapperModel):
     """
 
     def __init__(self, wrapped: Model | str, monitor: CacheMonitor | None = None):
-        super().__init__(wrapped)
+        super().__init__(infer_model(wrapped))
         self.monitor = monitor or cache_monitor
 
     def _observe(self, usage: RequestUsage) -> None:

@@ -376,6 +376,8 @@ async def check_action(
                 "verdict": "block",
                 "policy": "uninvited-reply",
                 "reason": reason,
+                "public_form": "not-applicable",
+                "form_evidence": "Contact permission missing; form was not classified.",
             }
             if tool in etiquette.PUBLIC_TOOLS:
                 verdict["attempt_id"] = etiquette.record(

@@ -199,7 +199,7 @@ RISK: dict[str, Risk] = {
     },
     "update_chicken_strategy": {
         "magnitude": "moderate",
-        "reason": "rewrites her public trading doctrine record, which she then trades against.",
+        "reason": "writes or retires an individual public strategy rule used by market retrieval.",
     },
     # --- high: reaches others, spends money, or cannot be undone -----------
     "post": {

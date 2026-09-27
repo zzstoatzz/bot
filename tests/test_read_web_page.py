@@ -139,7 +139,7 @@ async def test_failure_is_not_source_absence(monkeypatch, status, payload):
 )
 async def test_invalid_request_does_not_fetch(monkeypatch, url, offset):
     def handler(request):
-        pytest.fail("invalid input must not fetch")
+        raise AssertionError("invalid input must not fetch")
 
     tool = reader(monkeypatch, handler)
     assert "Provide" in await tool(None, url, offset)
@@ -147,7 +147,7 @@ async def test_invalid_request_does_not_fetch(monkeypatch, url, offset):
 
 async def test_bluesky_uses_native_reader_without_tavily(monkeypatch):
     def handler(request):
-        pytest.fail("Bluesky post must not reach HTML extraction")
+        raise AssertionError("Bluesky post must not reach HTML extraction")
 
     tool = reader(monkeypatch, handler)
     monkeypatch.setattr(search.settings, "tavily_api_key", "")

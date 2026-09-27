@@ -175,7 +175,7 @@ async def incoming_messages() -> tuple[list[dict], list[str]]:
     if not available.convo:
         return [], []
     cursor = None
-    history = []
+    history: list[dict] = []
     for _ in range(10):
         params = {"convo_id": available.convo.id, "limit": 100}
         if cursor:

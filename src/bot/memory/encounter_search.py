@@ -5,6 +5,7 @@ import logging
 from typing import Literal, TypedDict
 
 from turbopuffer import NotFoundError, Turbopuffer
+from turbopuffer.types.custom import Filter
 
 logger = logging.getLogger(__name__)
 
@@ -30,9 +31,9 @@ async def search_encounters(
     """
     if not query.strip() or not 1 <= limit <= 100:
         raise ValueError("a nonempty query and a limit from 1 to 100 are required")
-    filters: list = ["kind", "Eq", "encounter"]
+    filters: Filter = ("kind", "Eq", "encounter")
     if actor_did:
-        filters = ["And", [filters, ["actor_did", "Eq", actor_did]]]
+        filters = ("And", [filters, ("actor_did", "Eq", actor_did)])
     try:
         response = await asyncio.to_thread(
             client.namespace(namespace).query,
@@ -64,7 +65,7 @@ async def read_encounter(
         response = await asyncio.to_thread(
             client.namespace(namespace).query,
             rank_by=("id", "asc"),
-            filters=["And", [["kind", "Eq", "encounter"], ["id", "Eq", event_id]]],
+            filters=("And", [("kind", "Eq", "encounter"), ("id", "Eq", event_id)]),
             top_k=1,
             include_attributes=True,
         )
@@ -90,7 +91,7 @@ async def read_encounter_activity(
         response = await asyncio.to_thread(
             client.namespace(namespace).query,
             rank_by=("recorded_at", "desc"),
-            filters=["event_ids", "Contains", event_id],
+            filters=("event_ids", "Contains", event_id),
             top_k=limit + 1,
             include_attributes=True,
         )

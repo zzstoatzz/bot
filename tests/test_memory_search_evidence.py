@@ -63,10 +63,8 @@ def tool_with_memory(*, legacy=False):
     episodic_ns = Namespace([{**record, "kind": "note"}])
     memory = NamespaceMemory.__new__(NamespaceMemory)
     memory._get_embedding = AsyncMock(return_value=[0.1] * 8)
-    memory.get_user_namespace = lambda handle: (
-        user_ns if handle == ALI else Namespace([])
-    )
-    memory.namespaces = {"episodic": episodic_ns}
+    memory.get_user_namespace = Mock(side_effect=lambda handle: user_ns if handle == ALI else Namespace([]))
+    memory.namespaces = {"episodic": Mock(wraps=episodic_ns)}
     tools = {}
 
     def register(tool):

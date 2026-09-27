@@ -7,12 +7,13 @@ from starlette.testclient import TestClient
 from bot.agent import PhiAgent
 from bot.config import settings
 from bot.main import app
+from bot.tools._helpers import PhiDeps
 
 
 async def test_reset_prevents_context_tools_and_extraction(monkeypatch):
     monkeypatch.setattr(settings, "voice_reset", True)
     agent = PhiAgent.__new__(PhiAgent)
-    assert await agent._run_agent(label="test", prompt="test", deps=None) == (
+    assert await agent._run_agent(label="test", prompt="test", deps=PhiDeps(author_handle="")) == (
         "normal runs suspended for voice reset"
     )
     assert await agent.process_extraction() == 0

@@ -180,8 +180,7 @@ class BotClient:
     async def mark_notifications_seen(self, seen_at: str):
         """Mark notifications as seen up to a certain timestamp"""
         await self.authenticate()
-        # Use the params format instead of data
-        self.client.app.bsky.notification.update_seen({"seenAt": seen_at})
+        self.client.app.bsky.notification.update_seen({"seen_at": seen_at})
 
     async def thread_mute_state(self, uri: str) -> tuple[str, bool]:
         """Resolve a post's root and read its authenticated mute state."""
@@ -194,7 +193,10 @@ class BotClient:
         if not isinstance(response.thread, models.AppBskyFeedDefs.ThreadViewPost):
             raise ValueError("thread is unavailable")
         post = response.thread.post
-        root = post.record.reply.root.uri if post.record.reply else post.uri
+        record = post.record
+        if not isinstance(record, models.AppBskyFeedPost.Record):
+            raise ValueError("thread record is not a post")
+        root = record.reply.root.uri if record.reply else post.uri
         if root != post.uri:
             response = await asyncio.to_thread(
                 self.client.app.bsky.feed.get_post_thread, {"uri": root, "depth": 0}
@@ -241,7 +243,10 @@ class BotClient:
         await self.authenticate()
 
         if len(text) <= 300:
-            facets = create_facets(text, self.client, allowed_handles)
+            facets = [
+                models.AppBskyRichtextFacet.Main.model_validate(f)
+                for f in create_facets(text, self.client, allowed_handles)
+            ]
             if reply_to:
                 await self.require_unmuted_thread(reply_to.root.uri)
                 result = self.client.send_post(
@@ -262,7 +267,10 @@ class BotClient:
         last_result = None
 
         for i, chunk in enumerate(chunks):
-            facets = create_facets(chunk, self.client, allowed_handles)
+            facets = [
+                models.AppBskyRichtextFacet.Main.model_validate(f)
+                for f in create_facets(chunk, self.client, allowed_handles)
+            ]
 
             if i == 0:
                 if reply_to:
@@ -334,6 +342,7 @@ class BotClient:
     async def get_own_posts(self, limit: int = 10):
         """Fetch the bot's own recent posts (top-level only, no replies)."""
         await self.authenticate()
+        assert self.client.me is not None
         response = self.client.app.bsky.feed.get_author_feed(
             params={
                 "actor": self.client.me.did,
@@ -346,6 +355,7 @@ class BotClient:
     async def get_own_likes(self, limit: int = 25):
         """Fetch posts the bot has liked, newest first, using its own account."""
         await self.authenticate()
+        assert self.client.me is not None
         response = self.client.app.bsky.feed.get_actor_likes(
             params={"actor": self.client.me.did, "limit": limit}
         )
@@ -362,6 +372,8 @@ class BotClient:
             params=model,
             output_encoding="application/json",
         )
+        if not isinstance(response.content, dict):
+            raise ValueError("searchPosts returned a non-object response")
         return response.content
 
     async def get_timeline(self, limit: int = 25):
@@ -412,6 +424,7 @@ class BotClient:
     async def get_following(self, limit: int = 100):
         """Get accounts the bot is following."""
         await self.authenticate()
+        assert self.client.me is not None
         return self.client.app.bsky.graph.get_follows(
             params={"actor": self.client.me.did, "limit": limit}
         )

@@ -1,7 +1,7 @@
 """A reply's reference words retain their subject during episodic selection."""
 
 from types import SimpleNamespace as NS
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
@@ -41,12 +41,13 @@ async def test_parent_hydration_is_exact_and_failure_preserves_received_text(
         else NS(posts=[] if parent_state == "missing" else [parent])
     )
     handler = message_handler.MessageHandler.__new__(message_handler.MessageHandler)
-    handler.client = NS(
+    handler.client = Mock(
         get_posts=AsyncMock(side_effect=[NS(posts=[post]), lookup]),
         get_thread=AsyncMock(side_effect=RuntimeError("thread missing")),
     )
     monkeypatch.setattr(message_handler, "extract_cited_references", lambda _: [])
     entry = await handler._build_post_entry(NS(uri=post.uri, reason="reply"))
+    assert entry is not None
     assert entry["post_text"] == post.record.text
     query = notification_recall(
         PhiDeps(author_handle="", notifications_context={post.uri: entry})

@@ -28,7 +28,10 @@ async def _load() -> None:
         )
         # bracket access — result.value is a DotDict where .get() is
         # intercepted as attribute lookup and returns None
-        _handles = set(result.value["handles"])
+        values = result.value["handles"]
+        if not isinstance(values, list) or not all(isinstance(v, str) for v in values):
+            raise ValueError("mentionable handles must be a list of strings")
+        _handles = set(values)
         logger.info(f"loaded {len(_handles)} mentionable handles from PDS")
     except Exception:
         _handles = set()

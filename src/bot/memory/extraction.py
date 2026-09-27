@@ -7,6 +7,7 @@ and reconciling new observations against existing memory.
 from atproto_client.models.string_formats import AtUri
 from pydantic import BaseModel, Field
 from pydantic_ai import Agent
+from turbopuffer.types import AttributeSchemaConfigParam
 
 from bot.config import settings
 
@@ -142,7 +143,7 @@ def get_reconciliation_agent() -> Agent[None, ReconciliationResult]:
     return agent
 
 
-EPISODIC_SCHEMA = {
+EPISODIC_SCHEMA: dict[str, str | AttributeSchemaConfigParam] = {
     "content": {"type": "string", "full_text_search": True},
     "tags": {"type": "[]string", "filterable": True},
     "source": {"type": "string", "filterable": True},  # "tool", "run:<label>", ...
@@ -154,7 +155,7 @@ EPISODIC_SCHEMA = {
     "supersedes": {"type": "string"},  # id of the episodic row this replaces
 }
 
-USER_NAMESPACE_SCHEMA = {
+USER_NAMESPACE_SCHEMA: dict[str, str | AttributeSchemaConfigParam] = {
     "kind": {"type": "string", "filterable": True},
     "status": {"type": "string", "filterable": True},  # active, superseded
     "content": {"type": "string", "full_text_search": True},

@@ -356,13 +356,13 @@ class NamespaceMemory:
             response = user_ns.query(
                 rank_by=("vector", "ANN", embedding),
                 top_k=top_k,
-                filters=[
+                filters=(
                     "And",
                     [
-                        ["kind", "Eq", "observation"],
-                        ["status", "NotEq", "superseded"],
+                        ("kind", "Eq", "observation"),
+                        ("status", "NotEq", "superseded"),
                     ],
-                ],
+                ),
                 # include_attributes=True so pre-schema-evolution namespaces
                 # don't 400 on a missing source_uris column
                 include_attributes=True,
@@ -514,7 +514,7 @@ class NamespaceMemory:
             response = user_ns.query(
                 rank_by=("created_at", "desc"),
                 top_k=1,
-                filters={"kind": ["Eq", "summary"]},
+                filters=("kind", "Eq", "summary"),
                 include_attributes=["content"],
             )
             if response.rows:
@@ -553,13 +553,13 @@ class NamespaceMemory:
                 obs_response = user_ns.query(
                     rank_by=("vector", "ANN", query_embedding),
                     top_k=10,
-                    filters=[
+                    filters=(
                         "And",
                         [
-                            ["kind", "Eq", "observation"],
-                            ["status", "NotEq", "superseded"],
+                            ("kind", "Eq", "observation"),
+                            ("status", "NotEq", "superseded"),
                         ],
-                    ],
+                    ),
                     include_attributes=True,
                 )
                 if obs_response.rows:
@@ -578,7 +578,7 @@ class NamespaceMemory:
                 interaction_response = user_ns.query(
                     rank_by=("vector", "ANN", query_embedding),
                     top_k=5,
-                    filters={"kind": ["Eq", "interaction"]},
+                    filters=("kind", "Eq", "interaction"),
                     include_attributes=True,
                 )
                 if interaction_response.rows:
@@ -658,7 +658,7 @@ class NamespaceMemory:
                 # Legacy namespaces may not declare source_uris yet.
                 include_attributes=True,
             )
-            results = []
+            results: list[dict] = []
             if response.rows:
                 for row in response.rows:
                     if getattr(row, "status", None) in {"superseded", "retired"}:
@@ -749,7 +749,7 @@ class NamespaceMemory:
             # Keep the new wording without archiving a more informative account.
             action = "ADD"
 
-        if action == "NOOP":
+        if action == "NOOP" and decision is not None:
             existing_sources = list(best.get("source_uris") or [])
             sources = list(dict.fromkeys(existing_sources + list(source_uris or [])))
             if sources != existing_sources:
@@ -830,7 +830,7 @@ class NamespaceMemory:
             state = "retired" if retired else "active"
             if note["status"] == state or (not retired and note["status"] is None):
                 return existing
-            change = {"id": note_id, "status": state}
+            change: dict[str, object] = {"id": note_id, "status": state}
             if retired:
                 change.update(
                     retired_reason=reason.strip(), retired_at=datetime.now().isoformat()
@@ -959,7 +959,7 @@ class NamespaceMemory:
                 top_k=top_k * 3,
                 include_attributes=True,
             )
-            results = []
+            results: list[dict] = []
             if response.rows:
                 for row in response.rows:
                     if getattr(row, "status", None) in {"superseded", "retired"}:
@@ -1030,7 +1030,7 @@ class NamespaceMemory:
                         include_attributes=True,
                     ),
                 )
-                results = []
+                results: list[dict] = []
                 if response.rows:
                     for row in response.rows:
                         if getattr(row, "status", None) in {"superseded", "retired"}:
@@ -1069,7 +1069,7 @@ class NamespaceMemory:
                         include_attributes=True,
                     ),
                 )
-                results = []
+                results: list[dict] = []
                 if response.rows:
                     for row in response.rows:
                         if getattr(row, "status", None) in {"superseded", "retired"}:
@@ -1162,7 +1162,7 @@ class NamespaceMemory:
 
     def get_graph_data(self) -> dict:
         """Build graph nodes and edges from memory namespaces with semantic coordinates."""
-        nodes = [{"id": "phi", "label": "phi", "type": "phi"}]
+        nodes: list[dict] = [{"id": "phi", "label": "phi", "type": "phi"}]
         edges = []
         user_vectors: dict[str, list[list[float]]] = {}
 
@@ -1182,13 +1182,13 @@ class NamespaceMemory:
                     response = user_ns.query(
                         rank_by=("vector", "ANN", [0.5] * 1536),
                         top_k=50,
-                        filters=[
+                        filters=(
                             "And",
                             [
-                                ["kind", "Eq", "observation"],
-                                ["status", "NotEq", "superseded"],
+                                ("kind", "Eq", "observation"),
+                                ("status", "NotEq", "superseded"),
                             ],
-                        ],
+                        ),
                         include_attributes=["vector"],
                     )
                     if response.rows:
@@ -1242,7 +1242,7 @@ class NamespaceMemory:
                     response = user_ns.query(
                         rank_by=("created_at", "desc"),
                         top_k=3,
-                        filters={"kind": ["Eq", "interaction"]},
+                        filters=("kind", "Eq", "interaction"),
                         include_attributes=True,
                     )
                     if response.rows:
@@ -1296,13 +1296,13 @@ class NamespaceMemory:
                     obs_response = user_ns.query(
                         rank_by=("created_at", "desc"),
                         top_k=1,
-                        filters=[
+                        filters=(
                             "And",
                             [
-                                ["kind", "Eq", "observation"],
-                                ["status", "NotEq", "superseded"],
+                                ("kind", "Eq", "observation"),
+                                ("status", "NotEq", "superseded"),
                             ],
-                        ],
+                        ),
                         include_attributes=["created_at"],
                     )
                     if obs_response.rows:
@@ -1317,7 +1317,7 @@ class NamespaceMemory:
                     int_response = user_ns.query(
                         rank_by=("created_at", "desc"),
                         top_k=self.UNPROCESSED_PAGE,
-                        filters={"kind": ["Eq", "interaction"]},
+                        filters=("kind", "Eq", "interaction"),
                         include_attributes=True,
                     )
                     if int_response.rows:
@@ -1329,11 +1329,14 @@ class NamespaceMemory:
                             )
                         for row in int_response.rows:
                             created = getattr(row, "created_at", "") or ""
+                            content = row.content
+                            if not isinstance(content, str):
+                                raise ValueError("interaction content must be text")
                             if created > latest_obs_time:
                                 results.append(
                                     InteractionRow(
                                         handle=handle,
-                                        content=row.content,
+                                        content=content,
                                         created_at=created,
                                         source_uris=list(
                                             getattr(row, "source_uris", []) or []
@@ -1358,13 +1361,13 @@ class NamespaceMemory:
             response = user_ns.query(
                 rank_by=("created_at", "desc"),
                 top_k=2,
-                filters=[
+                filters=(
                     "And",
                     [
-                        ["kind", "Eq", "observation"],
-                        ["status", "NotEq", "superseded"],
+                        ("kind", "Eq", "observation"),
+                        ("status", "NotEq", "superseded"),
                     ],
-                ],
+                ),
                 include_attributes=["kind"],
             )
             return len(response.rows) if response.rows else 0

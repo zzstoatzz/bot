@@ -58,7 +58,7 @@ def skills_agent(settings):
     write without actually hitting any PDS.
     """
     if not settings.anthropic_api_key:
-        pytest.skip("Requires ANTHROPIC_API_KEY")
+        raise pytest.skip.Exception("Requires ANTHROPIC_API_KEY")
 
     if settings.anthropic_api_key and not os.environ.get("ANTHROPIC_API_KEY"):
         os.environ["ANTHROPIC_API_KEY"] = settings.anthropic_api_key

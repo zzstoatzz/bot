@@ -180,9 +180,9 @@ def test_best_samples_prefer_substance_over_recency():
     """like-recency order surfaced reply banter ('hi', 'obvs') as the read
     on a person; the sample shown should be the post that shows why the
     operator rates them."""
-    from bot.core.discovery_pool import _best_samples
+    from bot.core.discovery_pool import _best_samples, _SamplePost
 
-    posts = [
+    posts: list[_SamplePost] = [
         {"uri": "a", "text": "hi", "liked_at": "2026-08-07"},
         {"uri": "b", "text": "a long substantive post about atproto lexicons and why they matter", "liked_at": "2026-08-05"},
         {"uri": "c", "text": "", "liked_at": "2026-08-06"},
@@ -193,9 +193,9 @@ def test_best_samples_prefer_substance_over_recency():
 
 
 def test_render_is_compact_and_essay_free():
-    from bot.core.discovery_pool import _render
+    from bot.core.discovery_pool import _Entry, _render
 
-    entries = [
+    entries: list[_Entry] = [
         {
             "handle": "someone.bsky.social",
             "did": "did:plc:x",

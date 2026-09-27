@@ -45,7 +45,7 @@ async def test_model_boundary_and_run_outcome_remain_distinct(outcome, monkeypat
         http_client=httpx.Client(transport=httpx.MockTransport(serve)),
     ) as storage:
         phi = PhiAgent.__new__(PhiAgent)
-        phi._mcp_toolsets = lambda **kwargs: []
+        monkeypatch.setattr(phi, "_mcp_toolsets", lambda **kwargs: [])
         phi.agent = Agent(
             model=CacheObservingModel(FunctionModel(respond), monitor=Mock())
         )

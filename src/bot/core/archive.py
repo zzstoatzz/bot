@@ -55,7 +55,7 @@ def decode_archive_block(raw: bytes) -> list[dict]:
         blobs.append(values)
     if offset != len(raw):
         raise ValueError("trailing archive bytes")
-    rows = []
+    rows: list[dict] = []
     for i in range(n):
         rows.append(
             dict(

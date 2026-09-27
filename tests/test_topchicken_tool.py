@@ -31,7 +31,9 @@ async def test_market_counts_keep_post_identity_across_board_movers_and_tail():
     with patch.object(
         topchicken,
         "_get_json",
-        AsyncMock(side_effect=[{"round": {"contenders": contenders}}, {"board": contenders}]),
+        AsyncMock(
+            side_effect=[{"round": {"contenders": contenders}}, {"board": contenders}]
+        ),
     ):
         rendered = "\n".join(await topchicken._market_section(None))
     assert "movers outside the leaders" in rendered
@@ -131,7 +133,9 @@ async def test_board_comes_from_the_market_with_bisk_advice_as_garnish():
         out = await fn(SimpleNamespace(), handle="@zzstoatzz.io")
 
     assert "round 2026-07-02 · open · 1 contenders" in out
-    assert "@goose.art [post: URI unavailable] 246L (v=0.0/hr, p=0.34, ask 34.7¢)" in out
+    assert (
+        "@goose.art [post: URI unavailable] 246L (v=0.0/hr, p=0.34, ask 34.7¢)" in out
+    )
     assert "Mind the 2% spread" in out
 
 
@@ -383,17 +387,23 @@ async def test_update_strategy_writes_doctrine_record():
             AsyncMock(return_value={"active": False, "message": ""}),
         ),
     ):
-        out = await fn(SimpleNamespace(), doctrine="compound early, variance late")
+        out = await fn(
+            SimpleNamespace(),
+            rule_id="rule-test",
+            summary="compound early",
+            applies_when="season opening",
+            body="compound early, variance late",
+        )
 
     data = bc.client.com.atproto.repo.put_record.call_args.kwargs["data"]
     assert data["repo"] == "did:plc:phi"
     assert data["collection"] == "io.zzstoatzz.phi.strategy"
-    assert data["rkey"] == "topchicken"
-    assert data["record"]["doctrine"] == "compound early, variance late"
+    assert data["rkey"] == "rule-test"
+    assert data["record"]["body"] == "compound early, variance late"
     assert "updated" in out
 
 
-async def test_leaderboard_shows_doctrine_or_asks_for_one():
+async def test_leaderboard_does_not_inject_full_doctrine():
     fn = _register()["check_top_chicken"]
     board = {
         "season_info": {
@@ -419,28 +429,11 @@ async def test_leaderboard_shows_doctrine_or_asks_for_one():
             }
         ),
         patch("bot.tools.topchicken.bot_client", bc),
-        patch(
-            "bot.tools.topchicken._read_strategy",
-            AsyncMock(return_value="compound early, variance late"),
-        ),
         _stub_sections("_market_section", "_portfolio_section"),
     ):
         out = await fn(SimpleNamespace())
-    assert "compound early, variance late" in out
+    assert "current strategy doctrine" not in out
+    assert "Heuristic selection unavailable" in out
     assert "season scheduled end: 2026-09-07 13:00 UTC" in out
     assert "leaderboard settling: false" in out
     assert "← you" in out
-
-    with (
-        _patch_get_json(
-            {
-                topchicken.LEADERBOARD_URL: board,
-                topchicken.TRADER_URL.format(did="did:plc:rival"): trader,
-            }
-        ),
-        patch("bot.tools.topchicken.bot_client", bc),
-        patch("bot.tools.topchicken._read_strategy", AsyncMock(return_value=None)),
-        _stub_sections("_market_section", "_portfolio_section"),
-    ):
-        out = await fn(SimpleNamespace())
-    assert "no strategy doctrine on record" in out

@@ -201,8 +201,11 @@ async def test_complete_split_preview_is_checked_before_any_publication(monkeypa
     )
     assert "PUBLIC ACTION REJECTED" in result
     assert judge.await_count == 1
+    assert judge.await_args is not None
     assert "j" * 210 in judge.await_args.kwargs["action"]
+    assert judge.await_args is not None
     assert "https://example.org/" + "s" * 170 in judge.await_args.kwargs["action"]
+    assert judge.await_args is not None
     assert "[Post 2/2]" in judge.await_args.kwargs["action"]
     publish.assert_not_awaited()
 

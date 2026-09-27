@@ -101,6 +101,7 @@ async def test_guard_completes_and_writes_like_for_other_author():
             _ctx(notifs), call_tool, "create_record", _like_args(OTHER_URI)
         )
     assert "created" in result
+    assert call_tool.await_args is not None
     sent = call_tool.await_args.args[1]
     assert sent["record"]["subject"] == {"uri": OTHER_URI, "cid": "bafyother"}
     assert sent["record"]["createdAt"]

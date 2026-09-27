@@ -76,6 +76,7 @@ async def test_parent_version_and_image_attribution(monkeypatch, changed):
     parts = await reading.read_post_url(
         "https://bsky.app/profile/a.test/post/post", URI
     )
+    assert isinstance(parts[0], str)
     evidence = json.loads(parts[0])
     assert fetch.await_count == 2  # identical parent/root ref read only once
     assert "Replies have not been read" in evidence["scope"]
@@ -88,6 +89,7 @@ async def test_parent_version_and_image_attribution(monkeypatch, changed):
         blob.assert_awaited_once_with(
             "did:plc:parent", "image-cid", max_bytes=2_000_000
         )
+        assert isinstance(parts[1], str)
         assert PARENT in parts[1]
         assert isinstance(parts[2], BinaryContent) and parts[2].data == b"image"
 
@@ -102,6 +104,7 @@ async def test_failed_image_remains_explicit(monkeypatch):
     parts = await reading.read_post_url(
         "https://bsky.app/profile/a.test/post/post", PARENT
     )
+    assert isinstance(parts[0], str)
     assert json.loads(parts[0])["images"][0]["status"] == "unavailable"
     assert len(parts) == 1
 
@@ -113,7 +116,9 @@ async def test_image_budget_keeps_unread_images_visible(monkeypatch):
     monkeypatch.setattr(reading, "fetch_record", AsyncMock(return_value=record))
     blob = AsyncMock(return_value=b"image")
     monkeypatch.setattr(reading, "fetch_blob_bytes", blob)
-    evidence = json.loads((await reading.read_post_url("https://bsky.app", PARENT))[0])
+    parts = await reading.read_post_url("https://bsky.app", PARENT)
+    assert isinstance(parts[0], str)
+    evidence = json.loads(parts[0])
     assert [image["status"] for image in evidence["images"]] == [
         "attached",
         "not_loaded",

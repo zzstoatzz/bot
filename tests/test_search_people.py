@@ -66,7 +66,7 @@ async def test_empty_results_are_successful_lookup(monkeypatch):
 
 async def test_blank_query_never_calls_service(monkeypatch):
     def handler(request):
-        pytest.fail("blank query should not call the service")
+        raise AssertionError("blank query should not call the service")
 
     tool = tool_with_transport(monkeypatch, handler)
     assert "Provide a name" in await tool(None, " @ ")

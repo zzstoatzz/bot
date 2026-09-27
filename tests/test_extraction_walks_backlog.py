@@ -31,11 +31,11 @@ def _row(i: int) -> SimpleNamespace:
 def _memory(n_interactions: int, latest_obs: str) -> NamespaceMemory:
     mem = NamespaceMemory.__new__(NamespaceMemory)
     mem.client = Mock()
-    mem._user_namespace_ids = lambda: [f"{PREFIX}zzstoatzz_io"]
+    mem._user_namespace_ids = Mock(return_value=[f"{PREFIX}zzstoatzz_io"])
     ns = Mock()
 
     def query(**kw):
-        if kw["filters"] == {"kind": ["Eq", "interaction"]}:
+        if kw["filters"] == ("kind", "Eq", "interaction"):
             rows = [_row(i) for i in range(n_interactions)][::-1]
             return SimpleNamespace(rows=rows[: kw["top_k"]])
         return SimpleNamespace(rows=[SimpleNamespace(created_at=latest_obs)])
@@ -66,7 +66,7 @@ async def test_process_extraction_walks_the_backlog_in_chunks():
         obs = SimpleNamespace(content="fact", source_uris=[])
         return SimpleNamespace(output=SimpleNamespace(observations=[obs]))
 
-    agent._extraction_agent = SimpleNamespace(run=run)
+    agent._extraction_agent = Mock(run=run)
 
     stored = await agent.process_extraction()
 

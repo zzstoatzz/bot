@@ -262,21 +262,23 @@ async def test_received_versions_are_captured_independently_of_action_dispatch(
     async def capture(batch):
         captured.extend(n.cid for n in batch)
 
-    poller.client = SimpleNamespace(
+    client = SimpleNamespace(
         client=SimpleNamespace(get_current_time_iso=lambda: NOW.isoformat()),
         get_notifications=AsyncMock(),
         mark_notifications_seen=AsyncMock(),
     )
-    poller.handler = SimpleNamespace(
+    handler = SimpleNamespace(
         capture_notifications=AsyncMock(side_effect=capture),
         handle_batch=AsyncMock(),
     )
+    monkeypatch.setattr(poller, "client", client, raising=False)
+    monkeypatch.setattr(poller, "handler", handler, raising=False)
     monkeypatch.setattr(bot_status, "paused", scenario == "paused")
     delivered = [first]
     if scenario == "changed_version":
         delivered.append(first.model_copy(update={"cid": "changed-cid"}))
     for event in delivered:
-        poller.client.get_notifications.return_value = SimpleNamespace(
+        client.get_notifications.return_value = SimpleNamespace(
             notifications=[event], cursor=None
         )
         await poller._check_notifications()
@@ -284,13 +286,13 @@ async def test_received_versions_are_captured_independently_of_action_dispatch(
             await poller._batch_task
     assert captured == [event.cid for event in delivered]
     if scenario == "paused":
-        poller.handler.handle_batch.assert_not_awaited()
-        poller.client.mark_notifications_seen.assert_not_awaited()
+        handler.handle_batch.assert_not_awaited()
+        client.mark_notifications_seen.assert_not_awaited()
     else:
-        poller.handler.handle_batch.assert_awaited_once_with([first])
+        handler.handle_batch.assert_awaited_once_with([first])
 
 
-async def test_capture_cache_skips_only_successfully_stored_versions():
+async def test_capture_cache_skips_only_successfully_stored_versions(monkeypatch):
     attempts = []
 
     def serve(request):
@@ -307,7 +309,7 @@ async def test_capture_cache_skips_only_successfully_stored_versions():
     ) as client:
         handler = MessageHandler.__new__(MessageHandler)
         handler._captured_versions = {}
-        handler.agent = SimpleNamespace(memory=SimpleNamespace(client=client))
+        monkeypatch.setattr(handler, "agent", SimpleNamespace(memory=SimpleNamespace(client=client)), raising=False)
         event = notification()
         with pytest.raises(InternalServerError):
             await handler.capture_notifications([event])

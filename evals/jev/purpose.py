@@ -60,7 +60,7 @@ async def run(args):
     ) as client:
         for repeat in range(args.repeats):
             for case in selected:
-                row = dict(
+                row: dict = dict(
                     id=case["id"],
                     split=case["split"],
                     repeat=repeat,

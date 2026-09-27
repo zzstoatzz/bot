@@ -30,6 +30,7 @@ import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from atproto import models
 from atproto_client.models.utils import get_model_as_dict
 
 from bot.utils.time import relative_when
@@ -178,7 +179,7 @@ async def backfill_own_posts(client: BotClient, memory: NamespaceMemory) -> int:
     cursor: str | None = None
     done = False
     while not done:
-        params: dict[str, Any] = {
+        params: models.ComAtprotoRepoListRecords.ParamsDict = {
             "repo": did,
             "collection": "app.bsky.feed.post",
             "limit": 100,

@@ -56,7 +56,7 @@ MY_DID = "did:plc:65sucjiel52gefhcdcypynsr"
 
 def _own_record(text: str = "a post i regret"):
     """Patch bot_client so the repo looks like phi's and the record fetches."""
-    client = type("C", (), {})()
+    client = SimpleNamespace()
     client.me = type("M", (), {"did": MY_DID, "handle": "phi.zzstoatzz.io"})()
 
     class Repo:
@@ -86,6 +86,7 @@ async def test_retracting_her_own_post_is_governed_not_refused(monkeypatch, call
     assert "refused" not in str(result)
     assert calls, "the judged delete never reached pdsx"
     # the judge must rule on the content, not just the pointer
+    assert gate.await_args is not None
     assert "a post i regret" in gate.await_args.args[0]
 
 

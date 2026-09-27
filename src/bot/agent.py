@@ -13,6 +13,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic_ai import Agent, ImageUrl, RunContext
 from pydantic_ai.mcp import MCPServerStdio, MCPServerStreamableHTTP
+from pydantic_ai.models import infer_model
 from pydantic_ai.tools import ToolDefinition
 from pydantic_ai.toolsets import AbstractToolset
 from pydantic_ai_skills import SkillsToolset
@@ -326,7 +327,7 @@ def _clip(text: str, n: int) -> str:
     return text if len(text) <= n else text[: n - 1] + "…"
 
 
-def _mcp_origin(ts: AbstractToolset) -> str:
+def _mcp_origin(ts: AbstractToolset[Any]) -> str:
     """a short name for where a tool came from: the tool prefix when the
     server has one, else the host's first label or the stdio command."""
     if prefix := getattr(ts, "tool_prefix", None):
@@ -877,9 +878,9 @@ class PhiAgent:
             )
         return out
 
-    def _mcp_toolsets(self, run_label: str = "") -> list[AbstractToolset]:
+    def _mcp_toolsets(self, run_label: str = "") -> list[AbstractToolset[PhiDeps]]:
         """Create fresh MCP server instances for a single agent run."""
-        toolsets: list[AbstractToolset] = [
+        toolsets: list[AbstractToolset[PhiDeps]] = [
             MCPServerStreamableHTTP(
                 url="https://pdsx-by-zzstoatzz.fastmcp.app/mcp",
                 timeout=30,
@@ -1613,6 +1614,7 @@ class PhiAgent:
         # every observation from this chunk is attributed to every URI that
         # fed it. coarse, but always true: it was justified by something in
         # the chunk. dedup-preserve-order.
+        assert self.memory is not None
         batch_uris = list(
             dict.fromkeys(uri for i in interactions for uri in i["source_uris"])
         )
@@ -1696,7 +1698,9 @@ class PhiAgent:
         # a real RunContext: toolsets `replace()` it per tool and read
         # `retries`, so a stand-in namespace is not enough here
         deps = PhiDeps(author_handle="", memory=self.memory)
-        ctx = RunContext[PhiDeps](deps=deps, model=self.agent.model, usage=RunUsage())
+        model = self.agent.model
+        assert model is not None
+        ctx = RunContext[PhiDeps](deps=deps, model=infer_model(model), usage=RunUsage())
         out: list[tuple[str, ToolDefinition]] = []
         for name in sorted(self.agent._function_toolset.tools):
             out.append(("function", self.agent._function_toolset.tools[name].tool_def))

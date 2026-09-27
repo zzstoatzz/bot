@@ -16,7 +16,7 @@ def memory():
     return mem
 
 
-NOTE = {
+NOTE: dict = {
     "status": "ok",
     "note": {
         "id": "chosen",

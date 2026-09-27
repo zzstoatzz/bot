@@ -1,5 +1,16 @@
 # changelog
 
+## 2026-09-26 — Retrieve market heuristics by current state
+
+Market checks now use one Jev batch to select applicable strategy rules instead
+of reinjecting the full trading recap. Phi edits individual rule records without
+overwriting the others; retired rules remain explicitly readable. Existing
+numbered rules are preserved, while missing historical rules stay missing.
+TypeSafe credentials and the SDK client are shared infrastructure for future
+uses. The typechecker was upgraded from an old alpha to support the SDK. Its findings
+also exposed incorrect notification timestamp arguments and obsolete memory
+filter shapes; those now follow the SDK contracts, with HTTP regression coverage.
+
 ## 2026-09-26 — Restore Semble library context
 
 Phi's library context showed blank card previews and zero collection sizes even

@@ -20,6 +20,7 @@ dependencies = [
     "semble-api>=0.0.2",
     "slowapi>=0.1.9",
     "turbopuffer",
+    "typesafe-sdk>=0.7.1",
     "uvicorn",
     "websockets>=15.0.1",
     "zstandard>=0.23",

@@ -209,9 +209,11 @@ async def test_quote_without_images_requires_verified_source(available):
     ):
         result = await captured["post"](ctx, "my response", quote=URI)
     if available:
+        assert create.await_args is not None
         embed = create.await_args.kwargs["embed"]
         assert isinstance(embed, models.AppBskyEmbedRecord.Main)
         assert embed.record.uri == URI and embed.record.cid == CID
+        assert gate.await_args is not None
         assert "source text" in gate.await_args.args[0]
     else:
         assert "could not be verified" in result
@@ -236,7 +238,7 @@ async def test_split_thread_attaches_image_only_to_first_post(reply, quote):
     client = BotClient.__new__(BotClient)
     client.authenticate = AsyncMock()
     client.thread_mute_state = AsyncMock(return_value=(URI, False))
-    client.client = SimpleNamespace(
+    sdk = Mock(
         send_post=Mock(
             side_effect=[
                 SimpleNamespace(uri=f"at://{DID}/app.bsky.feed.post/{i}", cid=CID)
@@ -244,6 +246,7 @@ async def test_split_thread_attaches_image_only_to_first_post(reply, quote):
             ]
         )
     )
+    client.client = sdk
     parent = models.ComAtprotoRepoStrongRef.Main(uri=URI, cid=CID)
     ref = models.AppBskyFeedPost.ReplyRef(parent=parent, root=parent) if reply else None
     with (
@@ -251,7 +254,7 @@ async def test_split_thread_attaches_image_only_to_first_post(reply, quote):
         patch("bot.core.atproto_client.record_local_write"),
     ):
         await client.create_post("word " * 150, reply_to=ref, embed=embed)
-    calls = client.client.send_post.call_args_list
+    calls = sdk.send_post.call_args_list
     assert len(calls) > 1
     assert calls[0].kwargs["embed"] == embed
     assert calls[0].kwargs["reply_to"] == ref

@@ -395,9 +395,9 @@ class MessageHandler:
                 # Eagerly look up unfamiliar authors (deduped by handle)
                 author_lookups: dict[str, str] = {}
                 unique_handles = {
-                    e.get("author_handle")
+                    handle
                     for e in notification_events
-                    if e.get("author_handle")
+                    if isinstance(handle := e.get("author_handle"), str) and handle
                 }
                 for handle in unique_handles:
                     lookup = await self._maybe_lookup_stranger(handle)

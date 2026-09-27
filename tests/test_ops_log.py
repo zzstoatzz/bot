@@ -13,7 +13,7 @@ import time
 import pytest
 
 from bot.core import ops_log
-from bot.core.recent_operations import _merge, _render, _rows_from_ops
+from bot.core.recent_operations import _merge, _render, _Row, _rows_from_ops
 
 
 @pytest.fixture(autouse=True)
@@ -231,7 +231,7 @@ def test_merge_prefers_event_rows_and_backfills_snapshot():
     event_rows = _rows_from_ops(
         [_op("create", "3a", nsid="app.bsky.feed.post", record={"text": "live"})]
     )
-    snapshot = [
+    snapshot: list[_Row] = [
         dict(
             rkey="3a",
             nsid="app.bsky.feed.post",

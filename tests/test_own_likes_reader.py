@@ -11,7 +11,8 @@ async def test_registered_likes_tool_reads_authenticated_accounts_bookmarks(
     monkeypatch,
 ):
     client = BotClient.__new__(BotClient)
-    monkeypatch.setattr(client, "authenticate", AsyncMock())
+    authenticate = AsyncMock()
+    monkeypatch.setattr(client, "authenticate", authenticate)
     sdk = Mock()
     sdk.me.did = "did:plc:phi"
     post = SimpleNamespace(
@@ -33,7 +34,7 @@ async def test_registered_likes_tool_reads_authenticated_accounts_bookmarks(
 
     bluesky.register(SimpleNamespace(tool=register))
     result = await registered["get_own_likes"](SimpleNamespace(), limit=7)
-    client.authenticate.assert_awaited_once()
+    authenticate.assert_awaited_once()
     sdk.app.bsky.feed.get_actor_likes.assert_called_once_with(
         params={"actor": "did:plc:phi", "limit": 7}
     )
@@ -44,7 +45,8 @@ async def test_registered_likes_tool_reads_authenticated_accounts_bookmarks(
 
 async def test_raw_search_keeps_unknown_embed_types(monkeypatch):
     client = BotClient.__new__(BotClient)
-    monkeypatch.setattr(client, "authenticate", AsyncMock())
+    authenticate = AsyncMock()
+    monkeypatch.setattr(client, "authenticate", authenticate)
     payload = {"posts": [{"embed": {"$type": "example.future.embed#view"}}]}
     sdk = Mock()
     sdk.invoke_query.return_value = SimpleNamespace(content=payload)

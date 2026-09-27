@@ -28,7 +28,15 @@ import httpx
 from pydantic import Field
 from pydantic_ai import RunContext
 
+from bot.config import settings
 from bot.core.atproto_client import bot_client
+from bot.core.chicken_strategy import (
+    Heuristic,
+    lookup,
+    read_catalog,
+    select_rules,
+    write_rule,
+)
 from bot.core.override import get_override, refusal_text
 from bot.tools._helpers import PhiDeps
 
@@ -40,25 +48,6 @@ TRADER_URL = "https://topchicken.cee.wtf/api/trader/{did}"
 LEADERBOARD_URL = "https://topchicken.cee.wtf/api/leaderboard"
 QUOTE_URL = "https://topchicken.cee.wtf/api/quote/{round}/{did}"
 ORDER_COLLECTION = "wtf.cee.topchicken.order"
-STRATEGY_COLLECTION = "io.zzstoatzz.phi.strategy"
-STRATEGY_RKEY = "topchicken"
-
-
-async def _read_strategy() -> str | None:
-    """Read phi's own trading doctrine record, if she's written one."""
-    await bot_client.authenticate()
-    assert bot_client.client.me is not None
-    try:
-        resp = bot_client.client.com.atproto.repo.get_record(
-            params={
-                "repo": bot_client.client.me.did,
-                "collection": STRATEGY_COLLECTION,
-                "rkey": STRATEGY_RKEY,
-            }
-        )
-        return dict(resp.value).get("doctrine") if resp.value else None
-    except Exception:
-        return None
 
 
 def _fmt_subc(subc: int) -> str:
@@ -96,7 +85,9 @@ def _contender_line(c: dict) -> str:
     )
 
 
-async def _market_section(handle: str | None) -> list[str]:
+async def _market_section(
+    handle: str | None, snapshot: dict | None = None
+) -> list[str]:
     """Current round: board, status, and bisk's advice garnish."""
     try:
         market = await _get_json(MARKET_URL)
@@ -105,6 +96,8 @@ async def _market_section(handle: str | None) -> list[str]:
         return ["the chicken market is unreachable right now — try again in a bit"]
 
     round_ = market.get("round") or {}
+    if snapshot is not None:
+        snapshot["round"] = round_
     contenders = round_.get("contenders", [])
     lines = [
         f"round {round_.get('id')} · {round_.get('status')} · {len(contenders)} contenders"
@@ -172,7 +165,7 @@ async def _market_section(handle: str | None) -> list[str]:
     return lines
 
 
-async def _portfolio_section() -> list[str]:
+async def _portfolio_section(snapshot: dict | None = None) -> list[str]:
     """Own wallet: balance, open positions, recent trades."""
     await bot_client.authenticate()
     assert bot_client.client.me is not None
@@ -180,6 +173,8 @@ async def _portfolio_section() -> list[str]:
         data = await _get_json(TRADER_URL.format(did=bot_client.client.me.did))
     except httpx.HTTPStatusError as e:
         if e.response.status_code == 404:
+            if snapshot is not None:
+                snapshot["wallet"] = {"exists": False, "positions": []}
             return [
                 "you don't have a wallet yet — your first trade via "
                 "place_chicken_trade auto-creates one with $1,000 play money"
@@ -189,6 +184,8 @@ async def _portfolio_section() -> list[str]:
         logger.warning(f"chicken trader fetch failed: {e}")
         return ["your wallet is unreachable right now — try again in a bit"]
 
+    if snapshot is not None:
+        snapshot["wallet"] = data
     lines = [f"balance: {_fmt_subc(data.get('balance_subc', 0))}"]
     positions = data.get("positions", [])
     if positions:
@@ -206,7 +203,7 @@ async def _portfolio_section() -> list[str]:
 
 
 async def _season_section() -> list[str]:
-    """Season standings, rivals' books, and phi's own doctrine."""
+    """Season standings and rivals' books."""
     try:
         board = await _get_json(LEADERBOARD_URL)
     except Exception as e:
@@ -269,21 +266,20 @@ async def _season_section() -> list[str]:
             held = f"no open positions (cash {_fmt_subc(r.get('balance_subc', 0))})"
         lines.append(f"@{ldr['handle']} holds: {held}")
 
-    doctrine = await _read_strategy()
-    if doctrine:
-        lines.append(f"\nyour current strategy doctrine:\n{doctrine}")
-    else:
-        lines.append(
-            "\nyou have no strategy doctrine on record — write one with "
-            "update_chicken_strategy before your next trade"
-        )
     return lines
 
 
 def register(agent):
     @agent.tool
     async def check_top_chicken(
-        ctx: RunContext[PhiDeps], handle: str | None = None
+        ctx: RunContext[PhiDeps],
+        handle: str | None = None,
+        rule_id: Annotated[
+            str | None,
+            Field(
+                description="Read one rule by ID, index for metadata, or legacy for the preserved old doctrine; skips market fetching."
+            ),
+        ] = None,
     ) -> str:
         """Check the full Top Chicken situation: round board, your wallet, the season race.
 
@@ -308,68 +304,113 @@ def register(agent):
           alone. plus bisk advice
         - your WALLET: balance, open positions, recent trades (all play money)
         - the SEASON: week-long tournament standings, rivals' public books, and your
-          own strategy doctrine (evolve it with update_chicken_strategy)
+          selected strategy heuristics (edit individual rules with update_chicken_strategy)
 
         Pass `handle` to fold in that player's PUBLIC stats — e.g. whoever is asking
         for advice. Use before every place_chicken_trade.
         """
+        if rule_id is not None:
+            try:
+                rules, legacy = await read_catalog(bot_client)
+                return lookup(rules, legacy, rule_id)
+            except Exception as exc:
+                logger.warning("strategy lookup failed: %s", type(exc).__name__)
+                return "Strategy lookup unavailable; the catalog could not be read."
+        snapshot = {
+            "observed_at": datetime.now(UTC).isoformat(),
+            "requested_handle": handle,
+            "decision": "Assess current entries and existing positions; passing is valid.",
+        }
         market, portfolio, season = await asyncio.gather(
-            _market_section(handle), _portfolio_section(), _season_section()
+            _market_section(handle, snapshot),
+            _portfolio_section(snapshot),
+            _season_section(),
         )
+        heuristics = "Heuristic selection unavailable: TypeSafe is not configured. Explicit rule lookup is available."
+        if settings.typesafe_api_key:
+            try:
+                rules, _ = await read_catalog(bot_client)
+                heuristics = await select_rules(rules, snapshot)
+            except Exception as exc:
+                logger.warning("strategy catalog failed: %s", type(exc).__name__)
+                heuristics = (
+                    "Heuristic selection unavailable: the catalog could not be read."
+                )
+
         return "\n".join(
-            ["[ROUND]", *market, "", "[WALLET]", *portfolio, "", "[SEASON]", *season]
+            [
+                "[ROUND]",
+                *market,
+                "",
+                "[WALLET]",
+                *portfolio,
+                "",
+                "[SEASON]",
+                *season,
+                "",
+                heuristics,
+            ]
         )
 
     @agent.tool
     async def update_chicken_strategy(
         ctx: RunContext[PhiDeps],
-        doctrine: Annotated[
+        rule_id: Annotated[
             str,
             Field(
-                description=(
-                    "your full trading doctrine, replacing the previous one — "
-                    "the rules you currently believe in, plus what result would "
-                    "change them"
-                )
+                description="Stable rule ID, e.g. rule-45. Updating this ID preserves all other rules.",
+                pattern=r"^rule-[a-z0-9-]{1,50}$",
             ),
         ],
+        summary: Annotated[
+            str,
+            Field(
+                description="Short description for relevance selection.",
+                min_length=1,
+                max_length=250,
+            ),
+        ],
+        applies_when: Annotated[
+            str,
+            Field(
+                description="Situations and missing evidence that make this rule worth reading.",
+                min_length=1,
+                max_length=500,
+            ),
+        ],
+        body: Annotated[
+            str,
+            Field(
+                description="Full heuristic and what would falsify it; no trade recap or current standings.",
+                min_length=1,
+                max_length=3000,
+            ),
+        ],
+        retired: Annotated[
+            bool,
+            Field(
+                description="Retain the rule for explicit lookup but exclude it from automatic selection."
+            ),
+        ] = False,
     ) -> str:
-        """Rewrite your chicken-market strategy doctrine (a record on your own repo).
+        """Write or retire one strategy heuristic without replacing the other rules.
 
-        The doctrine is YOURS: it should evolve when results contradict it, and
-        every revision should say what you learned. It's shown back to you by
-        check_top_chicken and at every pre-lock check, so write it as
-        instructions to your future self.
-
-        Two disciplines make a doctrine honest:
-        - pre-register: before a bet, the doctrine (or your goal record) should
-          state the estimated hit probability and what the plan is if it misses.
-          A strategy that only explains results afterward can't lose an argument
-          and can't be trusted.
-        - operator invariants are not yours to revise (see place_chicken_trade):
-          the ruin floor, pre-registration, one wallet. everything else —
-          risk appetite included — is doctrine, and doctrine is yours.
+        Inspect an existing rule with check_top_chicken(rule_id=...) first.
+        Historical references are not complete rules; do not invent missing text.
+        Operator limits remain enforced by place_chicken_trade independently.
         """
         override = await get_override()
         if override["active"]:
             return refusal_text(override)
-
-        await bot_client.authenticate()
-        assert bot_client.client.me is not None
-        bot_client.client.com.atproto.repo.put_record(
-            data={
-                "repo": bot_client.client.me.did,
-                "collection": STRATEGY_COLLECTION,
-                "rkey": STRATEGY_RKEY,
-                "record": {
-                    "$type": STRATEGY_COLLECTION,
-                    "game": "topchicken",
-                    "doctrine": doctrine,
-                    "updatedAt": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
-                },
-            }
+        rule = Heuristic(
+            rule_id=rule_id,
+            summary=summary,
+            applies_when=applies_when,
+            body=body,
+            retired=retired,
         )
-        return "strategy doctrine updated — it will be shown at your next market check"
+        uri = await write_rule(bot_client, rule)
+        return f"strategy rule updated: {uri}"
 
     @agent.tool
     async def place_chicken_trade(

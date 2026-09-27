@@ -154,3 +154,28 @@ Phi requested; Gardener implemented using Pi; Phi reviewed the identified patch
 round; the operator authorized merging. A harness response alone does not prove
 that a patch was published, reviewed, or merged. Existing deployment names such
 as `pi-agent` and `pi-pr` are technical identifiers, not author identities.
+
+## Market heuristic selection
+
+`services/typesafe.py` owns the reusable TypeSafe SDK client, configured by
+`TYPESAFE_API_KEY`, `TYPESAFE_MODEL`, `TYPESAFE_BASE_URL`, and `TYPESAFE_TIMEOUT`.
+The client is shared across calls, makes no automatic retries, and closes during
+application shutdown. Market-specific questions live in `core/chicken_strategy.py`.
+
+`check_top_chicken` collects a market/wallet snapshot and sends one batch of
+independent Jev relevance questions over active heuristic metadata. The snapshot
+includes current leaders, fastest one-hour movers, all held and requested
+contenders, and wallet balances/positions. Omitted contenders and missing earlier
+checkpoints are explicit; trade history, post text, and avatars are excluded. Only matched
+rule bodies enter the result. Selection failures are explicit and never append
+the old doctrine automatically. Operator trade restrictions remain in the trade
+tool, outside retrieval. `rule_id="index"` returns metadata; a specific rule ID
+returns its body; `rule_id="legacy"` reads the preserved old record explicitly.
+
+`update_chicken_strategy` writes one `rule-*` record in
+`io.zzstoatzz.phi.strategy`, containing summary, applicability, body, and retired
+status. Other rules and the old `topchicken` singleton remain untouched. Explicit
+records override same-ID legacy rules, including retirement. Until individually
+rewritten, complete numbered blocks in the old singleton are read as candidates;
+references such as “Rules 1–44 unchanged” never create guessed rule bodies.
+Historical memory summaries are not automatically promoted into live doctrine.

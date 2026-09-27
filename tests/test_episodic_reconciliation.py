@@ -14,10 +14,13 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import httpx
 import pytest
-from pydantic_ai import Agent
+from pydantic_ai import Agent, RunContext
+from pydantic_ai.models.test import TestModel
+from pydantic_ai.usage import RunUsage
 from turbopuffer import BadRequestError, Turbopuffer
 
 from bot.memory.namespace_memory import NamespaceMemory
+from bot.tools._helpers import PhiDeps
 from bot.tools.memory import register
 
 
@@ -362,7 +365,7 @@ async def test_save_tool_preserves_authored_scope_and_propagates_failed_write():
     agent = Agent()
     register(agent)
     save = agent._function_toolset.tools["save_memory"].function
-    ctx = SimpleNamespace(deps=SimpleNamespace(memory=mem))
+    ctx = RunContext(deps=PhiDeps(author_handle="", memory=mem), model=TestModel(), usage=RunUsage())
     with patch(
         "bot.memory.namespace_memory.get_reconciliation_agent",
         return_value=_decision("UPDATE", new_content="no reply exists", new_tags=["t"]),

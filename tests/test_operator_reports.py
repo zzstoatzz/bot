@@ -109,6 +109,7 @@ async def test_private_entrypoint_does_not_supply_public_memory():
     agent = PhiAgent.__new__(PhiAgent)
     agent._run_agent = AsyncMock(return_value="quietly completed")
     await agent.process_operator_dm("No reply needed.", "message")
+    assert agent._run_agent.await_args is not None
     call = agent._run_agent.await_args.kwargs
     assert call["deps"].memory is None
     assert call["deps"].private_message_id == "message"

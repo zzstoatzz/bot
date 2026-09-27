@@ -49,6 +49,7 @@ async def test_reply_reference_keeps_post_author_separate_from_liker():
     # An unavailable target author must not become the actor who liked it.
     entry["post_author_handle"] = ""
     ref = await _resolve_post_ref(TARGET, {TARGET: entry})
+    assert ref is not None
     assert ref[3] == ""
 
 
@@ -74,7 +75,7 @@ async def test_unavailable_post_reaches_real_agent_entry_without_verified_target
         )
     )
     handler = MessageHandler.__new__(MessageHandler)
-    handler.client = SimpleNamespace(
+    handler.client = Mock(
         get_posts=AsyncMock(
             side_effect=RuntimeError("network failed") if failure else None,
             return_value=SimpleNamespace(posts=[]),
@@ -88,9 +89,11 @@ async def test_unavailable_post_reaches_real_agent_entry_without_verified_target
     monkeypatch.setattr("bot.services.message_handler._limiter.hit", lambda *args: True)
     await handler.handle_batch([notification])
     run.assert_awaited_once()
+    assert run.await_args is not None
     deps = run.await_args.kwargs["deps"]
     assert deps.notifications_context == {}
     block = _format_notifications_block(notification_input(deps))
+    assert isinstance(notification.record, models.AppBskyFeedPost.Record)
     assert notification.record.text in block
     assert notification.cid in block
     assert TARGET in block

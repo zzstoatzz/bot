@@ -80,22 +80,22 @@ class CountingModel(TestModel):
     calls = 0
 
     async def count_tokens(
-        self, messages, model_settings, params: ModelRequestParameters
+        self, messages, model_settings, model_request_parameters: ModelRequestParameters
     ):
         CountingModel.calls += 1
         text = "".join(
             str(getattr(p, "content", "")) for m in messages for p in m.parts
         )
         tools = sum(
-            len(t.name) + len(t.description or "") for t in params.function_tools
+            len(t.name) + len(t.description or "") for t in model_request_parameters.function_tools
         )
         # a provider charges a fixed preamble whenever any tool is present
-        framing = 100 if params.function_tools else 0
+        framing = 100 if model_request_parameters.function_tools else 0
         return RequestUsage(input_tokens=10 + len(text) + tools + framing)
 
 
 class SilentModel(TestModel):
-    async def count_tokens(self, messages, model_settings, params):
+    async def count_tokens(self, messages, model_settings, model_request_parameters):
         raise NotImplementedError
 
 
@@ -184,7 +184,7 @@ async def test_tool_listing_walks_function_and_skills_toolsets(monkeypatch):
         """read one"""
         return name
 
-    phi.skills_toolset = skills
+    monkeypatch.setattr(phi, "skills_toolset", skills, raising=False)
     monkeypatch.setattr(phi, "_mcp_toolsets", lambda run_label="": [])
 
     listed = await phi.list_tool_definitions()

@@ -41,6 +41,7 @@ from bot.core.tool_usage import board as tool_usage_board
 from bot.logging_config import _clear_uvicorn_handlers
 from bot.memory import NamespaceMemory
 from bot.services.notification_poller import NotificationPoller
+from bot.services.typesafe import close_client as close_typesafe_client
 from bot.status import bot_status
 from bot.ui import activity_router
 from bot.utils.rate_limit import client_ip
@@ -154,6 +155,7 @@ async def lifespan(app: FastAPI):
     if ops_consumer:
         await ops_consumer.stop()
     await poller.stop()
+    await close_typesafe_client()
 
     # Set offline status
     await profile_manager.set_online_status(False)

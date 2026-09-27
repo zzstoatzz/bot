@@ -29,7 +29,7 @@ def _phi_with_fake_run():
     async def fake_run(prompt, deps=None, toolsets=None):
         return _FakeResult()
 
-    phi.agent = type("A", (), {"run": staticmethod(fake_run)})()
+    phi.agent = Mock(run=fake_run)
     return phi
 
 

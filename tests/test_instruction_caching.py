@@ -104,7 +104,7 @@ def test_agent_settings_are_built_from_cache_ttls(monkeypatch):
     from bot.core.cache_stability import CACHE_TTLS, model_cache_settings
 
     monkeypatch.setitem(CACHE_TTLS, "instructions", "5m")
-    configured = model_cache_settings("anthropic")
+    configured = dict(model_cache_settings("anthropic"))
     assert configured["anthropic_cache_instructions"] == "5m"
     assert configured["anthropic_cache_tool_definitions"] == CACHE_TTLS["tool_definitions"]
     assert configured["anthropic_cache_messages"] == CACHE_TTLS["messages"]

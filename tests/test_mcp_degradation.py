@@ -6,9 +6,10 @@ it never needed. _run_agent must drop toolsets that fail to connect and
 run with the rest.
 """
 
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from bot.agent import PhiAgent
+from bot.tools._helpers import PhiDeps
 
 
 class _GoodToolset:
@@ -45,11 +46,11 @@ async def test_dead_mcp_toolset_does_not_kill_run():
         seen["toolsets"] = toolsets
         return _FakeResult()
 
-    phi.agent = type("A", (), {"run": staticmethod(fake_run)})()
+    phi.agent = Mock(run=fake_run)
     with (
         patch.object(PhiAgent, "_mcp_toolsets", return_value=[dead, good]),
     ):
-        out = await phi._run_agent(label="test run", prompt="hi", deps=None)
+        out = await phi._run_agent(label="test run", prompt="hi", deps=PhiDeps(author_handle=""))
 
     assert out == "ran fine"
     assert seen["toolsets"] == [good]
