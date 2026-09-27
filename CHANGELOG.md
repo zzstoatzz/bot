@@ -1,5 +1,13 @@
 # changelog
 
+## 2026-09-26 — Restore Semble library context
+
+Phi's library context showed blank card previews and zero collection sizes even
+when the underlying records contained titles, notes, and collection links.
+Normalize nested AT Protocol SDK objects before rendering so Phi can see what
+she has already curated. Renderer tests now parse SDK responses instead of
+substituting plain dictionaries.
+
 ## 2026-09-25 — Restore bio refresh and judge bios as bios
 
 Removing startup bio authoring to avoid classifier retries left the profile

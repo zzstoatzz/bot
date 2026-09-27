@@ -16,6 +16,8 @@ import logging
 import time
 from typing import Any
 
+from atproto_client.models.utils import get_model_as_dict
+
 from bot.core import ops_log
 from bot.core.atproto_client import BotClient
 from bot.utils.time import relative_when
@@ -46,7 +48,7 @@ def _list_records(client: BotClient, did: str, nsid: str) -> list[Any]:
 
 
 def _card_line(record: Any) -> str:
-    value = dict(record.value) if record.value else {}
+    value = get_model_as_dict(record.value) if record.value else {}
     kind = (value.get("type") or value.get("kind") or "?").upper()
     content = value.get("content") or {}
     created = str(value.get("createdAt", ""))[:10]
@@ -73,7 +75,7 @@ def _render(
 
     counts: dict[str, int] = {}
     for link in links:
-        value = dict(link.value) if link.value else {}
+        value = get_model_as_dict(link.value) if link.value else {}
         coll = value.get("collection") or {}
         uri = coll.get("uri", "") if isinstance(coll, dict) else ""
         if uri:
@@ -86,7 +88,7 @@ def _render(
     if collections:
         lines.append("collections:")
         for coll in collections:
-            value = dict(coll.value) if coll.value else {}
+            value = get_model_as_dict(coll.value) if coll.value else {}
             name = value.get("name", "untitled")
             n = counts.get(coll.uri, 0)
             lines.append(f"- {name} ({n} cards) [{coll.uri}]")

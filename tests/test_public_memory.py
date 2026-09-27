@@ -5,26 +5,28 @@ makes it useful — shelf labels with sizes, newest cards first, and empty
 output when the library is empty.
 """
 
-from types import SimpleNamespace
+from atproto import models
 
 from bot.core.public_memory import _card_line, _render
 
 
-def _rec(uri: str, value: dict) -> SimpleNamespace:
-    return SimpleNamespace(uri=uri, value=value)
+def _rec(uri: str, value: dict) -> models.ComAtprotoRepoListRecords.Record:
+    return models.ComAtprotoRepoListRecords.Response(
+        records=[{"uri": uri, "cid": "bafyreitest", "value": value}]
+    ).records[0]
 
 
 DID = "did:plc:phi"
 
 
-def _collection(rkey: str, name: str) -> SimpleNamespace:
+def _collection(rkey: str, name: str) -> models.ComAtprotoRepoListRecords.Record:
     return _rec(
         f"at://{DID}/network.cosmik.collection/{rkey}",
         {"name": name, "description": "d"},
     )
 
 
-def _link(rkey: str, collection_rkey: str) -> SimpleNamespace:
+def _link(rkey: str, collection_rkey: str) -> models.ComAtprotoRepoListRecords.Record:
     return _rec(
         f"at://{DID}/network.cosmik.collectionLink/{rkey}",
         {
@@ -36,7 +38,7 @@ def _link(rkey: str, collection_rkey: str) -> SimpleNamespace:
     )
 
 
-def _url_card(rkey: str, title: str) -> SimpleNamespace:
+def _url_card(rkey: str, title: str) -> models.ComAtprotoRepoListRecords.Record:
     return _rec(
         f"at://{DID}/network.cosmik.card/{rkey}",
         {
@@ -47,7 +49,7 @@ def _url_card(rkey: str, title: str) -> SimpleNamespace:
     )
 
 
-def _note_card(rkey: str, text: str) -> SimpleNamespace:
+def _note_card(rkey: str, text: str) -> models.ComAtprotoRepoListRecords.Record:
     return _rec(
         f"at://{DID}/network.cosmik.card/{rkey}",
         {
