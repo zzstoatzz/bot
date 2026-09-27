@@ -32,6 +32,7 @@ class BotStatus:
     # knows when she was offline — informs how to handle a catchup batch.
     paused_at: datetime | None = None
     resumed_at: datetime | None = None
+    last_profile_review_at: datetime | None = None
     # logfire alert incidents (core/alert_watch.py) and the per-alert
     # last_run cursor that keeps a re-observed firing from counting twice.
     alert_incidents: dict = field(default_factory=dict)
@@ -93,6 +94,10 @@ class BotStatus:
         self.resumed_at = datetime.now(UTC)
         self._save()
 
+    def record_profile_review(self, started_at: datetime):
+        self.last_profile_review_at = started_at
+        self._save()
+
     def record_operator_mention(self, alert_keys: list[str]) -> None:
         """Stamp alert incidents phi just @-mentioned the operator about.
 
@@ -131,6 +136,9 @@ class BotStatus:
                 "paused": self.paused,
                 "paused_at": self.paused_at.isoformat() if self.paused_at else None,
                 "resumed_at": self.resumed_at.isoformat() if self.resumed_at else None,
+                "last_profile_review_at": self.last_profile_review_at.isoformat()
+                if self.last_profile_review_at
+                else None,
                 "alert_incidents": self.alert_incidents,
                 "alert_watch_cursor": self.alert_watch_cursor,
             }
@@ -160,6 +168,10 @@ class BotStatus:
                 self.paused_at = datetime.fromisoformat(data["paused_at"])
             if data.get("resumed_at"):
                 self.resumed_at = datetime.fromisoformat(data["resumed_at"])
+            if data.get("last_profile_review_at"):
+                self.last_profile_review_at = datetime.fromisoformat(
+                    data["last_profile_review_at"]
+                )
             self.alert_incidents = dict(data.get("alert_incidents") or {})
             self.alert_watch_cursor = dict(data.get("alert_watch_cursor") or {})
             logger.info(

@@ -3,7 +3,7 @@
 import asyncio
 import logging
 import time
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import logfire
@@ -294,8 +294,17 @@ class NotificationPoller:
                     return
                 if (await get_override())["active"]:
                     return
-                async with asyncio.timeout(180):
-                    await self.handler.agent.process_bio()
+                now = datetime.now(UTC)
+                last_review = bot_status.last_profile_review_at
+                review_images = last_review is None or now - last_review >= timedelta(
+                    days=7
+                )
+                async with asyncio.timeout(600 if review_images else 180):
+                    result = await self.handler.agent.process_bio(
+                        review_images=review_images
+                    )
+                if review_images and not result.startswith("bio rewrite failed:"):
+                    bot_status.record_profile_review(now)
         except Exception:
             logger.exception("bio refresh failed; keeping the existing profile")
 

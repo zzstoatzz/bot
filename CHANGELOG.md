@@ -1,5 +1,13 @@
 # changelog
 
+## 2026-09-27 — Revisit profile images during the bio pass
+
+Phi reviews her avatar and header weekly in the existing daily bio run, with
+the main agent's normal context and tools. She looks at the images and chooses
+whether they still represent her; no change is required. A persisted review-pass
+timestamp keeps deployments from resetting the cadence, while failures stay due.
+Image-review runs have time for generation without blocking notification polling.
+
 ## 2026-09-26 — Retrieve market heuristics by current state
 
 Market checks now use one Jev batch to select applicable strategy rules instead

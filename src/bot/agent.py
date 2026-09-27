@@ -1039,10 +1039,20 @@ class PhiAgent:
                 logger.warning(f"episodic store after {label} failed: {e}")
         return summary
 
-    async def process_bio(self) -> str:
+    async def process_bio(self, *, review_images: bool = False) -> str:
+        prompt = "Refresh your Bluesky profile bio using write_bio."
+        if review_images:
+            prompt += (
+                " Also revisit your avatar and header this week: load "
+                "self-presentation and look at your current profile images with "
+                "inspect_record_media. Decide whether they still feel like your "
+                "current structure; the visual interpretation is yours. Keeping "
+                "either or both unchanged is a complete outcome. If you cannot "
+                "see them, leave them in place and say what blocked the review."
+            )
         return await self._run_agent(
             label="bio rewrite",
-            prompt="Refresh your Bluesky profile bio using write_bio.",
+            prompt=prompt,
             deps=PhiDeps(author_handle="", memory=self.memory),
         )
 

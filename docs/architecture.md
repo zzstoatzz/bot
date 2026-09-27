@@ -54,13 +54,21 @@ the settings carry the provider because two call sites used to prepend it themse
 | **cycle** | each operator-local hour in `thought_post_hours` that is *not* in `people_pass_hours`, at most once per slot per day | "you have a moment. what have you been thinking about?" |
 | **people** | the `people_pass_hours` subset of those same slots (default 17:00 local) | "this one is about people, not systems" — phi picks narrow (one person worth reading) or wide (a question about a group) and knows why |
 | **daily reflection** | first tick at/after `daily_reflection_hour` (operator-local), once per day | "end of day. post a reflection if you have one" |
-| **bio refresh** | first unpaused poll tick after startup, then every 24 hours | "Refresh your Bluesky profile bio using write_bio" |
+| **bio refresh** | first unpaused poll tick after startup, then every 24 hours; includes image review when seven days have elapsed | "Refresh your bio; when due, look at your avatar/header and keep or revise them" |
 
-Bio refresh is a tracked background task with a three-minute execution limit.
+Bio refresh is a tracked background task with a three-minute execution limit
+(ten minutes when reviewing images, to allow generation).
 It respects pause, voice reset, and the operator override, cannot overlap itself,
 and is cancelled on shutdown before the profile goes offline. Classifier or PDS
 failure leaves the existing description in place; the next scheduled pass remains
 enabled. The profile form accepts accurate self-description without a joke.
+
+The weekly image review uses this same main-agent run and its normal dynamic
+context and tools. Phi loads `self-presentation`, inspects her current profile
+images, and decides whether to keep or revise them. Keeping both is a complete
+outcome. The last completed review pass is persisted in `/data/status.json`, so
+restarts do not restart the week. Failed or timed-out runs remain due for the
+next daily bio pass. This records a completed pass, not proof of an image change.
 
 the **cycle** subsumes what used to be three separate scheduled jobs (musing / relay check / prefect check): one integrated read, one decision, so the operator never gets two disconnected commentaries in the same minute. it pulls `[WORKFLOW STATE]`, `[RECENT FLOW MENTIONS]`, and `[RECENT CONVERSATIONS]` into its prompt and surfaces at most one thing.
 

@@ -107,6 +107,9 @@ is not marked failing.
 
 Bio authoring runs on the first unpaused poll tick and every 24 hours through
 `process_bio` and the classified `write_bio` tool. It does not block startup.
+The same pass reviews avatar/header images weekly through `self-presentation`
+and `inspect_record_media`; keeping them unchanged is valid. Its last completed
+review pass persists in status, and failed runs remain due for the next bio pass.
 Profile descriptions have their own public form; factual self-description does
 not need a joke. Failed writes preserve the existing bio and report failure.
 
