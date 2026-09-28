@@ -1,5 +1,14 @@
 # changelog
 
+## 2026-09-28 — Read a whole thread before joining it
+
+Phi gets full thread context when someone mentions or replies to her, but
+nothing when she joins a conversation on her own. In the 30 days before this,
+she read a thread's replies once. A new runtime skill, `read-thread`, reads the
+tree from its root through pdsx `getPostThread`, one line per post with its
+author, indented under the post it answers. A test now requires every skill
+directory to load, since malformed frontmatter drops a skill silently.
+
 ## 2026-09-28 — Show which post a discovery-pool reply answers
 
 The discovery pool showed each liked post as a bare line of text. okami.mom's
