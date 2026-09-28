@@ -143,7 +143,6 @@ def _publication_contact(
         "mention",
         "reply",
         "quote",
-        "cited",
     }:
         evidence = f"Current notification at this target: {entry['reason']}."
     elif direction := _operator_direction(uri, root_uri, ctx_notifs):
@@ -159,7 +158,7 @@ def _reply_provenance(uri: str, ctx_notifs: dict, root_uri: str = "") -> str:
     is stated as what it is: the judge is not told where the target came
     from when nothing here knows."""
     entry = ctx_notifs.get(uri)
-    if entry is not None:
+    if entry is not None and entry.get("reason") != "cited":
         author = entry.get("author_handle", "") or "unknown"
         reason = entry.get("reason", "") or "unknown"
         return (

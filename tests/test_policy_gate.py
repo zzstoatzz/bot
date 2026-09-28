@@ -76,7 +76,11 @@ def _verdict(
     policy: PolicySlug | None = None,
     reason: str | None = None,
 ) -> PolicyVerdict:
-    out: PolicyVerdict = {"verdict": v, "public_form": "not-applicable", "form_evidence": "test fixture"}
+    out: PolicyVerdict = {
+        "verdict": v,
+        "public_form": "not-applicable",
+        "form_evidence": "test fixture",
+    }
     if policy is not None:
         out["policy"] = policy
     if reason is not None:
@@ -209,6 +213,48 @@ def test_operator_post_about_something_else_is_not_direction():
         _devlog_post("nice post today"),
     )
     assert "unprompted" in p
+
+
+CITED = "at://did:plc:hdhoaan3xa3jiuq4fg4mefid/app.bsky.feed.post/3mw6zlw7ss22y"
+
+
+def _batch_citing(citer_did: str) -> dict:
+    """A mention whose text links a post, plus that post expanded as cited."""
+    mention = "at://did:plc:citer/app.bsky.feed.post/3mention"
+    return {
+        mention: {
+            "author_handle": "citer.example",
+            "author_did": citer_did,
+            "reason": "mention",
+            "post_text": "look at https://bsky.app/profile/bad-example.com/post/3mw6zlw7ss22y",
+        },
+        CITED: {
+            "author_handle": "bad-example.com",
+            "author_did": "did:plc:hdhoaan3xa3jiuq4fg4mefid",
+            "reason": "cited",
+            "cited_by": mention,
+            "post_text": "PART TWO: All the other reasons i don't like CARs",
+        },
+    }
+
+
+@pytest.mark.parametrize("citer", ["did:plc:someoneelse", DEVLOG])
+def test_a_cited_post_is_not_contact_from_its_author(citer):
+    """A post linked by someone in the batch was expanded as reason="cited"
+    and reported to the judge as "@bad-example.com generated a notification",
+    with that as contact evidence. Its author never contacted phi."""
+    notifs = _batch_citing(citer)
+    with patch.object(posting.bot_client, "client", SimpleNamespace(me=None)):
+        provenance = _reply_provenance(CITED, notifs)
+        contact = posting._publication_contact(CITED, notifs)
+    assert "generated a notification" not in provenance
+    assert "Current notification" not in contact["evidence"]
+    if citer == DEVLOG:
+        assert "operator directed" in provenance
+        assert contact["evidence"].startswith("Operator source")
+    else:
+        assert "unprompted" in provenance
+        assert contact["evidence"] == ""
 
 
 if __name__ == "__main__":

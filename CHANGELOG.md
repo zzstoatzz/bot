@@ -1,5 +1,14 @@
 # changelog
 
+## 2026-09-28 — A linked post is not an invitation from its author
+
+A post linked in a notification is expanded into the batch as a cited entry.
+The reply check treated that entry as the cited author's own notification: the
+judge was told the author "generated a notification", and that was accepted as
+contact evidence. A devlog test that linked a stranger's thread let phi reply to
+that stranger. Cited posts now carry authority only through the post that links
+them: operator direction when the operator linked it, none otherwise.
+
 ## 2026-09-28 — Read a whole thread before joining it
 
 Phi gets full thread context when someone mentions or replies to her, but

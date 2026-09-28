@@ -154,7 +154,9 @@ direction evidence before the model judge can permit publication. The judge
 still checks that operator text actually authorizes the action.
 
 Both parent and embedded-record destinations use the same check; permission for
-one does not transfer to another. Discovery and bot labels supply no authority.
+one does not transfer to another. Discovery and bot labels supply no authority. A post linked from someone else's
+notification is not an invitation from its author: it counts only as operator
+direction when the operator's post is the one that links it.
 Mention facets retain their consent allowlist. A top-level placement is not an
 exemption. Independent writing without directed contact remains permitted.
 Missing authority is recorded in the existing public revision journal and
