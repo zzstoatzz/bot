@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any, cast
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from pydantic_ai import Agent, ImageUrl, RunContext
+from pydantic_ai import Agent, ImageUrl, PromptedOutput, RunContext
 from pydantic_ai.mcp import MCPServerStdio, MCPServerStreamableHTTP
 from pydantic_ai.models import infer_model
 from pydantic_ai.tools import ToolDefinition
@@ -62,6 +62,10 @@ from bot.tools import PhiDeps, _check_services_impl, register_all
 from bot.tools._helpers import notification_input, notification_recall
 from bot.tools.bluesky import fetch_relay_names
 from bot.utils.time import humanize_duration
+
+# a tool-mode output makes pydantic-ai send tool_choice "any", which Claude
+# Sonnet 5.5 and later reject; prompted output carries the schema in text
+EXTRACTION_OUTPUT = PromptedOutput(ExtractionResult)
 
 logger = logging.getLogger("bot.agent")
 
@@ -819,7 +823,7 @@ class PhiAgent:
             name="phi-extractor",
             model=settings.agent_model,
             system_prompt=EXTRACTION_SYSTEM_PROMPT,
-            output_type=ExtractionResult,
+            output_type=EXTRACTION_OUTPUT,
         )
 
         logger.info(

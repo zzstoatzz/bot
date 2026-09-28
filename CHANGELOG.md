@@ -1,5 +1,13 @@
 # changelog
 
+## 2026-09-28 — Run phi on Claude Sonnet 5.5
+
+The main agent and the memory extractor move from Claude Sonnet 5 to Claude
+Sonnet 5.5, at the same price ($2/$10 per MTok, $0.20 cache reads). Sonnet 5.5
+rejects forced tool use, and the extractor's structured output made pydantic-ai
+send `tool_choice: any`; it now uses prompted output, which carries the schema
+in text. The bundled model catalog lists Sonnet 5.5.
+
 ## 2026-09-28 — Let phi like back people who engage with her
 
 A like or repost reached the judge with only "reaction record, triggered during

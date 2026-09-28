@@ -17,7 +17,7 @@ three settings, all full pydantic-ai `provider:model` strings:
 
 | setting | agents | model |
 | --- | --- | --- |
-| `agent_model` | `phi`, `phi-extractor` | `anthropic:claude-sonnet-5` |
+| `agent_model` | `phi`, `phi-extractor` | `anthropic:claude-sonnet-5-5` |
 | `policy_model` | `phi-policy-judge` | `openai-responses:gpt-5.6-terra` |
 | `extraction_model` | `phi-episodic-selector`, `observation-reconciler`, `phi-posting-inventory` | `openai-responses:gpt-5.6-luna` |
 

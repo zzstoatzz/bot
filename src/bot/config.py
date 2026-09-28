@@ -102,7 +102,7 @@ class Settings(BaseSettings):
 
     # Model configuration
     agent_model: str = Field(
-        default="anthropic:claude-sonnet-5",
+        default="anthropic:claude-sonnet-5-5",
         description="Model for the main agent (pydantic-ai model string)",
     )
     # Sub-agent models are full pydantic-ai `provider:model` strings, same as
