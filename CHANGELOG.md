@@ -1,5 +1,14 @@
 # changelog
 
+## 2026-09-28 — Show which post a discovery-pool reply answers
+
+The discovery pool showed each liked post as a bare line of text. okami.mom's
+reply in the operator's MCP-demo thread, "@niri.pet does my lights for me",
+read as a standalone claim; phi traced it to the operator's post and replied to
+him that niri ran his lights. Samples are now hydrated from AppView, and a reply
+renders with the author and text of the post it answers. When hydration fails,
+the block says replies may be missing their context.
+
 ## 2026-09-27 — Revisit profile images during the bio pass
 
 Phi reviews her avatar and header weekly in the existing daily bio run, with

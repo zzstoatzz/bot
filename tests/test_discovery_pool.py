@@ -61,7 +61,11 @@ def _pool(monkeypatch):
     async def fake_filtered(memory, top_n=discovery_pool.TOP_N):
         return list(POOL)[:top_n]
 
+    async def no_posts(uris):
+        return []
+
     monkeypatch.setattr(discovery_pool, "get_filtered_pool", fake_filtered)
+    monkeypatch.setattr(discovery_pool, "_fetch_posts", no_posts)
     discovery_pool._block_cache.update({"text": "", "fetched_at": 0.0})
     discovery_pool._vector_cache.clear()
 
@@ -184,7 +188,11 @@ def test_best_samples_prefer_substance_over_recency():
 
     posts: list[_SamplePost] = [
         {"uri": "a", "text": "hi", "liked_at": "2026-08-07"},
-        {"uri": "b", "text": "a long substantive post about atproto lexicons and why they matter", "liked_at": "2026-08-05"},
+        {
+            "uri": "b",
+            "text": "a long substantive post about atproto lexicons and why they matter",
+            "liked_at": "2026-08-05",
+        },
         {"uri": "c", "text": "", "liked_at": "2026-08-06"},
     ]
     best = _best_samples(posts, 1)
@@ -209,3 +217,69 @@ def test_render_is_compact_and_essay_free():
     assert "humor" not in block
     assert "likes from operator" not in block
     assert "'a real post'" in block
+
+
+OKAMI_REPLY = "at://did:plc:3rwz3xfw2crswgifqgc3g7zh/app.bsky.feed.post/3mwhch3mylk2x"
+NATE_ROOT = "at://did:plc:xbtmt2zjwlrfegqvch7fboei/app.bsky.feed.post/3mwh5t4watk2p"
+
+
+async def test_a_reply_sample_names_the_post_it_answers(monkeypatch):
+    """2026-09-28: okami.mom's reply "@niri.pet does my lights for me"
+    rendered as a bare line. phi traced it to the operator's thread and told
+    him niri ran *his* lights. The sample must say it is a reply and to
+    whom."""
+    POOL.append(
+        entry(
+            "okami.mom",
+            "i love token burning like this @niri.pet does my lights for me "
+            "and it’s like a $0.01 call each time",
+        )
+    )
+    POOL[-1]["sample_posts"][0]["uri"] = OKAMI_REPLY
+
+    async def appview(uris):
+        posts = {
+            OKAMI_REPLY: {
+                "uri": OKAMI_REPLY,
+                "author": {"handle": "okami.mom"},
+                "record": {"text": "…", "reply": {"parent": {"uri": NATE_ROOT}}},
+            },
+            NATE_ROOT: {
+                "uri": NATE_ROOT,
+                "author": {"handle": "zzstoatzz.io"},
+                "record": {"text": "messing with mcp apps"},
+            },
+        }
+        return [posts[u] for u in uris if u in posts]
+
+    monkeypatch.setattr(discovery_pool, "_fetch_posts", appview)
+    try:
+        block = await discovery_pool.get_discovery_pool_block(None, seed="")
+    finally:
+        POOL.pop()
+    okami = block[block.index("@okami.mom") :]
+    assert "a reply to @zzstoatzz.io: 'messing with mcp apps'" in okami
+    assert "↳" not in block[: block.index("@okami.mom")]
+
+
+async def test_an_unavailable_parent_still_marks_the_reply(monkeypatch):
+    async def appview(uris):
+        return [
+            {"uri": u, "record": {"reply": {"parent": {"uri": NATE_ROOT}}}}
+            for u in uris
+            if u == "at://zeu.dev/0"
+        ]
+
+    monkeypatch.setattr(discovery_pool, "_fetch_posts", appview)
+    block = await discovery_pool.get_discovery_pool_block(None, seed="")
+    assert "a reply; the post it answers is unavailable" in block
+
+
+async def test_hydration_failure_is_stated_in_the_block(monkeypatch):
+    async def down(uris):
+        raise RuntimeError("appview down")
+
+    monkeypatch.setattr(discovery_pool, "_fetch_posts", down)
+    block = await discovery_pool.get_discovery_pool_block(None, seed="")
+    assert "@zeu.dev" in block
+    assert "reply context unavailable this run" in block

@@ -5,6 +5,11 @@ accounts she has already interacted with. Notification runs rank the remaining
 samples against the incoming conversation; scheduled runs can browse the pool.
 The samples are other people's writing and a signal of the operator's taste.
 
+The hub stores only each liked post's text. Samples are hydrated from the
+AppView before rendering so a reply shows whose post it answers: without
+that, "@niri.pet does my lights" read as a claim about the thread's root
+author, and phi told the operator that niri ran his lights.
+
 The rendered header identifies that source and asks for attribution rather
 than copied sentences. Earlier humor coaching was removed from the header;
 this module supplies material to notice, not a public speaking style.
@@ -42,6 +47,7 @@ TEXT_TRUNCATE = 140
 SAMPLE_LIMIT = 3
 BROWSE_SAMPLE_LIMIT = 1
 HTTP_TIMEOUT = 10
+APPVIEW = "https://public.api.bsky.app"
 _BLOCK_TTL_SECONDS = 300  # 5min, mirrors other PDS state blocks
 _block_cache: dict = {"text": "", "fetched_at": 0.0}
 # entry-text -> embedding, so a stable pool is embedded once, not per batch
@@ -52,6 +58,12 @@ class _SamplePost(TypedDict):
     uri: str
     text: str
     liked_at: str
+
+
+class _ReplyContext(TypedDict):
+    parent_uri: str
+    parent_handle: str
+    parent_text: str
 
 
 class _Entry(TypedDict):
@@ -117,7 +129,80 @@ def _best_samples(posts: list[_SamplePost], n: int) -> list[_SamplePost]:
     return sorted(with_text, key=lambda p: -len(p.get("text") or ""))[:n]
 
 
-def _render(entries: list[_Entry], *, ranked: bool, samples: int) -> str:
+async def _fetch_posts(uris: list[str]) -> list[dict]:
+    posts: list[dict] = []
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
+        for start in range(0, len(uris), 25):
+            response = await client.get(
+                f"{APPVIEW}/xrpc/app.bsky.feed.getPosts",
+                params=[("uris", uri) for uri in uris[start : start + 25]],
+            )
+            response.raise_for_status()
+            posts.extend(response.json().get("posts") or [])
+    return posts
+
+
+async def _reply_contexts(uris: list[str]) -> dict[str, _ReplyContext | None]:
+    """Map each reply sample to the post it answers.
+
+    Top-level samples are absent. A reply whose parent cannot be hydrated
+    maps to None, so the render still says it is a reply.
+    """
+    posts = await _fetch_posts(uris)
+    parents = {
+        post["uri"]: parent
+        for post in posts
+        if (
+            parent := ((post.get("record") or {}).get("reply") or {})
+            .get("parent", {})
+            .get("uri")
+        )
+    }
+    if not parents:
+        return {}
+    hydrated = {
+        post["uri"]: post for post in await _fetch_posts(sorted(set(parents.values())))
+    }
+    contexts: dict[str, _ReplyContext | None] = {}
+    for uri, parent_uri in parents.items():
+        parent = hydrated.get(parent_uri)
+        contexts[uri] = (
+            {
+                "parent_uri": parent_uri,
+                "parent_handle": (parent.get("author") or {}).get("handle", ""),
+                "parent_text": (parent.get("record") or {}).get("text", ""),
+            }
+            if parent
+            else None
+        )
+    return contexts
+
+
+def _render_sample(
+    post: _SamplePost, contexts: dict[str, _ReplyContext | None]
+) -> list[str]:
+    text = _short(post.get("text") or "")
+    uri = post.get("uri", "")
+    lines = [f"  · {text!r}"]
+    if uri in contexts:
+        context = contexts[uri]
+        if context is None:
+            lines.append("    ↳ a reply; the post it answers is unavailable")
+        else:
+            lines.append(
+                f"    ↳ a reply to @{context['parent_handle'] or 'unknown'}: "
+                f"{_short(context['parent_text'])!r}"
+            )
+    return lines
+
+
+def _render(
+    entries: list[_Entry],
+    *,
+    ranked: bool,
+    samples: int,
+    contexts: dict[str, _ReplyContext | None] | None = None,
+) -> str:
     if not entries:
         return ""
     scope = (
@@ -141,10 +226,30 @@ def _render(entries: list[_Entry], *, ranked: bool, samples: int) -> str:
         lines.append("")
         lines.append(f"@{e['handle']} ×{likes}{f' ({last[5:10]})' if last else ''}")
         for post in _best_samples(e.get("sample_posts") or [], samples):
-            text = _short(post.get("text") or "")
-            if text:
-                lines.append(f"  · {text!r}")
+            if _short(post.get("text") or ""):
+                lines.extend(_render_sample(post, contexts or {}))
     return "\n".join(lines)
+
+
+async def _render_hydrated(entries: list[_Entry], *, ranked: bool, samples: int) -> str:
+    uris = [
+        post["uri"]
+        for e in entries
+        for post in _best_samples(e.get("sample_posts") or [], samples)
+        if post.get("uri")
+    ]
+    try:
+        contexts = await _reply_contexts(uris) if uris else {}
+    except Exception as e:
+        logger.warning(
+            f"discovery pool reply hydration failed: {type(e).__name__}: {e}"
+        )
+        block = _render(entries, ranked=ranked, samples=samples)
+        return block and (
+            f"{block}\n\n(reply context unavailable this run: any sample may be "
+            "a reply in someone else's thread. read it before treating it as standalone.)"
+        )
+    return _render(entries, ranked=ranked, samples=samples, contexts=contexts)
 
 
 async def get_filtered_pool(
@@ -241,7 +346,9 @@ async def get_discovery_pool_block(
     if seed.strip() and embedder is not None:
         try:
             ranked = await _rank_by_relevance(entries, seed, embedder)
-            return _render(ranked[:RELEVANT_N], ranked=True, samples=SAMPLE_LIMIT)
+            return await _render_hydrated(
+                ranked[:RELEVANT_N], ranked=True, samples=SAMPLE_LIMIT
+            )
         except Exception as e:
             # ranking is an optimization; losing it costs tokens, not the run
             logger.warning(f"discovery pool ranking failed, showing all: {e}")
@@ -249,7 +356,7 @@ async def get_discovery_pool_block(
     now = time.time()
     if _block_cache["text"] and now - _block_cache["fetched_at"] < _BLOCK_TTL_SECONDS:
         return _block_cache["text"]
-    block = _render(entries, ranked=False, samples=BROWSE_SAMPLE_LIMIT)
+    block = await _render_hydrated(entries, ranked=False, samples=BROWSE_SAMPLE_LIMIT)
     _block_cache["text"] = block
     _block_cache["fetched_at"] = now
     return block
