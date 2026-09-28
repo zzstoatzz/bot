@@ -46,6 +46,7 @@ _BLOCKED_PREFIX = "app.bsky.feed."
 # refusal, policy judge) rather than routed to a dedicated tool — the
 # collection is the policy key, so a future star/vote is a row, not a tool.
 _REACTION_COLLECTIONS = {"app.bsky.feed.like": "like", "app.bsky.feed.repost": "repost"}
+_ENGAGEMENT_REASONS = {"like", "repost", "follow", "mention", "reply", "quote"}
 
 # Collections whose trusted tool carries a gate that a raw record write would
 # skip. The self record joined this on 2026-07-30: it is owner-gated through
@@ -436,6 +437,7 @@ async def _govern_reaction(
     from bot.config import settings
     from bot.core.atproto_client import bot_client
     from bot.status import bot_status
+    from bot.tools._helpers import notification_input
     from bot.tools.posting import _policy_gate, _resolve_post_ref
 
     raw_record = tool_args.get("record")
@@ -470,21 +472,42 @@ async def _govern_reaction(
         return f"refused: that's your own post — a {verb} is for other people's work"
 
     unprompted = not notifs and not getattr(deps, "author_handle", "")
+    author_did = uri.removeprefix("at://").split("/", 1)[0]
+    engaged = sorted(
+        {
+            event.get("reason", "")
+            for event in (notification_input(deps).values() if deps else [])
+            if event.get("author_did") == author_did
+            and event.get("reason") in _ENGAGEMENT_REASONS
+        }
+    )
     action = f"{verb} of {uri}"
     if author_handle:
         action += f" by @{author_handle}"
     if post_text:
         action += f': "{post_text[:120]}"'
+    provenance = "reaction record, triggered during " + (
+        "notification handling."
+        if not unprompted
+        else "a scheduled cycle (nobody prompted this)."
+    )
+    if engaged:
+        provenance += (
+            f" The post's author engaged phi in this batch: {', '.join(engaged)}."
+        )
     refusal, warn_note = await _policy_gate(
         action,
-        "reaction record, triggered during "
-        + (
-            "notification handling."
-            if not unprompted
-            else "a scheduled cycle (nobody prompted this)."
-        ),
+        provenance,
         unprompted=unprompted,
         tool=verb,
+        contacts=[
+            {
+                "uri": uri,
+                "evidence": f"Author engaged phi in this batch: {', '.join(engaged)}.",
+            }
+        ]
+        if engaged
+        else None,
     )
     if refusal:
         return refusal

@@ -1,5 +1,13 @@
 # changelog
 
+## 2026-09-28 — Let phi like back people who engage with her
+
+A like or repost reached the judge with only "reaction record, triggered during
+notification handling" as provenance. When someone followed phi and liked her
+post, her like of one of their posts was blocked as uninvited contact. The
+reaction guard now tells the judge when the post's author engaged phi in the
+current batch and passes that as contact evidence.
+
 ## 2026-09-28 — A linked post is not an invitation from its author
 
 A post linked in a notification is expanded into the batch as a cited entry.

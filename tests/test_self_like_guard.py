@@ -204,3 +204,65 @@ async def test_reaction_stops_at_delivery_when_thread_not_confirmed(collection, 
     assert result.startswith("refused:")
     check.assert_awaited_once_with(OTHER_URI)
     call_tool.assert_not_called()
+
+
+BUGARELA = "did:plc:7dv3qlilrrooaptgmonjux32"
+BUGARELA_POST = f"at://{BUGARELA}/app.bsky.feed.post/3mumsiy4wd22t"
+
+
+@pytest.mark.parametrize(
+    ("event_author", "engaged"), [(BUGARELA, True), ("did:plc:someoneelse", False)]
+)
+async def test_like_back_carries_the_authors_engagement(event_author, engaged):
+    """Someone who followed phi and liked her post had their own post's like
+    blocked: the judge saw no evidence they had engaged, only "notification
+    handling". Their engagement in the batch is contact evidence."""
+    deps = PhiDeps(
+        author_handle="",
+        notifications_context={},
+        notification_events=[
+            {
+                "uri": "at://x/app.bsky.graph.follow/1",
+                "reason": "follow",
+                "author_did": event_author,
+            },
+            {
+                "uri": "at://x/app.bsky.feed.like/2",
+                "reason": "like",
+                "author_did": event_author,
+            },
+        ],
+    )
+    ctx = type("Ctx", (), {"deps": deps})()
+    gate = AsyncMock(return_value=_allow())
+    with (
+        patch.object(mcp_guard, "get_override", AsyncMock(return_value=_inactive())),
+        patch(
+            "bot.tools.posting._resolve_post_ref",
+            AsyncMock(
+                return_value=("bafyb", BUGARELA_POST, "bafyb", "bugarela.com", "text")
+            ),
+        ),
+        patch("bot.tools.posting._policy_gate", gate),
+        patch.object(mcp_guard.bot_client, "require_unmuted_thread", AsyncMock()),
+    ):
+        await make_mcp_guard("pdsx")(
+            ctx,
+            AsyncMock(return_value="created"),
+            "create_record",
+            _like_args(BUGARELA_POST),
+        )
+    assert gate.await_args is not None
+    provenance = gate.await_args.args[1]
+    contacts = gate.await_args.kwargs["contacts"]
+    if engaged:
+        assert "engaged phi in this batch: follow, like" in provenance
+        assert contacts == [
+            {
+                "uri": BUGARELA_POST,
+                "evidence": "Author engaged phi in this batch: follow, like.",
+            }
+        ]
+    else:
+        assert "engaged" not in provenance
+        assert contacts is None
