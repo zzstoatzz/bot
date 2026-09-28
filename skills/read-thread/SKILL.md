@@ -1,6 +1,6 @@
 ---
 name: read-thread
-description: "Read a Bluesky conversation as a whole: every reply, who wrote it, and which post it answers. Load before you reply to, quote, or like a post in a thread you haven't read in full."
+description: "Read a Bluesky conversation as a whole: every reply, who wrote it, and which post it answers. Use it when what you do next depends on the rest of the conversation."
 ---
 
 A reply's record carries its thread's root at `reply.root.uri`; a top-level
