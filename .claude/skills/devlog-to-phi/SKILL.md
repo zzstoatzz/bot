@@ -97,6 +97,15 @@ Not for: changing phi's behavior (edit code/personality), inspecting phi
   start or the text has multibyte chars before it.
 - This is an outward-facing public post. The operator asking you to send it
   is the authorization; deliver what they said, don't editorialize.
+- A message to phi is an instruction to an autonomous public agent, and an
+  operator post pointing at something counts as direction she can act on.
+  Never link someone else's post or thread, and never ask whether she would
+  reply, like, quote, or join anything, unless the operator wrote those exact
+  words. Testing a skill or behavior is not a reason to message her: test
+  offline (render it, run the query yourself, replay captured inputs). If a
+  live test is truly needed, confine it to phi's or the operator's own posts,
+  phrase it so answering in the devlog thread is the only possible action, and
+  get the operator's approval of the exact text first.
 - General record CRUD via pdsx is covered in the `pdsx-fundamentals` skill;
   this skill is just the phi-mention recipe on top of it.
 
