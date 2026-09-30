@@ -18,9 +18,12 @@ compose is block-cached at 5min so notification polls (10s) don't
 hammer PDS.
 """
 
+import asyncio
+import json
 import logging
 import time
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 from pydantic_ai import Agent
 
@@ -33,13 +36,12 @@ from bot.utils.time import humanize_duration, relative_when
 
 logger = logging.getLogger("bot.self_state")
 
-# Recent-posting inventory cache — invalidated on new post (latest URI) or TTL.
+# Recent-posting inventory cache, invalidated on new post (latest URI) or TTL.
+# Persisted so a restart does not recompile; overlapping renders share one call.
 _INVENTORY_TTL_SECONDS = 3600  # 1h
-_inventory_cache: dict = {
-    "text": "",
-    "fetched_at": 0.0,
-    "based_on_uri": "",
-}
+INVENTORY_CACHE_FILE = Path("/data/posting_inventory.json")
+_inventory_cache: dict | None = None
+_inventory_inflight: dict[str, asyncio.Task[str]] = {}
 
 # Whole-block cache — bounds PDS lookups under high tick frequency.
 _BLOCK_TTL_SECONDS = 300  # 5min
@@ -175,7 +177,9 @@ def _format_goals_block(goals: list[dict]) -> str:
             clamped = _clamp(g["current_state"], FIELD_CAPS["current_state"])
             lines.append(f"  current: {clamped}")
         if g.get("next_step"):
-            lines.append(f"  next step: {_clamp(g['next_step'], FIELD_CAPS['next_step'])}")
+            lines.append(
+                f"  next step: {_clamp(g['next_step'], FIELD_CAPS['next_step'])}"
+            )
         last_step = g.get("last_step")
         last_step_at = g.get("last_step_at", "")
         if last_step:
@@ -209,6 +213,37 @@ async def get_state_block(
     return block
 
 
+def _load_inventory() -> dict:
+    global _inventory_cache
+    if _inventory_cache is None:
+        try:
+            _inventory_cache = json.loads(INVENTORY_CACHE_FILE.read_text())
+        except FileNotFoundError:
+            _inventory_cache = {}
+        except (OSError, ValueError) as e:
+            logger.warning(f"posting inventory cache unreadable: {e}")
+            _inventory_cache = {}
+    return _inventory_cache
+
+
+def _save_inventory(cache: dict) -> None:
+    try:
+        tmp = INVENTORY_CACHE_FILE.with_suffix(".tmp")
+        tmp.write_text(json.dumps(cache))
+        tmp.replace(INVENTORY_CACHE_FILE)
+    except OSError as e:
+        logger.warning(f"posting inventory cache not saved: {e}")
+
+
+def _compile_once(latest_uri: str, posts: list[str]) -> asyncio.Task[str]:
+    task = _inventory_inflight.get(latest_uri)
+    if task is None:
+        task = asyncio.ensure_future(_compile_inventory(posts))
+        _inventory_inflight[latest_uri] = task
+        task.add_done_callback(lambda _: _inventory_inflight.pop(latest_uri, None))
+    return task
+
+
 async def get_inventory_block(client: BotClient) -> str:
     """The recent-posting inventory, rendered for composition inside
     [SELF]. Cached 1h, invalidated when the latest post URI changes."""
@@ -223,20 +258,22 @@ async def get_inventory_block(client: BotClient) -> str:
                 if not latest_uri:
                     latest_uri = item.post.uri
 
-        cache_stale = now - _inventory_cache["fetched_at"] > _INVENTORY_TTL_SECONDS
-        post_changed = latest_uri != _inventory_cache["based_on_uri"]
-        if not _inventory_cache["text"] or cache_stale or post_changed:
-            new_inventory = await _compile_inventory(posts)
+        cache = _load_inventory()
+        cache_stale = now - cache.get("fetched_at", 0.0) > _INVENTORY_TTL_SECONDS
+        post_changed = latest_uri != cache.get("based_on_uri", "")
+        if not cache.get("text") or cache_stale or post_changed:
+            new_inventory = await asyncio.shield(_compile_once(latest_uri, posts))
             if new_inventory:
-                _inventory_cache["text"] = new_inventory
-                _inventory_cache["fetched_at"] = now
-                _inventory_cache["based_on_uri"] = latest_uri
+                cache.update(
+                    text=new_inventory, fetched_at=now, based_on_uri=latest_uri
+                )
+                _save_inventory(cache)
 
-        if _inventory_cache["text"]:
+        if cache.get("text"):
             return (
                 "measured posting inventory (derived from your last 10 "
                 "top-level posts; descriptive, not your voice — do not "
-                "imitate its register):\n" + _inventory_cache["text"]
+                "imitate its register):\n" + cache["text"]
             )
     except Exception as e:
         logger.debug(f"posting inventory compose failed: {e}")

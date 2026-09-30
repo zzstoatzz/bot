@@ -1,5 +1,13 @@
 # changelog
 
+## 2026-09-30 — Compile the posting inventory once per latest post
+
+After a restart the startup render and two diagnostic renders each compiled
+the [SELF] posting inventory: three Luna calls in six seconds for the same ten
+posts. The cache lived in memory and filled only after a call returned. It now
+persists in `/data/posting_inventory.json`, and overlapping renders share one
+compile. Same fix as the post topic labels.
+
 ## 2026-09-30 — Voice pass with phi: her personality, the public voice paragraph, recent operations by topic
 
 Worked through in a devlog thread with phi. Her post history from 07-01 had em
