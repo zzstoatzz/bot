@@ -158,3 +158,60 @@ async def test_weekly_review_uses_the_same_agent_context_and_tools_as_mentions(
         == ["inspect_record_media"]
     )
     assert "inspect_record_media" in str(messages)
+
+
+async def test_restart_within_a_day_does_not_rewrite_the_bio(monkeypatch, tmp_path):
+    """2026-09-30: six restarts in a day each ran a ~115k-token bio rewrite
+    that returned the same text, because the 24h timer lived in memory."""
+    monkeypatch.setattr(status, "STATUS_FILE", tmp_path / "status.json")
+    status.BotStatus().record_bio_refresh(
+        datetime.now(UTC) - timedelta(hours=2), reviewed_images=False
+    )
+    restarted = status.BotStatus()
+    restarted._load()
+    monkeypatch.setattr(module, "bot_status", restarted)
+    monkeypatch.setattr(module.settings, "voice_reset", False)
+
+    poller = object.__new__(NotificationPoller)
+    poller._bio_task = None
+    poller._next_bio_refresh = 0
+    poller._background_tasks = set()
+    poller._schedule_bio_refresh()
+
+    assert poller._bio_task is None
+    remaining = poller._next_bio_refresh - module.time.monotonic()
+    assert 21 * 3600 < remaining <= 22 * 3600
+
+
+async def test_stale_refresh_runs_and_is_recorded(monkeypatch, tmp_path):
+    monkeypatch.setattr(status, "STATUS_FILE", tmp_path / "status.json")
+    state = status.BotStatus()
+    state.record_bio_refresh(
+        datetime.now(UTC) - timedelta(days=2), reviewed_images=False
+    )
+    monkeypatch.setattr(module, "bot_status", state)
+    monkeypatch.setattr(module.settings, "voice_reset", False)
+
+    async def override():
+        return {"active": False}
+
+    async def process_bio(*, review_images):
+        return "refreshed"
+
+    monkeypatch.setattr(module, "get_override", override)
+    poller = object.__new__(NotificationPoller)
+    poller._semaphore = asyncio.Semaphore(1)
+    poller._bio_task = None
+    poller._next_bio_refresh = 0
+    poller._background_tasks = set()
+    poller.handler = MessageHandler.__new__(MessageHandler)
+    poller.handler.agent = PhiAgent.__new__(PhiAgent)
+    monkeypatch.setattr(poller.handler.agent, "process_bio", process_bio)
+    poller._schedule_bio_refresh()
+    assert poller._bio_task is not None
+    await poller._bio_task
+
+    assert datetime.now(UTC) - state.last_bio_refresh_at < timedelta(minutes=1)
+    reloaded = status.BotStatus()
+    reloaded._load()
+    assert reloaded.last_bio_refresh_at == state.last_bio_refresh_at

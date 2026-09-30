@@ -4,7 +4,7 @@ import json
 import logging
 import time
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 logger = logging.getLogger("bot.status")
@@ -33,6 +33,7 @@ class BotStatus:
     paused_at: datetime | None = None
     resumed_at: datetime | None = None
     last_profile_review_at: datetime | None = None
+    last_bio_refresh_at: datetime | None = None
     # logfire alert incidents (core/alert_watch.py) and the per-alert
     # last_run cursor that keeps a re-observed firing from counting twice.
     alert_incidents: dict = field(default_factory=dict)
@@ -94,9 +95,17 @@ class BotStatus:
         self.resumed_at = datetime.now(UTC)
         self._save()
 
-    def record_profile_review(self, started_at: datetime):
-        self.last_profile_review_at = started_at
+    def record_bio_refresh(self, started_at: datetime, reviewed_images: bool):
+        self.last_bio_refresh_at = started_at
+        if reviewed_images:
+            self.last_profile_review_at = started_at
         self._save()
+
+    def seconds_until_bio_refresh(self) -> float:
+        if self.last_bio_refresh_at is None:
+            return 0.0
+        due = self.last_bio_refresh_at + timedelta(days=1)
+        return (due - datetime.now(UTC)).total_seconds()
 
     def record_operator_mention(self, alert_keys: list[str]) -> None:
         """Stamp alert incidents phi just @-mentioned the operator about.
@@ -139,6 +148,9 @@ class BotStatus:
                 "last_profile_review_at": self.last_profile_review_at.isoformat()
                 if self.last_profile_review_at
                 else None,
+                "last_bio_refresh_at": self.last_bio_refresh_at.isoformat()
+                if self.last_bio_refresh_at
+                else None,
                 "alert_incidents": self.alert_incidents,
                 "alert_watch_cursor": self.alert_watch_cursor,
             }
@@ -171,6 +183,10 @@ class BotStatus:
             if data.get("last_profile_review_at"):
                 self.last_profile_review_at = datetime.fromisoformat(
                     data["last_profile_review_at"]
+                )
+            if data.get("last_bio_refresh_at"):
+                self.last_bio_refresh_at = datetime.fromisoformat(
+                    data["last_bio_refresh_at"]
                 )
             self.alert_incidents = dict(data.get("alert_incidents") or {})
             self.alert_watch_cursor = dict(data.get("alert_watch_cursor") or {})

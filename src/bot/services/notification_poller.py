@@ -282,6 +282,9 @@ class NotificationPoller:
             return
         if self._bio_task and not self._bio_task.done():
             return
+        if (wait := bot_status.seconds_until_bio_refresh()) > 0:
+            self._next_bio_refresh = time.monotonic() + wait
+            return
         self._next_bio_refresh = time.monotonic() + 24 * 60 * 60
         self._bio_task = asyncio.create_task(self._refresh_bio(), name="bio-refresh")
         self._background_tasks.add(self._bio_task)
@@ -303,8 +306,8 @@ class NotificationPoller:
                     result = await self.handler.agent.process_bio(
                         review_images=review_images
                     )
-                if review_images and not result.startswith("bio rewrite failed:"):
-                    bot_status.record_profile_review(now)
+                if not result.startswith("bio rewrite failed:"):
+                    bot_status.record_bio_refresh(now, review_images)
         except Exception:
             logger.exception("bio refresh failed; keeping the existing profile")
 

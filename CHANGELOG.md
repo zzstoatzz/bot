@@ -1,5 +1,12 @@
 # changelog
 
+## 2026-09-30 — Refresh the bio once a day across restarts
+
+The 24-hour bio timer lived in memory, so every start ran a full bio rewrite:
+six Sonnet 5.5 runs of about 115k input tokens on 2026-09-30, most returning
+the same text. The last refresh time now persists in the status file, and a
+restart within a day of it waits out the remainder.
+
 ## 2026-09-30 — Compile the posting inventory once per latest post
 
 After a restart the startup render and two diagnostic renders each compiled
