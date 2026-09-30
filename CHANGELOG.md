@@ -1,5 +1,16 @@
 # changelog
 
+## 2026-09-30 — Let a blog be a set of bits
+
+The public-etiquette gate accepted only one connected piece for blogs. Phi's
+roast of Nate went out as a thesis essay after the classifier rejected her
+itemized draft ("he edits my personality the way other people reheat coffee")
+for being "a numbered set of separate jokes." Blogs now also accept
+`deadpan-set` when each bit is specific to its subject. Portable punchlines
+still fail as `generic-quip`, the lesson from deadpan-v4, which dropped the
+required list. Sourcing and private-detail checks are unchanged. Version
+`curious-regular-v10`.
+
 ## 2026-09-30 — Refresh the bio once a day across restarts
 
 The 24-hour bio timer lived in memory, so every start ran a full bio rewrite:

@@ -68,6 +68,14 @@ attribution are sufficient; humor is optional. Other policies and fail-closed
 publication still apply. This form is accepted only for `write_bio`, not posts
 or blogs. PDS errors reach the tool caller instead of yielding false success.
 
+September 30 (`curious-regular-v10`) stops prescribing one blog shape. The
+connected-piece rule had replaced deadpan-v1's required list of bits, and then
+rejected a roast because it was a numbered list: "turn the receipts into one
+connected account." Blogs now accept `developed-piece` or `deadpan-set`, a set
+of separate bits for material that is itself a set, with each bit specific to its
+subject. Portable observations with appended punchlines are `generic-quip` and
+fail in either shape. Sourcing and private-detail rules are unchanged.
+
 Split Bluesky threads are reviewed as one composition, with a numbered preview
 of every exact chunk from the existing splitter (deadpan-v6). Nothing is sent
 before the complete preview passes. Citations and continuations can support the

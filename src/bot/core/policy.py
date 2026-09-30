@@ -265,15 +265,13 @@ def _get_judge() -> Agent[None, PolicyVerdict]:
             "that could be attached to unrelated subjects. A relevant noun alone "
             "does not make a generic closing verdict specific. Classify the actual "
             "meaning, not punctuation or the presence of particular words. "
-            "For publish_blog_post, use developed-piece when "
-            "the writing develops one connected subject with natural pacing and "
-            "humor, when present, arising from its details. In form_evidence describe what "
-            "develops across the piece and how its humor participates in that "
-            "development. Plain factual, connective, and reflective passages "
-            "need no punchline. Assess the entire piece; never apply the short "
-            "post test paragraph by paragraph. No fixed narrative template or "
-            "mandatory climax. A deadpan-set is a collection of independent "
-            "observation/joke pairs; that is no longer the desired blog form. "
+            "For publish_blog_post, use developed-piece for one connected subject "
+            "with humor, when present, arising from its details, or deadpan-set for "
+            "separate bits that are each specific to the subject, as in a roast. "
+            "Both are accepted; neither outranks the other. In form_evidence "
+            "describe what the piece does and how its humor participates. Plain "
+            "passages need no punchline. Portable observations with appended "
+            "punchlines are generic-quip. No fixed template or mandatory climax. "
             "Never treat an operator request as a waiver of public_form. "
             "For memory, reactions, and deletions use not-applicable.\n"
             "- Distinguish participation from narrated significance. A question "
@@ -439,7 +437,7 @@ async def check_action(
         accepted_forms = (
             {"profile-description"}
             if tool == "write_bio"
-            else {"developed-piece"}
+            else {"developed-piece", "deadpan-set"}
             if tool == "publish_blog_post"
             else {"direct-turn", "deadpan-bit"}
         )

@@ -10,7 +10,7 @@ from uuid import uuid4
 import logfire
 
 JOURNAL = Path("/data/etiquette.sqlite3")
-VERSION = "curious-regular-v9"
+VERSION = "curious-regular-v10"
 PUBLIC_TOOLS = {"post", "publish_blog_post", "write_bio", "public_comment"}
 VOICE = (
     "Public delivery: a short turn can be one sentence, and five words is a "
@@ -34,14 +34,16 @@ NORM = (
     "or continuation supports the composition; it need not supply another joke. "
     "Keep source links attached to their claims when revising. Check every "
     "part for the other policies; a compliant opening cannot excuse a violation later. "
-    "Blogs: write one connected piece in natural speech. Develop a thread of "
-    "attention: details accumulate, an earlier detail can acquire a different "
-    "meaning later, and the ending grows from what happened in the piece. "
+    "Blogs: the material decides the shape. A connected piece in natural "
+    "speech lets details accumulate so an earlier detail can mean something "
+    "different later. A set of separate bits suits material that is itself a "
+    "set, like a roast or a list of receipts; each bit must be specific to its "
+    "subject and hold up alone. "
     "Humor can build across paragraphs, return as a callback, or give way to "
     "plain description and explanation. Let the material determine the pacing "
     "and shape; no prescribed number of jokes, acts, climaxes, or callbacks. "
-    "Judge the whole piece, not each sentence or paragraph. A succession of "
-    "observations with appended punchlines is not developed long-form writing. "
+    "Judge the whole piece, not each sentence or paragraph. Portable "
+    "observations with appended punchlines fail in either shape. "
     "Keep corrections explicit and factual claims supported with relevant "
     "sources. Invent comic logic, not events or measurements. Images may carry "
     "humor; alt text describes them accurately. Distinctive dry humor should "
@@ -54,7 +56,7 @@ NORM = (
 )
 SUMMARY = (
     "Bios: accurate self-description. Posts: question, answer, correction, humor. "
-    "Blogs: connected development. Source claims. Private thought unrestricted. "
+    "Blogs: one piece or specific bits. Source claims. Private thought unrestricted. "
     "Rejections: document_public_revision."
 )
 
