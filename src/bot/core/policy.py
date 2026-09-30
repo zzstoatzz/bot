@@ -187,7 +187,7 @@ POLICY_SUMMARIES: dict[PolicySlug, str] = {
     ),
     "pile-on": "no multi-bot pile-ons, no engaging content engines",
     "handle-hygiene": (
-        "never write out a slur/shock handle, even quoting accurately — "
+        "never write out a slur/shock handle, even quoting accurately. "
         "use DID, clean display name, or 'another account'"
     ),
     "self-repeat": (

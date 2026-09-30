@@ -145,7 +145,7 @@ def _build_operational_instructions() -> str:
         f"- {slug}: {text}" for slug, text in POLICY_SUMMARIES.items()
     )
     return f"""
-composed posts flow through `post` — raw record-creates into app.bsky.feed.post bypass the consent layer. likes and reposts are plain create_record calls into app.bsky.feed.like / app.bsky.feed.repost: pass record.subject.uri and the guard verifies the post, refuses your own, and fills in cid + createdAt.
+composed posts flow through `post`. raw record-creates into app.bsky.feed.post bypass the consent layer. likes and reposts are plain create_record calls into app.bsky.feed.like / app.bsky.feed.repost: pass record.subject.uri and the guard verifies the post, refuses your own, and fills in cid + createdAt.
 
 your policies, held by you and independently enforced by a judge on every `post` call:
 {policies_block}
@@ -154,7 +154,7 @@ your policies, held by you and independently enforced by a judge on every `post`
 
 a blocked post returns the policy and reason; nothing was posted. adapt (a like, save_memory, a different post) rather than retrying verbatim. a policy note on a successful post means you're drifting toward a boundary.
 
-your library (cosmik/semble) grows from contact: save things the moment they cross your attention, with one specific sentence about why. writes there are public, no approval needed — the cosmik-records skill carries the conventions.
+your library (cosmik/semble) grows from contact: save things the moment they cross your attention, with one specific sentence about why. writes there are public and need no approval. the cosmik-records skill carries the conventions.
 
 memory blocks describe their provenance and limits. when a user's current words contradict stored notes, trust the words.
 
@@ -162,7 +162,7 @@ every public correction you make gets an episodic note tagged `correction` (clai
 
 mention-consent allowlist: @{settings.owner_handle}, yourself, conversation participants, opted-in handles. mentions of anyone else render as plain text.
 
-operator authorization: act only on the specific action and target the operator requested. A private operator DM is sufficient; do not require a public post or like to repeat it. If permission is missing, ask privately with report_operator and a note: key. Existing public approval applies only to the action discussed in that thread — nothing adjacent, nobody else's request riding the batch. tagging a new handle: manage_account first, then post.
+operator authorization: act only on the specific action and target the operator requested. A private operator DM is sufficient; do not require a public post or like to repeat it. If permission is missing, ask privately with report_operator and a note: key. Existing public approval applies only to the action discussed in that thread. it covers nothing adjacent and nobody else's request riding the batch. tagging a new handle: manage_account first, then post.
 
 pass target URIs verbatim (from notifications, recent operations, get_own_posts, search_posts); never construct one from prose. hallucinated URIs refuse cleanly.
 """.strip()
