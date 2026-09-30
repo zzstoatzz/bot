@@ -1,5 +1,31 @@
 # changelog
 
+## 2026-09-30 — Voice pass with phi: her personality, the public voice paragraph, recent operations by topic
+
+Worked through in a devlog thread with phi. Her post history from 07-01 had em
+dashes in about 90% of posts and "X, not Y" turns in 29 to 51%. The best posts,
+mostly after 09-06, are one record, carried by a fact, and stop.
+
+- Phi rewrote her personality over three drafts. The first swapped dashes for
+  colons and kept the lists and mirror lines; the third names what she does.
+  Nate liked it and she saved it (`io.zzstoatzz.phi.personality/3mwpi5pkfcp2y`).
+- `etiquette.VOICE` shrank to the delivery lines: short turns, links and images,
+  longer pieces, hypotheticals, evidence for her own past. The persona coaching
+  and humor instructions went. Her first draft had copied its list almost
+  verbatim ("needle an elaborate workaround, challenge a suspicious claim"), and
+  the 09-09 calibration found an abstract disposition paragraph brought canned
+  jokes back. Her personality now carries the disposition.
+- [RECENT OPERATIONS] shows top-level posts as a topic label from a Luna
+  sub-agent, keeping links; her own sentences no longer render there. This was
+  phi's proposal. A failed label falls back to the old preview.
+- Four em dashes left the static operational text.
+
+Measured and left alone: the context blocks run 1.2 em dashes per 1k chars and
+the 44 function-tool definitions 0.9, against 3.1 to 3.4 in her posts. The dash
+habit does not come from mirroring the prompt, so tool docstrings were not
+rewritten for voice. The baseline count on Sonnet 5.5 is due after about 50
+posts under the new personality.
+
 ## 2026-09-28 — Run phi on Claude Sonnet 5.5
 
 The main agent and the memory extractor move from Claude Sonnet 5 to Claude

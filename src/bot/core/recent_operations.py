@@ -1,27 +1,31 @@
 """[RECENT OPERATIONS] — recent writes to Phi's own PDS.
 
 The block combines durable repo events with a snapshot backfill over the
-last 48 hours. Top-level posts include a bounded text preview and source
-links so Phi can recognize subjects already covered. Replies and other
+last 48 hours. Top-level posts render as a flat topic label and source links
+so Phi can recognize subjects already covered. Replies and other
 routine activity are tallied; edits and deletes retain row-level evidence
 and process attribution. The renderer has a sanity cap and reports truncation.
 
-Post previews are evidence of prior publication, not an instruction to keep
-that style. An earlier prose-free version made repeated subjects harder to
-recognize. Reducing this block must preserve that continuity and the external
-edit/delete evidence. Source retrieval and rendered output are cached for five
+An earlier prose-free version made repeated subjects harder to recognize, so
+the subject stays. Her own sentences went instead (2026-09-30, her proposal
+in the voice thread): a sub-agent labels each post's topic, and a failed
+label falls back to the text preview. Reducing this block must preserve that
+continuity and the external edit/delete evidence. Source retrieval and rendered output are cached for five
 minutes. `_summarize` owns per-collection formatting; `_render` owns the block.
 """
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 import time
-from typing import TypedDict
+from typing import NotRequired, TypedDict
 
 from atproto_client.models.utils import get_model_as_dict
+from pydantic_ai import Agent
 
+from bot.config import settings
 from bot.core import ops_log
 from bot.core.atproto_client import BotClient
 from bot.utils.time import relative_when
@@ -71,6 +75,7 @@ class _Row(TypedDict):
     summary: str
     op: str  # create | update | delete
     local: bool  # written by this process (attribution is best-effort)
+    post_text: NotRequired[str]
 
 
 _URL_RE = re.compile(r"https?://[^\s<>\")\]]+")
@@ -106,6 +111,71 @@ def _links_in(value: dict) -> list[str]:
         if short not in seen:
             seen.append(short)
     return seen[:3]
+
+
+def _top_level_text(nsid: str, value: dict) -> str:
+    if nsid != "app.bsky.feed.post" or value.get("reply"):
+        return ""
+    return " ".join((value.get("text", "") or "").split())
+
+
+TOPIC_LABEL_MAX = 120
+_topic_cache: dict[str, str] = {}
+_topic_agent: Agent | None = None
+
+
+def _get_topic_agent() -> Agent:
+    global _topic_agent
+    if _topic_agent is None:
+        _topic_agent = Agent[None, str](
+            name="phi-post-topic",
+            model=settings.extraction_model,
+            system_prompt=(
+                "Label the subject of one social media post for a deduplication "
+                "index. Output one line of at most twelve words: the concrete "
+                "subject, naming the people, projects, places, numbers and events "
+                "it is about. Use plain nouns, like a filing label. Do not quote "
+                "the post, copy its phrasing, or describe its tone or argument. "
+                "No punctuation beyond commas and semicolons."
+            ),
+            output_type=str,
+        )
+    return _topic_agent
+
+
+async def _label_topic(text: str) -> str:
+    try:
+        result = await _get_topic_agent().run(text)
+    except Exception as e:
+        logger.warning(f"post topic label failed: {type(e).__name__}: {e}")
+        return ""
+    label = " ".join((result.output or "").split())
+    return label[:TOPIC_LABEL_MAX]
+
+
+async def _apply_topic_labels(rows: list[_Row]) -> list[_Row]:
+    """Swap each post's text preview for its topic label; a failed label keeps the preview."""
+    current = {r["post_text"] for r in rows if r.get("post_text")}
+    for stale in set(_topic_cache) - current:
+        del _topic_cache[stale]
+    pending = current - set(_topic_cache)
+    if pending:
+        texts = sorted(pending)
+        labels = await asyncio.gather(*(_label_topic(t) for t in texts))
+        for text, label in zip(texts, labels, strict=True):
+            if label:
+                _topic_cache[text] = label
+    out: list[_Row] = []
+    for r in rows:
+        label = _topic_cache.get(r.get("post_text", ""))
+        if label:
+            linked = r["summary"].rfind(" [linked: ")
+            r = r.copy()
+            r["summary"] = f"top-level post, topic: {label}" + (
+                r["summary"][linked:] if linked >= 0 else ""
+            )
+        out.append(r)
+    return out
 
 
 def _summarize(nsid: str, value: dict) -> str:
@@ -218,6 +288,7 @@ def _fetch_collection(client: BotClient, did: str, nsid: str) -> list[_Row]:
                 summary=_summarize(nsid, value),
                 op="create",
                 local=False,
+                post_text=_top_level_text(nsid, value),
             )
         )
     return rows
@@ -250,6 +321,9 @@ def _rows_from_ops(ops: list[ops_log.OpRow]) -> list[_Row]:
                 summary=summary,
                 op=op["op"],
                 local=op["local"],
+                post_text=_top_level_text(op["nsid"], op["record"] or {})
+                if op["op"] != "delete"
+                else "",
             )
         )
     return rows
@@ -260,9 +334,7 @@ def _merge(event_rows: list[_Row], snapshot_rows: list[_Row]) -> list[_Row]:
     snapshot only fills creates the log missed (downtime, pre-log history)."""
     seen = {(r["nsid"], r["rkey"]) for r in event_rows}
     merged = list(event_rows)
-    merged.extend(
-        r for r in snapshot_rows if (r["nsid"], r["rkey"]) not in seen
-    )
+    merged.extend(r for r in snapshot_rows if (r["nsid"], r["rkey"]) not in seen)
     merged.sort(key=lambda r: r["created_at"])
     return merged
 
@@ -352,11 +424,11 @@ def _render(rows: list[_Row], truncated: int = 0) -> str:
     content, routine = _split_rows(rows)
     rows = _compact(content)
     header = (
-        "[RECENT OPERATIONS — your repo's last "
-        f"{WINDOW_HOURS:.0f}h, chronological: what you already said, so you "
-        "don't say it twice (a record, not a style model). EDITED/DELETED "
-        "are repo events; 'not via this process' means your hosted tools or "
-        "an external service — flag any you don't recognise.]"
+        f"[RECENT OPERATIONS: your repo's last {WINDOW_HOURS:.0f}h, "
+        "chronological, with posts shown by topic so you can tell what you "
+        "already covered. EDITED/DELETED are repo events. 'not via this "
+        "process' means your hosted tools or an external service, so flag "
+        "any you don't recognise.]"
     )
     if truncated:
         header += f" (showing newest {len(rows)}; {truncated} older rows elided)"
@@ -411,9 +483,7 @@ async def get_operations_block(client: BotClient) -> str:
                     try:
                         from datetime import datetime
 
-                        in_window = (
-                            datetime.fromisoformat(ts).timestamp() >= cutoff
-                        )
+                        in_window = datetime.fromisoformat(ts).timestamp() >= cutoff
                     except ValueError:
                         in_window = False
                     if in_window:
@@ -423,7 +493,7 @@ async def get_operations_block(client: BotClient) -> str:
 
     merged = _merge(event_rows, snapshot_rows)
     truncated = max(0, len(merged) - MAX_ROWS)
-    block = _render(merged[-MAX_ROWS:], truncated=truncated)
+    block = _render(await _apply_topic_labels(merged[-MAX_ROWS:]), truncated=truncated)
     _block_cache["text"] = block
     _block_cache["fetched_at"] = now
     _block_cache["revision"] = ops_log.library_revision
