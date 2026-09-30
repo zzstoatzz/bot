@@ -1,0 +1,402 @@
+{
+  "checkedAt": "2026-09-20T19:31:43.604Z",
+  "results": [
+    {
+      "project": "plyr.fm",
+      "name": "api",
+      "url": "https://api.plyr.fm/health",
+      "status": 200,
+      "ok": true,
+      "ms": 249
+    },
+    {
+      "project": "plyr.fm",
+      "name": "moderation",
+      "url": "https://moderation.plyr.fm/",
+      "status": 200,
+      "ok": true,
+      "ms": 142
+    },
+    {
+      "project": "plyr.fm",
+      "name": "transcoder",
+      "url": "https://plyr-transcoder.fly.dev/health",
+      "status": 200,
+      "ok": true,
+      "ms": 1502
+    },
+    {
+      "project": "plyr.fm",
+      "name": "frontend",
+      "url": "https://plyr.fm",
+      "status": 200,
+      "ok": true,
+      "ms": 277
+    },
+    {
+      "project": "plyr.fm",
+      "name": "docs",
+      "url": "https://docs.plyr.fm",
+      "status": 200,
+      "ok": true,
+      "ms": 191
+    },
+    {
+      "project": "plyr.fm",
+      "name": "mcp",
+      "url": "https://plyrfm.fastmcp.app/mcp",
+      "status": 200,
+      "ok": true,
+      "ms": 803
+    },
+    {
+      "project": "typeahead",
+      "name": "worker",
+      "url": "https://typeahead.waow.tech/stats",
+      "status": 200,
+      "ok": true,
+      "ms": 695
+    },
+    {
+      "project": "typeahead",
+      "name": "ingester",
+      "url": "https://typeahead-ingester.fly.dev/health",
+      "status": 200,
+      "ok": true,
+      "ms": 309
+    },
+    {
+      "project": "pub-search",
+      "name": "backend",
+      "url": "https://leaflet-search-backend.fly.dev/health",
+      "status": 200,
+      "ok": true,
+      "ms": 305
+    },
+    {
+      "project": "pub-search",
+      "name": "frontend",
+      "url": "https://pub-search.waow.tech",
+      "status": 200,
+      "ok": true,
+      "ms": 498
+    },
+    {
+      "project": "pub-search",
+      "name": "mcp",
+      "url": "https://pub-search-by-zzstoatzz.fastmcp.app/mcp",
+      "status": 200,
+      "ok": true,
+      "ms": 624
+    },
+    {
+      "project": "stream",
+      "name": "status",
+      "url": "https://stream.waow.tech/status",
+      "status": 200,
+      "ok": true,
+      "ms": 945
+    },
+    {
+      "project": "rally",
+      "name": "website",
+      "url": "https://rally.waow.tech",
+      "status": 200,
+      "ok": true,
+      "ms": 558
+    },
+    {
+      "project": "doodl",
+      "name": "website",
+      "url": "https://doodl.waow.tech",
+      "status": 200,
+      "ok": true,
+      "ms": 782
+    },
+    {
+      "project": "zds",
+      "name": "PDS health",
+      "url": "https://pds.zat.dev/xrpc/_health",
+      "status": 200,
+      "ok": true,
+      "ms": 712
+    },
+    {
+      "project": "birds.place",
+      "name": "website",
+      "url": "https://birds.place",
+      "status": 200,
+      "ok": true,
+      "ms": 1410
+    },
+    {
+      "project": "strata",
+      "name": "website",
+      "url": "https://strata.zat.dev",
+      "status": 200,
+      "ok": true,
+      "ms": 830
+    },
+    {
+      "project": "relay",
+      "name": "indigo",
+      "url": "https://relay.waow.tech/xrpc/_health",
+      "status": 200,
+      "ok": true,
+      "ms": 1291
+    },
+    {
+      "project": "relay",
+      "name": "indigo grafana",
+      "url": "https://relay-metrics.waow.tech/api/health",
+      "status": 200,
+      "ok": true,
+      "ms": 1342
+    },
+    {
+      "project": "relay",
+      "name": "Light Rail",
+      "url": "https://relay.waow.tech/xrpc/com.atproto.sync.listReposByCollection?collection=app.bsky.feed.post&limit=1",
+      "status": 200,
+      "ok": true,
+      "ms": 1311
+    },
+    {
+      "project": "relay-eval",
+      "name": "relay-eval",
+      "url": "https://relay-eval.waow.tech",
+      "status": 200,
+      "ok": true,
+      "ms": 1384
+    },
+    {
+      "project": "zlay",
+      "name": "zlay",
+      "url": "https://zlay.waow.tech/_health",
+      "status": 200,
+      "ok": true,
+      "ms": 1801
+    },
+    {
+      "project": "zlay",
+      "name": "zlay grafana",
+      "url": "https://zlay-metrics.waow.tech/api/health",
+      "status": 200,
+      "ok": true,
+      "ms": 1855
+    },
+    {
+      "project": "coral",
+      "name": "backend",
+      "url": "https://coral.fly.dev/health",
+      "status": 200,
+      "ok": true,
+      "ms": 1390
+    },
+    {
+      "project": "coral",
+      "name": "frontend",
+      "url": "https://coral.waow.tech",
+      "status": 200,
+      "ok": true,
+      "ms": 1519
+    },
+    {
+      "project": "find-bufo",
+      "name": "search",
+      "url": "https://find-bufo.com/",
+      "status": 200,
+      "ok": true,
+      "ms": 2534
+    },
+    {
+      "project": "find-bufo",
+      "name": "bot",
+      "url": "https://bufo-bot.fly.dev/",
+      "status": 200,
+      "ok": true,
+      "ms": 1504
+    },
+    {
+      "project": "phi",
+      "name": "api",
+      "url": "https://phi.zzstoatzz.io/health",
+      "status": 200,
+      "ok": true,
+      "ms": 1612
+    },
+    {
+      "project": "phi",
+      "name": "docs",
+      "url": "https://phi.zzstoatzz.io/docs",
+      "status": 200,
+      "ok": true,
+      "ms": 1642
+    },
+    {
+      "project": "prefect",
+      "name": "api",
+      "url": "https://prefect-server.waow.tech/api/health",
+      "status": 200,
+      "ok": true,
+      "ms": 2037
+    },
+    {
+      "project": "prefect",
+      "name": "grafana",
+      "url": "https://prefect-metrics.waow.tech/api/health",
+      "status": 200,
+      "ok": true,
+      "ms": 2108
+    },
+    {
+      "project": "prefect",
+      "name": "discovery pool",
+      "url": "https://hub.waow.tech/api/agents/discovery-pool",
+      "status": 200,
+      "ok": true,
+      "ms": 2150
+    },
+    {
+      "project": "PDS",
+      "name": "PDS",
+      "url": "https://pds.zzstoatzz.io/xrpc/_health",
+      "status": 200,
+      "ok": true,
+      "ms": 1966
+    },
+    {
+      "project": "pdsx",
+      "name": "pdsx mcp",
+      "url": "https://pdsx-by-zzstoatzz.fastmcp.app/mcp",
+      "status": 200,
+      "ok": true,
+      "ms": 2599
+    },
+    {
+      "project": "pollz",
+      "name": "pollz backend",
+      "url": "https://pollz-backend.fly.dev/health",
+      "status": 200,
+      "ok": true,
+      "ms": 2061
+    },
+    {
+      "project": "pollz",
+      "name": "pollz frontend",
+      "url": "https://pollz.waow.tech",
+      "status": 200,
+      "ok": true,
+      "ms": 2170
+    },
+    {
+      "project": "music-feed",
+      "name": "music-feed",
+      "url": "https://zig-bsky-feed.fly.dev/health",
+      "status": 200,
+      "ok": true,
+      "ms": 2133
+    },
+    {
+      "project": "at-me",
+      "name": "at-me",
+      "url": "https://at-me.wisp.place",
+      "status": 200,
+      "ok": true,
+      "ms": 2710
+    },
+    {
+      "project": "status",
+      "name": "status",
+      "url": "https://status.zzstoatzz.io",
+      "status": 200,
+      "ok": true,
+      "ms": 2332
+    },
+    {
+      "project": "evergreen",
+      "name": "website",
+      "url": "https://nate.tngl.io/",
+      "status": 200,
+      "ok": true,
+      "ms": 2394
+    },
+    {
+      "project": "pensieve",
+      "name": "website",
+      "url": "https://pensieve.waow.tech",
+      "status": 200,
+      "ok": true,
+      "ms": 2204
+    },
+    {
+      "project": "noti",
+      "name": "website",
+      "url": "https://noti.waow.tech",
+      "status": 200,
+      "ok": true,
+      "ms": 2729
+    },
+    {
+      "project": "bisk",
+      "name": "website",
+      "url": "https://bisk.social",
+      "status": 200,
+      "ok": true,
+      "ms": 2522
+    },
+    {
+      "project": "brand",
+      "name": "website",
+      "url": "https://brand.waow.tech",
+      "status": 200,
+      "ok": true,
+      "ms": 2447
+    },
+    {
+      "project": "race38",
+      "name": "website",
+      "url": "https://bsky38.waow.tech",
+      "status": 200,
+      "ok": true,
+      "ms": 2823
+    },
+    {
+      "project": "waow.tech",
+      "name": "website",
+      "url": "https://waow.tech",
+      "status": 200,
+      "ok": true,
+      "ms": 2612
+    },
+    {
+      "project": "chicago.at",
+      "name": "website",
+      "url": "https://chicago.at",
+      "status": 200,
+      "ok": true,
+      "ms": 3231
+    }
+  ],
+  "inventoryCommit": "fec9f92f0ef3c69334415017804bf1d44097030d",
+  "inventoryMatchedPublished": true,
+  "fleetDeployment": {
+    "id": "fb012d28-b91e-48f9-af2a-e55fc2ce1b4d",
+    "pin": "abbd167d7abd6caa35262c1a417875454a8957ba",
+    "active": true,
+    "cron": "3,18,33,48 * * * *",
+    "verifiedRunId": "82b2af38-b97a-4e4e-aeb3-cd4819a86481",
+    "verifiedRunStartedAt": "2026-09-20T19:33:13.260285Z",
+    "verifiedRunEndedAt": "2026-09-20T19:33:36.307877Z",
+    "targets": [
+      "stream (deep)",
+      "stream site",
+      "relay-eval",
+      "jetstream.waow.tech",
+      "hub",
+      "coral",
+      "plyr.fm",
+      "prefect server"
+    ]
+  }
+}

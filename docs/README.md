@@ -22,6 +22,7 @@ deeper dive into phi's design.
 - [internal/cockpit.md](internal/cockpit.md) — the web UI (internal, operator-facing)
 
 - [internal/operator-consolidation-2026-09-19.md](internal/operator-consolidation-2026-09-19.md) — consolidation evidence, documentation audit, and verification
+- [internal/evergreen-health-survey-2026-09-20.md](internal/evergreen-health-survey-2026-09-20.md) — all 48 Evergreen entries, health-check meaning, and verified scheduled coverage gaps
 
 ## proposed work
 
