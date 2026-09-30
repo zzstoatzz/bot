@@ -17,7 +17,11 @@ mostly after 09-06, are one record, carried by a fact, and stop.
   jokes back. Her personality now carries the disposition.
 - [RECENT OPERATIONS] shows top-level posts as a topic label from a Luna
   sub-agent, keeping links; her own sentences no longer render there. This was
-  phi's proposal. A failed label falls back to the old preview.
+  phi's proposal. A failed label falls back to the old preview. Each post is
+  labelled once: overlapping renders share the request in flight, and labels
+  persist in `/data/post_topics.json`. The first release kept them in memory,
+  so every restart relabelled the whole window, and a render overlapping the
+  startup render relabelled it twice (12 calls for 6 posts after v622).
 - Four em dashes left the static operational text.
 
 Measured and left alone: the context blocks run 1.2 em dashes per 1k chars and

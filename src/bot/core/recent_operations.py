@@ -16,17 +16,14 @@ minutes. `_summarize` owns per-collection formatting; `_render` owns the block.
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import re
 import time
 from typing import NotRequired, TypedDict
 
 from atproto_client.models.utils import get_model_as_dict
-from pydantic_ai import Agent
 
-from bot.config import settings
-from bot.core import ops_log
+from bot.core import ops_log, post_topics
 from bot.core.atproto_client import BotClient
 from bot.utils.time import relative_when
 
@@ -119,55 +116,14 @@ def _top_level_text(nsid: str, value: dict) -> str:
     return " ".join((value.get("text", "") or "").split())
 
 
-TOPIC_LABEL_MAX = 120
-_topic_cache: dict[str, str] = {}
-_topic_agent: Agent | None = None
-
-
-def _get_topic_agent() -> Agent:
-    global _topic_agent
-    if _topic_agent is None:
-        _topic_agent = Agent[None, str](
-            name="phi-post-topic",
-            model=settings.extraction_model,
-            system_prompt=(
-                "Label the subject of one social media post for a deduplication "
-                "index. Output one line of at most twelve words: the concrete "
-                "subject, naming the people, projects, places, numbers and events "
-                "it is about. Use plain nouns, like a filing label. Do not quote "
-                "the post, copy its phrasing, or describe its tone or argument. "
-                "No punctuation beyond commas and semicolons."
-            ),
-            output_type=str,
-        )
-    return _topic_agent
-
-
-async def _label_topic(text: str) -> str:
-    try:
-        result = await _get_topic_agent().run(text)
-    except Exception as e:
-        logger.warning(f"post topic label failed: {type(e).__name__}: {e}")
-        return ""
-    label = " ".join((result.output or "").split())
-    return label[:TOPIC_LABEL_MAX]
-
-
 async def _apply_topic_labels(rows: list[_Row]) -> list[_Row]:
     """Swap each post's text preview for its topic label; a failed label keeps the preview."""
-    current = {r["post_text"] for r in rows if r.get("post_text")}
-    for stale in set(_topic_cache) - current:
-        del _topic_cache[stale]
-    pending = current - set(_topic_cache)
-    if pending:
-        texts = sorted(pending)
-        labels = await asyncio.gather(*(_label_topic(t) for t in texts))
-        for text, label in zip(texts, labels, strict=True):
-            if label:
-                _topic_cache[text] = label
+    labels = await post_topics.labels_for(
+        {r["post_text"] for r in rows if r.get("post_text")}
+    )
     out: list[_Row] = []
     for r in rows:
-        label = _topic_cache.get(r.get("post_text", ""))
+        label = labels.get(r.get("post_text", ""))
         if label:
             linked = r["summary"].rfind(" [linked: ")
             r = r.copy()

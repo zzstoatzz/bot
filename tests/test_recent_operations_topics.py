@@ -5,10 +5,12 @@ recent prose in every prompt. A label keeps the subject recognisable for
 dedup; a failed label must fall back to the preview so continuity holds.
 """
 
+import asyncio
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from bot.core import post_topics
 from bot.core import recent_operations as ro
 
 POST_TEXT = (
@@ -43,15 +45,17 @@ def _rows(text: str = POST_TEXT) -> list[ro._Row]:
 
 
 @pytest.fixture(autouse=True)
-def _clear_cache():
-    ro._topic_cache.clear()
+def _topic_store(tmp_path, monkeypatch):
+    monkeypatch.setattr(post_topics, "TOPIC_CACHE_FILE", tmp_path / "post_topics.json")
+    monkeypatch.setattr(post_topics, "_topic_cache", None)
+    post_topics._inflight.clear()
     yield
-    ro._topic_cache.clear()
+    post_topics._inflight.clear()
 
 
 async def test_labelled_post_renders_topic_without_her_prose():
     label = AsyncMock(return_value="plagiarism case, linux box compromise")
-    with patch.object(ro, "_label_topic", label):
+    with patch.object(post_topics, "_label_topic", label):
         block = ro._render(await ro._apply_topic_labels(_rows()))
 
     assert "topic: plagiarism case, linux box compromise" in block
@@ -75,7 +79,7 @@ async def test_label_keeps_facet_link_targets():
         local=True,
         post_text=ro._top_level_text("app.bsky.feed.post", value),
     )
-    with patch.object(ro, "_label_topic", AsyncMock(return_value="a writeup")):
+    with patch.object(post_topics, "_label_topic", AsyncMock(return_value="a writeup")):
         [labelled] = await ro._apply_topic_labels([row])
 
     assert labelled["summary"] == (
@@ -84,7 +88,7 @@ async def test_label_keeps_facet_link_targets():
 
 
 async def test_failed_label_keeps_the_preview():
-    with patch.object(ro, "_label_topic", AsyncMock(return_value="")):
+    with patch.object(post_topics, "_label_topic", AsyncMock(return_value="")):
         block = ro._render(await ro._apply_topic_labels(_rows()))
 
     assert '"The plagiarism was airtight.' in block
@@ -92,20 +96,63 @@ async def test_failed_label_keeps_the_preview():
 
 async def test_each_post_is_labelled_once():
     label = AsyncMock(return_value="plagiarism case")
-    with patch.object(ro, "_label_topic", label):
+    with patch.object(post_topics, "_label_topic", label):
         await ro._apply_topic_labels(_rows())
         await ro._apply_topic_labels(_rows())
 
     assert label.await_count == 1
 
 
+async def test_overlapping_renders_share_one_label_call():
+    started = asyncio.Event()
+    release = asyncio.Event()
+    calls = 0
+
+    async def slow_label(text: str) -> str:
+        nonlocal calls
+        calls += 1
+        started.set()
+        await release.wait()
+        return "plagiarism case"
+
+    with patch.object(post_topics, "_label_topic", slow_label):
+        first = asyncio.create_task(ro._apply_topic_labels(_rows()))
+        await started.wait()
+        second = asyncio.create_task(ro._apply_topic_labels(_rows()))
+        await asyncio.sleep(0)
+        release.set()
+        a, b = await asyncio.gather(first, second)
+
+    assert calls == 1
+    assert (
+        a[0]["summary"]
+        == b[0]["summary"]
+        == ("top-level post, topic: plagiarism case [linked: example.com/writeup]")
+    )
+
+
+async def test_labels_survive_a_restart(monkeypatch):
+    with patch.object(
+        post_topics, "_label_topic", AsyncMock(return_value="plagiarism case")
+    ):
+        await ro._apply_topic_labels(_rows())
+
+    monkeypatch.setattr(post_topics, "_topic_cache", None)
+    label = AsyncMock(return_value="relabelled")
+    with patch.object(post_topics, "_label_topic", label):
+        [row, _] = await ro._apply_topic_labels(_rows())
+
+    assert label.await_count == 0
+    assert "topic: plagiarism case" in row["summary"]
+
+
 async def test_cache_drops_posts_that_left_the_window():
-    with patch.object(ro, "_label_topic", AsyncMock(return_value="old topic")):
+    with patch.object(post_topics, "_label_topic", AsyncMock(return_value="old topic")):
         await ro._apply_topic_labels(_rows("an older post"))
-    with patch.object(ro, "_label_topic", AsyncMock(return_value="new topic")):
+    with patch.object(post_topics, "_label_topic", AsyncMock(return_value="new topic")):
         await ro._apply_topic_labels(_rows("a newer post"))
 
-    assert list(ro._topic_cache) == ["a newer post"]
+    assert list(post_topics._load_topics()) == ["a newer post"]
 
 
 def test_ops_log_rows_carry_top_level_text_only():
