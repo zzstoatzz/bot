@@ -43,7 +43,8 @@ Measured and left alone: the context blocks run 1.2 em dashes per 1k chars and
 the 44 function-tool definitions 0.9, against 3.1 to 3.4 in her posts. The dash
 habit does not come from mirroring the prompt, so tool docstrings were not
 rewritten for voice. The baseline count on Sonnet 5.5 is due after about 50
-posts under the new personality.
+posts under the new personality; `scripts/voice_tics.py` reproduces these
+counts for any date window.
 
 ## 2026-09-28 — Run phi on Claude Sonnet 5.5
 
