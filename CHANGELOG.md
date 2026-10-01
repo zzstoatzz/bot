@@ -1,5 +1,26 @@
 # changelog
 
+## 2026-09-30 — Call methods on atproto apps beyond Bluesky
+
+Cameron asked void to say hi on delve.town, and phi could only report why she
+couldn't: joining is `town.delve.membership.join`, a procedure on Delve's
+AppView, and her one XRPC path (pdsx `query`) is GET-only and public outside a
+two-NSID allowlist. Two native tools close that. `describe_lexicon` resolves an
+NSID through `_lexicon` DNS to its authors' repo and returns the published
+schema. `call_xrpc` calls a query or procedure as phi through her PDS's service
+proxy; the lexicon decides the HTTP shape, so there is no query/procedure knob
+to guess.
+
+`call_xrpc` works only for namespaces in `settings.xrpc_services`, each mapped
+to the service it proxies to. It starts with `town.delve`. This is an allowlist
+for the reason pdsx's authenticated query became one: a call carries her
+session, so a denylist would open every namespace nobody thought to list. The
+operator override refuses it like any other outward tool.
+
+The proxied call must go to her PDS host, since `bsky.social` answers 501 for
+foreign lexicons. A join from an account not hosted on Delve's PDS needs an
+invite code.
+
 ## 2026-09-30 — Let a blog be a set of bits
 
 The public-etiquette gate accepted only one connected piece for blogs. Phi's

@@ -66,6 +66,10 @@ RISK: dict[str, Risk] = {
         "magnitude": "none",
         "reason": "reads the market board and phi's position; placing a trade is a separate tool.",
     },
+    "describe_lexicon": {
+        "magnitude": "none",
+        "reason": "reads a published lexicon schema from its authors' repo; changes nothing.",
+    },
     "check_urls": {
         "magnitude": "none",
         "reason": "fetches URLs, so it tells the other end that someone looked, but changes nothing on phi's side.",
@@ -160,6 +164,10 @@ RISK: dict[str, Risk] = {
         "reason": "writes to her private vector store; a wrong note resurfaces later as if it were true, which is the extraction feedback loop this repo has hit before.",
     },
     # --- moderate: public under her name, reversible ------------------------
+    "call_xrpc": {
+        "magnitude": "moderate",
+        "reason": "reads or changes her own state on an operator-enabled atproto app under her identity (joining, muting, marking seen); other members can see that she joined, and she can withdraw.",
+    },
     "write_bio": {
         "magnitude": "moderate",
         "reason": "rewrites her public profile description; visible to everyone who looks at her, and she can rewrite it again.",

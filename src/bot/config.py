@@ -364,6 +364,16 @@ class Settings(BaseSettings):
         description="URL of the tangled MCP server (fastmcp.app deployment)",
     )
 
+    xrpc_services: dict[str, str] = Field(
+        default={"town.delve": "did:web:api.delve.town#bsky_appview"},
+        description=(
+            "Namespaces phi may call methods in with her own session, each "
+            "mapped to the service her PDS proxies them to. An allowlist: a "
+            "call acts as phi and reads what only she can read, so each "
+            "namespace is a deliberate addition."
+        ),
+    )
+
     # Lexidraw — drawings as app.lexidraw.scene records in phi's own repo,
     # via the stdio node MCP server baked into the image. Absent path (dev,
     # local) simply leaves the toolset out.

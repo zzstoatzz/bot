@@ -25,6 +25,7 @@ def register_all(agent, graze_client: GrazeClient):
         topchicken,
         traces,
         workflows,
+        xrpc,
     )
 
     operator_reports.register(agent)
@@ -45,6 +46,7 @@ def register_all(agent, graze_client: GrazeClient):
     topchicken.register(agent)
     traces.register(agent)
     workflows.register(agent)
+    xrpc.register(agent)
 
 
 __all__ = ["PhiDeps", "_check_services_impl", "register_all"]
