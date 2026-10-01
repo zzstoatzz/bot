@@ -166,7 +166,7 @@ RISK: dict[str, Risk] = {
     # --- moderate: public under her name, reversible ------------------------
     "call_xrpc": {
         "magnitude": "moderate",
-        "reason": "reads or changes her own state on an operator-enabled atproto app under her identity (joining, muting, marking seen); other members can see that she joined, and she can withdraw.",
+        "reason": "reads or changes her own state on an atproto app under her identity, one operator-enabled method at a time (joining, withdrawing, marking seen); other members can see that she joined, and she can withdraw.",
     },
     "write_bio": {
         "magnitude": "moderate",

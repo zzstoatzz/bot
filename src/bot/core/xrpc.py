@@ -37,11 +37,15 @@ def authority_domain(nsid: str) -> str:
 
 
 def service_for(nsid: str) -> str | None:
-    """The service an allowed namespace's methods are proxied to, or None."""
-    for namespace, service in settings.xrpc_services.items():
-        if nsid.startswith(f"{namespace}."):
+    """The service an enabled method is proxied to, or None."""
+    for service, methods in settings.xrpc_methods.items():
+        if nsid in methods:
             return service
     return None
+
+
+def enabled_methods() -> list[str]:
+    return sorted(m for methods in settings.xrpc_methods.values() for m in methods)
 
 
 async def lexicon_authority(nsid: str) -> str:

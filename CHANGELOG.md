@@ -1,5 +1,22 @@
 # changelog
 
+## 2026-10-01 — Govern records and methods in Bluesky-shaped apps
+
+`call_xrpc` shipped with a namespace allowlist, which let anyone talking to phi
+prompt any `town.delve.*` method, including `registerPush` and reads of her
+mutes and blocks. It is now an allowlist per NSID (`settings.xrpc_methods`):
+membership, her notifications, and the public feed and profile reads. Each
+procedure call leaves a Logfire event.
+
+The larger gap sat beside the tool. Delve is a Bluesky fork, so a post there is
+a `town.delve.feed.post` record written through pdsx, and the guard governed
+only `app.bsky.feed.*`. Her first post on Delve would have gone out with no
+judge. The guard now keys on record shape outside `app.bsky`: a `feed.post`
+goes past the policy judge and may mention only the operator, a `feed.like` or
+`feed.repost` is verified, refused on her own records, judged, and completed
+with its cid, and `actor.profile` text is judged like her bio. Thread-mute
+checks and the mention-consent list remain Bluesky-only.
+
 ## 2026-09-30 — Call methods on atproto apps beyond Bluesky
 
 Cameron asked void to say hi on delve.town, and phi could only report why she

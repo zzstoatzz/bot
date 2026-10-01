@@ -26,6 +26,7 @@ from uuid import uuid4
 import logfire
 
 from bot.core import ops_log
+from bot.core.app_records import govern_app_record, governed_shape
 from bot.core.atproto_client import bot_client
 from bot.core.override import get_override, refusal_text
 from bot.core.prior_coverage import coverage_note
@@ -307,6 +308,18 @@ def make_mcp_guard(server: str, run_label: str = ""):
                 changes=changes,
             )
 
+        warn_note = ""
+        if (
+            server == "pdsx"
+            and name in ("create_record", "update_record")
+            and (shape := governed_shape(_pdsx_collection(tool_args)))
+        ):
+            refusal, warn_note, tool_args = await govern_app_record(
+                ctx, _pdsx_collection(tool_args), shape, tool_args
+            )
+            if refusal:
+                return refusal
+
         if (
             server == "pdsx"
             and changes
@@ -409,6 +422,8 @@ def make_mcp_guard(server: str, run_label: str = ""):
                         deps.library_revision = ops_log.library_revision
         else:
             result = await _invoke(call_tool, server, name, tool_args, run_label)
+        if warn_note and isinstance(result, str):
+            result += warn_note
         return await _with_coverage(ctx, result)
 
     return process

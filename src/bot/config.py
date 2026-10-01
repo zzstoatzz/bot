@@ -364,13 +364,27 @@ class Settings(BaseSettings):
         description="URL of the tangled MCP server (fastmcp.app deployment)",
     )
 
-    xrpc_services: dict[str, str] = Field(
-        default={"town.delve": "did:web:api.delve.town#bsky_appview"},
+    xrpc_methods: dict[str, tuple[str, ...]] = Field(
+        default={
+            "did:web:api.delve.town#bsky_appview": (
+                "town.delve.membership.getMembership",
+                "town.delve.membership.join",
+                "town.delve.membership.withdraw",
+                "town.delve.notification.listNotifications",
+                "town.delve.notification.getUnreadCount",
+                "town.delve.notification.updateSeen",
+                "town.delve.actor.getProfile",
+                "town.delve.feed.getTimeline",
+                "town.delve.feed.getAuthorFeed",
+                "town.delve.feed.getPostThread",
+                "town.delve.feed.getPosts",
+            ),
+        },
         description=(
-            "Namespaces phi may call methods in with her own session, each "
-            "mapped to the service her PDS proxies them to. An allowlist: a "
-            "call acts as phi and reads what only she can read, so each "
-            "namespace is a deliberate addition."
+            "The methods phi may call with her own session, grouped by the "
+            "service her PDS proxies them to. An allowlist per method: a call "
+            "acts as phi and reads what only she can read, so each NSID is a "
+            "deliberate addition."
         ),
     )
 

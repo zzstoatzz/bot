@@ -3,12 +3,18 @@
 import json
 from typing import Annotated, Any
 
+import logfire
 from pydantic import Field
 from pydantic_ai import RunContext
 
-from bot.config import settings
 from bot.core.override import get_override, refusal_text
-from bot.core.xrpc import call_method, fetch_lexicon, service_for, split_nsid
+from bot.core.xrpc import (
+    call_method,
+    enabled_methods,
+    fetch_lexicon,
+    service_for,
+    split_nsid,
+)
 from bot.tools._helpers import PhiDeps
 
 MAX_SCHEMA_CHARS = 30_000
@@ -81,13 +87,13 @@ def register(agent):
         """Call a method on an atproto app outside Bluesky, as yourself.
 
         A query reads your own state on that app (membership, notifications).
-        A procedure changes it: joining, subscribing, muting, registering.
+        A procedure changes it: joining, withdrawing, marking notifications seen.
         Your PDS forwards the call to the app's service and signs it as you.
         Read the method with describe_lexicon first so the arguments match its
         schema and you know its named errors.
 
-        Works for the namespaces the operator has enabled; the refusal for any
-        other names them. Records in those apps are ordinary repo records,
+        Works for the methods the operator has enabled; the refusal for any
+        other lists them. Records in those apps are ordinary repo records,
         written with the pdsx record tools.
         """
         try:
@@ -97,9 +103,9 @@ def register(agent):
         service = service_for(name)
         if service is None:
             return (
-                f"{name} is outside the namespaces enabled for call_xrpc "
-                f"({', '.join(sorted(settings.xrpc_services))}). Nothing was called. "
-                "The operator adds a namespace; ask with report_operator."
+                f"{name} is not one of the methods enabled for call_xrpc. Nothing "
+                f"was called. Enabled: {', '.join(enabled_methods())}. The operator "
+                "adds a method; ask with report_operator."
             )
         override = await get_override()
         if override["active"]:
@@ -108,6 +114,15 @@ def register(agent):
             result = await call_method(name, arguments, service)
         except LookupError as e:
             return f"could not call {name}: {e}"
+        if result["kind"] == "procedure":
+            logfire.info(
+                "call_xrpc procedure {nsid} via {service}: {status}",
+                nsid=name,
+                service=service,
+                status=result["status"],
+                ok=result["ok"],
+                arguments=arguments,
+            )
         return json.dumps(
             {"nsid": name, "service": service, **result}, ensure_ascii=False
         )

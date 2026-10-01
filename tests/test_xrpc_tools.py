@@ -80,28 +80,44 @@ def test_authority_domain_reverses_all_but_the_name():
         split_nsid("https://delve.town")
 
 
-def test_only_enabled_namespaces_have_a_service():
+def test_only_enabled_methods_have_a_service():
     assert service_for("town.delve.membership.join") == DELVE
-    assert service_for("town.delvers.membership.join") is None
+    assert service_for("town.delve.notification.registerPush") is None
+    assert service_for("town.delve.membership") is None
 
 
 @pytest.mark.parametrize(
     "nsid",
     [
         "com.atproto.server.deleteAccount",
-        "app.bsky.actor.getPreferences",
         "chat.bsky.convo.listConvos",
+        "town.delve.notification.registerPush",
+        "town.delve.graph.getMutes",
         "example.unknown.thing.do",
     ],
 )
-async def test_a_namespace_that_is_not_enabled_is_never_called(nsid):
+async def test_a_method_that_is_not_enabled_is_never_called(nsid):
     with (
         patch.object(xrpc, "call_method", AsyncMock()) as call,
         patch.object(xrpc, "get_override", AsyncMock(return_value=INACTIVE)),
     ):
         result = await tools()["call_xrpc"](CTX, nsid)
-    assert "Nothing was called" in result and "town.delve" in result
+    assert "Nothing was called" in result
+    assert "town.delve.membership.join" in result
     call.assert_not_awaited()
+
+
+async def test_a_procedure_is_logged_and_a_query_is_not():
+    for kind, logged in (("procedure", 1), ("query", 0)):
+        output = {"kind": kind, "ok": True, "status": 200, "output": {}}
+        with (
+            patch.object(xrpc, "call_method", AsyncMock(return_value=output)),
+            patch.object(xrpc, "get_override", AsyncMock(return_value=INACTIVE)),
+            patch.object(xrpc.logfire, "info") as info,
+        ):
+            await tools()["call_xrpc"](CTX, "town.delve.membership.join", {"a": 1})
+        assert info.call_count == logged
+    assert info.call_count == 0
 
 
 async def test_override_stops_an_enabled_call():
