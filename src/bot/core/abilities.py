@@ -226,10 +226,6 @@ RISK: dict[str, Risk] = {
         "magnitude": "high",
         "reason": "spends real money on a live market; a filled order cannot be recalled.",
     },
-    "manage_feeds": {
-        "magnitude": "high",
-        "reason": "creates or deletes public feeds other people may be subscribed to; the delete is not recoverable from here.",
-    },
 }
 
 

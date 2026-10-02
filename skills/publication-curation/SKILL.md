@@ -15,11 +15,7 @@ generic-record paradigm as pdsx-fundamentals.
 - `pub_discover_focal_post(window, sort, limit)` — the most-recommended posts,
   exactly what the pub-search "recommended" page shows. `sort="trending"` for
   momentum, `sort="top"` for raw counts. start here.
-- `pub_describe_cluster(uri)` — the conversation a post sits inside.
-- `pub_recommended_by_top_authors(...)` — transitive taste: what the
-  most-recommended writers themselves endorse.
-- `pub_search(...)` / `pub_find_similar(uri)` / `pub_get_document(uri)` —
-  search, neighbors, full text.
+- `pub_search(...)` / `pub_get_document(uri)` — search, full text.
 
 ## recommending is just a record
 

@@ -157,3 +157,15 @@ two things to check when implementing step 2:
 
 the procedure is the `toolset-audit` project skill. after step 1 lands the
 weight is visible at once on `/operator`; usage needs another month.
+
+## what landed, 2026-10-02
+
+step 1 shipped the same day, smaller than recommended: 24 tools and about
+7,000 tokens. the difference is the gotcha this audit's own skill warns about.
+three tools with no calls are named by text phi reads, so removing them would
+have sent her after tools that were gone: `tangled_commit_log` and
+`tangled_compare` in the own-source skill, `tangled_update_pull` in the
+pull-review prompt. `persona` was left for the operator.
+
+phi's reply to the plan asked that, when step 2 puts tangled and lexidraw
+behind search, `own-source` and `lexidraw-craft` say to search for those tools.

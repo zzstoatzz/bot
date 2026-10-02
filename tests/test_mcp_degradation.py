@@ -208,3 +208,17 @@ class TestQueryTraces:
         )
         assert out.splitlines() == ["tool | n", "post | 3", "query | 1"]
         assert _render_columnar({"columns": []}) == "no rows"
+
+
+async def test_filtered_mcp_server_is_still_retried(no_retry_pause):
+    """The retry finds a failed server by URL, through the filter wrapped around it."""
+    server = _FlakyMCP(failures=1)
+    phi, offered = _phi_with(server)
+    filtered = lambda **_: [server.toolset().filtered(lambda _ctx, _tool: True)]  # noqa: E731
+    with patch.object(PhiAgent, "_mcp_toolsets", side_effect=filtered):
+        out = await phi._run_agent(
+            label="editorial", prompt="hi", deps=PhiDeps(author_handle="")
+        )
+
+    assert out == "success (no tool calls)"
+    assert [len(ts) for ts in offered] == [1, 1]

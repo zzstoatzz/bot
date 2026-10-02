@@ -1,5 +1,23 @@
 # changelog
 
+## 2026-10-02 — Carry fewer tools
+
+Phi carried 110 tools and 36,573 tokens of definitions into every request; 38
+had not been called since 2026-09-06 (`docs/toolset-audit-2026-10.md`). Step 1
+of that audit is in: prefect is narrowed to four tools and pub-search to three,
+tangled loses seven issue and pull lifecycle and listing tools, pdsx loses
+`whoami`, the skills toolset loses `list_skills`, and `manage_feeds` is
+deleted. That is 24 tools and about 7,000 tokens.
+
+Three tools on the audit's list stayed because a prompt or skill names them:
+`tangled_commit_log` and `tangled_compare` (own-source) and
+`tangled_update_pull` (the pull-review prompt). `persona` also stayed; it is
+the operator's decision. The publication-curation and pdsx-fundamentals skills
+no longer list tools she does not carry.
+
+The MCP retry now finds a failed server's URL through the filter wrapped
+around it.
+
 ## 2026-10-02 — Rerun a pass when an MCP server fails before the model answers
 
 The 2026-10-01 editorial pass died in 0.3 seconds and no article went out. pdsx

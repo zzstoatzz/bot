@@ -1,9 +1,7 @@
-"""Feed tools — graze feed CRUD, timeline reading, following."""
+"""Feed tools — timeline and feed reading, following."""
 
 import logging
-from typing import Annotated, Literal
 
-from pydantic import Field
 from pydantic_ai import RunContext
 
 from bot.config import settings
@@ -17,124 +15,6 @@ logger = logging.getLogger("bot.tools.feeds")
 
 def register(agent, graze_client: GrazeClient):
     @agent.tool
-    async def manage_feeds(
-        ctx: RunContext[PhiDeps],
-        action: Annotated[
-            Literal["list", "create", "delete"],
-            Field(description="list your graze feeds, create a new one, or delete one"),
-        ],
-        name: Annotated[
-            str | None,
-            Field(
-                description=(
-                    "[create] url-safe slug (e.g. 'electronic-music'); becomes "
-                    "the feed rkey"
-                )
-            ),
-        ] = None,
-        display_name: Annotated[
-            str | None, Field(description="[create] human-readable feed title")
-        ] = None,
-        description: Annotated[
-            str | None, Field(description="[create] what the feed shows")
-        ] = None,
-        filter_manifest: Annotated[
-            dict | None,
-            Field(
-                description=(
-                    "[create] graze filter DSL (grazer engine operators). key "
-                    "operators: regex_any: ['field', ['t1','t2']] (match any, "
-                    "case-insensitive), regex_none (exclude), regex_matches "
-                    "(single regex), and/or: [...filters]. field is usually "
-                    "'text'. example: {'filter': {'and': [{'regex_any': "
-                    "['text', ['jazz', 'bebop']]}]}}"
-                )
-            ),
-        ] = None,
-        algo_id: Annotated[
-            int | None,
-            Field(description="[delete] the numeric id shown by action='list'"),
-        ] = None,
-    ) -> str:
-        """Manage your graze-powered bluesky feeds: list, create, or delete.
-
-        Creating and deleting are owner-only. Deleting removes both the graze
-        registration and the PDS feed generator record. To READ a feed's posts,
-        use read_feed with the feed's name.
-        """
-        if action == "list":
-            try:
-                feeds = await graze_client.list_feeds()
-                if not feeds:
-                    return "no graze feeds found"
-                lines = []
-                for f in feeds:
-                    display = f.get("display_name") or f.get("name") or "unnamed"
-                    aid = f.get("id") or f.get("algo_id") or "?"
-                    uri = f.get("feed_uri") or f.get("uri") or ""
-                    rkey = f.get("record_name") or (
-                        uri.rsplit("/", 1)[-1] if uri else "?"
-                    )
-                    lines.append(f"- {display} | name={rkey} | algo_id={aid}")
-                return "\n".join(lines)
-            except Exception as e:
-                logger.warning(f"manage_feeds list failed: {e}")
-                return f"failed to list feeds: {e}"
-
-        if not _is_owner(ctx):
-            return f"only @{settings.owner_handle} can {action} feeds"
-
-        if action == "create":
-            if not (name and display_name and description and filter_manifest):
-                return (
-                    "create needs name, display_name, description, and filter_manifest"
-                )
-            try:
-                result = await graze_client.create_feed(
-                    rkey=name,
-                    display_name=display_name,
-                    description=description,
-                    filter_manifest=filter_manifest,
-                )
-                return f"feed created: {result['uri']} (algo_id={result['algo_id']})"
-            except Exception as e:
-                logger.warning(f"manage_feeds create failed: {e}")
-                return f"failed to create feed: {e}"
-
-        if algo_id is None:
-            return "delete needs algo_id (see action='list')"
-        try:
-            # find the record_name from graze so we can delete the PDS record too
-            feeds = await graze_client.list_feeds()
-            record_name = None
-            for f in feeds:
-                if f.get("id") == algo_id:
-                    record_name = f.get("record_name")
-                    break
-
-            await graze_client.delete_feed(algo_id)
-
-            if record_name:
-                assert bot_client.client.me is not None
-                try:
-                    bot_client.client.com.atproto.repo.delete_record(
-                        data={
-                            "repo": bot_client.client.me.did,
-                            "collection": "app.bsky.feed.generator",
-                            "rkey": record_name,
-                        }
-                    )
-                except Exception as e:
-                    logger.warning(f"PDS record delete failed: {e}")
-
-            return f"deleted feed algo_id={algo_id}" + (
-                f" and PDS record '{record_name}'" if record_name else ""
-            )
-        except Exception as e:
-            logger.warning(f"manage_feeds delete failed: {e}")
-            return f"failed to delete feed: {e}"
-
-    @agent.tool
     async def read_feed(
         ctx: RunContext[PhiDeps], name: str = "timeline", limit: int = 20
     ) -> str:
@@ -142,7 +22,7 @@ def register(agent, graze_client: GrazeClient):
 
         name: 'timeline' (default) for your following timeline — posts from
         accounts you follow; a saved feed name (e.g. 'for-you'); or one of
-        your own feed slugs (see manage_feeds action='list').
+        your own feed slugs.
         """
         try:
             if name == "timeline":

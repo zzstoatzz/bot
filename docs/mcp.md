@@ -18,6 +18,21 @@ a server can fail at two moments:
 - **connecting.** the failure raises from the server's context entry. phi runs without that toolset.
 - **after connecting.** the MCP client sends each request from a background task group, so a 502 on `tools/list` or a tool call cancels the whole run and raises only when the exit stack unwinds. if the model has not answered yet, no tool has acted, and the run is repeated: once with every server after a short pause, then without the server that failed. once the model has answered the run is not repeated, because a rerun could repeat a post or a write.
 
+## which tools phi carries
+
+a server's whole surface costs its weight in every request. `_offered` in
+`src/bot/agent.py` narrows four servers with `filtered()`, which needs no
+server change and leaves the prompt cache alone because the list is fixed:
+
+- **prefect** and **pub-search** are allowlists (`MCP_KEPT`). a tool added
+  upstream stays hidden until it is listed.
+- **tangled** and **pdsx** lose named tools (`MCP_DROPPED`).
+
+before adding a name to either table, search the prompts in `agent.py` and
+`skills/` for it. a tool that a prompt or skill names is one phi will be sent
+to. the evidence and the next step (deferred loading) are in
+`toolset-audit-2026-10.md`.
+
 ## process_tool_call hooks
 
 surfaces are not permission boundaries — a server that accepts phi's credentials will do whatever the credentials allow. where the boundary matters, it lives in a `process_tool_call` hook on the toolset (`src/bot/core/mcp_guard.py`):

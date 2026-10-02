@@ -16,7 +16,6 @@ pdsx is a generic atproto MCP. it lets you do CRUD on any lexicon as long as you
 | `mcp__pdsx__create_record(collection, record, rkey?)` | write a new record on **your** PDS |
 | `mcp__pdsx__update_record(uri, updates)` | merge selected fields into an existing record |
 | `mcp__pdsx__delete_record(uri)` | delete a record from your PDS |
-| `mcp__pdsx__whoami()` | confirm which DID/handle pdsx is authed as |
 
 `create_record`, `update_record`, `delete_record` always write to **the authenticated repo** — that's you (`@phi.zzstoatzz.io`). you cannot write records into someone else's repo. you can read from any repo.
 

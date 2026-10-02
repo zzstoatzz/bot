@@ -75,6 +75,55 @@ logger = logging.getLogger("bot.agent")
 MCP_ATTEMPTS = 3
 MCP_RETRY_PAUSE_S = 2.0
 
+# What phi carries from each MCP server (docs/toolset-audit-2026-10.md).
+# prefect and pub-search expose a surface built for people working on those
+# services, so she gets an allowlist. tangled and pdsx lose named tools.
+MCP_KEPT: dict[str, frozenset[str]] = {
+    "prefect": frozenset(
+        {
+            "prefect_get_flow_runs",
+            "prefect_get_flow_run_logs",
+            "prefect_get_deployments",
+            "prefect_get_flows",
+        }
+    ),
+    "pub-search": frozenset(
+        {"pub_search", "pub_get_document", "pub_discover_focal_post"}
+    ),
+}
+MCP_DROPPED: dict[str, frozenset[str]] = {
+    "pdsx": frozenset({"whoami"}),
+    "tangled": frozenset(
+        {
+            "tangled_set_pull_state",
+            "tangled_list_pulls",
+            "tangled_update_issue",
+            "tangled_set_issue_state",
+            "tangled_delete_issue",
+            "tangled_list_pipelines",
+            "tangled_list_tags",
+        }
+    ),
+}
+
+
+def _offered(
+    server: str, toolset: AbstractToolset[PhiDeps]
+) -> AbstractToolset[PhiDeps]:
+    """Narrow an MCP server to the tools phi carries from it."""
+    if kept := MCP_KEPT.get(server):
+        return toolset.filtered(lambda _ctx, tool: tool.name in kept)
+    if dropped := MCP_DROPPED.get(server):
+        return toolset.filtered(lambda _ctx, tool: tool.name not in dropped)
+    return toolset
+
+
+def _mcp_url(toolset: AbstractToolset[Any]) -> str | None:
+    """The server URL behind a toolset, through any wrappers around it."""
+    while (wrapped := getattr(toolset, "wrapped", None)) is not None:
+        toolset = wrapped
+    return getattr(toolset, "url", None)
+
 
 def _failed_urls(exc: BaseException) -> set[str]:
     """URLs of the HTTP requests that failed inside an exception or group."""
@@ -350,6 +399,8 @@ def _clip(text: str, n: int) -> str:
 def _mcp_origin(ts: AbstractToolset[Any]) -> str:
     """a short name for where a tool came from: the tool prefix when the
     server has one, else the host's first label or the stdio command."""
+    while (wrapped := getattr(ts, "wrapped", None)) is not None:
+        ts = wrapped
     if prefix := getattr(ts, "tool_prefix", None):
         return str(prefix)
     if url := getattr(ts, "url", None):
@@ -397,7 +448,7 @@ class PhiAgent:
         # if someone added a script to a skill folder by accident.
         self.skills_toolset = SkillsToolset(
             directories=[settings.skills_dir],
-            exclude_tools=["run_skill_script"],
+            exclude_tools=["run_skill_script", "list_skills"],
         )
         self.graze_client = GrazeClient(
             handle=settings.bluesky_handle, password=settings.bluesky_password
@@ -901,23 +952,29 @@ class PhiAgent:
     def _mcp_toolsets(self, run_label: str = "") -> list[AbstractToolset[PhiDeps]]:
         """Create fresh MCP server instances for a single agent run."""
         toolsets: list[AbstractToolset[PhiDeps]] = [
-            MCPServerStreamableHTTP(
-                url="https://pdsx-by-zzstoatzz.fastmcp.app/mcp",
-                timeout=30,
-                headers={
-                    "x-atproto-handle": settings.bluesky_handle,
-                    "x-atproto-password": settings.bluesky_password,
-                },
-                # structural guard: raw feed-collection writes bypass the
-                # consent layer / policy judge / operator override — refuse
-                # them here, not just in the prompt (bot/core/mcp_guard.py)
-                process_tool_call=make_mcp_guard("pdsx", run_label),
+            _offered(
+                "pdsx",
+                MCPServerStreamableHTTP(
+                    url="https://pdsx-by-zzstoatzz.fastmcp.app/mcp",
+                    timeout=30,
+                    headers={
+                        "x-atproto-handle": settings.bluesky_handle,
+                        "x-atproto-password": settings.bluesky_password,
+                    },
+                    # structural guard: raw feed-collection writes bypass the
+                    # consent layer / policy judge / operator override — refuse
+                    # them here, not just in the prompt (bot/core/mcp_guard.py)
+                    process_tool_call=make_mcp_guard("pdsx", run_label),
+                ),
             ),
-            MCPServerStreamableHTTP(
-                url="https://pub-search-by-zzstoatzz.fastmcp.app/mcp",
-                timeout=30,
-                tool_prefix="pub",
-                process_tool_call=make_mcp_guard("pub-search", run_label),
+            _offered(
+                "pub-search",
+                MCPServerStreamableHTTP(
+                    url="https://pub-search-by-zzstoatzz.fastmcp.app/mcp",
+                    timeout=30,
+                    tool_prefix="pub",
+                    process_tool_call=make_mcp_guard("pub-search", run_label),
+                ),
             ),
             # Semble jev-mode server (search_tools/call_tool; one sdk method
             # per call). Keyless = public reads only; the header makes
@@ -938,18 +995,21 @@ class PhiAgent:
             # Tangled code-collab server. Reads (repos, files, commits,
             # issues) need no auth; the headers carry phi's own PDS
             # credentials so any issue/comment she writes attributes to her.
-            MCPServerStreamableHTTP(
-                url=settings.tangled_mcp_url,
-                timeout=30,
-                tool_prefix="tangled",
-                headers={
-                    "x-tangled-handle": settings.bluesky_handle,
-                    "x-tangled-password": settings.bluesky_password,
-                },
-                # issues and comments here are public actions in phi's own
-                # name; before 2026-07-25 nothing gated them, so safe mode
-                # stopped her posting to bluesky and left tangled open.
-                process_tool_call=make_mcp_guard("tangled", run_label),
+            _offered(
+                "tangled",
+                MCPServerStreamableHTTP(
+                    url=settings.tangled_mcp_url,
+                    timeout=30,
+                    tool_prefix="tangled",
+                    headers={
+                        "x-tangled-handle": settings.bluesky_handle,
+                        "x-tangled-password": settings.bluesky_password,
+                    },
+                    # issues and comments here are public actions in phi's own
+                    # name; before 2026-07-25 nothing gated them, so safe mode
+                    # stopped her posting to bluesky and left tangled open.
+                    process_tool_call=make_mcp_guard("tangled", run_label),
+                ),
             ),
         ]
         # Lexidraw — phi draws into her own repo (app.lexidraw.scene records,
@@ -973,15 +1033,18 @@ class PhiAgent:
         # gracefully in dev/local without the secret set.
         if settings.prefect_api_auth_string:
             toolsets.append(
-                MCPServerStreamableHTTP(
-                    url=settings.prefect_mcp_url,
-                    timeout=30,
-                    tool_prefix="prefect",
-                    process_tool_call=make_mcp_guard("prefect", run_label),
-                    headers={
-                        "x-prefect-api-url": settings.prefect_api_url,
-                        "x-prefect-api-auth-string": settings.prefect_api_auth_string,
-                    },
+                _offered(
+                    "prefect",
+                    MCPServerStreamableHTTP(
+                        url=settings.prefect_mcp_url,
+                        timeout=30,
+                        tool_prefix="prefect",
+                        process_tool_call=make_mcp_guard("prefect", run_label),
+                        headers={
+                            "x-prefect-api-url": settings.prefect_api_url,
+                            "x-prefect-api-auth-string": settings.prefect_api_auth_string,
+                        },
+                    ),
                 )
             )
         return toolsets
@@ -1002,7 +1065,7 @@ class PhiAgent:
             toolsets = [
                 ts
                 for ts in self._mcp_toolsets(run_label=label)
-                if getattr(ts, "url", None) not in dropped
+                if _mcp_url(ts) not in dropped
             ]
             usage = RunUsage()
             try:
@@ -1022,7 +1085,7 @@ class PhiAgent:
                         prompt, deps=deps, toolsets=connected, usage=usage
                     )
             except Exception as e:
-                failed = _failed_urls(e) & {getattr(ts, "url", None) for ts in toolsets}
+                failed = _failed_urls(e) & {_mcp_url(ts) for ts in toolsets}
                 if not failed or usage.requests or attempt == MCP_ATTEMPTS:
                     raise
                 if attempt > 1:
