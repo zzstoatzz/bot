@@ -1,5 +1,18 @@
 # changelog
 
+## 2026-10-02 — Rerun a pass when an MCP server fails before the model answers
+
+The 2026-10-01 editorial pass died in 0.3 seconds and no article went out. pdsx
+had connected, then answered 502 to the first `tools/list`. The MCP client
+raises that from a background task group, which cancels the run and surfaces
+only as the exit stack unwinds, past the guard that drops a server that fails
+to connect. Nothing retried: the trigger endpoint had already answered Prefect.
+
+`_run_agent` now reruns a pass that fails on an MCP transport error while the
+model has not yet answered, once with every server and then without the one
+that failed. A failure after the model has answered still ends the run, since
+a rerun could repeat a post or a record write.
+
 ## 2026-10-01 — Govern records and methods in Bluesky-shaped apps
 
 `call_xrpc` shipped with a namespace allowlist, which let anyone talking to phi

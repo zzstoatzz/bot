@@ -11,15 +11,12 @@ phi uses the [model context protocol](https://modelcontextprotocol.io) to access
 
 ## how it works
 
-MCP servers are created fresh per `agent.run()` call to avoid connection scope issues. the agent enters each server's async context before running, so parallel tool calls share the connection.
+MCP servers are created fresh for each attempt at a run. the agent enters each server's async context before running, so parallel tool calls share the connection. this lives in `_run_with_mcp_retry` in `src/bot/agent.py`.
 
-```python
-toolsets = self._mcp_toolsets(run_label=label)
-async with contextlib.AsyncExitStack() as stack:
-    for ts in toolsets:
-        await stack.enter_async_context(ts)
-    result = await self.agent.run(prompt, deps=deps, toolsets=toolsets)
-```
+a server can fail at two moments:
+
+- **connecting.** the failure raises from the server's context entry. phi runs without that toolset.
+- **after connecting.** the MCP client sends each request from a background task group, so a 502 on `tools/list` or a tool call cancels the whole run and raises only when the exit stack unwinds. if the model has not answered yet, no tool has acted, and the run is repeated: once with every server after a short pause, then without the server that failed. once the model has answered the run is not repeated, because a rerun could repeat a post or a write.
 
 ## process_tool_call hooks
 

@@ -26,7 +26,7 @@ class _FakeResult:
 def _phi_with_fake_run():
     phi = PhiAgent.__new__(PhiAgent)  # skip __init__ — only _run_agent matters
 
-    async def fake_run(prompt, deps=None, toolsets=None):
+    async def fake_run(prompt, deps=None, toolsets=None, usage=None):
         return _FakeResult()
 
     phi.agent = Mock(run=fake_run)

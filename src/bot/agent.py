@@ -1,5 +1,6 @@
 """MCP-enabled agent for phi with structured memory."""
 
+import asyncio
 import contextlib
 import inspect
 import logging
@@ -11,11 +12,13 @@ from pathlib import Path
 from typing import Any, cast
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from pydantic_ai import Agent, ImageUrl, PromptedOutput, RunContext
+import httpx
+from pydantic_ai import Agent, AgentRunResult, ImageUrl, PromptedOutput, RunContext
 from pydantic_ai.mcp import MCPServerStdio, MCPServerStreamableHTTP
 from pydantic_ai.models import infer_model
 from pydantic_ai.tools import ToolDefinition
 from pydantic_ai.toolsets import AbstractToolset
+from pydantic_ai.usage import RunUsage
 from pydantic_ai_skills import SkillsToolset
 
 from bot.config import settings
@@ -68,6 +71,19 @@ from bot.utils.time import humanize_duration
 EXTRACTION_OUTPUT = PromptedOutput(ExtractionResult)
 
 logger = logging.getLogger("bot.agent")
+
+MCP_ATTEMPTS = 3
+MCP_RETRY_PAUSE_S = 2.0
+
+
+def _failed_urls(exc: BaseException) -> set[str]:
+    """URLs of the HTTP requests that failed inside an exception or group."""
+    if isinstance(exc, BaseExceptionGroup):
+        return {url for sub in exc.exceptions for url in _failed_urls(sub)}
+    if isinstance(exc, httpx.HTTPStatusError | httpx.TransportError):
+        return {str(exc.request.url)}
+    return set()
+
 
 # fly region codes are airport codes; phi should be able to say where she
 # is in words. unknown codes fall through to the raw code rather than
@@ -970,6 +986,54 @@ class PhiAgent:
             )
         return toolsets
 
+    async def _run_with_mcp_retry(
+        self, label: str, prompt: str | list, deps: PhiDeps
+    ) -> AgentRunResult[str]:
+        """Run once, rerunning when an MCP server fails before the model answers.
+
+        A server that fails to connect costs phi that toolset. One that fails
+        after connecting cancels the run from the MCP client's task group and
+        raises only as the stack unwinds. Until the model has answered no tool
+        has acted, so the run is repeated: once with every server, then
+        without the one that failed.
+        """
+        dropped: set[str] = set()
+        for attempt in range(1, MCP_ATTEMPTS + 1):
+            toolsets = [
+                ts
+                for ts in self._mcp_toolsets(run_label=label)
+                if getattr(ts, "url", None) not in dropped
+            ]
+            usage = RunUsage()
+            try:
+                async with contextlib.AsyncExitStack() as stack:
+                    connected = []
+                    for ts in toolsets:
+                        try:
+                            await stack.enter_async_context(ts)
+                        except Exception as e:
+                            logger.warning(
+                                f"mcp toolset {ts.label} unavailable for {label}, "
+                                f"running without it: {type(e).__name__}: {str(e)[:200]}"
+                            )
+                            continue
+                        connected.append(ts)
+                    return await self.agent.run(
+                        prompt, deps=deps, toolsets=connected, usage=usage
+                    )
+            except Exception as e:
+                failed = _failed_urls(e) & {getattr(ts, "url", None) for ts in toolsets}
+                if not failed or usage.requests or attempt == MCP_ATTEMPTS:
+                    raise
+                if attempt > 1:
+                    dropped |= failed
+                logger.warning(
+                    f"mcp transport failure before the model answered in {label} "
+                    f"(attempt {attempt}/{MCP_ATTEMPTS}), rerunning: {sorted(failed)}"
+                )
+                await asyncio.sleep(MCP_RETRY_PAUSE_S)
+        raise AssertionError("unreachable")
+
     async def _run_agent(
         self,
         *,
@@ -981,7 +1045,6 @@ class PhiAgent:
         if settings.voice_reset:
             logger.info("voice reset: skipped %s before context or tools", label)
             return "normal runs suspended for voice reset"
-        toolsets = self._mcp_toolsets(run_label=label)
         if deps is not None and isinstance(prompt, str):
             deps.run_prompt = prompt
         cache_monitor.begin_run(label)
@@ -995,21 +1058,7 @@ class PhiAgent:
         try:
             if evidence:
                 await run_status(evidence, "started")
-            async with contextlib.AsyncExitStack() as stack:
-                # a single unreachable MCP server (bad token, outage) must
-                # cost phi that toolset, not the whole run
-                connected = []
-                for ts in toolsets:
-                    try:
-                        await stack.enter_async_context(ts)
-                    except Exception as e:
-                        logger.warning(
-                            f"mcp toolset {ts.label} unavailable for {label}, "
-                            f"running without it: {type(e).__name__}: {str(e)[:200]}"
-                        )
-                        continue
-                    connected.append(ts)
-                result = await self.agent.run(prompt, deps=deps, toolsets=connected)
+            result = await self._run_with_mcp_retry(label, prompt, deps)
         except Exception as e:
             if evidence:
                 await run_status(evidence, "failed")
