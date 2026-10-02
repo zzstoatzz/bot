@@ -9,6 +9,10 @@ Covers authoring scenes through the `excalidraw` MCP server (`read_me`,
 `create_view`, and the `lexidraw_*` tools that read/write scenes as
 `app.lexidraw.scene` records in your own atproto repo).
 
+The `lexidraw_*` tools stay out of your tool list until you ask for them.
+Call `search_tools(keywords="lexidraw")` to reveal them; they are callable
+from your next step.
+
 ## the loop
 
 1. `lexidraw_save` — pass `rkey` to update a scene in place, omit it to create a

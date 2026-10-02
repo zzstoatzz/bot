@@ -1,19 +1,28 @@
 """Which MCP tools phi carries (docs/toolset-audit-2026-10.md)."""
 
 from typing import Any, cast
+from unittest.mock import patch
 
 import pytest
+from pydantic_ai import Agent
+from pydantic_ai.messages import ModelResponse, TextPart, ToolCallPart
+from pydantic_ai.models.function import AgentInfo, FunctionModel
+from pydantic_ai.models.test import TestModel
 from pydantic_ai.tools import ToolDefinition
+from pydantic_ai.toolsets import DeferredLoadingToolset, FunctionToolset
 
 from bot import agent as agent_module
 from bot.agent import MCP_DROPPED, MCP_KEPT, PhiAgent, _mcp_origin, _mcp_url
+from bot.tools._helpers import PhiDeps
 
 
 def _offers(toolset, name: str) -> bool:
-    filter_func = getattr(toolset, "filter_func", None)
-    return filter_func is None or filter_func(
-        cast(Any, None), ToolDefinition(name=name)
-    )
+    while toolset is not None:
+        filter_func = getattr(toolset, "filter_func", None)
+        if filter_func is not None:
+            return filter_func(cast(Any, None), ToolDefinition(name=name))
+        toolset = getattr(toolset, "wrapped", None)
+    return True
 
 
 @pytest.fixture(autouse=True)
@@ -59,3 +68,87 @@ def test_a_filtered_server_keeps_its_url_and_origin():
         "pdsx",
         "tangled",
     }
+
+
+def _is_deferred(toolset) -> bool:
+    while toolset is not None:
+        if isinstance(toolset, DeferredLoadingToolset):
+            return True
+        toolset = getattr(toolset, "wrapped", None)
+    return False
+
+
+def _servers_for(run_label: str) -> dict[str, Any]:
+    phi = PhiAgent.__new__(PhiAgent)
+    return {_mcp_origin(ts): ts for ts in phi._mcp_toolsets(run_label=run_label)}
+
+
+def test_tangled_is_deferred_except_where_the_prompt_names_its_tools():
+    assert _is_deferred(_servers_for("batch processing")["tangled"])
+    assert not _is_deferred(_servers_for("pull request review")["tangled"])
+    assert not _is_deferred(_servers_for("pull request comment")["tangled"])
+    assert not _is_deferred(_servers_for("batch processing")["pub"])
+
+
+def test_a_deferred_server_is_still_filtered_and_still_has_its_url():
+    tangled = _servers_for("batch processing")["tangled"]
+    assert _mcp_url(tangled) is not None
+    assert not _offers(tangled, "tangled_delete_issue")
+
+
+async def test_deferred_tools_reach_the_model_only_after_a_search():
+    """What a run sends: the search tool first, a found tool from the next request."""
+    hidden = FunctionToolset()
+
+    @hidden.tool_plain
+    def tangled_read_file(path: str) -> str:
+        """read one file"""
+        return f"read {path}"
+
+    offered: list[list[str]] = []
+
+    def model(_messages, info: AgentInfo) -> ModelResponse:
+        offered.append([tool.name for tool in info.function_tools])
+        if len(offered) == 1:
+            return ModelResponse(
+                parts=[ToolCallPart("search_tools", {"keywords": "tangled_read_file"})]
+            )
+        if len(offered) == 2:
+            return ModelResponse(
+                parts=[ToolCallPart("tangled_read_file", {"path": "a"})]
+            )
+        return ModelResponse(parts=[TextPart("done")])
+
+    phi = PhiAgent.__new__(PhiAgent)
+    phi.agent = Agent(FunctionModel(model), deps_type=PhiDeps)
+    with patch.object(
+        PhiAgent, "_mcp_toolsets", side_effect=lambda **_: [hidden.defer_loading()]
+    ):
+        out = await phi._run_agent(
+            label="batch processing", prompt="hi", deps=PhiDeps(author_handle="")
+        )
+
+    assert out == "done"
+    # the search tool goes away once nothing is left to find
+    assert offered == [["search_tools"], ["tangled_read_file"], ["tangled_read_file"]]
+
+
+async def test_the_context_budget_counts_what_is_sent(monkeypatch):
+    hidden = FunctionToolset()
+
+    @hidden.tool_plain
+    def tangled_read_file(path: str) -> str:
+        """read one file"""
+        return path
+
+    phi = PhiAgent.__new__(PhiAgent)
+    phi.memory = None
+    phi.agent = Agent(model=TestModel())
+    monkeypatch.setattr(phi, "skills_toolset", FunctionToolset(), raising=False)
+    monkeypatch.setattr(
+        phi, "_mcp_toolsets", lambda run_label="": [hidden.defer_loading()]
+    )
+
+    assert [tool.name for _, tool in await phi.list_tool_definitions()] == [
+        "search_tools"
+    ]

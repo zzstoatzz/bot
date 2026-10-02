@@ -169,3 +169,9 @@ pull-review prompt. `persona` was left for the operator.
 
 phi's reply to the plan asked that, when step 2 puts tangled and lexidraw
 behind search, `own-source` and `lexidraw-craft` say to search for those tools.
+
+step 2 shipped the same day for tangled and lexidraw, with those skill edits.
+the two pull-request runs load tangled outright, because their prompts name
+its tools. the four rare native tools stayed loaded: `inspect_atlas` is named
+by the atlas block in every run, and the others by skills, so hiding them
+would need the same wording in more places for 2,132 tokens.

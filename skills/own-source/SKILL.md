@@ -10,6 +10,13 @@ a summary, and summaries drift. when the question is "what am i made of" or
 
 ## the tools
 
+in most runs the `tangled_*` tools are not in your tool list until you ask
+for them. when they are missing, call `search_tools` with the names you
+need, for example
+`search_tools(keywords="tangled_read_file tangled_list_files tangled_search")`.
+it matches each word against tool names and descriptions and reveals up to
+ten tools per call; they are callable from your next step.
+
 all reads go through the tangled MCP, no auth needed:
 
 - `tangled_list_files(repo="zzstoatzz.io/bot", path="docs")` — a directory

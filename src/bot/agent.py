@@ -18,6 +18,7 @@ from pydantic_ai.mcp import MCPServerStdio, MCPServerStreamableHTTP
 from pydantic_ai.models import infer_model
 from pydantic_ai.tools import ToolDefinition
 from pydantic_ai.toolsets import AbstractToolset
+from pydantic_ai.toolsets._tool_search import ToolSearchToolset
 from pydantic_ai.usage import RunUsage
 from pydantic_ai_skills import SkillsToolset
 
@@ -107,14 +108,26 @@ MCP_DROPPED: dict[str, frozenset[str]] = {
 }
 
 
+# Servers phi reaches for in about one run in a hundred. Their tools stay out
+# of the request until she finds them with `search_tools`, except in a run
+# whose prompt sends her straight to them.
+MCP_DEFERRED: dict[str, frozenset[str]] = {
+    "tangled": frozenset({"pull request comment", "pull request review"}),
+    "lexidraw": frozenset(),
+}
+
+
 def _offered(
-    server: str, toolset: AbstractToolset[PhiDeps]
+    server: str, toolset: AbstractToolset[PhiDeps], run_label: str = ""
 ) -> AbstractToolset[PhiDeps]:
-    """Narrow an MCP server to the tools phi carries from it."""
+    """Narrow an MCP server to the tools phi carries from it for this run."""
     if kept := MCP_KEPT.get(server):
-        return toolset.filtered(lambda _ctx, tool: tool.name in kept)
-    if dropped := MCP_DROPPED.get(server):
-        return toolset.filtered(lambda _ctx, tool: tool.name not in dropped)
+        toolset = toolset.filtered(lambda _ctx, tool: tool.name in kept)
+    elif dropped := MCP_DROPPED.get(server):
+        toolset = toolset.filtered(lambda _ctx, tool: tool.name not in dropped)
+    loaded_for = MCP_DEFERRED.get(server)
+    if loaded_for is not None and run_label not in loaded_for:
+        toolset = toolset.defer_loading()
     return toolset
 
 
@@ -1010,6 +1023,7 @@ class PhiAgent:
                     # stopped her posting to bluesky and left tangled open.
                     process_tool_call=make_mcp_guard("tangled", run_label),
                 ),
+                run_label,
             ),
         ]
         # Lexidraw — phi draws into her own repo (app.lexidraw.scene records,
@@ -1018,15 +1032,19 @@ class PhiAgent:
         # public artifact in her name → guard treats it as a mutation.
         if Path(settings.lexidraw_mcp_path).exists():
             toolsets.append(
-                MCPServerStdio(
-                    "node",
-                    args=[settings.lexidraw_mcp_path],
-                    env={
-                        "LEXIDRAW_HANDLE": settings.bluesky_handle,
-                        "LEXIDRAW_APP_PASSWORD": settings.bluesky_password,
-                    },
-                    timeout=30,
-                    process_tool_call=make_mcp_guard("lexidraw", run_label),
+                _offered(
+                    "lexidraw",
+                    MCPServerStdio(
+                        "node",
+                        args=[settings.lexidraw_mcp_path],
+                        env={
+                            "LEXIDRAW_HANDLE": settings.bluesky_handle,
+                            "LEXIDRAW_APP_PASSWORD": settings.bluesky_password,
+                        },
+                        timeout=30,
+                        process_tool_call=make_mcp_guard("lexidraw", run_label),
+                    ),
+                    run_label,
                 )
             )
         # Prefect MCP — only included when auth is configured, so phi degrades
@@ -1832,12 +1850,17 @@ class PhiAgent:
             out.append(("function", self.agent._function_toolset.tools[name].tool_def))
         for name, tool in sorted((await self.skills_toolset.get_tools(ctx)).items()):
             out.append(("skills", tool.tool_def))
+        sent = {tool_def.name for _, tool_def in out}
         for ts in self._mcp_toolsets(run_label="context-budget"):
             origin = f"mcp:{_mcp_origin(ts)}"
+            # deferred tools are not sent; the search tool that finds them is
+            visible = ToolSearchToolset(wrapped=ts)
             try:
                 async with ts:
-                    for name, tool in sorted((await ts.get_tools(ctx)).items()):
-                        out.append((origin, tool.tool_def))
+                    for name, tool in sorted((await visible.get_tools(ctx)).items()):
+                        if name not in sent:
+                            sent.add(name)
+                            out.append((origin, tool.tool_def))
             except Exception as e:
                 logger.warning(
                     f"{origin} unavailable for the context budget: {type(e).__name__}: {str(e)[:120]}"

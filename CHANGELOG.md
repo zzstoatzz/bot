@@ -1,5 +1,23 @@
 # changelog
 
+## 2026-10-02 — Put tangled and lexidraw behind tool search
+
+Step 2 of the toolset audit. Tangled's 19 remaining tools and lexidraw's 3
+were in every request and touched in about one run in a hundred. They are now
+deferred: phi sees a `search_tools` tool and a tool it finds is offered from
+her next request. The two pull-request runs still load tangled, because their
+prompts name its tools. `own-source` and `lexidraw-craft` say how to search,
+which phi asked for when the plan was posted.
+
+On pydantic-ai 1.80 the search runs on the client and a discovery changes the
+tool list, so the request after it rewrites the cached prefix behind the
+tools. Native Anthropic tool search, which avoids that, needs pydantic-ai 2.x.
+The four rarely used native tools the audit listed stay loaded; context blocks
+and skills name them in most runs.
+
+The context budget now counts the search tool and leaves out the tools behind
+it.
+
 ## 2026-10-02 — Carry fewer tools
 
 Phi carried 110 tools and 36,573 tokens of definitions into every request; 38

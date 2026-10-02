@@ -30,8 +30,27 @@ server change and leaves the prompt cache alone because the list is fixed:
 
 before adding a name to either table, search the prompts in `agent.py` and
 `skills/` for it. a tool that a prompt or skill names is one phi will be sent
-to. the evidence and the next step (deferred loading) are in
-`toolset-audit-2026-10.md`.
+to. the evidence is in `toolset-audit-2026-10.md`.
+
+## deferred servers
+
+tangled and lexidraw are real capabilities phi reaches for in about one run
+in a hundred, so their tools are deferred (`MCP_DEFERRED`): the request
+carries a `search_tools` tool, and a tool it finds is added from the next
+request on. pydantic-ai 1.80 does this on the client, by keyword match
+against tool names and descriptions, ten results per search.
+
+- a run whose prompt sends phi straight to a server loads it. the two
+  pull-request runs load tangled.
+- a skill that sends her to a deferred server says how to search for it
+  (`own-source`, `lexidraw-craft`).
+- a discovery changes the tool list, which is the front of the cache prefix,
+  so the request after it rewrites what follows. that is the price of
+  deferral on this client and the reason only rarely used servers are
+  deferred. pydantic-ai 2.x uses Anthropic's native tool search, which
+  appends and keeps the cache.
+- `/api/context/budget` counts what is sent: the search tool, not the tools
+  behind it.
 
 ## process_tool_call hooks
 
