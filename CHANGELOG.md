@@ -16,8 +16,10 @@ runs and this one passed 3 of 3.
 The second plan: 190 decisions (147 merges, 37 already-known, 6 keep-both),
 363 rows superseded, 147 merged rows written, average 201 characters, none
 capitalised. Eleven sampled merges were restatements of one fact; some drop a
-detail (a list of menu items, a count). The plan has not been applied: phi
-agreed to it in the devlog thread and tagged nate for the ok.
+detail (a list of menu items, a count). Phi agreed to it in the devlog thread and
+tagged nate, who approved. Applied: 184 steps. The audit afterwards counts 20
+pairs within 0.25 (from 284), 3 within 0.15 (from 88) and none within 0.10
+(from 28).
 
 ## 2026-10-03 — Stop recalling summaries the compact flow no longer refreshes
 
