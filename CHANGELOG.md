@@ -1,5 +1,25 @@
 # changelog
 
+## 2026-10-03 — Reconcile a new memory against every neighbour it fetched
+
+Reading Percepta's Spotlight Memory post against phi's memory: Spotlight reads
+a fixed neighbourhood of cells and writes that same neighbourhood, and its
+overwrite is why it returns no stale values after a key is rewritten.
+Attention keeps the old and new value and scores 0.748 on the same test. Phi's
+reconciler read three neighbours and judged the new row against the nearest
+only, for observations and for episodic notes. A fact that contradicted the
+second or third nearest never superseded it, so both stayed active and both
+reached the prompt.
+
+The reconciler now sees all three, numbered, and names the ones its action
+applies to. UPDATE and DELETE supersede every named row; UPDATE unions their
+sources. When it names none, the nearest is used, as before. `supersedes`
+holds one id, so a row that replaces several links back to the nearest named
+one and the others are only marked superseded.
+
+How often the gap produced conflicting active rows in production has not been
+measured.
+
 ## 2026-10-02 — Put tangled and lexidraw behind tool search
 
 Step 2 of the toolset audit. Tangled's 19 remaining tools and lexidraw's 3

@@ -32,10 +32,14 @@ def _memory_with_episodic_ns():
     return mem, ns
 
 
-def _decision(action, reason="r", new_content=None, new_tags=None):
+def _decision(action, reason="r", new_content=None, new_tags=None, targets=()):
     result = Mock()
     result.output.decision = SimpleNamespace(
-        action=action, reason=reason, new_content=new_content, new_tags=new_tags
+        action=action,
+        reason=reason,
+        new_content=new_content,
+        new_tags=new_tags,
+        targets=list(targets),
     )
     agent = Mock()
     agent.run = AsyncMock(return_value=result)
@@ -136,6 +140,80 @@ async def test_update_supersedes_and_merges():
     assert rows[0]["content"].startswith("plyr archaeology")
     assert rows[0]["supersedes"] == "old-row"
     assert rows[0]["source_uris"] == ["at://old/post", "at://new/post"]
+
+
+NEIGHBOURS = [
+    SIMILAR[0],
+    {
+        "id": "second-row",
+        "content": "the plyr catalog has no satie at all",
+        "tags": ["music"],
+        "source_uris": ["at://second/post"],
+    },
+    {
+        "id": "third-row",
+        "content": "satie takes on plyr number two",
+        "tags": ["music"],
+        "source_uris": ["at://third/post"],
+    },
+]
+
+
+async def test_reconciler_is_shown_every_neighbour():
+    """The lookup fetched three neighbours and the reconciler saw only the
+    nearest, so a note contradicting the second or third left both active."""
+    mem, _ns = _memory_with_episodic_ns()
+    mem._find_similar_episodic = AsyncMock(return_value=NEIGHBOURS)
+    agent = _decision("ADD")
+    with patch(
+        "bot.memory.namespace_memory.get_reconciliation_agent", return_value=agent
+    ):
+        await mem.store_episodic_memory("something else", ["t"])
+    prompt = agent.run.await_args.args[0]
+    for n, row in enumerate(NEIGHBOURS, start=1):
+        assert f"EXISTING {n}: {row['content']}" in prompt
+
+
+async def test_delete_supersedes_a_farther_neighbour_and_leaves_the_nearest():
+    mem, ns = _memory_with_episodic_ns()
+    mem._find_similar_episodic = AsyncMock(return_value=NEIGHBOURS)
+    with patch(
+        "bot.memory.namespace_memory.get_reconciliation_agent",
+        return_value=_decision("DELETE", targets=[2]),
+    ):
+        await mem.store_episodic_memory("plyr has three satie takes", ["music"])
+    assert _patched_rows(ns) == [{"id": "second-row", "status": "superseded"}]
+    assert _upserted_rows(ns)[0]["supersedes"] == "second-row"
+
+
+async def test_update_supersedes_every_target_and_unions_their_sources():
+    mem, ns = _memory_with_episodic_ns()
+    mem._find_similar_episodic = AsyncMock(return_value=NEIGHBOURS)
+    with patch(
+        "bot.memory.namespace_memory.get_reconciliation_agent",
+        return_value=_decision("UPDATE", new_content="merged", targets=[1, 3]),
+    ):
+        await mem.store_episodic_memory(
+            "a fourth satie take", ["music"], source_uris=["at://new/post"]
+        )
+    assert _patched_rows(ns) == [
+        {"id": "old-row", "status": "superseded"},
+        {"id": "third-row", "status": "superseded"},
+    ]
+    row = _upserted_rows(ns)[0]
+    assert row["supersedes"] == "old-row"
+    assert row["source_uris"] == ["at://old/post", "at://third/post", "at://new/post"]
+
+
+async def test_unoffered_target_numbers_fall_back_to_the_nearest():
+    mem, ns = _memory_with_episodic_ns()
+    mem._find_similar_episodic = AsyncMock(return_value=NEIGHBOURS)
+    with patch(
+        "bot.memory.namespace_memory.get_reconciliation_agent",
+        return_value=_decision("DELETE", targets=[0, 7]),
+    ):
+        await mem.store_episodic_memory("plyr has three satie takes", ["music"])
+    assert _patched_rows(ns) == [{"id": "old-row", "status": "superseded"}]
 
 
 async def test_reconciler_outage_degrades_to_add():
@@ -365,7 +443,9 @@ async def test_save_tool_preserves_authored_scope_and_propagates_failed_write():
     agent = Agent()
     register(agent)
     save = agent._function_toolset.tools["save_memory"].function
-    ctx = RunContext(deps=PhiDeps(author_handle="", memory=mem), model=TestModel(), usage=RunUsage())
+    ctx = RunContext(
+        deps=PhiDeps(author_handle="", memory=mem), model=TestModel(), usage=RunUsage()
+    )
     with patch(
         "bot.memory.namespace_memory.get_reconciliation_agent",
         return_value=_decision("UPDATE", new_content="no reply exists", new_tags=["t"]),

@@ -4,6 +4,8 @@ Models, prompts, and agent factories for extracting facts from conversations
 and reconciling new observations against existing memory.
 """
 
+from collections.abc import Mapping, Sequence
+
 from atproto_client.models.string_formats import AtUri
 from pydantic import BaseModel, Field
 from pydantic_ai import Agent
@@ -43,9 +45,15 @@ class ExtractionResult(BaseModel):
 
 
 class ReconciliationAction(BaseModel):
-    """Decision for how a new observation relates to an existing one."""
+    """Decision for how a new observation relates to the existing ones."""
 
     action: str = Field(description="one of: ADD, UPDATE, DELETE, NOOP")
+    targets: list[int] = Field(
+        default_factory=list,
+        description=(
+            "numbers of the EXISTING observations the action applies to. empty for ADD."
+        ),
+    )
     new_content: str | None = Field(
         default=None, description="merged content when action is UPDATE"
     )
@@ -56,7 +64,7 @@ class ReconciliationAction(BaseModel):
 
 
 class ReconciliationResult(BaseModel):
-    """Result of reconciling a new observation against a similar existing one."""
+    """Result of reconciling a new observation against its nearest neighbours."""
 
     decision: ReconciliationAction
 
@@ -115,16 +123,41 @@ tag rules:
 Return an empty list when the exchange is just greetings, filler, or the user only asked questions without revealing anything about themselves."""
 
 RECONCILIATION_SYSTEM_PROMPT = """\
-You reconcile a NEW observation against an EXISTING observation from memory.
+You reconcile a NEW observation against up to three EXISTING observations from memory, numbered nearest first.
 
-Decide one action:
-- ADD: the new observation contains genuinely different information. keep both.
-- UPDATE: the new observation refines, corrects, or supersedes the existing one. return merged content and tags.
-- DELETE: the existing observation is wrong, outdated, or fully redundant given the new one. the new one will be stored separately.
-- NOOP: the new observation adds nothing beyond what already exists. discard it.
+Decide one action, and list in `targets` the numbers of the existing observations it applies to:
+- ADD: the new observation contains genuinely different information from every existing one. keep them all. no targets.
+- UPDATE: the new observation refines, corrects, or supersedes the targets. return merged content and tags; that one row replaces every target.
+- DELETE: the targets are wrong, outdated, or fully redundant given the new one. the new one will be stored separately.
+- NOOP: the new observation adds nothing beyond the target. discard it.
 
-Corrections (e.g., "name is sam, corrected from previous error") always win over the entry they correct — use UPDATE or DELETE.
+Judge each existing observation on its own. One that is merely about the same topic is not a target; only target what the new observation actually restates, refines, or contradicts. If the new observation contradicts or replaces more than one, target all of them.
+Corrections (e.g., "name is sam, corrected from previous error") always win over the entries they correct — use UPDATE or DELETE.
 When in doubt between ADD and NOOP, prefer NOOP. memory should be lean."""
+
+
+def reconciliation_prompt(
+    existing: Sequence[Mapping], content: str, tags: list[str]
+) -> str:
+    listed = "\n\n".join(
+        f"EXISTING {n}: {row['content']}\nEXISTING {n} tags: {row['tags']}"
+        for n, row in enumerate(existing, start=1)
+    )
+    return f"{listed}\n\nNEW observation: {content}\nNEW tags: {tags}"
+
+
+def reconciliation_targets[T](
+    decision: ReconciliationAction, existing: Sequence[T]
+) -> list[T]:
+    """The existing rows a decision names, falling back to the nearest when
+    the reconciler names none or only numbers that were never offered."""
+    picked = [
+        existing[n - 1]
+        for n in dict.fromkeys(decision.targets)
+        if 1 <= n <= len(existing)
+    ]
+    return picked or list(existing[:1])
+
 
 _reconciliation_agent: Agent[None, ReconciliationResult] | None = None
 

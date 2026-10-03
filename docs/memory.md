@@ -71,8 +71,9 @@ is the part that has broken most often.
 3. `phi-extractor` proposes facts from the chunk. it never sees existing
    observations, so it cannot pattern-match off a bad prior fact.
 4. `observation-reconciler` compares each proposal with the 3 nearest active
-   observations and returns ADD / UPDATE / NOOP / DELETE. UPDATE writes a new
-   row with `supersedes` → the old id and patches the old row to
+   observations and returns ADD / UPDATE / NOOP / DELETE, naming which of the
+   three the action applies to. UPDATE and DELETE write a new row with
+   `supersedes` → the nearest named id and patch every named row to
    `status=superseded`. nothing is deleted; the chain is provenance.
 5. the next batch with that author renders the active set.
 

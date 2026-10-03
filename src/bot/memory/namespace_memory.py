@@ -21,6 +21,8 @@ from bot.memory.extraction import (
     USER_NAMESPACE_SCHEMA,
     Observation,
     get_reconciliation_agent,
+    reconciliation_prompt,
+    reconciliation_targets,
 )
 from bot.memory.search_status import IncompleteMemorySearch
 from bot.utils.time import relative_when
@@ -395,17 +397,13 @@ class NamespaceMemory:
             logger.info(f"ADD (no similar) for @{handle}: {obs.content[:60]}")
             return
 
-        # ask the LLM to reconcile against the most similar existing observation
-        best_match = similar[0]
-        prompt = (
-            f"EXISTING observation: {best_match['content']}\n"
-            f"EXISTING tags: {best_match['tags']}\n\n"
-            f"NEW observation: {obs.content}\n"
-            f"NEW tags: {obs.tags}"
+        result = await get_reconciliation_agent().run(
+            reconciliation_prompt(similar, obs.content, obs.tags)
         )
-        result = await get_reconciliation_agent().run(prompt)
         decision = result.output.decision
         action = decision.action.upper()
+        targets = reconciliation_targets(decision, similar)
+        replaced = "', '".join(t["content"][:40] for t in targets)
 
         user_ns = self.get_user_namespace(handle)
 
@@ -414,12 +412,11 @@ class NamespaceMemory:
             logger.info(f"ADD for @{handle}: {obs.content[:60]} ({decision.reason})")
 
         elif action == "UPDATE":
-            # mark old row superseded, write merged version linking back.
-            # union sources so the new row inherits the full pedigree —
-            # both the old observation's evidence and the new observation's.
-            old_id = best_match["id"]
+            # mark every targeted row superseded, write merged version linking
+            # back to the nearest. union sources so the new row inherits the
+            # full pedigree: the old observations' evidence and the new one's.
             user_ns.write(
-                patch_rows=[{"id": old_id, "status": "superseded"}],
+                patch_rows=[{"id": t["id"], "status": "superseded"} for t in targets],
             )
             merged = Observation(
                 content=decision.new_content or obs.content,
@@ -428,31 +425,35 @@ class NamespaceMemory:
             )
             merged_embedding = await self._get_embedding(merged.content)
             unioned = list(
-                dict.fromkeys(best_match.get("source_uris", []) + list(obs.source_uris))
+                dict.fromkeys(
+                    [uri for t in targets for uri in t.get("source_uris", [])]
+                    + list(obs.source_uris)
+                )
             )
             await self._write_observation(
                 handle,
                 merged,
                 merged_embedding,
-                supersedes=old_id,
+                supersedes=targets[0]["id"],
                 source_uris_override=unioned,
             )
             logger.info(
-                f"UPDATE for @{handle}: '{best_match['content'][:40]}' -> '{merged.content[:40]}' ({decision.reason})"
+                f"UPDATE for @{handle}: '{replaced}' -> '{merged.content[:40]}' ({decision.reason})"
             )
 
         elif action == "DELETE":
-            # mark old row superseded, write new one linking back.
+            # mark every targeted row superseded, write new one linking back.
             # don't union here — the new claim is asserting the old was
             # wrong, not refining it. preserve pedigree via supersedes link
             # for trace, but the new row stands on its own sources.
-            old_id = best_match["id"]
             user_ns.write(
-                patch_rows=[{"id": old_id, "status": "superseded"}],
+                patch_rows=[{"id": t["id"], "status": "superseded"} for t in targets],
             )
-            await self._write_observation(handle, obs, embedding, supersedes=old_id)
+            await self._write_observation(
+                handle, obs, embedding, supersedes=targets[0]["id"]
+            )
             logger.info(
-                f"DELETE+ADD for @{handle}: superseded '{best_match['content'][:40]}', added '{obs.content[:40]}' ({decision.reason})"
+                f"DELETE+ADD for @{handle}: superseded '{replaced}', added '{obs.content[:40]}' ({decision.reason})"
             )
 
         elif action == "NOOP":
@@ -731,15 +732,15 @@ class NamespaceMemory:
             return saved
 
         best = similar[0]
+        targets = similar[:1]
         try:
             result = await get_reconciliation_agent().run(
-                f"EXISTING observation: {best['content']}\n"
-                f"EXISTING tags: {best['tags']}\n\n"
-                f"NEW observation: {content}\n"
-                f"NEW tags: {tags}"
+                reconciliation_prompt(similar, content, tags)
             )
             decision = result.output.decision
             action = decision.action.upper()
+            targets = reconciliation_targets(decision, similar)
+            best = targets[0]
         except Exception as e:
             logger.warning(f"episodic reconciliation failed, raw ADD: {e}")
             decision = None
@@ -767,6 +768,7 @@ class NamespaceMemory:
             }
 
         if action in ("UPDATE", "DELETE") and decision is not None:
+            replaced = "', '".join(t["content"][:40] for t in targets)
             if action == "UPDATE":
                 merged_content = (
                     content if preserve_text else decision.new_content or content
@@ -774,7 +776,8 @@ class NamespaceMemory:
                 merged_tags = decision.new_tags or tags
                 unioned = list(
                     dict.fromkeys(
-                        list(best.get("source_uris") or []) + list(source_uris or [])
+                        [uri for t in targets for uri in t.get("source_uris") or []]
+                        + list(source_uris or [])
                     )
                 )
                 merged_embedding = await self._get_embedding(merged_content)
@@ -787,7 +790,7 @@ class NamespaceMemory:
                     supersedes=best["id"],
                 )
                 logger.info(
-                    f"episodic UPDATE [{source}]: '{best['content'][:40]}' -> "
+                    f"episodic UPDATE [{source}]: '{replaced}' -> "
                     f"'{merged_content[:40]}' ({decision.reason})"
                 )
             else:
@@ -801,7 +804,13 @@ class NamespaceMemory:
                 )
                 logger.info(
                     f"episodic DELETE+ADD [{source}]: superseded "
-                    f"'{best['content'][:40]}' ({decision.reason})"
+                    f"'{replaced}' ({decision.reason})"
+                )
+            if len(targets) > 1:
+                self.namespaces["episodic"].write(
+                    patch_rows=[
+                        {"id": t["id"], "status": "superseded"} for t in targets[1:]
+                    ],
                 )
             saved["action"] = action
             return saved
