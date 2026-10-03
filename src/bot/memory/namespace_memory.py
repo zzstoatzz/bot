@@ -4,7 +4,7 @@ import asyncio
 import hashlib
 import json
 import logging
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from typing import Annotated, ClassVar, TypedDict
 
 from atproto_core.exceptions import InvalidAtUriError
@@ -126,6 +126,7 @@ def _citation_tail(source_uris: list[str], created_at: str = "") -> str:
 logger = logging.getLogger("bot.memory")
 
 _RECENCY_HALF_LIFE_DAYS = 14.0
+_SUMMARY_MAX_AGE = timedelta(days=7)
 
 
 def _recency_weight(created_at: str, tags: list | None = None) -> float:
@@ -140,8 +141,6 @@ def _recency_weight(created_at: str, tags: list | None = None) -> float:
     """
     if tags and "correction" in tags:
         return 1.0
-    from datetime import UTC
-
     try:
         ts = datetime.fromisoformat(created_at)
         if ts.tzinfo is None:
@@ -152,6 +151,18 @@ def _recency_weight(created_at: str, tags: list | None = None) -> float:
     except (ValueError, TypeError):
         age_days = 90.0
     return 0.5 ** (age_days / _RECENCY_HALF_LIFE_DAYS)
+
+
+def _summary_is_current(created_at: str) -> bool:
+    """The compact flow rewrites a summary hourly while its author is in the
+    profile mart and leaves the last one in place when they drop out."""
+    try:
+        written = datetime.fromisoformat(created_at)
+    except (ValueError, TypeError):
+        return False
+    if written.tzinfo is None:
+        written = written.replace(tzinfo=UTC)
+    return datetime.now(UTC) - written <= _SUMMARY_MAX_AGE
 
 
 class EpisodicSelection(BaseModel):
@@ -517,10 +528,12 @@ class NamespaceMemory:
                 rank_by=("created_at", "desc"),
                 top_k=1,
                 filters=("kind", "Eq", "summary"),
-                include_attributes=["content"],
+                include_attributes=["content", "created_at"],
             )
             if response.rows:
-                return response.rows[0].content
+                row = response.rows[0]
+                if _summary_is_current(getattr(row, "created_at", "")):
+                    return row.content
         except Exception as e:
             if "not found" not in str(e).lower():
                 logger.warning(

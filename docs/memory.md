@@ -22,8 +22,8 @@ stores:
 | row | written by | read as | trust |
 |---|---|---|---|
 | interaction | phi's reply inside a batch — `after_interaction`, verbatim user/bot pair | `[PAST EXCHANGES WITH @h]` | historical wording, not factual or current authority |
-| observation | daily extraction at 19:00 UTC → `phi-extractor` → `observation-reconciler` | `[OBSERVATIONS ABOUT @h]` — 10 nearest the batch text | inferred, possibly mistaken or outdated |
-| summary | prefect `phi-memory-synthesis` (`compact.py`), hourly, from observations + interactions | `[PHI'S SYNTHESIZED IMPRESSION OF @h]` | low — labeled *may hallucinate* |
+| observation | daily extraction at 19:00 UTC → `phi-extractor` → `observation-reconciler`; and prefect `compact.py` from nate's likes → `likes-observer` → `likes-reconciler` (same contract) | `[OBSERVATIONS ABOUT @h]` — 10 nearest the batch text | inferred, possibly mistaken or outdated |
+| summary | prefect `phi-memory-synthesis` (`compact.py`), hourly, from observations + interactions | `[PHI'S SYNTHESIZED IMPRESSION OF @h]`, only while under 7 days old | low — labeled *may hallucinate* |
 | note | `save_memory`, `publish_blog` — deliberate | `[RELEVANT MEMORIES — selected historical records]` — top-10 → index selection → original records | medium |
 | run summary | every scheduled run, unconditionally (`tags=[run-summary, <label>]`) | same block · `search_memory` ("have I done this") | medium |
 | own post | jetstream tail of her repo; backfilled from PDS at start | `[PRIOR COVERAGE]` · the `self-repeat` judge | high |

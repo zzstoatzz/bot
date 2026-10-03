@@ -1,5 +1,24 @@
 # changelog
 
+## 2026-10-03 — Stop recalling summaries the compact flow no longer refreshes
+
+Asked in the devlog thread what she holds about that account, phi answered
+that her impression block still put last contact at 05-21. The summary row in
+that namespace was written on 06-17. Across 189 user namespaces, 112 summaries
+are under a day old and 34 are over 90 days old, with nothing in between: the
+compact flow rewrites a summary hourly while the author is in its profile mart
+and leaves the last one behind when they drop out. `get_relationship_summary`
+now returns nothing for a summary older than 7 days. Why those authors left
+the mart is not known.
+
+`sandbox/observation_neighbor_audit.py` ran against production: 284 pairs of
+active observations within cosine distance 0.25, in 45 namespaces. 276 of them
+are two rows written by the likes phase of `compact.py` in `my-prefect-server`,
+told apart by its UTC-aware timestamps; 6 are two rows from the bot's own
+extraction. That flow added facts without comparing them to their vector
+neighbours and hard-deleted on UPDATE. It now reconciles the way the bot does
+(`my-prefect-server` 80cef2f, 1d644b5). The existing 284 pairs are untouched.
+
 ## 2026-10-03 — Keep the valid episodic picks when the selector invents an index
 
 On 2026-10-02 02:00 UTC the episodic selector returned `[0, 7, 17928, 69]`
