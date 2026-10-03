@@ -1,5 +1,24 @@
 # changelog
 
+## 2026-10-03 — Reconciler keeps two things of the same kind apart
+
+`scripts/merge_duplicate_observations.py` plans a reconcile of the 284 close
+pairs the audit found, then applies the saved plan. Its first plan merged two
+different webcams (lake point tower and edgewater) into one row, dropping one
+of them, and its merged rows came back capitalised and 247 characters on
+average against 195 for the rows they replaced. The reconciler prompt now says
+that two different things of the same kind are both kept, that a merged row
+keeps everything still true in what it replaces, and that merged text stays
+lowercase and short. With the webcam pair and a two-tools pair added to
+`evals/test_reconciliation_targets.py`, the previous prompt failed 1 of 3 live
+runs and this one passed 3 of 3.
+
+The second plan: 190 decisions (147 merges, 37 already-known, 6 keep-both),
+363 rows superseded, 147 merged rows written, average 201 characters, none
+capitalised. Eleven sampled merges were restatements of one fact; some drop a
+detail (a list of menu items, a count). The plan has not been applied: phi
+agreed to it in the devlog thread and tagged nate for the ok.
+
 ## 2026-10-03 — Stop recalling summaries the compact flow no longer refreshes
 
 Asked in the devlog thread what she holds about that account, phi answered
