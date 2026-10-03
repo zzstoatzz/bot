@@ -414,6 +414,23 @@ async def test_empty_or_invalid_selection_cannot_invent_context(indices, monkeyp
     assert await _select_episodic([], "question", [{"content": "old note"}]) == ""
 
 
+async def test_an_out_of_range_index_does_not_discard_the_valid_ones(monkeypatch):
+    from pydantic_ai.models.test import TestModel
+
+    from bot.memory import namespace_memory
+    from bot.memory.namespace_memory import EpisodicSelection, _select_episodic
+
+    model = TestModel(custom_output_args={"indices": [1, 17928, 69]})
+    monkeypatch.setattr(
+        namespace_memory,
+        "_episodic_selector",
+        Agent(model, output_type=EpisodicSelection),
+    )
+    notes = [{"id": "a", "content": "first"}, {"id": "b", "content": "second"}]
+    result = await _select_episodic([], "question", notes)
+    assert json.loads(result)["id"] == "b"
+
+
 @pytest.mark.parametrize("action", ["ADD", "UPDATE", "DELETE", "NOOP"])
 async def test_save_returns_resulting_note_instead_of_candidate(action):
     mem, ns = _memory_with_episodic_ns()

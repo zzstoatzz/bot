@@ -214,13 +214,14 @@ async def _select_episodic(goals: list[dict], query: str, raw_notes: list[dict])
     )
     try:
         result = await _get_episodic_selector().run(payload)
-        indices = result.output.indices
-        if any(index >= len(raw_notes) for index in indices):
-            logger.warning("episodic selector returned an out-of-range candidate")
-            return ""
-        return _render_episodic_notes(
-            [raw_notes[index] for index in dict.fromkeys(indices)]
-        )
+        indices = list(dict.fromkeys(result.output.indices))
+        valid = [index for index in indices if index < len(raw_notes)]
+        if len(valid) < len(indices):
+            logger.warning(
+                f"episodic selector returned out-of-range candidates: "
+                f"{sorted(set(indices) - set(valid))} of {len(raw_notes)}"
+            )
+        return _render_episodic_notes([raw_notes[index] for index in valid])
     except Exception as e:
         logger.warning(f"episodic selection failed: {e}")
         return ""

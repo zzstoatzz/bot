@@ -1,5 +1,20 @@
 # changelog
 
+## 2026-10-03 — Keep the valid episodic picks when the selector invents an index
+
+On 2026-10-02 02:00 UTC the episodic selector returned `[0, 7, 17928, 69]`
+for ten candidates, and the run got no episodic recall at all: one
+out-of-range index discarded the whole selection. Logfire shows 3 of 242
+selector runs between 09-19 and 10-03 lost their recall this way. Out-of-range
+indices are now dropped and logged, and the in-range picks are rendered.
+
+The same spans answer the "is `top_k` right" question without new logging:
+candidates 0 and 1 were kept 151 and 134 times, candidate 9 was kept 9 times.
+
+`evals/test_reconciliation_targets.py` runs the reconciler prompt shipped
+earlier today against the live extraction model: five neighbour sets, 15 of
+15 passes across three runs.
+
 ## 2026-10-03 — Reconcile a new memory against every neighbour it fetched
 
 Reading Percepta's Spotlight Memory post against phi's memory: Spotlight reads
