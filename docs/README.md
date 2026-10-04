@@ -10,6 +10,7 @@ deeper dive into phi's design.
 
 - [architecture.md](architecture.md) — entry points, scheduling, which model runs which agent, why this shape
 - [memory.md](memory.md) — the four kinds of state phi draws on (thread, private, public, intent)
+- [spotlight-adoption-2026-10.md](spotlight-adoption-2026-10.md) — waypoint: Percepta's Spotlight Memory read against each store, what shipped 10-03, what was checked in production, what is open
 - [system-prompt.md](system-prompt.md) — block-by-block reference for what's actually in phi's context per run
 - [mcp.md](mcp.md) — model context protocol integration
 - [safety.md](safety.md) — how public actions are bounded: policies + judge, the pdsx guard, the operator override

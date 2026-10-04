@@ -1,5 +1,16 @@
 # changelog
 
+## 2026-10-04 — Waypoint for the Spotlight Memory adoption
+
+`docs/spotlight-adoption-2026-10.md` reads each store against the post:
+turbopuffer, the intent records on the PDS, and the cosmik library. The
+turbopuffer rows that kept stale values are closed for new writes except raw
+exchanges; the intent records already overwrite in place; the library has no
+write-side check and its duplicates are uncounted. Checked in production on
+release v637: health, every state block in the context preview, and the live
+reconciler eval (7 of 7). The reconciler has run once in the natural path
+since the fix and that decision was not read.
+
 ## 2026-10-03 — Reconciler keeps two things of the same kind apart
 
 `scripts/merge_duplicate_observations.py` plans a reconcile of the 284 close
