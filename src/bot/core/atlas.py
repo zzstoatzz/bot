@@ -18,8 +18,8 @@ than trusting the response content-type.
 """
 
 import json
-import math
 import logging
+import math
 from typing import Any
 
 import httpx
