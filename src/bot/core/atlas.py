@@ -18,6 +18,7 @@ than trusting the response content-type.
 """
 
 import json
+import math
 import logging
 from typing import Any
 
@@ -118,6 +119,40 @@ async def get_atlas() -> dict[str, Any] | None:
     _cached_record_cid = record_cid
     _cached_atlas = atlas
     return atlas
+
+
+PREVIEW_DOTS = 600
+
+
+def atlas_preview(atlas: dict[str, Any]) -> dict[str, Any]:
+    """What a thumbnail of the atlas needs: an even sample of positions,
+    normalised to the unit square, and the real totals. The full atlas is
+    megabytes; this is a few kilobytes."""
+    points = atlas.get("points") or []
+    placed = [
+        (p["x"], p["y"], p.get("kind") or "other")
+        for p in points
+        if isinstance(p.get("x"), int | float)
+        and isinstance(p.get("y"), int | float)
+        and math.isfinite(p["x"])
+        and math.isfinite(p["y"])
+    ]
+    dots: list[list[float | str]] = []
+    if placed:
+        min_x, max_x = min(p[0] for p in placed), max(p[0] for p in placed)
+        min_y, max_y = min(p[1] for p in placed), max(p[1] for p in placed)
+        span_x, span_y = max(max_x - min_x, 1e-9), max(max_y - min_y, 1e-9)
+        step = max(1, math.ceil(len(placed) / PREVIEW_DOTS))
+        dots = [
+            [round((x - min_x) / span_x, 3), round((y - min_y) / span_y, 3), kind]
+            for x, y, kind in placed[::step]
+        ]
+    return {
+        "generated_at": atlas.get("generated_at"),
+        "point_count": len(points),
+        "group_count": len(atlas.get("clusters_coarse") or []),
+        "dots": dots,
+    }
 
 
 # ---------------------------------------------------------------------------

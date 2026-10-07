@@ -20,7 +20,6 @@ import httpx
 import logfire
 from fastapi import BackgroundTasks, FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
 from slowapi import Limiter
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
@@ -30,7 +29,7 @@ from bot.config import settings
 from bot.core import ops_log, prior_coverage, watchdog
 from bot.core.alert_watch import fold_firing, parse_webhook
 from bot.core.architecture import architecture_model
-from bot.core.atlas import get_atlas
+from bot.core.atlas import atlas_preview, get_atlas
 from bot.core.atproto_client import bot_client
 from bot.core.cache_stability import cache_monitor
 from bot.core.discovery_pool import get_filtered_pool
@@ -45,6 +44,7 @@ from bot.services.notification_poller import NotificationPoller
 from bot.services.typesafe import close_client as close_typesafe_client
 from bot.status import bot_status
 from bot.ui import activity_router
+from bot.ui.static import CachedStaticFiles
 from bot.utils.rate_limit import client_ip
 
 logger = logging.getLogger("bot.main")
@@ -719,6 +719,21 @@ async def atlas():
     return JSONResponse(data)
 
 
+@app.get("/api/atlas/preview")
+async def atlas_thumbnail():
+    """The few kilobytes a thumbnail of the atlas needs; see `atlas_preview`."""
+    try:
+        data = await get_atlas()
+    except Exception as e:
+        logger.warning(f"atlas fetch failed: {e}")
+        return JSONResponse({"error": str(e)}, status_code=502)
+    if data is None:
+        return JSONResponse({"error": "no atlas record on PDS yet"}, status_code=404)
+    return JSONResponse(
+        atlas_preview(data), headers={"Cache-Control": "public, max-age=300"}
+    )
+
+
 @app.get("/api/docket")
 async def docket():
     """phi's daily promotion docket — 5-15 work-item candidates emitted by
@@ -907,7 +922,7 @@ async def memory_graph_data(request: Request):
 
 WEB_DIR = Path(settings.web_build_dir)
 if WEB_DIR.is_dir():
-    app.mount("/", StaticFiles(directory=str(WEB_DIR), html=True), name="web")
+    app.mount("/", CachedStaticFiles(directory=str(WEB_DIR), html=True), name="web")
     logger.info(f"frontend mounted from {WEB_DIR}")
 
     @app.exception_handler(404)
@@ -917,7 +932,9 @@ if WEB_DIR.is_dir():
         path = request.url.path
         if path.startswith("/api/") or path == "/health":
             return JSONResponse({"error": "not found"}, status_code=404)
-        return FileResponse(WEB_DIR / "index.html")
+        return FileResponse(
+            WEB_DIR / "index.html", headers={"Cache-Control": "no-cache"}
+        )
 else:
     logger.warning(
         f"frontend build not found at {WEB_DIR} — only API routes will be served"
