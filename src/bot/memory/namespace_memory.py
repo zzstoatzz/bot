@@ -153,7 +153,7 @@ def _recency_weight(created_at: str, tags: list | None = None) -> float:
     return 0.5 ** (age_days / _RECENCY_HALF_LIFE_DAYS)
 
 
-def _summary_is_current(created_at: str) -> bool:
+def summary_is_current(created_at: str) -> bool:
     """The compact flow rewrites a summary hourly while its author is in the
     profile mart and leaves the last one in place when they drop out."""
     try:
@@ -532,7 +532,7 @@ class NamespaceMemory:
             )
             if response.rows:
                 row = response.rows[0]
-                if _summary_is_current(getattr(row, "created_at", "")):
+                if summary_is_current(getattr(row, "created_at", "")):
                     return row.content
         except Exception as e:
             if "not found" not in str(e).lower():

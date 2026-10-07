@@ -109,6 +109,7 @@ export interface UserViewObservation {
 export interface UserViewSummary {
 	content: string;
 	created_at: string | null;
+	recalled: boolean;
 }
 
 export interface UserView {

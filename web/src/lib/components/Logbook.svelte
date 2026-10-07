@@ -225,7 +225,7 @@
 				{#if userView.summary}
 					<section class="person-section orientation">
 						<h2>Phi’s summary</h2>
-						<p class="person-date">Written {memoryDate(userView.summary.created_at)}. This summary may not include later corrections.</p>
+						<p class="person-date">Written {memoryDate(userView.summary.created_at)}. {userView.summary.recalled ? 'This summary may not include later corrections.' : 'It has not been refreshed in over a week, so Phi no longer recalls it.'}</p>
 						<details class="summary-reading">
 							<summary aria-label="Toggle full summary"><span class="summary-preview">{userView.summary.content}</span><span class="read-toggle"><span class="read-open">Read full summary</span><span class="read-close">Close full summary</span></span></summary>
 							<p class="memory-prose">{userView.summary.content}</p>

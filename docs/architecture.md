@@ -86,7 +86,7 @@ build notifications_context: per-notif fetch (post body, thread context,
   ↓
 PhiDeps assembled, system prompt composed:
   identity / time / known relays / goals / self-awareness / self state
-  / notifications block / per-author memory / synthesized episodic / ...
+  / notifications block / per-author memory / selected episodic / ...
   ↓
 agent.run() — tool calls happen inside (post, like_post, etc.)
   ↓
@@ -135,7 +135,7 @@ See [operator workflow](internal/operator-workflow.md) for channel and receipt b
 
 **docstrings, not prompt restatement.** what each tool does and when to use it lives in the tool's docstring. the framework surfaces docstrings to the model. the system prompt is for cross-cutting rules (consent, ownership, memory trust hierarchy), not per-tool documentation.
 
-**synthesize before injecting where shape matters.** memory candidates from a vector store are ranked by cosine similarity, which doesn't reconcile or note recency. for blocks where coherence matters (recent posts → audit, episodic candidates → relevant memories), a small sub-agent pass produces a coherent block from the candidates. see [memory.md](memory.md) and [system-prompt.md](system-prompt.md).
+**a small sub-agent pass before injecting where shape matters.** memory candidates from a vector store are ranked by cosine similarity, which doesn't reconcile or note recency. recent posts are compiled into the posting inventory by `phi-posting-inventory`. episodic candidates are different: `phi-episodic-selector` only picks which candidates are relevant, and python renders the chosen records unchanged, so the helper cannot author what phi recalls. see [memory.md](memory.md) and [system-prompt.md](system-prompt.md).
 
 **MCP for capabilities outside this codebase.** atproto record CRUD (pdsx) and long-form publication search (pub-search) are remote MCP servers. reusable, not bundled.
 

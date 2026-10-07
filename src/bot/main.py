@@ -40,6 +40,7 @@ from bot.core.profile_manager import ProfileManager
 from bot.core.tool_usage import board as tool_usage_board
 from bot.logging_config import _clear_uvicorn_handlers
 from bot.memory import NamespaceMemory
+from bot.memory.namespace_memory import summary_is_current
 from bot.services.notification_poller import NotificationPoller
 from bot.services.typesafe import close_client as close_typesafe_client
 from bot.status import bot_status
@@ -565,9 +566,11 @@ async def user_view(handle: str):
         )
         if summary_resp.rows:
             row = summary_resp.rows[0]
+            created_at = getattr(row, "created_at", None)
             summary_obj = {
                 "content": getattr(row, "content", ""),
-                "created_at": getattr(row, "created_at", None),
+                "created_at": created_at,
+                "recalled": summary_is_current(created_at or ""),
             }
     except Exception:
         pass
