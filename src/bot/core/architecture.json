@@ -156,7 +156,7 @@
       "lane": 1,
       "row": 2,
       "summary": "Person stores and episodic notes",
-      "details": "Per-person and episodic namespaces support recall. Explicit save_memory returns stored wording; extraction and reconciliation also run in the background. Remembered accounts are not proof of what a tool did.",
+      "details": "Per-person and episodic namespaces support recall. Explicit save_memory returns stored wording; extraction and reconciliation also run in the background, and a Prefect flow adds observations from liked posts under the same reconciliation. A fact that replaces older ones marks them superseded instead of deleting them, and only active rows are recalled. A per-person summary is recalled only while it is under a week old. Remembered accounts are not proof of what a tool did.",
       "sources": [
         {
           "path": "src/bot/memory/namespace_memory.py",
@@ -487,8 +487,8 @@
       "label": "Memory helpers",
       "lane": 2,
       "row": 5,
-      "summary": "Extract, reconcile, synthesize",
-      "details": "Helper model calls extract and reconcile observations and synthesize retrieved episodic context. These transformations differ from explicit authored-note storage. Their outputs can influence what the main model sees; they are not the top-level speaker.",
+      "summary": "Extract, reconcile, select",
+      "details": "Helper model calls extract observations, reconcile each new one against its three nearest stored neighbours, and select which retrieved episodic notes reach the prompt, verbatim. These transformations differ from explicit authored-note storage. Their outputs can influence what the main model sees; they are not the top-level speaker.",
       "sources": [
         {
           "path": "src/bot/memory/extraction.py",
@@ -756,13 +756,19 @@
     {
       "source": "helpers",
       "target": "context",
-      "label": "synthesized recall",
+      "label": "selected recall",
       "planned": false
     },
     {
       "source": "helpers",
       "target": "memory",
       "label": "reconciled observations",
+      "planned": false
+    },
+    {
+      "source": "prefect",
+      "target": "memory",
+      "label": "likes observations and summaries",
       "planned": false
     },
     {
