@@ -299,9 +299,9 @@ a:hover {
 .hex {
 	display: inline-block;
 	width: 7px;
-	height: 8px;
+	height: 7px;
+	border-radius: 50%;
 	background: currentColor;
-	clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
 	flex-shrink: 0;
 }
 

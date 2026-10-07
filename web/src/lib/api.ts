@@ -217,13 +217,27 @@ export async function getBskyFeed(limit = 20): Promise<BskyFeedItem[]> {
 
 // Phi's current profile description — the bio she rewrites at every startup.
 // Renders in the HudIdentity area as her own voice.
-export async function getPhiBio(): Promise<string | null> {
+export interface PhiProfile {
+	bio: string | null;
+	/** the portrait phi chose for herself, at thumbnail size */
+	avatar: string | null;
+}
+
+export async function getPhiProfile(): Promise<PhiProfile | null> {
 	try {
 		const url = `${BSKY_PUBLIC}/xrpc/app.bsky.actor.getProfile?actor=${PHI_DID}`;
 		const res = await fetch(url);
 		if (!res.ok) return null;
-		const data: { description?: string } = await res.json();
-		return data.description ?? null;
+		const data: unknown = await res.json();
+		if (!data || typeof data !== 'object') return null;
+		const { description, avatar } = Object.fromEntries(Object.entries(data));
+		return {
+			bio: typeof description === 'string' ? description : null,
+			avatar:
+				typeof avatar === 'string' && avatar.startsWith('https://cdn.bsky.app/img/avatar/')
+					? avatar.replace('/img/avatar/', '/img/avatar_thumbnail/')
+					: null
+		};
 	} catch {
 		return null;
 	}

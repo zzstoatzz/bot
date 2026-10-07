@@ -1,10 +1,11 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import { getHealth, getPhiBio, PHI_HANDLE } from '$lib/api';
+	import { getHealth, getPhiProfile, PHI_HANDLE, type PhiProfile } from '$lib/api';
 	import type { HealthInfo } from '$lib/types';
 
 	let health = $state<HealthInfo | null>(null);
-	let bio = $state<string | null>(null);
+	let profile = $state<PhiProfile | null>(null);
+	const bio = $derived(profile?.bio ?? null);
 	let healthTimer: ReturnType<typeof setInterval> | null = null;
 	let bioTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -17,7 +18,7 @@
 	}
 
 	async function pollBio() {
-		bio = await getPhiBio();
+		profile = (await getPhiProfile()) ?? profile;
 	}
 
 	onMount(() => {
@@ -44,41 +45,17 @@
 </script>
 
 <a class="ident" href="/" aria-label="Phi home">
-	<div class="glyph-wrap" style="color: {status.color}" class:pulse={status.pulse}>
-		<svg class="logo" viewBox="0 0 32 32" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
-			<!-- outer hex frame -->
-			<polygon
-				points="16,3 27,9 27,23 16,29 5,23 5,9"
-				fill="none"
-				stroke="currentColor"
-				stroke-width="1.6"
-				stroke-linejoin="round"
-			/>
-			<!-- phi sigil — vertical stem + circle, classic lowercase φ -->
-			<line
-				x1="16"
-				y1="7.5"
-				x2="16"
-				y2="24.5"
-				stroke="currentColor"
-				stroke-width="1.6"
-				stroke-linecap="round"
-			/>
-			<ellipse
-				cx="16"
-				cy="16"
-				rx="4.6"
-				ry="5.6"
-				fill="none"
-				stroke="currentColor"
-				stroke-width="1.6"
-			/>
-		</svg>
-	</div>
+	<span class="portrait" style="color: {status.color}">
+		{#if profile?.avatar}
+			<img src={profile.avatar} alt="" width="34" height="34" decoding="async" />
+		{:else}
+			<span class="initial" aria-hidden="true">ϕ</span>
+		{/if}
+	</span>
 	<div class="meta">
 		<div class="name chrome">phi</div>
 		<div class="line">
-			<span class="hex" style="color: {status.color}" class:pulse={status.pulse}></span>
+			<span class="dot" style="color: {status.color}" class:pulse={status.pulse}></span>
 			<span class="state chrome muted">{status.label}</span>
 			<span class="sep">·</span>
 			<span class="handle">@{PHI_HANDLE}</span>
@@ -100,38 +77,27 @@
 
 	.ident:focus-visible { outline: 2px solid var(--scan-hot); outline-offset: 6px; }
 
-	.glyph-wrap {
-		width: 32px;
-		height: 32px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
+	/* phi's own profile picture; the ring carries her status */
+	.portrait {
+		display: grid;
+		place-items: center;
 		flex-shrink: 0;
+		width: 34px;
+		height: 34px;
+		border-radius: 50%;
+		overflow: hidden;
+		background: #1a232d;
+		box-shadow: 0 0 0 1.5px currentColor;
 	}
-
-	.logo {
+	.portrait img {
+		display: block;
 		width: 100%;
 		height: 100%;
-		display: block;
-		filter: drop-shadow(0 0 3px currentColor);
-		transition: filter 0.4s ease-out;
+		object-fit: cover;
 	}
-
-	/* opacity-only: animating `filter` kept the compositor repainting this
-	   layer every frame for as long as phi was online — i.e. always. */
-	.glyph-wrap.pulse .logo {
-		filter: drop-shadow(0 0 3px currentColor);
-		animation: logo-pulse 2.4s ease-in-out infinite;
-	}
-
-	@keyframes logo-pulse {
-		0%,
-		100% {
-			opacity: 0.85;
-		}
-		50% {
-			opacity: 1;
-		}
+	.initial {
+		font: 400 20px/1 var(--font-content);
+		color: var(--hud-hot);
 	}
 
 	.meta {
@@ -145,6 +111,14 @@
 		font-size: 20px;
 		color: var(--hud-hot);
 		letter-spacing: 0.18em;
+	}
+
+	.dot {
+		width: 7px;
+		height: 7px;
+		border-radius: 50%;
+		background: currentColor;
+		flex-shrink: 0;
 	}
 
 	.line {
@@ -186,9 +160,9 @@
 		.ident {
 			gap: 10px;
 		}
-		.glyph-wrap {
-			width: 26px;
-			height: 26px;
+		.portrait {
+			width: 30px;
+			height: 30px;
 		}
 		.meta {
 			flex: 1;

@@ -26,6 +26,10 @@ the whole OAuth client.
   it refreshes when the tab regains focus after a minute.
 - `reading.css` no longer applies a drop-shadow filter and a generated noise
   texture to every section.
+- the header mark is phi's own profile picture (the self-portrait she chose),
+  read from her Bluesky profile at thumbnail size, with her status as the ring
+  around it. The ϕ-in-a-hexagon logo is gone; the favicon is a plain ϕ, her
+  display name, and the hexagon status bullets are round.
 
 ## 2026-10-04 — Waypoint for the Spotlight Memory adoption
 

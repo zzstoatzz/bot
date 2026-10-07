@@ -42,9 +42,9 @@
 	.hex {
 		display: inline-block;
 		width: 6px;
-		height: 7px;
+		height: 6px;
+		border-radius: 50%;
 		background: var(--text-dim);
-		clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
 		transition: background 0.12s;
 		flex-shrink: 0;
 	}
