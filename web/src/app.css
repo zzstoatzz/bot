@@ -5,11 +5,10 @@
  * muted scan-cyan for data readouts, amber for warnings. heavy desaturation —
  * this is an instrument, not a brochure.
  *
- * type: tall narrow geometric for chrome (uppercase tracked), inter for content,
- * jetbrains mono for ids/timestamps.
+ * type: saira condensed for chrome, inter for content, the system monospace
+ * for ids/timestamps. fonts are bundled (see +layout.svelte), not fetched
+ * from a third party.
  */
-
-@import url('https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@300;400;500;600&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@300;400&display=swap');
 
 :root {
 	color-scheme: dark;
@@ -53,10 +52,14 @@
 	--line-hot: rgba(184, 107, 58, 0.6);
 	--line-scan: rgba(74, 139, 154, 0.3);
 
+	/* height of the pinned chrome, so pages can clear it */
+	--chrome-top: 82px;
+	--chrome-bottom: 48px;
+
 	/* chrome typefaces */
 	--font-chrome: 'Saira Condensed', 'Barlow Condensed', system-ui, sans-serif;
-	--font-content: 'Inter', system-ui, sans-serif;
-	--font-mono: 'JetBrains Mono', 'SF Mono', 'Cascadia Code', Menlo, monospace;
+	--font-content: 'Inter Variable', system-ui, sans-serif;
+	--font-mono: ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, Consolas, monospace;
 }
 
 * {
@@ -190,31 +193,21 @@ a:hover {
 	right: 22px;
 }
 
-/* ---------- mobile: corner-hud collapses into header + footer strips ---------- */
+/* ---------- mobile: slim header on top, tab bar within thumb reach ---------- */
 
 @media (max-width: 760px) {
 	.viewport {
 		height: 100dvh;
 	}
 
-	.hud-bottom {
-		position: fixed;
-		z-index: 10;
-		bottom: 0;
-		left: 0;
-		right: 0;
-		display: flex;
-		flex-direction: column;
-		gap: 4px;
-		padding: 8px 14px calc(8px + env(safe-area-inset-bottom));
-		background: var(--bg-void);
-		border-top: 1px solid var(--line-dim);
+	:root {
+		--chrome-top: calc(52px + env(safe-area-inset-top));
+		--chrome-bottom: calc(56px + env(safe-area-inset-bottom));
 	}
 
-	.hud-bl,
-	.hud-br {
-		position: static;
-		font-size: 11px;
+	/* the corner readouts are hover instruments; a phone has the tab bar there */
+	.hud-bottom {
+		display: none;
 	}
 }
 

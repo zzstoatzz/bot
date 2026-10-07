@@ -5,6 +5,7 @@
 
 import { parseTrader, parseMarket, parseResults } from './chicken';
 import { parseCapabilities, parseSkills } from './capabilities';
+import { parseAtlasPreview, type AtlasPreview } from './atlas-preview';
 
 import type {
 	ActivityItem,
@@ -160,6 +161,13 @@ export async function getAtlas(): Promise<Atlas | null> {
 	if (res.status === 404) return null;
 	if (!res.ok) throw new Error(`atlas: ${res.status}`);
 	return await res.json();
+}
+
+export async function getAtlasPreview(): Promise<AtlasPreview | null> {
+	const res = await fetch('/api/atlas/preview');
+	if (res.status === 404) return null;
+	if (!res.ok) throw new Error(`atlas preview: ${res.status}`);
+	return parseAtlasPreview(await res.json());
 }
 
 export async function getUserView(handle: string): Promise<UserView | null> {

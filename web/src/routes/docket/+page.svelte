@@ -374,7 +374,7 @@
 
 	@media (max-width: 640px) {
 		.page {
-			padding: 128px 14px 76px;
+			padding: calc(var(--chrome-top) + 18px) 14px calc(var(--chrome-bottom) + 28px);
 		}
 
 		.page-header {

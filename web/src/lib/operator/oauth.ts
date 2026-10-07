@@ -8,7 +8,9 @@
 import { BrowserOAuthClient } from '@atproto/oauth-client-browser';
 import type { OAuthClientMetadataInput } from '@atproto/oauth-client-browser';
 
-export const OVERRIDE_COLLECTION = 'io.zzstoatzz.phi.override';
+import { OVERRIDE_COLLECTION } from './override';
+
+export { OVERRIDE_COLLECTION };
 
 export const SCOPE = `atproto repo:${OVERRIDE_COLLECTION}?action=create&action=update`;
 

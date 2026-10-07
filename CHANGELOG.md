@@ -1,5 +1,32 @@
 # changelog
 
+## 2026-10-07 — Homepage: activity first, 2 MB lighter, tabs within thumb reach
+
+Measured at 375×812 before the change: first paint at 6.4s and 2.2 MB
+transferred, of which `/api/atlas` was 2.06 MB (8.5 MB decoded) fetched to draw
+a 600-dot thumbnail. Every page also loaded a 210 KB script: the override
+banner imported one string constant from `operator/oauth.ts`, which pulled in
+the whole OAuth client.
+
+- `/api/atlas/preview` returns the sampled dots and totals (4 KB). The full
+  atlas, its overlay and the logbook drawer load when opened.
+- the constant moved to `operator/override.ts`, so only `/operator` carries the
+  OAuth client.
+- fonts are bundled (Saira Condensed, Inter) and the monospace is the system
+  one; the Google Fonts `@import` is gone. `index.html` paints a header and a
+  loading line before any script arrives.
+- hashed assets are served `immutable`; the html shell is `no-cache`.
+- on a phone the header is one line and the four tabs sit in a bottom bar;
+  the bars are 52px and 56px, where reading pages used to reserve 138px on
+  top and 65px below. Page offsets come from `--chrome-top` /
+  `--chrome-bottom` instead of per-page pixel values.
+- the home page leads with phi's latest published item, lists earlier ones as
+  two-line rows, and shows goals as titles that expand. The bevelled panels,
+  uppercase headings and the manual refresh button are gone from this page;
+  it refreshes when the tab regains focus after a minute.
+- `reading.css` no longer applies a drop-shadow filter and a generated noise
+  texture to every section.
+
 ## 2026-10-04 — Waypoint for the Spotlight Memory adoption
 
 `docs/spotlight-adoption-2026-10.md` reads each store against the post:

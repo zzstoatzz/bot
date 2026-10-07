@@ -1,47 +1,28 @@
 <script lang="ts">
-	import type { Atlas } from '$lib/types';
+	import type { AtlasPreview } from '$lib/atlas-preview';
 	import { atlasPalette } from '$lib/atlas-palette';
-	let { atlas, onclick }: { atlas: Atlas; onclick: () => void } = $props();
+	let {
+		preview,
+		opening,
+		onclick,
+	}: { preview: AtlasPreview; opening: boolean; onclick: () => void } =
+		$props();
 
-	const coordinates = $derived(
-		atlas.points.flatMap((point) =>
-			point.x !== undefined &&
-			point.y !== undefined &&
-			Number.isFinite(point.x) &&
-			Number.isFinite(point.y)
-				? [{ x: point.x, y: point.y, kind: point.kind ?? 'other' }]
-				: [],
-		),
-	);
-	const bounds = $derived({
-		minX: Math.min(...coordinates.map((point) => point.x)),
-		maxX: Math.max(...coordinates.map((point) => point.x)),
-		minY: Math.min(...coordinates.map((point) => point.y)),
-		maxY: Math.max(...coordinates.map((point) => point.y)),
-	});
 	const dots = $derived(
-		coordinates
-			.filter(
-				(_, index) =>
-					index % Math.max(1, Math.ceil(coordinates.length / 600)) === 0,
-			)
-			.map((point) => ({
-				x:
-					20 +
-					((point.x - bounds.minX) /
-						Math.max(0.001, bounds.maxX - bounds.minX)) *
-						280,
-				y:
-					16 +
-					((point.y - bounds.minY) /
-						Math.max(0.001, bounds.maxY - bounds.minY)) *
-						138,
-				color: (atlasPalette[point.kind] ?? atlasPalette.other).core,
-			})),
+		preview.dots.map(([x, y, kind]) => ({
+			x: 20 + x * 280,
+			y: 16 + y * 138,
+			color: (atlasPalette[kind] ?? atlasPalette.other).core,
+		})),
 	);
 </script>
 
-<button class="atlas-preview" {onclick} aria-label="Explore memory atlas">
+<button
+	class="atlas-preview"
+	{onclick}
+	disabled={opening}
+	aria-label="Explore memory atlas"
+>
 	{#if dots.length}
 		<svg viewBox="0 0 320 170" aria-hidden="true">
 			<path
@@ -58,9 +39,9 @@
 	{:else}<span class="missing">Map preview unavailable</span>{/if}
 	<span class="caption"
 		><span
-			><strong>{atlas.points.length.toLocaleString()}</strong> records
-			<span class="groups">· {atlas.clusters_coarse.length} groups</span></span
-		><span class="open" aria-hidden="true">↗</span></span
+			><strong>{preview.point_count.toLocaleString()}</strong> records in
+			{preview.group_count} groups</span
+		><span class="open">{opening ? 'Opening…' : 'Explore'}</span></span
 	>
 </button>
 
@@ -116,12 +97,12 @@
 		color: #d6f3f5;
 		margin-right: 3px;
 	}
-	.groups {
-		color: #9cbac7;
-	}
 	.open {
-		font-size: 22px;
+		font: 500 17px var(--font-chrome);
 		color: #bce9ef;
+	}
+	.atlas-preview:disabled {
+		cursor: progress;
 	}
 	.missing {
 		display: block;

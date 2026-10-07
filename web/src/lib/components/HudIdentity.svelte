@@ -134,27 +134,6 @@
 		}
 	}
 
-	@media (max-width: 760px) {
-		.ident {
-			gap: 10px;
-			align-items: center;
-		}
-		.glyph-wrap {
-			width: 28px;
-			height: 28px;
-			margin-top: 2px;
-		}
-		.name {
-			font-size: 16px;
-		}
-		.handle {
-			font-size: 10px;
-		}
-		.bio {
-			display: none;
-		}
-	}
-
 	.meta {
 		min-width: 0;
 		display: flex;
@@ -202,11 +181,32 @@
 		text-overflow: ellipsis;
 	}
 
+
 	@media (max-width: 760px) {
+		.ident {
+			gap: 10px;
+		}
+		.glyph-wrap {
+			width: 26px;
+			height: 26px;
+		}
+		.meta {
+			flex: 1;
+			flex-direction: row;
+			align-items: baseline;
+			justify-content: space-between;
+			gap: 12px;
+		}
+		.name {
+			font-size: 19px;
+		}
+		.state {
+			font-size: 13px;
+		}
+		.sep,
+		.handle,
 		.bio {
-			max-width: calc(100vw - 70px);
-			font-size: 11px;
-			line-height: 1.25;
+			display: none;
 		}
 	}
 </style>

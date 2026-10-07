@@ -1,10 +1,12 @@
 // public, unauthenticated read of the operator's override record — used by
 // the cockpit banner and the /operator page. DID doc -> PDS -> getRecord,
 // no appview. mirrors bot/core/override.py.
-import { OVERRIDE_COLLECTION } from './oauth';
 
 // must match owner_did in bot config (a did:plc is permanent).
 export const OPERATOR_DID = 'did:plc:xbtmt2zjwlrfegqvch7fboei';
+// lives here, not in oauth.ts: the banner on every page reads the override,
+// and importing from oauth.ts would ship the whole OAuth client with it
+export const OVERRIDE_COLLECTION = 'io.zzstoatzz.phi.override';
 
 export interface Override {
 	active: boolean;

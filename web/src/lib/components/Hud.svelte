@@ -84,22 +84,23 @@
 	}
 	@media (max-width: 760px) {
 		.cockpit-header {
-			display: grid;
-			grid-template-columns: minmax(0, 1fr);
-			justify-content: stretch;
-			gap: 10px;
-			padding: 10px 14px 12px;
+			height: var(--chrome-top);
+			padding: env(safe-area-inset-top) 16px 0;
+			border-top: 0;
+			box-shadow: none;
+			background: #0a1018;
 		}
 		.identity {
-			min-width: 0;
+			max-width: none;
+			flex: 1;
 		}
 		nav {
-			width: 100%;
-		}
-	}
-	@media (max-width: 360px) {
-		.cockpit-header {
-			padding-inline: 10px;
+			position: fixed;
+			inset: auto 0 0;
+			height: var(--chrome-bottom);
+			padding-bottom: env(safe-area-inset-bottom);
+			background: #0a1018;
+			border-top: 1px solid #2c3a45;
 		}
 	}
 </style>

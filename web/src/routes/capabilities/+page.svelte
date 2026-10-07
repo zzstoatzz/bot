@@ -464,7 +464,7 @@
 	}
 	@media (max-width: 760px) {
 		.capabilities {
-			padding: 146px 14px 65px;
+			padding: calc(var(--chrome-top) + 18px) 14px calc(var(--chrome-bottom) + 28px);
 		}
 		.heading {
 			align-items: start;
