@@ -95,8 +95,9 @@
 		height: 100%;
 		object-fit: cover;
 	}
+	/* system font: the bundled one would fetch its greek subset for this one glyph */
 	.initial {
-		font: 400 20px/1 var(--font-content);
+		font: 400 20px/1 system-ui, sans-serif;
 		color: var(--hud-hot);
 	}
 
