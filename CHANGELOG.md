@@ -1,5 +1,18 @@
 # changelog
 
+## 2026-10-08 — The workflow refusal names where the like has to land
+
+Asked in a devlog thread to queue a Gardener investigation, phi was refused by
+the owner gate and replied that "a like on your post" would unlock it. The
+gate reads her own notifications: only the owner's like or repost of one of
+her posts arrives there, so a like on the devlog's post would have done
+nothing. The refusal said who can queue but not how approval reaches her.
+
+- the `request_workflow` refusal says to ask for a like from the owner handle
+  on her own reply, that the batch must hold no other authors, and that a like
+  on someone else's post never reaches her.
+- its docstring says Gardener runs in an exe.dev VM, not a Sprite.
+
 ## 2026-10-08 — Retraction reads the argument pdsx sends
 
 Asked to replace a reply, phi posted the replacement and reported that

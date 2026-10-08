@@ -94,6 +94,10 @@ async def test_nonowner_cannot_queue(harness, monkeypatch):
     # 2026-09-19: "require operator authorization" read as a routing puzzle;
     # phi went looking for the route in public and got blocked. say who.
     assert "operator" in result["reason"] and "ask" in result["reason"]
+    # 2026-10-08: with no mechanism named, phi asked for a like on the
+    # devlog's post, which never reaches her notifications.
+    assert "like" in result["reason"] and "your own reply" in result["reason"]
+    assert workflows.settings.owner_handle in result["reason"]
     assert calls == []
 
 

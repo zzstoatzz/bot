@@ -52,7 +52,7 @@ def register(agent):
         """Queue an owner-authorized workflow and return its Prefect run ID.
 
         Gardener (gardener.pds.zat.dev) investigates and proposes changes using
-        the Pi harness in a Sprite. Phi requests and reviews the work; the
+        the Pi harness in an exe.dev VM. Phi requests and reviews the work; the
         trusted workflow publishes as Gardener. Merging requires the operator.
         Use prefect_get_flow_runs and prefect_get_flow_run_logs to follow the ID.
         Reuse request_key for retries so an uncertain response cannot duplicate work.
@@ -64,8 +64,12 @@ def register(agent):
             return {
                 "queued": False,
                 "reason": "Only the operator can queue a workflow from this run. "
-                "It is fine to ask them; report_operator with a note: key is "
-                "the private route.",
+                "It is fine to ask them. In a public thread, ask for a like "
+                f"from @{settings.owner_handle} on your own reply: only a like "
+                "or repost of one of your posts reaches your notifications, "
+                "and it unlocks the next run when no one else is in that "
+                "batch. A like on anyone else's post never reaches you. "
+                "report_operator with a note: key is the private route.",
             }
         override = await get_override()
         if override["active"]:
