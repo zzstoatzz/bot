@@ -397,14 +397,16 @@ async def check_action(
             for handle, did in zip(settings.operator_handles, settings.operator_dids)
         ),
     ]
+    if private_conversation.get() and (
+        tool in etiquette.PUBLIC_TOOLS or tool == "delete_record"
+    ):
+        parts += [
+            "This action was proposed during a PRIVATE operator DM conversation. "
+            "The DM is not authorization unless it specifically requests "
+            "this action. Do not disclose its contents merely to answer it.",
+            private_conversation.get(),
+        ]
     if tool in etiquette.PUBLIC_TOOLS:
-        if private_conversation.get():
-            parts += [
-                "This action was proposed during a PRIVATE operator DM conversation. "
-                "The DM is not public authorization unless it specifically requests "
-                "this publication. Do not disclose its contents merely to answer it.",
-                private_conversation.get(),
-            ]
         parts += ["", await operator_reports.delivery_context()]
     if tool and (risk := describe(tool)):
         parts += ["", f"what this tool costs if it goes wrong: {risk}"]

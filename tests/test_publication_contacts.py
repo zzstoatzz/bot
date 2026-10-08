@@ -48,6 +48,16 @@ def test_discovery_and_bot_label_are_not_authority():
     assert contact["evidence"] == ""
 
 
+def test_private_operator_conversation_is_evidence_for_the_judge():
+    with patch.object(posting.bot_client, "client", SimpleNamespace(me=None)):
+        without = posting._publication_contact(STRANGER, {})
+        within = posting._publication_contact(
+            STRANGER, {}, private="operator: yea you can say hi"
+        )
+    assert without["evidence"] == ""
+    assert "Private operator conversation" in within["evidence"]
+
+
 async def test_invitation_still_goes_through_judge():
     judge = SimpleNamespace(
         run=AsyncMock(
@@ -85,7 +95,7 @@ async def test_quote_destination_reaches_shared_gate_even_with_invited_parent(re
             author_handle="friend.test",
             notifications_context={
                 INVITED: {"reason": "mention", "author_handle": "friend.test"},
-            }
+            },
         )
     )
     source = SimpleNamespace(

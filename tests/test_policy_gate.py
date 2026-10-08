@@ -142,6 +142,19 @@ async def test_judge_failure_fails_closed_for_invited_public_text():
     assert note == ""
 
 
+async def test_judge_failure_fails_closed_for_an_invited_delete():
+    with patch.object(
+        posting, "check_action", AsyncMock(side_effect=RuntimeError("judge down"))
+    ):
+        refusal, _ = await _policy_gate(
+            "delete phi's own record",
+            "retraction",
+            unprompted=False,
+            tool="delete_record",
+        )
+    assert refusal is not None and "fail-closed" in refusal
+
+
 def test_reply_provenance_batch_does_not_assume_response_is_wanted():
     notifs = {
         "at://did:plc:abc/app.bsky.feed.post/1": {
@@ -518,3 +531,72 @@ async def test_public_judge_sees_private_origin(tmp_path):
         assert "Please keep this exchange private." in prompt
     finally:
         policy.private_conversation.reset(token)
+
+
+async def test_delete_judge_sees_the_private_conversation_that_asked_for_it(tmp_path):
+    from bot.core import etiquette, policy
+
+    judge = SimpleNamespace(
+        run=AsyncMock(return_value=SimpleNamespace(output={"verdict": "allow"}))
+    )
+    token = policy.private_conversation.set("clean up that old record")
+    try:
+        with (
+            patch.object(etiquette, "JOURNAL", tmp_path / "journal.sqlite3"),
+            patch.object(policy, "_get_judge", lambda: judge),
+        ):
+            await policy.check_action(
+                "delete phi's own record", "retraction", tool="delete_record"
+            )
+        prompt = judge.run.await_args.args[0]
+        assert "clean up that old record" in prompt
+    finally:
+        policy.private_conversation.reset(token)
+
+
+async def test_reply_from_an_operator_dm_run_carries_the_conversation_as_contact_evidence():
+    uri = "at://did:plc:stranger/app.bsky.feed.post/parent"
+    record = models.AppBskyFeedPost.Record(
+        text="back online", created_at="2026-10-08T04:00:00Z"
+    )
+    client = SimpleNamespace(
+        me=None,
+        com=SimpleNamespace(
+            atproto=SimpleNamespace(
+                repo=SimpleNamespace(
+                    get_record=Mock(
+                        return_value=SimpleNamespace(cid="parent-cid", value=record)
+                    )
+                )
+            )
+        ),
+    )
+    captured = {}
+    posting.register(
+        SimpleNamespace(tool=lambda fn: captured.setdefault(fn.__name__, fn))
+    )
+    ctx = SimpleNamespace(
+        deps=PhiDeps(
+            author_handle="operator.test",
+            private_message_context="operator: yea you can say hi",
+        )
+    )
+    with (
+        patch.object(posting.bot_client, "client", client),
+        patch.object(
+            posting, "get_override", AsyncMock(return_value={"active": False})
+        ),
+        patch.object(posting, "_recent_own_posts", return_value=""),
+        patch.object(
+            posting,
+            "check_action",
+            AsyncMock(return_value={"verdict": "block", "policy": "public-etiquette"}),
+        ) as judge,
+        patch.object(posting.bot_client, "create_post", AsyncMock()) as create,
+    ):
+        await captured["post"](ctx, "hi.", in_reply_to=uri)
+    assert judge.await_args is not None
+    (contact,) = judge.await_args.kwargs["contacts"]
+    assert contact["uri"] == uri
+    assert "Private operator conversation" in contact["evidence"]
+    create.assert_not_awaited()

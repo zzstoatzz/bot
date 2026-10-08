@@ -198,6 +198,15 @@ the public notification/extraction pipeline and automatic episodic summaries.
 Private conversations remain visible in authorized operational traces. Responses
 are limited to one idempotent send per incoming batch. No response is required.
 
+### Contact and retraction from a DM
+
+A reply or quote made during an operator DM run carries the conversation as
+its contact evidence, the same way an operator post in a batch does. That only
+moves the decision from the hard block to the judge, which reads the DM and
+decides whether the operator asked for this contact. The judge also reads the
+DM for `delete_record`, and a delete fails closed when the judge is
+unavailable.
+
 ### Blog invitation context
 
 The blog gate receives the current incoming events, their authors, source URIs,

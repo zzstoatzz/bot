@@ -122,13 +122,15 @@ def _operator_direction(uri: str, root_uri: str, ctx_notifs: dict) -> str:
 
 
 def _publication_contact(
-    uri: str, ctx_notifs: dict, root_uri: str = ""
+    uri: str, ctx_notifs: dict, root_uri: str = "", private: str = ""
 ) -> ContactTarget:
     """Describe destination authority independently of publication format.
 
     Protocol adapters supply verified destinations. Labels and discovery do not
     participate in authorization. Operator direction is evidence for the judge,
-    not a blanket permission to bypass it.
+    not a blanket permission to bypass it. A private operator conversation is
+    the same kind of evidence as an operator post in the batch: the judge reads
+    it and decides whether it asks for this contact.
     """
     parsed = _parse_at_uri(uri)
     did = parsed[0] if parsed else ""
@@ -147,6 +149,11 @@ def _publication_contact(
         evidence = f"Current notification at this target: {entry['reason']}."
     elif direction := _operator_direction(uri, root_uri, ctx_notifs):
         evidence = f"Operator source for the judge to assess: {direction}"
+    elif private:
+        evidence = (
+            "Private operator conversation in this run, supplied to the judge. "
+            "It authorizes this contact only if the operator asks for it there."
+        )
     return {"uri": uri, "evidence": evidence}
 
 
@@ -242,7 +249,7 @@ async def _policy_gate(
         )
     except Exception as e:
         logger.warning(f"policy check unavailable: {e}")
-        if unprompted or tool in PUBLIC_TOOLS:
+        if unprompted or tool in PUBLIC_TOOLS or tool == "delete_record":
             return (
                 "policy check unavailable for this public action — "
                 "refusing (fail-closed). nothing was posted. lower-stakes "
@@ -472,7 +479,15 @@ def register(agent):
         action_text = text + ("\n" + image_description if image_description else "")
         action_text += quote_description
         notifs = ctx.deps.notifications_context or {}
-        contacts = [_publication_contact(quote, notifs)] if quote else []
+        contacts = (
+            [
+                _publication_contact(
+                    quote, notifs, private=ctx.deps.private_message_context
+                )
+            ]
+            if quote
+            else []
+        )
         unprompted = not notification_input(ctx.deps) and not ctx.deps.author_handle
 
         if not in_reply_to:
@@ -537,7 +552,12 @@ def register(agent):
             prior_coverage=await reply_coverage(bot_client, in_reply_to),
             images=image_pixels,
             publication_text=text,
-            contacts=[*contacts, _publication_contact(in_reply_to, notifs, root_uri)],
+            contacts=[
+                *contacts,
+                _publication_contact(
+                    in_reply_to, notifs, root_uri, ctx.deps.private_message_context
+                ),
+            ],
         )
         if refusal:
             return refusal
@@ -566,7 +586,15 @@ def register(agent):
         # skip when threading your own posts or replying to URIs found
         # outside the batch — those aren't "interactions with a user."
         notifs = ctx.deps.notifications_context or {}
-        contacts = [_publication_contact(quote, notifs)] if quote else []
+        contacts = (
+            [
+                _publication_contact(
+                    quote, notifs, private=ctx.deps.private_message_context
+                )
+            ]
+            if quote
+            else []
+        )
         if (
             in_reply_to in notifs
             and ctx.deps.memory
