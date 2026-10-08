@@ -88,14 +88,24 @@ def _bare_verb(name: str) -> str:
     return name
 
 
-def _pdsx_collection(args: dict[str, Any]) -> str:
-    if args.get("collection"):
-        return str(args["collection"])
-    uri = str(args.get("uri", ""))
+def _pdsx_record_ref(args: dict[str, Any]) -> tuple[str, str, str]:
+    """(repo, collection, rkey) for a pdsx call. Tools that address an existing
+    record take one ``uri`` (full AT-URI or ``collection/rkey``); create takes
+    separate fields. Repo is empty when the call leaves it implicit."""
+    repo = str(args.get("repo", "") or "")
+    collection = str(args.get("collection", "") or "")
+    rkey = str(args.get("rkey", "") or "")
+    uri = str(args.get("uri", "") or "")
     parts = uri.removeprefix("at://").split("/")
     if uri.startswith("at://") and len(parts) == 3:
-        return parts[1]
-    return parts[0] if len(parts) == 2 else ""
+        return repo or parts[0], collection or parts[1], rkey or parts[2]
+    if len(parts) == 2:
+        return repo, collection or parts[0], rkey or parts[1]
+    return repo, collection, rkey
+
+
+def _pdsx_collection(args: dict[str, Any]) -> str:
+    return _pdsx_record_ref(args)[1]
 
 
 def _mutations(server: str, name: str, tool_args: dict[str, Any]) -> list[str]:
@@ -571,16 +581,18 @@ async def _govern_delete(
     from bot.core.atproto_client import bot_client
     from bot.tools.posting import _policy_gate
 
-    collection = _pdsx_collection(tool_args)
-    rkey = str(tool_args.get("rkey", ""))
-    repo = str(tool_args.get("repo", "") or "")
+    repo, collection, rkey = _pdsx_record_ref(tool_args)
     if not rkey:
-        return f"refused: delete_record into {collection} needs an rkey"
+        return (
+            f"refused: delete_record into {collection} needs a uri that names "
+            "one record: at://<did>/<collection>/<rkey> or <collection>/<rkey>"
+        )
 
-    own_did = getattr(getattr(bot_client.client, "me", None), "did", "")
+    me = getattr(bot_client.client, "me", None)
+    own_did = getattr(me, "did", "")
     if not own_did:
         return "refused: could not confirm your own identity"
-    if repo and repo != own_did:
+    if repo and repo not in (own_did, getattr(me, "handle", "")):
         return (
             f"refused: {repo} is not your repo. you can only retract your own records."
         )

@@ -81,7 +81,7 @@ async def test_retracting_her_own_post_is_governed_not_refused(monkeypatch, call
             None,
             call_tool_stub(calls),
             "delete_record",
-            {"repo": MY_DID, "collection": "app.bsky.feed.post", "rkey": "abc"},
+            {"uri": f"at://{MY_DID}/app.bsky.feed.post/abc"},
         )
     assert "refused" not in str(result)
     assert calls, "the judged delete never reached pdsx"
@@ -103,7 +103,7 @@ async def test_a_successful_retraction_warns_against_a_dangling_reference(
             None,
             call_tool_stub(calls),
             "delete_record",
-            {"repo": MY_DID, "collection": "app.bsky.feed.post", "rkey": "abc"},
+            {"uri": f"at://{MY_DID}/app.bsky.feed.post/abc"},
         )
     assert "stands on its own" in result
 
@@ -120,7 +120,7 @@ async def test_the_judge_can_still_block_a_retraction(monkeypatch, calls):
             None,
             call_tool_stub(calls),
             "delete_record",
-            {"repo": MY_DID, "collection": "app.bsky.feed.post", "rkey": "abc"},
+            {"uri": f"at://{MY_DID}/app.bsky.feed.post/abc"},
         )
     assert "refused" in result
     assert calls == [], "a blocked delete reached pdsx"
@@ -134,14 +134,31 @@ async def test_retracting_someone_elses_record_is_refused(monkeypatch, calls):
         None,
         call_tool_stub(calls),
         "delete_record",
-        {
-            "repo": "did:plc:someoneelse",
-            "collection": "app.bsky.feed.post",
-            "rkey": "a",
-        },
+        {"uri": "at://did:plc:someoneelse/app.bsky.feed.post/a"},
     )
     assert "refused" in result
     assert calls == [], "a delete into another repo reached pdsx"
+
+
+@pytest.mark.parametrize(
+    "uri",
+    [
+        f"at://{MY_DID}/app.bsky.feed.post/abc",
+        "at://phi.zzstoatzz.io/app.bsky.feed.post/abc",
+        "app.bsky.feed.post/abc",
+    ],
+)
+async def test_retraction_accepts_every_uri_form_pdsx_does(monkeypatch, calls, uri):
+    """2026-10-08: pdsx's delete_record takes one ``uri``. The guard read an
+    ``rkey`` argument pdsx never sends, so every retraction was refused with
+    "needs an rkey" and phi left a duplicate post up."""
+    monkeypatch.setattr(mcp_guard, "get_override", override(False))
+    monkeypatch.setattr("bot.core.atproto_client.bot_client", _own_record())
+    guard = mcp_guard.make_mcp_guard("pdsx", "test")
+    with patch("bot.tools.posting._policy_gate", AsyncMock(return_value=(None, ""))):
+        result = await guard(None, call_tool_stub(calls), "delete_record", {"uri": uri})
+    assert "refused" not in str(result)
+    assert calls, "the judged delete never reached pdsx"
 
 
 async def test_retraction_still_refused_under_an_operator_override(monkeypatch, calls):
@@ -153,7 +170,7 @@ async def test_retraction_still_refused_under_an_operator_override(monkeypatch, 
         None,
         call_tool_stub(calls),
         "delete_record",
-        {"repo": MY_DID, "collection": "app.bsky.feed.post", "rkey": "abc"},
+        {"uri": f"at://{MY_DID}/app.bsky.feed.post/abc"},
     )
     assert "paused while i debug" in result
     assert calls == []

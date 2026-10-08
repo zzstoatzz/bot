@@ -1,5 +1,18 @@
 # changelog
 
+## 2026-10-08 — Retraction reads the argument pdsx sends
+
+Asked to replace a reply, phi posted the replacement and reported that
+`delete_record` "needs an rkey" for both a full AT-URI and the shorthand. The
+delete guard read `rkey` and `repo` arguments; pdsx's `delete_record` takes one
+`uri`. No retraction through pdsx could have passed. The tests called the guard
+with `{repo, collection, rkey}`, a shape pdsx never produces, so they passed.
+
+- `_pdsx_record_ref` parses repo, collection and rkey from `uri` (full or
+  `collection/rkey`), and the delete guard uses it. A full URI may name phi by
+  DID or by handle.
+- the guard tests send `{"uri": ...}`.
+
 ## 2026-10-07 — Homepage: activity first, 2 MB lighter, tabs within thumb reach
 
 Measured at 375×812 before the change: first paint at 6.4s and 2.2 MB
