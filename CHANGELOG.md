@@ -1,5 +1,35 @@
 # changelog
 
+## 2026-10-08 — An operator DM reaches the gates it was meant to, and the notes index is in view
+
+The penny introduction on 10-08 went sideways in three places. The operator
+said "yea you can say hi" in a DM and the reply was hard-blocked as uninvited,
+because the contact gate read only the notification batch. Phi then posted
+top-level, and the delete of the first reply was judged without the DM that
+asked for it. Separately, the `operator-notes` skill had gone unloaded for 267
+runs (docs/toolset-audit-2026-10.md).
+
+- a reply or quote made during an operator DM run carries the conversation as
+  contact evidence. The hard block no longer fires; the judge reads the DM and
+  decides whether the operator asked for this contact, as it does for an
+  operator post in a batch.
+- the judge sees the private conversation for `delete_record`, and a delete
+  fails closed when the judge is unavailable. It used to proceed unjudged when
+  a DM or a batch had prompted it.
+- `[OPERATOR NOTES]` renders the titles of notes.zzstoatzz.io by section from
+  `llms.txt`, cached an hour (~4.5k chars for 205 titles). A failed refresh
+  keeps the last index and warns. The index is in `SERVICE_CHECKS`.
+- `supersedes` points at the nearest row the reconciler named, whatever order
+  it named them in. docs/memory.md already said so; the code followed the
+  model's order.
+- a negative index from the episodic selector is dropped like any other
+  out-of-range one instead of failing the whole selection.
+- the spotlight waypoint says "narrowed", not "closed", for observation and
+  episodic stale values: an unnamed neighbour, or a contradiction ranked 4th
+  or lower, stays active.
+- AGENTS.md and docs/skill-or-tool.md name `manage_account` and describe the
+  DM path through `_is_owner`.
+
 ## 2026-10-08 — The workflow refusal names where the like has to land
 
 Asked in a devlog thread to queue a Gardener investigation, phi was refused by

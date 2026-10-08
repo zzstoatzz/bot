@@ -106,6 +106,15 @@ async def test_contradiction_of_farther_neighbours_supersedes_them():
     assert row["source_uris"] == ["at://a/9"]
 
 
+async def test_supersedes_points_at_the_nearest_named_row_whatever_order_it_was_named():
+    mem, ns = _memory()
+    await _reconcile(
+        mem, _agent("DELETE", targets=[3, 2]), Observation(content="moved to berlin")
+    )
+    assert [row["id"] for row in _patched(ns)] == ["second", "third"]
+    assert _upserted(ns)[0]["supersedes"] == "second"
+
+
 async def test_update_merges_every_target_and_unions_their_sources():
     mem, ns = _memory()
     obs = Observation(content="in chicago since 2019", source_uris=["at://a/9"])

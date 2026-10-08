@@ -151,11 +151,11 @@ def reconciliation_prompt(
 def reconciliation_targets[T](
     decision: ReconciliationAction, existing: Sequence[T]
 ) -> list[T]:
-    """The existing rows a decision names, falling back to the nearest when
-    the reconciler names none or only numbers that were never offered."""
+    """The existing rows a decision names, nearest first, falling back to the
+    nearest when the reconciler names none or only numbers never offered."""
     picked = [
         existing[n - 1]
-        for n in dict.fromkeys(decision.targets)
+        for n in sorted(set(decision.targets))
         if 1 <= n <= len(existing)
     ]
     return picked or list(existing[:1])

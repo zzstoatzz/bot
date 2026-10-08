@@ -168,7 +168,7 @@ def summary_is_current(created_at: str) -> bool:
 class EpisodicSelection(BaseModel):
     """Candidate indices only; the helper cannot author recalled content."""
 
-    indices: list[Annotated[int, Field(ge=0, strict=True)]]
+    indices: list[Annotated[int, Field(strict=True)]]
 
 
 _episodic_selector: Agent[None, EpisodicSelection] | None = None
@@ -226,7 +226,7 @@ async def _select_episodic(goals: list[dict], query: str, raw_notes: list[dict])
     try:
         result = await _get_episodic_selector().run(payload)
         indices = list(dict.fromkeys(result.output.indices))
-        valid = [index for index in indices if index < len(raw_notes)]
+        valid = [index for index in indices if 0 <= index < len(raw_notes)]
         if len(valid) < len(indices):
             logger.warning(
                 f"episodic selector returned out-of-range candidates: "

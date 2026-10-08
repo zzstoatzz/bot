@@ -16,16 +16,16 @@ This is where adoption stands, store by store, and what was checked.
 
 | | address | write rule | stale values |
 |---|---|---|---|
-| observation | handle, then nearest vectors | reconciled against the 3 nearest, every named row superseded | **closed 10-03** for new writes; existing pairs merged |
-| episodic note | nearest vectors | same reconciler | **closed 10-03** for new writes |
+| observation | handle, then nearest vectors | reconciled against the 3 nearest, every named row superseded | **narrowed 10-03** for new writes: closed for the rows the reconciler names among the 3 nearest. an unnamed neighbour, or a contradiction ranked 4th or lower, stays active. existing pairs merged |
+| episodic note | nearest vectors | same reconciler | **narrowed 10-03** for new writes, same limit |
 | run summary | nearest vectors | append only, by design: a run is an event | n/a |
 | interaction | handle, then nearest vectors | append only | **open**: a superseded exchange still surfaces in `[PAST EXCHANGES]` |
 | summary | handle | overwritten hourly while the author is in the mart | **closed 10-03**: not recalled once over 7 days old |
 
 Shipped on 2026-10-03 (see the changelog for each):
 
-- the reconciler reads three neighbours and now writes to all three, which is
-  the post's "write the neighbourhood you read" (8fe39cc)
+- the reconciler reads three neighbours and now writes to every one it names,
+  which is the post's "write the neighbourhood you read" (8fe39cc)
 - the prefect `compact.py` likes phase reconciles the same way instead of
   adding blind (`my-prefect-server` 80cef2f, 1d644b5)
 - the 284 near-duplicate active pairs that the old rule left behind were

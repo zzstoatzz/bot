@@ -420,7 +420,7 @@ async def test_an_out_of_range_index_does_not_discard_the_valid_ones(monkeypatch
     from bot.memory import namespace_memory
     from bot.memory.namespace_memory import EpisodicSelection, _select_episodic
 
-    model = TestModel(custom_output_args={"indices": [1, 17928, 69]})
+    model = TestModel(custom_output_args={"indices": [1, 17928, -1, 69]})
     monkeypatch.setattr(
         namespace_memory,
         "_episodic_selector",
