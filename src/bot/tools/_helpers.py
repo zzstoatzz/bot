@@ -264,6 +264,7 @@ SERVICE_CHECKS = [
         "url": "https://hub.waow.tech/api/agents/discovery-pool",
         "name": "discovery pool (hub)",
     },
+    {"url": "https://notes.zzstoatzz.io/llms.txt", "name": "operator notes index"},
     {"url": "https://typeahead.waow.tech/stats", "name": "typeahead"},
     {"url": "https://zig-bsky-feed.fly.dev/health", "name": "music-feed"},
     {"url": "https://pollz-backend.fly.dev/health", "name": "pollz"},

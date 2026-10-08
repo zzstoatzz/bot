@@ -39,6 +39,7 @@ from bot.core.goals import list_goals as list_goal_records
 from bot.core.graze_client import GrazeClient
 from bot.core.mcp_guard import make_mcp_guard
 from bot.core.operator import get_operator_guidance_block, get_operator_profile
+from bot.core.operator_notes import get_operator_notes_block
 from bot.core.owned_feeds import get_owned_feeds_block
 from bot.core.persona import get_persona_block
 from bot.core.personality import read_personality
@@ -893,6 +894,11 @@ class PhiAgent:
             except Exception as e:
                 logger.debug(f"public memory inject failed: {e}")
                 return ""
+
+        @_run_scoped
+        async def inject_operator_notes(ctx: RunContext[PhiDeps]) -> str:
+            """[OPERATOR NOTES] — titles only. See core/operator_notes.py."""
+            return await get_operator_notes_block()
 
         # --- register tools from tools/ package ---
 

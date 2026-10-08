@@ -51,6 +51,7 @@ contributed by the `inject_*` callbacks in `agent.py`, in registration order. ea
 | `[DOCKET]` | `inject_docket_digest` → PDS `io.zzstoatzz.phi.docket` blob (CID-cached) | when the docket flow writes a new docket | daily promotion candidates: title + `suggested_shape` only. full rationale one `get_record` away |
 | `[OWNED FEEDS]` | `inject_owned_feeds` → graze | every run | phi's curated graze feeds, by name |
 | `[SEMBLE]` | `inject_public_memory` → `core/public_memory.py` → PDS `network.cosmik.*` reads (5min cache) | every 5min | phi's public library: collection names with card counts, most recent cards, connection count — so saving/filing decisions happen against real state instead of bare counts |
+| `[OPERATOR NOTES]` | `inject_operator_notes` → `core/operator_notes.py` → `notes.zzstoatzz.io/llms.txt` (1h cache; a failed refresh keeps the last good index and logs a warning) | hourly | titles of the operator's working notes, grouped by section (~4.5k chars for 205 titles on 2026-10-08). a map, not findings: the `operator-notes` skill went unloaded for 267 runs because a catalog line names subjects, not what has been worked out. reading a note stays the skill's job |
 
 ## 3. path-specific blocks (appended to the user message)
 
