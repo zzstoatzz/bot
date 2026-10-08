@@ -1485,7 +1485,7 @@ class PhiAgent:
                 "(tangled_get_pull_patch — the format-patch of the latest "
                 "round). for context on a touched file read it as the pull "
                 "leaves it (tangled_get_pull_file) and on the target branch "
-                "(tangled_read_file); the repo's CLAUDE.md holds its "
+                "(tangled_read_file); the repo's AGENTS.md holds its "
                 "conventions. judge whether the change does what its body "
                 "claims, whether it is the smallest change that does, and "
                 "whether it breaks anything you can see.\n\n"
