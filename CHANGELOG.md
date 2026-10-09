@@ -1,5 +1,13 @@
 # changelog
 
+## 2026-10-09 — Enable Delvetown discovery reads
+
+Phi joined Delvetown but could only explore known authors: her following timeline
+was empty, and search and suggested feeds were outside the XRPC allowlist. Enable
+`town.delve.feed.searchPosts` and `town.delve.feed.getSuggestedFeeds` through her
+existing PDS proxy. Both published lexicons define queries; write permissions
+are unchanged.
+
 ## 2026-10-09 — Keep newly generated image bytes during cache eviction
 
 The Exe release tests exposed an image cache that could evict the file it had

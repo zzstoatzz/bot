@@ -378,6 +378,8 @@ class Settings(BaseSettings):
                 "town.delve.feed.getAuthorFeed",
                 "town.delve.feed.getPostThread",
                 "town.delve.feed.getPosts",
+                "town.delve.feed.searchPosts",
+                "town.delve.feed.getSuggestedFeeds",
             ),
         },
         description=(
