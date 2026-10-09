@@ -7,16 +7,18 @@ export interface AtlasPreview {
 }
 
 /**
- * The preview and full map are fetched independently. The generated timestamp
- * is the preview's generation marker, so a successful refresh can invalidate
- * a full map from an older generation without throwing away the cache for an
- * unchanged preview.
+ * The preview and full map are fetched independently. Only reuse a full map
+ * when its generation still matches the preview currently on the page.
  */
-export function atlasGenerationChanged(
-	previous: AtlasPreview | null,
-	next: AtlasPreview,
-): boolean {
-	return previous !== null && previous.generated_at !== next.generated_at;
+export function reusableAtlas<T extends { generated_at: string }>(
+	atlas: T | null,
+	preview: AtlasPreview | null,
+): atlas is T {
+	return (
+		atlas !== null &&
+		preview !== null &&
+		atlas.generated_at === preview.generated_at
+	);
 }
 
 function count(value: unknown): number {
