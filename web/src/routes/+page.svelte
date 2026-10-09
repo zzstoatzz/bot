@@ -13,7 +13,11 @@
 		getActivity,
 	} from '$lib/api';
 	import { absoluteCT, relativeWhen } from '$lib/time';
-	import { reusableAtlas, type AtlasPreview as Preview } from '$lib/atlas-preview';
+	import {
+		atlasFetchState,
+		atlasOpenDecision,
+		type AtlasPreview as Preview,
+	} from '$lib/atlas-preview';
 	import type { Goal, Docket, Atlas, ActivityItem } from '$lib/types';
 
 	const STALE_AFTER_MS = 60_000;
@@ -102,13 +106,14 @@
 	}
 	async function openAtlas() {
 		atlasState = 'opening';
-		if (reusableAtlas(atlas, preview)) {
+		if (atlasOpenDecision(atlas, preview) === 'reuse') {
 			atlasState = 'open';
 			return;
 		}
 		try {
-			atlas = await getAtlas();
-			atlasState = 'open';
+			const next = await getAtlas();
+			atlas = next;
+			atlasState = atlasFetchState(next);
 		} catch {
 			atlasState = 'failed';
 		}

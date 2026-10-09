@@ -1,5 +1,7 @@
 import { expect, test } from 'bun:test';
 import {
+	atlasFetchState,
+	atlasOpenDecision,
 	parseAtlasPreview,
 	reusableAtlas,
 	type AtlasPreview,
@@ -60,18 +62,18 @@ test('a preview without a generation never reuses a full-map cache', () => {
 	).toBe(false);
 });
 
-test('a failed preview refresh leaves the previous preview untouched', async () => {
-	const existingPreview = preview('2026-10-07T20:08:28+00:00');
-	let currentPreview: AtlasPreview | null = existingPreview;
-	try {
-		const fetched = await Promise.reject<AtlasPreview>(
-			new Error('preview unavailable'),
-		);
-		currentPreview = fetched;
-	} catch {
-		// read() accepts a preview only after the fetch succeeds.
-	}
-	expect(currentPreview).toBe(existingPreview);
+test('opening reuses a matching map and fetches a stale one', () => {
+	const generation = preview('2026-10-07T20:08:28+00:00');
+	const cachedMap = { generated_at: generation.generated_at, points: [] };
+	expect(atlasOpenDecision(cachedMap, generation)).toBe('reuse');
+	expect(atlasOpenDecision(cachedMap, preview('2026-10-08T20:08:28+00:00'))).toBe(
+		'fetch',
+	);
+});
+
+test('a null full-map response enters the existing failed state', () => {
+	expect(atlasFetchState(null)).toBe('failed');
+	expect(atlasFetchState({ points: [] })).toBe('open');
 });
 
 test('preview boundary errors remain errors for loading/error UI', () => {

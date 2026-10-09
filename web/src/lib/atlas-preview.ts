@@ -21,6 +21,17 @@ export function reusableAtlas<T extends { generated_at: string }>(
 	);
 }
 
+export function atlasOpenDecision<T extends { generated_at: string }>(
+	atlas: T | null,
+	preview: AtlasPreview | null,
+): 'reuse' | 'fetch' {
+	return reusableAtlas(atlas, preview) ? 'reuse' : 'fetch';
+}
+
+export function atlasFetchState<T>(atlas: T | null): 'open' | 'failed' {
+	return atlas ? 'open' : 'failed';
+}
+
 function count(value: unknown): number {
 	if (typeof value !== 'number' || !Number.isFinite(value) || value < 0)
 		throw new Error('Invalid atlas preview count');
