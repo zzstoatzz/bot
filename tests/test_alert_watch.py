@@ -141,8 +141,12 @@ def test_fold_firing_opens_once_then_counts():
 
 def test_fold_firing_reopens_closed_incident():
     incidents = {
-        "pub-search:abc": {"opened_ts": T0, "last_seen_ts": T0, "count": 5,
-                           "closed_ts": T0 + 100}
+        "pub-search:abc": {
+            "opened_ts": T0,
+            "last_seen_ts": T0,
+            "count": 5,
+            "closed_ts": T0 + 100,
+        }
     }
     opened, incidents, _ = fold_firing(_state(), incidents, {}, T0 + 200)
     assert opened
@@ -249,12 +253,21 @@ def test_render_quieted_history():
 
 def test_quiet_observation_is_not_a_current_failure():
     incidents, cursor = gate_firings([_state()], {}, {}, T0)
-    incidents, _ = gate_firings([_state(has_matches=False)], incidents, cursor, T0 + 60)
+    incidents, _ = gate_firings(
+        [_state(has_matches=False, last_run="2026-08-17T00:01:00Z")],
+        incidents,
+        cursor,
+        T0 + 60,
+    )
     rendered = render_alert_watch(incidents, T0 + ESCALATION_SECONDS)
     assert "latest observation: no matches" in rendered
     assert "[ESCALATION-ELIGIBLE]" not in rendered
     assert "not failed runs" in rendered
     assert "last matching detail" in rendered
+    assert (
+        "latest observation: no matches; evaluation at 2026-08-17T00:01:00Z" in rendered
+    )
+    assert "historical; evaluation at 2026-08-17T00:00:00Z" in rendered
 
 
 def test_legacy_alert_does_not_claim_still_firing():
@@ -269,7 +282,9 @@ async def test_alert_wakeup_includes_fresh_workload_evidence(monkeypatch):
     phi = PhiAgent.__new__(PhiAgent)
     phi.memory = None
     phi._run_agent = AsyncMock(return_value="checked")
-    read = AsyncMock(return_value="[WORKFLOW STATE] watcher: COMPLETED (run_id=later-success)")
+    read = AsyncMock(
+        return_value="[WORKFLOW STATE] watcher: COMPLETED (run_id=later-success)"
+    )
     monkeypatch.setattr("bot.agent.get_workflow_state_block", read)
     await phi.process_alerts("old entrypoint failure")
     read.assert_awaited_once_with(fresh=True)

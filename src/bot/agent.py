@@ -633,7 +633,12 @@ class PhiAgent:
                 evidence.event_ids.update(row["id"] for row in recent["rows"])
             states = await encounter_thread_states(recent, bot_client.thread_mute_state)
             replies = await encounter_replies(bot_client, recent["rows"])
-            return render_recent_encounters(recent, states, replies)
+            shown = {
+                entry["encounter_id"]
+                for entry in (ctx.deps.notification_events or [])
+                if entry.get("encounter_id")
+            }
+            return render_recent_encounters(recent, states, replies, shown)
 
         @_run_scoped
         async def inject_user_memory(ctx: RunContext[PhiDeps]) -> str:

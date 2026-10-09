@@ -8,12 +8,36 @@ import pytest
 from turbopuffer import Turbopuffer
 
 from bot.memory.encounters import (
+    RecentEncounters,
     indexed_time,
     read_recent_encounters,
     render_recent_encounters,
 )
 
 NOW = datetime(2026, 9, 5, 5, 0, tzinfo=UTC)
+
+
+def test_incoming_text_is_not_repeated_but_encounter_evidence_remains():
+    alice, bob = row("alice"), row("bob")
+    alice["content"] = "CURRENT EVENT TEXT"
+    bob["content"] = "OTHER VERSION TEXT"
+    bob["source_uris"] = alice["source_uris"]
+    result = RecentEncounters(
+        status="ok",
+        since=NOW.isoformat(),
+        until=NOW.isoformat(),
+        rows=[alice, bob],
+        has_more=False,
+    )
+    text = render_recent_encounters(
+        result, {"alice": "muted"}, {"alice": "published reply receipt"}, {"alice"}
+    )
+    assert "CURRENT EVENT TEXT" not in text
+    assert "already shown in NEW NOTIFICATIONS" in text
+    assert "OTHER VERSION TEXT" in text
+    assert "current thread state: muted" in text
+    assert "published reply receipt" in text
+    assert alice["source_uris"][0] in text
 
 
 def test_index_times_sort_chronologically_across_offsets_and_precision():

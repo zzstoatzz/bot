@@ -42,12 +42,12 @@ of what any historical request received.
 | `inject_today` | `[NOW]`, `[WHERE]`, operator-local time | Per run; location only when supplied by the environment |
 | `inject_pause_history` | `[OPERATIONAL HISTORY]`: last pause/resume | Only during the 24 hours after resume |
 | `inject_known_relays` | `[KNOWN RELAYS]`: valid names for `check_infra` | Five-minute cache |
-| `inject_goals` | `[GOALS]`: PDS goals/interests with dated progress | Five-minute cache, invalidated by writes; record age is not a failure judgment |
+| `inject_goals` | `[GOALS]`: PDS goals/interests with dated progress | Five-minute cache, invalidated by writes; last-step notes show their recorded timestamp, including context for relative dates in authored text |
 | `inject_recent_operations` | `[RECENT OPERATIONS]`: local Jetstream tail plus PDS gap recovery | 48-hour window; five-minute cache; routine tallies, topic labels, edit/delete provenance |
 | `inject_alert_watch` | `[ALERT WATCH]`: open/recently quieted incidents | Local status per run; firing history does not prove current workload failure |
 | `inject_discovery_pool` | `[DISCOVERY POOL]`: operator-liked writing from unfamiliar people | Batch-ranked top three; broader cached pool on scheduled paths; parent context for reply samples |
 | `inject_notifications` | `[NEW NOTIFICATIONS]`: received events grouped by thread | Current batch; delivered versions and hydration status remain distinct from verified reply targets |
-| `inject_recent_encounters` | `[RECENT ENCOUNTERS]`: captured events, mute state and prior replies | Newest eight within 48 hours; coverage/errors explicit; evidence of contact is not resolution |
+| `inject_recent_encounters` | `[RECENT ENCOUNTERS]`: captured events, mute state and prior replies | Newest eight within 48 hours; exact incoming event text is referenced rather than repeated; metadata and coverage remain |
 | `inject_user_memory` | Per-author synthesized impression, observations, historical exchanges | Query is the author's current material; summaries older than seven days omitted; source references retained |
 | `inject_prior_coverage` | `[PRIOR COVERAGE]`: Phi's published work relevant to incoming material | Batch/event material; feed/search reads also return coverage |
 | `inject_episodic` | `[RELEVANT MEMORIES]`: selected original historical records | Batch plus verified immediate parent, event material, or scheduled task seeds retrieval; empty without a query |

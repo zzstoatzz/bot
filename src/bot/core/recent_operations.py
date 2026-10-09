@@ -373,7 +373,7 @@ def _compact(rows: list[_Row]) -> list[_Row]:
     return out
 
 
-def _render(rows: list[_Row], truncated: int = 0) -> str:
+def _render(rows: list[_Row], truncated: int = 0, *, repo: str = "") -> str:
     """Render rows as the [RECENT OPERATIONS] block. Pure function — easy to template later."""
     if not rows:
         return ""
@@ -400,6 +400,8 @@ def _render(rows: list[_Row], truncated: int = 0) -> str:
             tag += " (not via this process)"
         tag_part = f"{tag}  " if tag else ""
         lines.append(f"{time_part}  {nsid_part}  {tag_part}{r['summary']}")
+        if repo and tag:
+            lines.append(f"  record: at://{repo}/{r['nsid']}/{r['rkey']}")
     if routine:
         lines.append(_tally_line(routine))
     return "\n".join(lines)
@@ -428,6 +430,7 @@ async def get_operations_block(client: BotClient) -> str:
     event_rows = [r for r in event_rows if r["nsid"] in MEANINGFUL_COLLECTIONS]
 
     snapshot_rows: list[_Row] = []
+    did = ""
     try:
         await client.authenticate()
         if client.client.me:
@@ -449,7 +452,9 @@ async def get_operations_block(client: BotClient) -> str:
 
     merged = _merge(event_rows, snapshot_rows)
     truncated = max(0, len(merged) - MAX_ROWS)
-    block = _render(await _apply_topic_labels(merged[-MAX_ROWS:]), truncated=truncated)
+    block = _render(
+        await _apply_topic_labels(merged[-MAX_ROWS:]), truncated=truncated, repo=did
+    )
     _block_cache["text"] = block
     _block_cache["fetched_at"] = now
     _block_cache["revision"] = ops_log.library_revision

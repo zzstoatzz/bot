@@ -1,5 +1,20 @@
 # changelog
 
+## 2026-10-08 — Make context history distinguishable from current evidence
+
+Phi's post-release review identified stale relative dates inside authored goal
+notes, an old disconnected-relay detail beside a later no-match observation,
+and deletion entries without a record address. Goal notes now show their recorded
+timestamp without rewriting the account. Alert detail retains its own evaluation
+timestamp, separately from the latest monitor observation; legacy detail is
+explicitly undated history. Edit/delete entries include the owning repo's URI.
+
+An encounter already delivered in NEW NOTIFICATIONS references that text instead
+of repeating it. Its timestamps, source links, mute state and reply coverage
+remain visible; other versions of the same URI are not suppressed. The captured
+request also recalled September's concurrent-cleanup incident. That history is
+relevant to this consolidation and remains eligible for recall.
+
 ## 2026-10-08 — Give MCP exposure one implementation home
 
 Server construction, filtering, deferral and wrapper inspection now live in

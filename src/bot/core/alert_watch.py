@@ -191,6 +191,7 @@ def _apply_firing(
             "name": state["name"],
             "project": state["project"],
             "detail": state["detail"],
+            "detail_at": last_run,
         }
         return True
     inc["last_seen_ts"] = now_ts
@@ -201,6 +202,7 @@ def _apply_firing(
         inc["count"] = inc.get("count", 0) + 1
     if state["detail"]:
         inc["detail"] = state["detail"]
+        inc["detail_at"] = last_run
     return False
 
 
@@ -368,7 +370,12 @@ def render_alert_watch(incidents: dict[str, dict[str, Any]], now_ts: float) -> s
             timedelta(seconds=max(0.0, now_ts - inc.get("opened_ts", now_ts)))
         )
         tally = f", {inc.get('count', 1)} alert observations (not failed runs)"
-        detail = f"; last matching detail: {inc['detail']}" if inc.get("detail") else ""
+        detail = (
+            f"\n  last matching detail (historical; evaluation at "
+            f"{inc.get('detail_at') or 'unknown'}): {inc['detail']}"
+            if inc.get("detail")
+            else ""
+        )
         observation = inc.get("observation", "unknown; historical record")
         evaluation = inc.get("evaluation_at") or "unknown"
         lines.append(

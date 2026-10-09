@@ -170,6 +170,7 @@ def render_recent_encounters(
     result: RecentEncounters,
     thread_states: dict[str, str] | None = None,
     replies: dict[str, str] | None = None,
+    shown_event_ids: set[str] | None = None,
 ) -> str:
     """Render received events without implying a response or a decision."""
     if result["status"] == "unavailable":
@@ -197,7 +198,9 @@ def render_recent_encounters(
         )
         if thread_states and row["id"] in thread_states:
             lines.append(f"  current thread state: {thread_states[row['id']]}")
-        if content := row.get("content"):
+        if shown_event_ids and row["id"] in shown_event_ids:
+            lines.append("  source text: already shown in NEW NOTIFICATIONS.")
+        elif content := row.get("content"):
             preview = content if len(content) <= 240 else content[:239] + "…"
             lines.append(f"  source text: {json.dumps(preview, ensure_ascii=False)}")
         lines.extend(f"  source: {uri}" for uri in row.get("source_uris", []))

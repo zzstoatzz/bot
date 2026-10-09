@@ -14,6 +14,7 @@ def test_old_interest_keeps_its_account_without_inventing_a_failure():
         ]
     )
     assert "stalled" not in rendered
-    assert "last step: recorded " in rendered
+    assert "last step: recorded 2026-01-01T00:00:00Z" in rendered
+    assert "Relative dates inside a saved note" in rendered
     assert "Read a source 5h ago" in rendered
     assert "Nothing needed now" in rendered

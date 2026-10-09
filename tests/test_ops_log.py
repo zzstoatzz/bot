@@ -208,9 +208,10 @@ def test_external_delete_is_visible_and_flagged():
             _op("delete", "3card", offset_s=60),
         ]
     )
-    block = _render(rows)
+    block = _render(rows, repo="did:plc:phi")
     assert "DELETED (not via this process)" in block
     assert "was: NOTE card" in block  # phi sees WHAT vanished
+    assert "at://did:plc:phi/network.cosmik.card/3card" in block
 
 
 def test_edit_renders_as_edit():

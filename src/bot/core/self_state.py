@@ -13,7 +13,6 @@ from bot.core.atproto_client import BotClient
 from bot.core.goals import FIELD_CAPS
 from bot.core.goals import list_goals as list_goal_records
 from bot.memory import NamespaceMemory
-from bot.utils.time import relative_when
 
 logger = logging.getLogger("bot.self_state")
 
@@ -115,7 +114,8 @@ def _format_goals_block(goals: list[dict]) -> str:
         return ""
     lines = [
         "[GOALS — io.zzstoatzz.phi.goal. Operator-approved scope; "
-        "progress and next steps are your account, not verified live state.]"
+        "progress and next steps are your account, not verified live state. "
+        "Relative dates inside a saved note refer to when it was recorded.]"
     ]
     for g in goals:
         rkey = g.get("_rkey", "")
@@ -139,8 +139,7 @@ def _format_goals_block(goals: list[dict]) -> str:
         last_step = g.get("last_step")
         last_step_at = g.get("last_step_at", "")
         if last_step:
-            age = relative_when(last_step_at)
-            age_part = f"recorded {age} — " if age else ""
+            age_part = f"recorded {last_step_at} — " if last_step_at else ""
             lines.append(
                 f"  last step: {age_part}{_clamp(last_step, FIELD_CAPS['last_step'])}"
             )
