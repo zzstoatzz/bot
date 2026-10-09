@@ -8,6 +8,7 @@ from pydantic_ai import RunContext
 from bot.config import settings
 from bot.core import goals
 from bot.core.atproto_client import bot_client
+from bot.core.override import get_override, refusal_text
 from bot.core.self_state import invalidate_state_cache
 from bot.tools._helpers import PhiDeps, _is_owner
 
@@ -94,6 +95,9 @@ def register(agent):
                 f"only @{settings.owner_handle} can change goals — "
                 "ask privately with report_operator (note: key) for this specific change"
             )
+        override = await get_override()
+        if override["active"]:
+            return refusal_text(override)
         try:
             uri = await goals.upsert_goal(
                 bot_client, rkey, title, description, metabolism, kind
@@ -191,6 +195,9 @@ def register(agent):
                 + ". state the conclusion in a sentence or two; put the "
                 "reasoning in a greengale report or a memory and point to it."
             )
+        override = await get_override()
+        if override["active"]:
+            return refusal_text(override)
         try:
             evid = [evidence_uri] if evidence_uri else None
             uri = await goals.update_goal_progress(

@@ -62,11 +62,12 @@ An active override supplies a context banner and the operator's refusal message.
 
 All MCP mutations and the native publication, personality, workflow, trading and
 private-delivery routes check this control. It also prevents dispatch of operator
-DM runs. It is **not a universal interceptor over native tools**: private memory
-and native goal/SELF/persona state tools retain their own authorization and
-validation contracts. Runtime pause and `VOICE_RESET` separately prevent normal
-run dispatch. Do not describe safe mode as preserving an outbound PDS-note or DM
-escape channel: those delivery routes are gated.
+DM runs. Native goal, SELF, persona, follow, profile-label and mention-consent
+writes observe the same override; their existing owner and validation contracts
+still apply when it is off. Reads, SELF's initial review, private memory and
+private thread mutes remain available. Runtime pause and `VOICE_RESET` separately
+prevent normal run dispatch. Do not describe safe mode as preserving an outbound
+PDS-note or DM escape channel: those delivery routes are gated.
 
 The July 25 generalized MCP guard closed gaps in Semble/Tangled mutations and
 raw deletes. September 5 (`6867786`) added the native blog override check. The

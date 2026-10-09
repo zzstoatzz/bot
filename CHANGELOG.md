@@ -1,5 +1,14 @@
 # changelog
 
+## 2026-10-08 — Apply safe mode consistently to native public state
+
+The July 25 override expansion intended to stop public mutations across surfaces,
+but native goal, SELF, persona, follow and account-record writes still bypassed
+it. They now check the same override before mutation. Existing owner gates,
+persona expiry, read routes, private memory and private thread mutes are preserved.
+The live override banner and refusals no longer suggest a PDS-note escape route
+that the MCP guard already rejects.
+
 ## 2026-10-08 — Reconcile remaining tool and policy descriptions
 
 The current safety reference still claimed blogs bypassed the override and

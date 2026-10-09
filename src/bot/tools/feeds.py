@@ -7,6 +7,7 @@ from pydantic_ai import RunContext
 from bot.config import settings
 from bot.core.atproto_client import bot_client
 from bot.core.graze_client import GrazeClient
+from bot.core.override import get_override, refusal_text
 from bot.core.prior_coverage import coverage_note
 from bot.tools._helpers import PhiDeps, _format_feed_posts, _is_owner
 
@@ -71,6 +72,9 @@ def register(agent, graze_client: GrazeClient):
         """
         if not _is_owner(ctx):
             return f"only @{settings.owner_handle} can ask me to follow people"
+        override = await get_override()
+        if override["active"]:
+            return refusal_text(override)
         try:
             # check if already following
             already = False

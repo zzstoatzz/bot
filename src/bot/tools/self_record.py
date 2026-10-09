@@ -18,6 +18,7 @@ from pydantic_ai import RunContext
 from bot.config import settings
 from bot.core import persona as persona_core
 from bot.core.atproto_client import bot_client
+from bot.core.override import get_override, refusal_text
 from bot.core.persona import PERSONA_MAX_CHARS, PERSONA_MAX_DAYS
 from bot.core.policy import check_self_record
 from bot.core.self_record import (
@@ -83,6 +84,9 @@ def register(agent):
                 f"only @{settings.owner_handle} can authorize a self-record "
                 "rewrite — ask privately with report_operator (note: key)"
             )
+        override = await get_override()
+        if override["active"]:
+            return refusal_text(override)
         # the charter shown above is self-assessed; this is not. an
         # independent judge holds the letter — self-assessment lost three
         # times on 2026-08-13 alone (see _SELF_RECORD_STATUTE's case law).
@@ -147,6 +151,9 @@ def register(agent):
         to your voice, use write_personality; this experiment leaves the
         live personality and SELF records unchanged.
         """
+        override = await get_override()
+        if override["active"]:
+            return refusal_text(override)
         if action == "drop":
             dropped = await persona_core.drop(bot_client)
             return "persona dropped" if dropped else "no persona to drop"

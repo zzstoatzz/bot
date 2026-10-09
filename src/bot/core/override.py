@@ -126,11 +126,10 @@ def refusal_text(override: Override) -> str:
     return (
         "operator override is active — this action was not performed.\n\n"
         f"the operator's message:\n{override['message']}\n\n"
-        "your outward-facing tools (post, like, repost) will refuse until "
-        "the operator lifts the override. you can still think, read, "
-        "search, and write to your own PDS and memory. to respond to the "
-        "operator, write a note (e.g. a network.cosmik.card of kind NOTE) — "
-        "they are watching for it and will reply from the devlog account."
+        "public mutations and operator-message delivery refuse until the "
+        "operator lifts the override. reads, search and private memory remain "
+        "available. this refusal is not an outage; do not route around it "
+        "through another tool or a PDS note."
     )
 
 
@@ -143,11 +142,9 @@ async def get_override_block() -> str:
         "[OPERATOR OVERRIDE]\n"
         "safe mode is active. the operator's message:\n"
         f"{override['message']}\n\n"
-        "while this holds, your outward-facing tools (post, like, repost) "
-        "will refuse — that refusal is this override, not a malfunction. "
-        "you can still think, read, search, and write to your own PDS and "
-        "memory. to respond to the operator, write a note on your PDS "
-        "(e.g. a NOTE card); they are watching for it and will reply from "
-        "the devlog account. this override is itself a public record "
-        f"({COLLECTION} on the operator's repo) — you can read it."
+        "public mutations and operator-message delivery refuse while this "
+        "holds. this is not a malfunction. reads, search, private memory and "
+        "private thread mutes remain available. do not route around the "
+        "override through another tool or a PDS note. the override is public "
+        f"({COLLECTION} on the operator's repo); you can read it."
     )

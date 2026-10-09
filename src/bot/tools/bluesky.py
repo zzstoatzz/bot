@@ -16,6 +16,7 @@ from pydantic_ai import RunContext
 from bot.config import settings
 from bot.core.atproto_client import bot_client
 from bot.core.mentionable import add_handle, get_mentionable_handles, remove_handle
+from bot.core.override import get_override, refusal_text
 from bot.tools._helpers import PhiDeps, _check_services_impl, _is_owner, _relative_age
 
 logger = logging.getLogger("bot.tools")
@@ -192,6 +193,11 @@ def register(agent):
                 return f"thread: {root}\nmuted: {muted}"
             except Exception as error:
                 return f"thread operation failed: {error}"
+
+        if action != "list":
+            override = await get_override()
+            if override["active"]:
+                return refusal_text(override)
 
         if setting == "labels":
             from bot.core.profile_manager import (

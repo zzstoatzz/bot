@@ -36,7 +36,8 @@ def test_refusal_carries_operator_message_verbatim():
     text = refusal_text(_active("my exact words"))
     assert "my exact words" in text
     assert "was not performed" in text
-    assert "devlog" in text  # the channel guidance
+    assert "do not route around it" in text
+    assert "private memory remain available" in text
 
 
 async def test_banner_block_renders_when_active():

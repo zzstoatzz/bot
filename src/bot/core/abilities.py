@@ -92,7 +92,7 @@ RISK: dict[str, Risk] = {
     },
     "inspect_atlas": {
         "magnitude": "none",
-        "reason": "reads the daily atlas blob that is already in her context as a digest, so the cost is context spent re-reading what she has.",
+        "reason": "reads the daily atlas on demand; selecting a focused slice avoids spending context on the entire map.",
     },
     "inspect_record_media": {
         "magnitude": "none",

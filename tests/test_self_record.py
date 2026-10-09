@@ -46,7 +46,11 @@ def _client(value: dict | None):
 
 
 @pytest.fixture(autouse=True)
-def _clear_cache():
+def _clear_cache(monkeypatch):
+    monkeypatch.setattr(
+        self_record_tool, "get_override",
+        AsyncMock(return_value={"active": False, "message": ""}),
+    )
     self_record._cache.update({"text": "", "fetched_at": 0.0})
     yield
     self_record._cache.update({"text": "", "fetched_at": 0.0})
