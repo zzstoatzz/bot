@@ -176,6 +176,13 @@ network call; uncertain delivery is held for investigation, never blindly retrie
 A reopened incident has a distinct identity. Private message bodies are not stored
 in this journal or included in public-action evidence.
 
+Both private-message tools require concise, plain-language communication about
+the affected work and the operator's decision. The judge rejects diagnostic
+dumps and unnecessary process narration, while allowing requested technical
+answers. Before an unsolicited report, the judge reads the latest 20 private
+messages to detect repeated requests even when the incident key changes. This
+history stays in private moderation context; a failed read withholds delivery.
+
 The public judge receives current delivery metadata. Six hours of unanswered
 private delivery permits considering public escalation only while the incident
 remains open and needs operator action. A response stops unattended escalation;

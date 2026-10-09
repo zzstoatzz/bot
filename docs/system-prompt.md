@@ -1,175 +1,116 @@
-# system prompt
+# System prompt
 
-what's actually injected into phi's context on every agent run, where it comes from, and when it refreshes. audited against the live `src/bot/agent.py` injectors and the modules they call.
+Each run receives the newest PDS personality, operational norms, memoized context
+blocks, its entry-point task, and the currently exposed tool definitions. Skills
+supply a catalogue; their bodies enter context when loaded. The [surface map](memory.md)
+explains why the sources exist and how they developed. This reference describes
+what reaches the model.
 
-phi is a [pydantic-ai](https://ai.pydantic.dev/) agent. its context is composed of three layers:
+## Instruction ownership
 
-1. a **personality and operational base**, rendered once per run;
-2. a set of **context blocks** registered through `@agent.instructions` and memoized within each run;
-3. **path-specific blocks** appended to the *user* message by the entry point (notifications / cycle / reflection), so they appear only on the path that needs them.
+| Concern | Authoritative home |
+|---|---|
+| Phi's voice and disposition | Live `io.zzstoatzz.phi.personality`; repository personality is the empty-collection seed |
+| Cross-cutting operational constraints | `_build_operational_instructions` in `agent.py` |
+| Policy | `POLICIES` in `core/policy.py`; the actor receives `POLICY_SUMMARIES`, the independent judge receives full rules |
+| Public delivery and phrasing | `core/etiquette.py` and the shared, scoped Humanizer reference; see [public delivery](public-etiquette.md) |
+| Meaning, dates and limits of context | The header supplied by that block's renderer |
+| Tool arguments and procedure | Registered tool docstrings |
+| Multi-tool workflows | Runtime `skills/` |
+| Temporary operator direction | Deployed `operator-guidance.md`, separate from identity and action permissions |
+| Immediate task | The entry-point prompt |
 
-tool definitions are surfaced separately by the framework — phi sees each tool's docstring and signature without us repeating them in the prompt.
+The actor receives all nine policy summaries: `uninvited-reply`, `bliss-attractor`,
+`pile-on`, `handle-hygiene`, `self-repeat`, `public-etiquette`,
+`conversational-norms`, `operator-reporting`, and `bluesky-guidelines`.
+Contact eligibility, mention consent, owner authorization, conversational welcome
+and public form are distinct checks. See [safety](safety.md) for enforcement.
 
-## 1. personality and operational base
+## Ambient context
 
-registered in `PhiAgent.__init__` by `personality_instructions`, read once per run:
+`PhiAgent.__init__` registers these `inject_*` callbacks. `memoize_per_run` holds
+each result fixed during a run's tool loop. Inputs can be absent; a diagnostic
+preview is a scheduled-shaped read with no task or notifications, not evidence
+of what any historical request received.
 
-Personality is supplied by the per-run `personality_instructions` callback, using the newest PDS revision and falling back to the repository seed. See [authored personality revisions](#authored-personality-revisions).
-
-- **operational rules** — `_build_operational_instructions()`: cross-cutting constraints no single tool docstring can own (the posting/consent layer, memory provenance, the mention-consent allowlist, specific operator authorization (private requests or existing public approval), and the URIs-only-from-the-notifications-block rule).
-- **policies** — the same function renders phi's policy *norms* from `bot.core.policy.POLICY_SUMMARIES` (one line each for `uninvited-reply`, `bliss-attractor`, `pile-on`, `handle-hygiene`, `self-repeat`), plus a note that an independent judge reviews every `post` call before it executes. the judge alone reads the full `POLICIES` statute — phi holds the norm, the judge holds the letter (2026-08-07; the full text used to render here at ~1.9k chars). both dicts share the `PolicySlug` type and a test asserts full coverage. see [safety.md](safety.md).
-
-tool definitions are cached at the Anthropic layer (`anthropic_cache_tool_definitions="1h"`).
-
-**verifying the cache holds.** the whole point of `memoize_per_run` is that a dynamic block rendering twice in one run would shift the cacheable prefix and re-bill the context. `core/cache_stability.py` wraps the model and reads the provider's own `cache_read_tokens` / `cache_write_tokens` off every response, so a moved prefix logs a warning instead of quietly costing money. per-run accounting is at `/api/cache` and rendered on the cockpit's `/operator` page. the same page's context-window panel (`/api/context/budget`, `core/context_tokens.py`, `core/model_catalog.py`) weighs the next run's composed prompt — static instructions, every dynamic block, every tool definition — in tokens against the configured model's window, counted through the provider when it supports counting and estimated (and labelled so) otherwise, beside the provider's own numbers from the last real run. the headline there is cost, not tokens: what the input bill would have been with caching off, against what phi was actually billed. the TTLs themselves live in `CACHE_TTLS` and `agent.py` builds its `AnthropicModelSettings` from that dict, so the panel reports the policy phi is running rather than a copy of it. each run links to its logfire trace.
-
-## 2. dynamic system-prompt blocks (every run)
-
-contributed by the `inject_*` callbacks in `agent.py`, in registration order. each returns `""` when its inputs are absent (pydantic-ai includes empty parts as zero-token slots — minor cost, zero signal).
-
-| block | injector → source | refreshes | purpose |
-|---|---|---|---|
-| `[YOUR INFRASTRUCTURE]` | `inject_identity` → `bot_client.client.me` | every run | phi's own handle / DID / PDS host |
-| `[OPERATOR OVERRIDE]` | `inject_operator_override` → `core/override.py` → `io.zzstoatzz.phi.override` record on the *operator's* repo (60s TTL) | every run while active; renders nothing when inactive | safe mode banner: the operator's message verbatim, what's refused (post/like/repost), and the channel back (PDS notes). rendered up front so phi learns about the override before bumping into tool refusals. see [safety.md](safety.md) |
-| `[OPERATOR WORKING GUIDANCE]` | `inject_operator_guidance` → `core/operator.py` → deployed `operator-guidance.md` | every normal run | Short operator-owned working nudges with a review date. Phi can propose revisions; operator approval and deployment are required to change them. Independent of profile lookup and personality; grants no new action permissions. Missing or empty files render an explicit unavailable notice. |
-| `[OPERATOR]` | `inject_operator` → `get_operator_profile` | every run | resolved owner name + handle + DID |
-| `[NOW]` / `[WHERE]` / `[NOW (operator local)]` | `inject_today` | every run | three clocks, because they are three different facts: phi's own (her container keeps UTC), where that machine physically is (`FLY_REGION` — `ord` is chicago, the same city as the operator, read from the environment so a region change surfaces instead of silently making the line wrong), and the operator's local time with its offset stated relative to phi (`-5h from you`) since schedule slots anchor there. off fly the `[WHERE]` line is omitted rather than guessed |
-| `[OPERATIONAL HISTORY]` | `inject_pause_history` → `bot_status` | every run | the most recent pause/resume cycle, only while the resume is <24h old |
-| `[KNOWN RELAYS]` | `inject_known_relays` → `fetch_relay_names` (5min TTL) | every 5min | exact relay hostnames so `check_relays(name=...)` can't hallucinate |
-| `[SELF]` | `inject_self` → `get_self_block` (PDS `io.zzstoatzz.phi.self`, 5min cache) + `get_inventory_block` (sub-agent `phi-posting-inventory` over recent posts, 1h cache invalidated by new post URI, persisted in `/data/posting_inventory.json`, one compile shared by overlapping renders) | every 5min / when latest post changes | one organ for self-knowledge: phi's own self record (testimony — rewritten via `write_self` with operator approval, header steers it constitutional and away from posting statistics) composed with the measured posting inventory (`subjects: … / people: … / mode: …`, deliberately flat third-person — the agent prompt forbids first person, em-dashes, abstract noun-phrases, rhetorical openings, and "not X, it's Y" constructions, because exemplar pressure beats abstract rules; the subsection header tells phi not to imitate its register). These were two separately-named blocks (`[SELF]` + `[SELF-AWARENESS]`) until 2026-08-07; until then `inject_self` was also undocumented, passing the docs-sync test as a substring of `inject_self_state` |
-| `[PERSONA EXPERIMENT]` | `inject_persona` → `core/persona.py` → PDS `io.zzstoatzz.phi.persona` (5min cache) | while a live experiment exists; empty otherwise (the common case) | a voice phi chose to try on through her own agency — the `persona` tool is deliberately NOT owner-gated; the gate is a mandatory 1–7 day TTL and a 600-char cap. rendered after `[SELF]` so testimony precedes costume; the header says craft rules and policies still outrank it and that durable character changes go through `write_self` after the costume comes off. four independent reverts: auto-expiry, phi drops it, operator deletes the record, or remove one inject function (2026-08-07 experiment) |
-| `[GOALS]` | `inject_goals` → `get_state_block` → PDS `io.zzstoatzz.phi.goal` (5min block cache, invalidated by either goal-mutation tool so phi sees her own writes immediately) | every 5min, or on goal mutation | goals + interests, each with current state / next step / last step, plus a "stalled" line when one hasn't been advanced for several days (`STALE_AFTER_DAYS`). constitutional fields (title/why/progress-means/kind) are owner-gated via `propose_goal_change`; operational fields are phi-writable via `update_goal_progress` — with hard length caps, so the fields stay states and steps rather than journals. The live-computed friends line was deleted 2026-08-07: it duplicated (and contradicted) the goal's own phi-maintained `current` field |
-| `[RECENT OPERATIONS]` | `inject_recent_operations` → jetstream-backed ops log (`core/ops_log.py`, `/data/ops_log.jsonl`) merged with a `list_records` snapshot for downtime gaps (5min cache) | every 5min | everything that happened to phi's repo in the last `WINDOW_HOURS` (48h), wall-clock-bounded. The old `TOP_N=10` count bound silently meant "the last few hours" on a busy day — on 2026-08-06 phi re-posted a 24h-old subject verbatim (the gracekind repeat) because eleven newer writes had scrolled it out of the window. Rendering from the event log rather than a state snapshot also makes **edits and deletes visible** (`EDITED` / `DELETED` tags): a `listRecords` snapshot structurally cannot show a delete, which is why the semble backend rewriting cosmik collections was undetectable. Ops made by this process are attributed via `record_local_write`; unattributed mutations render "(not via this process)" and the header tells phi to flag ones she doesn't recognise. Routine activity (replies, likes, reposts, follows, goal-progress writes) tallies into one `routine (48h): replies ×N · …` line instead of one row per write (2026-08-15: the block averaged 10-14k chars, a third of every prompt); deletes and external edits never tally — the anomaly channel stays row-level. The NOTE card semble writes alongside every URL card still folds into the URL card row (`+note`). **top-level posts show a topic label** (2026-09-30, phi's proposal): the `phi-post-topic` sub-agent on the extraction model labels each post once, sharing in-flight requests across overlapping renders and persisting labels in `/data/post_topics.json`, with links kept, so she can recognise a covered subject without her own sentences re-entering every prompt. A failed label falls back to the `POST_PREVIEW` text preview that ran from 2026-07-25 (41623ce / 014278f history preserved in the module docstring). Replies stay summarised |
-| `[ALERT WATCH]` | `inject_alert_watch` → `bot_status.alert_incidents` → `render_alert_watch` (`core/alert_watch.py`) | Open/recently quieted Logfire incidents. Webhook push opens a run for a new incident; hourly reconciliation catches missed delivery and quiet-close. Firings are grouped, not commands. Age/count do not prove continuing workload failure or recovery. The age marker warrants considering a private report through `report_operator`; public escalation separately requires verified unanswered private contact. See [safety](safety.md#private-operational-reports). Discord automation state is independent. |
-| `[DISCOVERY POOL]` | `inject_discovery_pool` → hub GET → filter handles with prior interactions → shape by path | per batch (invited) / every 5min (unprompted) | strangers the operator has been liking lately — warm leads. **shape follows the path**: with a notifications batch the whole ~30-author pool is ranked by embedding cosine against what phi is being talked to about and the top 3 render with full samples (~1.7k chars); with no batch every author renders with one sample (~5.2k chars) because a scheduled cycle has no scenario to cater to. ranking everywhere would bury the strangers who broaden her — and breadth sits on the unprompted path, where `uninvited-reply` fails closed at the judge. only the unranked block is cached; a ranked one is specific to its batch. the header frames the samples as **taste, not only leads** and permits reading them *as writing* ("do not copy their phrasing" once collapsed two instructions: not lifting sentences is real and stays; not learning from writing is how you get an agent that has never read anything — these samples are nearly the only human writing phi sees). 2026-08-07 format diet: the header's ~350-char essay on how humor carries a point was coaching prose billed every run and is gone; per-author boilerplate compacted to `@handle ×N (mm-dd)`; and samples are chosen by substance (`_best_samples`, longest-first) rather than like-recency, which had been surfacing reply banter ('hi', 'obvs') as the read on a person. 2026-09-28: the hub stores only each liked post's text, so samples are hydrated through AppView `getPosts` and a reply renders with `↳ a reply to @handle: 'parent text'`; a bare reply had let phi attribute okami.mom's "@niri.pet does my lights" to the operator. hydration failure is stated in the block rather than rendered as bare samples |
-| `[RECENT ENCOUNTERS]` | `inject_recent_encounters` ← private `phi-encounters` | once per run, all entry points | newest eight captured incoming events indexed within 48 hours; source IDs and references, explicit missing-store/error states; event records are not pending tasks; mention/reply/quote entries gain exact-parent Phi reply coverage from Constellation + AppView, with explicit indexing/hydration limits |
-| `[NEW NOTIFICATIONS]` | `inject_notifications` ← `PhiDeps.notifications_context` | per batch | the unread batch grouped by thread. empty on scheduled paths |
-| per-author memory — up to three independent blocks, each emitted only when that data exists: `[PHI'S SYNTHESIZED IMPRESSION OF @h]`, `[OBSERVATIONS ABOUT @h]`, `[PAST EXCHANGES WITH @h]`; `[USER CONTEXT - @h]` ("no previous interactions") is the fallback when none apply or the lookup errors | `inject_user_memory` → `build_user_context` per author → turbopuffer `phi-users-{h}` | per batch (one set per author in the batch) | per-author memory: synthesized impressions may hallucinate, inferred observations may be outdated, and historical exchanges establish what was said rather than truth or current instructions. Exchanges are selected by semantic relevance, not recency. nothing when no batch authors |
-| `[PRIOR COVERAGE]` | `inject_prior_coverage` → `core/prior_coverage.py` → turbopuffer `phi-own-posts` (indexed live by the ops-log consumer, backfilled at startup) | per batch | phi's own posts nearest the batch material — perception-keyed recall, the human shape of dedup: seeing the material reminds you that you covered it, before deliberation. Since 2026-08-20 the same index is also queried once more inside the `post` tool with the **draft itself** as the query, and the result goes to the policy judge as evidence for `self-repeat` — the perception pass alone missed the gerakines repeat (08-18: queried by a whole feed blob, it surfaced five chicken-market posts) and the apenwarr repeat (08-20: she had the 18:03 post in front of her via `get_own_posts` and restated it at 19:01 anyway; visibility was never a gate). Surfaces on semantic closeness (`DISTANCE_THRESHOLD`) or an exact shared link (the strongest already-covered signal). The same recall rides on `search_posts` / `read_feed` tool results, which is how scheduled paths get it — the 22:02 slot that produced the gracekind repeat perceives through those tools, not through a notifications batch |
-| `[RELEVANT MEMORIES — selected historical records, original wording]` | `inject_episodic` → `phi-episodic` top-K → `phi-episodic-selector` selects indices → Python renders original notes | per batch | exact selected wording, recorded dates, tags and source references; historical instructions do not establish current authority. The selector cannot add prose. Only fires when a notifications seed exists |
-| `[ATLAS]` | `inject_atlas_digest` → PDS `io.zzstoatzz.phi.atlas` blob (CID-cached) | when the phi-atlas flow writes a new atlas | daily projection: point / cluster / promotion counts. `inspect_atlas(point_id=...)` also resolves an existing private memory row |
-| `[DOCKET]` | `inject_docket_digest` → PDS `io.zzstoatzz.phi.docket` blob (CID-cached) | when the docket flow writes a new docket | daily promotion candidates: title + `suggested_shape` only. full rationale one `get_record` away |
-| `[OWNED FEEDS]` | `inject_owned_feeds` → graze | every run | phi's curated graze feeds, by name |
-| `[SEMBLE]` | `inject_public_memory` → `core/public_memory.py` → PDS `network.cosmik.*` reads (5min cache) | every 5min | phi's public library: collection names with card counts, most recent cards, connection count — so saving/filing decisions happen against real state instead of bare counts |
-| `[OPERATOR NOTES]` | `inject_operator_notes` → `core/operator_notes.py` → `notes.zzstoatzz.io/llms.txt` (1h cache; a failed refresh keeps the last good index and logs a warning) | hourly | titles of the operator's working notes, grouped by section (~4.5k chars for 205 titles on 2026-10-08). a map, not findings: the `operator-notes` skill went unloaded for 267 runs because a catalog line names subjects, not what has been worked out. reading a note stays the skill's job |
-
-## 3. path-specific blocks (appended to the user message)
-
-assembled by the entry point and appended to the *task prompt*, not the system prompt — so they appear only on their path:
-
-| path | blocks | source |
+| Injector | Rendered context and source | Refresh and limits |
 |---|---|---|
-| **notifications** | `[FIRST INTERACTION WITH @h]` per unfamiliar author, + any post images as multimodal inputs | `utils/lookup.py`, pre-fetched by the handler |
-| **cycle** | `[WORKFLOW STATE]`, `[RECENT FLOW MENTIONS]` | `core/workflow_state.py`, `core/recent_flow_mentions.py` |
-| **daily reflection** | `[SERVICE HEALTH]` | `_check_services_impl` |
+| `inject_identity` | `[YOUR INFRASTRUCTURE]`: authenticated account identity | Per run |
+| `inject_operator_override` | `[OPERATOR OVERRIDE]`: operator PDS override | 60-second cache; absent when inactive; enforcement is independent |
+| `inject_operator` | `[OPERATOR]`: resolved profile | One-hour cache |
+| `inject_operator_guidance` | `[OPERATOR WORKING GUIDANCE]`: deployed file | Per run; missing/empty file reports unavailability |
+| `inject_today` | `[NOW]`, `[WHERE]`, operator-local time | Per run; location only when supplied by the environment |
+| `inject_pause_history` | `[OPERATIONAL HISTORY]`: last pause/resume | Only during the 24 hours after resume |
+| `inject_known_relays` | `[KNOWN RELAYS]`: valid names for `check_infra` | Five-minute cache |
+| `inject_goals` | `[GOALS]`: PDS goals/interests with dated progress | Five-minute cache, invalidated by writes; record age is not a failure judgment |
+| `inject_recent_operations` | `[RECENT OPERATIONS]`: local Jetstream tail plus PDS gap recovery | 48-hour window; five-minute cache; routine tallies, topic labels, edit/delete provenance |
+| `inject_alert_watch` | `[ALERT WATCH]`: open/recently quieted incidents | Local status per run; firing history does not prove current workload failure |
+| `inject_discovery_pool` | `[DISCOVERY POOL]`: operator-liked writing from unfamiliar people | Batch-ranked top three; broader cached pool on scheduled paths; parent context for reply samples |
+| `inject_notifications` | `[NEW NOTIFICATIONS]`: received events grouped by thread | Current batch; delivered versions and hydration status remain distinct from verified reply targets |
+| `inject_recent_encounters` | `[RECENT ENCOUNTERS]`: captured events, mute state and prior replies | Newest eight within 48 hours; coverage/errors explicit; evidence of contact is not resolution |
+| `inject_user_memory` | Per-author synthesized impression, observations, historical exchanges | Query is the author's current material; summaries older than seven days omitted; source references retained |
+| `inject_prior_coverage` | `[PRIOR COVERAGE]`: Phi's published work relevant to incoming material | Batch/event material; feed/search reads also return coverage |
+| `inject_episodic` | `[RELEVANT MEMORIES]`: selected original historical records | Batch plus verified immediate parent, event material, or scheduled task seeds retrieval; empty without a query |
+| `inject_owned_feeds` | `[OWNED FEEDS]`: curated Graze names for `read_feed` | Cached directory; not a memory store |
+| `inject_posting_inventory` | `[POSTING INVENTORY]`: subjects, people and mode of the last ten top-level posts | One-hour persisted cache, invalidated by new post URI; overlapping renders share a compile |
+| `inject_persona` | `[PERSONA EXPERIMENT]`: temporary PDS voice experiment | Five-minute cache; absent when expired or unset |
+| `inject_public_memory` | `[SEMBLE]`: public library shelves and recent cards | Five-minute cache; invalidated by observed library writes; not an exhaustive content index |
+| `inject_operator_notes` | `[OPERATOR NOTES]`: note titles from `notes.zzstoatzz.io/llms.txt` | One-hour cache; failed refresh retains last successful index |
 
-`[RECENT ENCOUNTERS]` contains received source events across people, including
-encounters without a reply. Cycle, reflection, and people passes also receive
-`[RECENT CONVERSATIONS]`: the five latest stored exchanges, including both sides
-and source references. The existing namespace reader runs off the event loop.
-Recent mention/reply/quote encounters also carry published direct replies discovered
-with Constellation backlinks filtered by Phi’s DID and hydrated through AppView.
-The posting check reads exact-parent coverage again for replies; it uses semantic
-coverage for top-level posts. Empty index results cannot prove non-interaction.
-Corrections and specifically requested follow-ups remain eligible. These are
-complementary views; received events or published replies alone do not show completed work. The time
-window is a context bound, not a claim of capture completeness. Each result ID
-can be opened with `read_encounter`; `search_encounters` searches captured text
-across people. Existing per-person and episodic memories remain accessible
-through `search_memory`; they are not deleted or treated as fully migrated.
-Episodic search results and save receipts carry version IDs. `read_memory`
-opens that exact stored account, including superseded versions, with its date,
-origin, citations, and predecessor ID. A stored account is not verified evidence.
+The posting inventory describes behavior, not identity or a target mix of topics.
+SELF is read at character retrospectives or explicitly through PDS, rather than
+repeating the live personality in every run. Atlas and docket are on-demand:
+`inspect_atlas` reads the projection; `inspect_record_media` reads the docket's
+known JSON blob. Their cockpit endpoints and underlying records remain available.
 
-because `inject_notifications` / `inject_user_memory` / `inject_episodic` return `""` without a notifications context, the **cycle** and **reflection** paths run with the every-run system blocks above plus their own appended blocks — but no notifications / per-author / episodic blocks.
+## Path context
 
-## design rules
+- **Notifications:** unfamiliar-author lookups and available post images accompany
+  the task. Separate received-event entries and reply-target references preserve
+  multiple people engaging with one post.
+- **Cycle, people, reflection:** `[RECENT CONVERSATIONS]` contains both sides of the
+  five latest stored exchanges. They are history, not unanswered tasks.
+- **Cycle:** `[WORKFLOW STATE]` and `[RECENT FLOW MENTIONS]` describe current health
+  and earlier reporting. They do not prescribe another report.
+- **Alert:** event material seeds recall; a fresh workflow read distinguishes an
+  old failure event from current workload recovery.
+- **Reflection:** `[SERVICE HEALTH]` supplements recent exchanges.
+- **Character retrospective:** the dated `[SELF]` record is supplied for review.
+- **Operator DM:** `[PRIVATE CONVERSATION]` preserves speaker attribution and
+  current messages. Private bodies are not copied into public memory. Relevant
+  private context can inform action judgment without authorizing disclosure.
 
-**docstrings, not prompt restatement.** the framework surfaces tool docstrings to the model. per-tool guidance lives in the docstring; the system prompt is for cross-cutting rules. re-describing a tool in the prompt drifts when the tool changes.
+A source reference is not verified truth. Historical instructions do not establish
+current policy. The episodic helper selects indices; Python renders the chosen
+records verbatim with dates and provenance. Superseded/retired versions remain
+readable explicitly and do not enter ordinary recall.
 
-**identifiers in the block.** `[KNOWN RELAYS]` puts exact hostnames in the label so phi can't hallucinate. `[GOALS AND INTERESTS]` puts the rkey in the label so `propose_goal_change(rkey=...)` / `update_goal_progress(rkey=...)` target the right record. surface the exact identifier where it'll be used.
+## Tool results and enforcement
 
-**selection does not author memory.** The episodic helper selects candidate indices for relevance; Python renders the selected records unchanged with provenance. It cannot answer the current query or infer which instructions Phi sees. This replaced a synthesis pass that presented old voice experiments as current direction and invented claims about Phi's context. SELF's posting inventory remains a separate summarization path; per-author observations are reconciled on write.
+Tool docstrings carry procedure; tool results carry new evidence and explicit
+failure/coverage states. An overlapping run with an older Semble library revision
+receives refreshed library context before its attempted call. This is local-process
+coordination, not a distributed transaction across writers.
 
-**cache canonical reads, not derived ones (separately).** PDS reads (goals) cache at 5min so 10s-cadence polls don't hammer PDS. synthesis passes that depend on phi's posts cache longer (1h) and invalidate on new-post-URI change. PDS blobs (atlas, docket) cache by record CID — they only change when their flow rewrites them.
+Public delivery failures return feedback to Phi for revision. The judge sees
+verified contact targets, exact reply evidence, prior coverage and the complete
+split-publication preview. Generated image bytes are retained for pre-publication
+inspection; alt text and a blob ID do not substitute for seeing the pixels.
+Public-safe verdict metadata and private report bodies remain separate.
 
-**empty-when-unset.** dynamic blocks return `""` when their input is absent.
+## Inspection and caching
 
-## audit it
+`/api/diagnostic/context` renders a preview. `/api/context/budget` serves the last
+budget snapshot; recounting is separate. `/api/cache` reports provider accounting.
+Actual historical requests and tool results are in Logfire; use the operator
+`hone-prompts` skill to capture the producing turn, including skills loaded later.
 
-the system prompt for any specific run is captured by pydantic-ai's logfire integration. query the `agent run` span where `gen_ai.agent.name = 'phi'` — `attributes.pydantic_ai.all_messages[0]` is the full system message, with each dynamic block as a separate `text` part.
+`model_cache_settings` selects provider-native behavior. Anthropic uses 1-hour
+instruction/tool and 5-minute message caching; OpenAI uses its stable prompt-cache
+key. `CacheObservingModel` records actual provider counts. A model/provider switch
+does not transfer cached prefixes. Deferral can change the client-side tool list.
 
-Notification batches now have separate received-event entries and reply-target
-references. The NEW NOTIFICATIONS block and per-author recall enumerate the
-events, so multiple people engaging with one post remain distinct. Trusted
-posting still resolves that post through the target map; the liker is not
-used as the post author. These local changes do not add run receipts.
-When a delivered post cannot be hydrated, the notification block retains the
-delivered text and labels the lookup status and record version. It does not
-assert the post was deleted or treat that version as a verified reply target.
-
-## Image posts
-
-`generate_image` returns an uploaded blob. `post` accepts up to four image
-attachments with alt text, for top-level posts or replies. Generated upload
-bytes are retained on the volume (latest 64 images), since unreferenced blobs
-may not yet be readable from the PDS. post uses these bytes, falling back to
-the PDS for older published blobs, and sends pixels and descriptions to the existing
-policy judge. The usual override, provenance, and judge-outage behavior apply.
-Text splitting attaches images only to the first post. Image descriptions and
-blob IDs accompany stored reply text; the source post record retains the embed.
-
-## Authored personality revisions
-
-`personality_instructions` reads the newest `io.zzstoatzz.phi.personality`
-revision once per run and composes it before the operational instructions.
-The diagnostic preview uses the same renderer. The repository personality file
-is only the seed when no PDS revisions exist. `write_personality` appends a full
-replacement for the next run without operator-like approval, while respecting
-the operator pause. Previous revisions remain on PDS. The extraction task uses
-its extraction instructions without conversational personality.
-
-`public-etiquette` governs composed public communication only. Alongside the terse policy summaries, `_build_operational_instructions` includes `etiquette.VOICE`, which since 2026-09-30 holds only public delivery form: short turns, links and images, longer pieces as letters, hypotheticals kept hypothetical. The persona and humor direction it used to carry now lives in her own personality. Short factual replies do not need a joke. Blogs develop a connected subject. The independent classifier blocks violations; document_public_revision records Phi’s private response before another draft. Internal reasoning, stored memory, Semble annotations and atlas data retain their own form. Imagined situations remain hypothetical, including imagined past intentions.
-
-## Voice reset
-
-With `VOICE_RESET=true`, normal agent runs stop before instruction callbacks or tool connections. No personality, memory, SELF, prior posts, goals, atlas, skills, or tool schemas reach a normal model request. Private voice calibration uses a separate empty request and explicitly supplied current message. This setting also keeps polling paused after restart and rejects external triggers/resume. Diagnostic previews and the context-budget refresh return no instruction blocks or tool definitions, so they cannot assemble the suspended context in the background.
-
-`uninvited-reply` now describes directed contact regardless of publication
-format. Application-derived contact targets carry authority evidence to the
-shared policy check; missing authority blocks before model classification.
-See [directed contact](safety.md#directed-contact).
-
-`conversational-norms` distinguishes contact eligibility from a welcome response, including operator requests to work without replying. `bluesky-guidelines` is a sourced operational digest of Bluesky platform constraints (source updated 2025-09-19, reviewed 2026-09-10), separate from voice and conversational norms. The judge receives the exact reply parent and complete split preview; notification provenance does not presume a response is wanted. The digest is scoped, not a complete reproduction of the guidelines.
-
-`operator-reporting` routes actionable incidents through `report_operator` DMs. The public judge reads delivery and response metadata from the durable operator-report journal, never private message bodies. Public escalation requires verified unanswered private delivery and a continuing need for action; an explicit public-report request remains valid. Generic mentions no longer mark every visible incident as delivered.
-
-Provider cache settings are selected by `model_cache_settings` in
-`core/cache_stability.py`. Anthropic retains the shared `CACHE_TTLS` breakpoints
-for tools, static instructions, and message history. OpenAI receives the stable
-`phi:main` prompt cache key without Anthropic-specific settings. No extended
-OpenAI retention is requested by default. Provider switching does not reuse a
-cache across providers; each provider must warm its own matching prompt prefix.
-
-Library context is invalidated after Semble execution and observed cosmik writes.
-An overlapping run with an older library revision receives refreshed context in
-the tool result instead of executing that call. This is local-process coordination,
-not a distributed transaction; external writes become visible when observed on
-Jetstream. Tool receipts record attempts/returns, not proof of successful mutation.
-
-Private context curation: `retire_memory` removes a read episodic note from
-ordinary retrieval without erasing its evidence; `restore_memory` reverses that
-choice. Exact `read_memory` includes retired state and reason. These tools do
-not change personality, operator guidance, or action policies.
-
-For incoming replies, episodic recall includes the verified immediate parent
-post (URI, CID, author, and text) beside the received text. This resolves cues
-such as “that site” without using the entire historical thread as the search
-query. Missing or changed parent records are omitted; the incoming message
-still reaches Phi. Parent evidence grants no additional action permission.
-
-Recent encounter rendering overlays current authenticated thread mute state for
-displayed post events. Shared roots are checked once per run, concurrently with
-a five-second await bound. Original event records stay unchanged. A failed read
-is marked unavailable, and unmuted does not imply contact consent. Delivery
-checks remain authoritative if the thread changes during a run.
+With `VOICE_RESET=true`, normal runs and diagnostic composition stop before
+instruction callbacks and tool connections. Polling stays paused across restarts;
+external triggers/resume are refused. No normal identity or memory context is
+assembled behind the reset.

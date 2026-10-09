@@ -63,13 +63,12 @@ def register(agent):
         if not _is_owner(ctx):
             return {
                 "queued": False,
-                "reason": "Only the operator can queue a workflow from this run. "
-                "It is fine to ask them. In a public thread, ask for a like "
-                f"from @{settings.owner_handle} on your own reply: only a like "
-                "or repost of one of your posts reaches your notifications, "
-                "and it unlocks the next run when no one else is in that "
-                "batch. A like on anyone else's post never reaches you. "
-                "report_operator with a note: key is the private route.",
+                "reason": "This run does not carry operator authorization. "
+                "If approval is needed, ask privately for the specific work in "
+                "plain language using report_operator. An operator DM can "
+                "authorize that work in its own run. If a decision is already "
+                "pending, wait; do not repeat the request under another key. "
+                "Keep authorization mechanics out of the message.",
             }
         override = await get_override()
         if override["active"]:

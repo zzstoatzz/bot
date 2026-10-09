@@ -1,7 +1,7 @@
 """Regression tests for bot/core/docket.py — the bot-side projection of
 the daily promotion object.
 
-Stubs _fetch_record + _fetch_blob to exercise the cache + digest paths
+Stubs _fetch_record + _fetch_blob to exercise the fetch + cache paths
 without hitting PDS. Mirrors test_atlas_fetch.py.
 """
 
@@ -11,7 +11,6 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from bot.core import docket as docket_module
-from bot.core.docket import _summarize_docket
 
 
 @pytest.fixture(autouse=True)
@@ -145,59 +144,3 @@ async def test_invalid_json_blob_returns_none():
     ):
         result = await docket_module.get_docket()
     assert result is None
-
-
-# ---------------------------------------------------------------------------
-# _summarize_docket — the tiny prompt block
-# ---------------------------------------------------------------------------
-
-
-def test_digest_compact_with_candidates():
-    """Digest stays small even with many candidates."""
-    docket = json.loads(_docket_bytes(n=15))
-    s = _summarize_docket(docket)
-    # generous ceiling; with 15 candidates we should still be well under
-    assert len(s) < 2000
-
-
-def test_digest_includes_only_title_and_shape():
-    """No rationale, no evidence — those stay one pdsx fetch away."""
-    docket = json.loads(_docket_bytes(n=3))
-    # add rationale to verify it's NOT in the digest
-    docket["candidates"][0]["rationale"] = "RATIONALE_TEXT_DO_NOT_INCLUDE"
-    s = _summarize_docket(docket)
-    assert "candidate 0" in s
-    assert "[note]" in s
-    assert "[card]" in s
-    assert "RATIONALE_TEXT_DO_NOT_INCLUDE" not in s
-
-
-def test_digest_empty_when_no_candidates():
-    """No candidates → still emit a useful 'nothing today' message."""
-    docket = json.loads(_docket_bytes(n=0))
-    s = _summarize_docket(docket)
-    assert "no candidates" in s.lower()
-
-
-def test_digest_points_at_pdsx_for_full_record():
-    """The whole point: tell phi where to find the rest."""
-    docket = json.loads(_docket_bytes(n=2))
-    s = _summarize_docket(docket)
-    assert "pdsx" in s.lower() or "get_record" in s
-
-
-async def test_get_docket_digest_empty_when_no_docket():
-    with patch.object(docket_module, "get_docket", new=AsyncMock(return_value=None)):
-        result = await docket_module.get_docket_digest()
-    assert result == ""
-
-
-async def test_get_docket_digest_returns_summary_when_present():
-    with patch.object(
-        docket_module,
-        "get_docket",
-        new=AsyncMock(return_value=json.loads(_docket_bytes(n=2))),
-    ):
-        result = await docket_module.get_docket_digest()
-    assert "2 candidates today" in result
-    assert "candidate 0" in result

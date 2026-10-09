@@ -8,7 +8,7 @@ candidateCount, atlasRecordCid, blob ref); the blob carries the full
 candidates list.
 
 The primitive is the docket. This module is the bot-side projection
-that lets the cockpit and phi's prompt access it.
+used by the cockpit. Phi reads the record blob through inspect_record_media.
 
 Cached by PDS record CID, not by clock — the docket changes only when
 Prefect writes a new one (after a new atlas), so there's no point
@@ -100,53 +100,3 @@ async def get_docket() -> dict[str, Any] | None:
     _cached_record_cid = record_cid
     _cached_docket = docket
     return docket
-
-
-# ---------------------------------------------------------------------------
-# digest — TINY context block for the prompt
-# ---------------------------------------------------------------------------
-
-
-def _summarize_docket(docket: dict[str, Any]) -> str:
-    """Compact digest for prompt injection. Title + suggested_shape only —
-    the goal is for phi to know the docket exists and glance at the
-    headlines. Full evidence + rationale stays one pdsx.get_record away.
-
-    This is deliberately the inverse of 'jam everything into context.' The
-    docket is an object phi can reach for, not another state block competing
-    for prompt space.
-    """
-    candidates: list[dict[str, Any]] = docket.get("candidates") or []
-    generated_at = (docket.get("generated_at") or "?")[:16].replace("T", " ") + " UTC"
-
-    if not candidates:
-        return (
-            f"[DOCKET — daily promotion candidates, generated {generated_at}]\n"
-            "no candidates today.\n"
-            "call mcp__pdsx__get_record(uri='at://.../io.zzstoatzz.phi.docket/self') "
-            "to inspect."
-        )
-
-    lines = [
-        f"[DOCKET — daily promotion candidates, generated {generated_at}]",
-        f"{len(candidates)} candidates today:",
-    ]
-    for c in candidates:
-        title = (c.get("title") or "").strip()
-        shape = c.get("suggested_shape") or "no-action"
-        lines.append(f"- {title}  [{shape}]")
-    lines.append(
-        "call mcp__pdsx__get_record(uri='at://.../io.zzstoatzz.phi.docket/self') "
-        "to read full rationale + evidence for any candidate. if you save a "
-        "card from a candidate, name it in the note (e.g. \"from today's "
-        "docket: <title>\") so the card's provenance is readable."
-    )
-    return "\n".join(lines)
-
-
-async def get_docket_digest() -> str:
-    """Return the docket digest, or empty string if no docket is available."""
-    docket = await get_docket()
-    if docket is None:
-        return ""
-    return _summarize_docket(docket)

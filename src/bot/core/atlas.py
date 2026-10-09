@@ -161,12 +161,7 @@ def atlas_preview(atlas: dict[str, Any]) -> dict[str, Any]:
 
 
 def _summarize_atlas(atlas: dict[str, Any]) -> str:
-    """Compute the digest text from a loaded atlas dict.
-
-    Compact enough to inject into every agent.run as a context block —
-    phi can see the shape of her own mind without any tool call. For
-    detail, she calls inspect_atlas.
-    """
+    """Compute the overview returned by inspect_atlas with no arguments."""
     points: list[dict[str, Any]] = atlas.get("points") or []
     coarse: list[dict[str, Any]] = atlas.get("clusters_coarse") or []
     fine: list[dict[str, Any]] = atlas.get("clusters_fine") or []
@@ -208,10 +203,9 @@ def _summarize_atlas(atlas: dict[str, Any]) -> str:
         f"{len(coarse)} coarse clusters: {coarse_line}\n"
         f"{len(fine)} fine clusters\n"
         f"promotion: {promo_line}\n"
-        "call inspect_atlas() for the same digest, "
-        "inspect_atlas(cluster_id=N) for cluster contents, "
-        "inspect_atlas(status='raw') for promotion candidates "
-        "(private signals with no public anchor)."
+        "inspect_atlas(cluster_id=N) reads cluster contents; "
+        "inspect_atlas(status='raw') reads private signals without a nearby "
+        "public anchor. These labels are not instructions to publish."
     )
 
 

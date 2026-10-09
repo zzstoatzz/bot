@@ -1,28 +1,9 @@
-"""[GOALS] and the recent-posting inventory — two separately-consumed organs.
-
-GOALS are intent: what phi is for. Stored on PDS as canonical state.
-`get_state_block` renders them alone — one block, one purpose.
-
-The posting inventory is a structured, third-person tally of what phi's
-recent top-level posts have covered (subjects / people / mode). Compiled by a small dedicated agent; written deliberately plain.
-It is NOT phi's voice — exemplar pressure beats abstract rules, so the
-inventory itself must stay out of phi's register or it teaches the bad
-voice it was meant to describe. `get_inventory_block` renders it; the
-[SELF] block composes it next to phi's own self record so testimony and
-measurement sit in one place (they were two separately-named blocks
-until 2026-08-07, which read as sprawl because it was).
-
-The inventory pass is *derived* (not duplicated state) and cached in
-memory: 1h TTL, invalidated when the latest post URI changes. The goals
-compose is block-cached at 5min so notification polls (10s) don't
-hammer PDS.
-"""
+"""Current goals and a separately rendered, derived posting inventory."""
 
 import asyncio
 import json
 import logging
 import time
-from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from pydantic_ai import Agent
@@ -32,7 +13,7 @@ from bot.core.atproto_client import BotClient
 from bot.core.goals import FIELD_CAPS
 from bot.core.goals import list_goals as list_goal_records
 from bot.memory import NamespaceMemory
-from bot.utils.time import humanize_duration, relative_when
+from bot.utils.time import relative_when
 
 logger = logging.getLogger("bot.self_state")
 
@@ -120,30 +101,6 @@ async def _compile_inventory(posts: list[str]) -> str:
         return ""
 
 
-# A goal/interest untouched for this long shows a "stalled" line — the
-# salience that turns an inert anchor into something with visible pressure.
-STALE_AFTER_DAYS = 4
-
-
-def _stale_line(last_step_at: str) -> str:
-    """One '  stalled: ...' line when a goal hasn't been advanced lately."""
-    if not last_step_at:
-        return "  stalled: no progress recorded yet"
-    try:
-        last = datetime.fromisoformat(last_step_at)
-    except (ValueError, TypeError):
-        return ""
-    # Naive timestamps shouldn't reach here (upsert/update both write
-    # tz-aware ISO), but mirror relative_when's defensive UTC backfill so a
-    # legacy record never crashes prompt composition.
-    if last.tzinfo is None:
-        last = last.replace(tzinfo=UTC)
-    age = datetime.now(UTC) - last
-    if age >= timedelta(days=STALE_AFTER_DAYS):
-        return f"  stalled: no progress update in {humanize_duration(age)}"
-    return ""
-
-
 def _clamp(text: str, cap: int) -> str:
     """Visible truncation for field values written before the caps existed.
     New writes are rejected over-cap at the tool, so this marker is also
@@ -157,9 +114,8 @@ def _format_goals_block(goals: list[dict]) -> str:
     if not goals:
         return ""
     lines = [
-        "[GOALS — io.zzstoatzz.phi.goal. title/why/progress-means are "
-        "owner-gated (propose_goal_change); current/next/last are yours "
-        "to keep honest (update_goal_progress).]"
+        "[GOALS — io.zzstoatzz.phi.goal. Operator-approved scope; "
+        "progress and next steps are your account, not verified live state.]"
     ]
     for g in goals:
         rkey = g.get("_rkey", "")
@@ -184,15 +140,12 @@ def _format_goals_block(goals: list[dict]) -> str:
         last_step_at = g.get("last_step_at", "")
         if last_step:
             age = relative_when(last_step_at)
-            age_part = f"{age} — " if age else ""
+            age_part = f"recorded {age} — " if age else ""
             lines.append(
                 f"  last step: {age_part}{_clamp(last_step, FIELD_CAPS['last_step'])}"
             )
         if g.get("blocked_by"):
             lines.append(f"  blocked: {g['blocked_by']}")
-        stale = _stale_line(last_step_at)
-        if stale:
-            lines.append(stale)
     return "\n".join(lines)
 
 
@@ -245,8 +198,7 @@ def _compile_once(latest_uri: str, posts: list[str]) -> asyncio.Task[str]:
 
 
 async def get_inventory_block(client: BotClient) -> str:
-    """The recent-posting inventory, rendered for composition inside
-    [SELF]. Cached 1h, invalidated when the latest post URI changes."""
+    """Recent posting topics, cached 1h or until the latest post changes."""
     now = time.time()
     try:
         feed = await client.get_own_posts(limit=10)
@@ -271,9 +223,9 @@ async def get_inventory_block(client: BotClient) -> str:
 
         if cache.get("text"):
             return (
-                "measured posting inventory (derived from your last 10 "
-                "top-level posts; descriptive, not your voice — do not "
-                "imitate its register):\n" + cache["text"]
+                "[POSTING INVENTORY — derived from your last 10 top-level posts; "
+                "a description of activity, not identity or a writing example.]\n"
+                + cache["text"]
             )
     except Exception as e:
         logger.debug(f"posting inventory compose failed: {e}")

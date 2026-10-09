@@ -1,189 +1,109 @@
-# architecture
+# Architecture
 
-The [architecture model](architecture-map.md) is available at `/architecture`: a
-reviewed system schematic with a source-derived Python inventory.
+Phi is one PydanticAI agent with several entry points. Each assembles `PhiDeps`,
+a task and contextual evidence, then calls `agent.run()`. Actions happen through
+tools within that run; the returned text is a logging summary. The reviewed
+[architecture model](architecture-map.md) and source inventory are at `/architecture`.
 
-phi is one agent loop, fired from a few different paths. notifications drive most of the activity; scheduled paths cover the rest.
+The [memory and context map](memory.md) explains every surface's purpose and
+origin. [System prompt](system-prompt.md) describes current injection; [safety](safety.md)
+describes enforcement. Runtime workflows live in `skills/`; operator tooling lives
+in `.claude/skills/`.
 
-## one agent, many entry points
+## Entry points
 
-every entry point ends in the same place: `agent.run()` with a `PhiDeps` carrying whatever context the path needs. tool definitions are the same across paths; the system prompt assembles different dynamic blocks based on what's in `PhiDeps`. the agent decides AND acts inside the run via tool calls — `post`, `like_post`, `save_memory`, `propose_goal_change`, etc. there's no separate decide-then-dispatch layer.
-
-what changes per path is the user prompt and the deps shape, not the agent.
-
-## which model runs what
-
-three settings, all full pydantic-ai `provider:model` strings:
-
-| setting | agents | model |
-| --- | --- | --- |
-| `agent_model` | `phi`, `phi-extractor` | `anthropic:claude-sonnet-5-5` |
-| `policy_model` | `phi-policy-judge` | `openai-responses:gpt-5.6-terra` |
-| `extraction_model` | `phi-episodic-selector`, `observation-reconciler`, `phi-posting-inventory` | `openai-responses:gpt-5.6-luna` |
-
-The main model is selected at process startup. Set `AGENT_MODEL` to
-`anthropic:claude-sonnet-5` or `openai-responses:gpt-5.6-luna`, then restart or
-redeploy. On Fly, `fly secrets set --app zzstoatzz-phi AGENT_MODEL=<spec>` rolls
-the configuration. Both provider credentials must already be configured.
-`POLICY_MODEL` and `EXTRACTION_MODEL` remain independent. Changing the main
-model also changes `phi-extractor`, as shown above.
-
-Phi's live personality remains the newest `io.zzstoatzz.phi.personality`
-revision; switching providers does not rewrite it. `model_cache_settings` in
-`core/cache_stability.py` supplies Anthropic's explicit 1h tool/instruction and
-5m message TTLs, or OpenAI's stable `phi:main` cache routing key. Caches warm
-separately for each provider/model. No cross-provider cache transfer is implied.
-The cache recorder observes the main agent, using provider-reported totals and
-cache reads/writes. Helper agents require separate trace inspection.
-
-Gardener's Pi worker has its own trusted model catalog and per-run `agent.model`
-selection. It routes through Aperture; Phi's PydanticAI calls still use their
-configured providers directly. Do not confuse switching Gardener with switching
-Phi. Native API compatibility must be verified before moving Phi through a gateway.
-
-**the `openai-responses:` prefix is load-bearing.** every sub-agent above has an `output_type`, which pydantic-ai sends as a function tool, and OpenAI reasoning models reject function tools on `/v1/chat/completions` when `reasoning_effort` is set. the chat-completions path fails with a 400 on every call, not intermittently. a new sub-agent pointed at an OpenAI reasoning model needs the same prefix.
-
-the settings carry the provider because two call sites used to prepend it themselves (`f"anthropic:{...}"`) while two others didn't — harmless while everything ran on one provider, silently wrong at half the sites otherwise. `tests/test_config.py::TestSubAgentModelStrings` is the guard.
-
-## entry points
-
-| path | trigger | user prompt sketch |
+| Path | Trigger | Work |
 |---|---|---|
-| **notifications batch** | every poll tick (`notification_poll_interval`, 10s default): unread dispatched as one cognitive event | "process your new notifications batch — silence is fine" |
-| **workflow failure alert** | each newly observed Prefect Failed/Crashed run ID (`workflow_failure_poll_interval`, 60s default) | "alert the operator about these exact terminal events" |
-| **cycle** | each operator-local hour in `thought_post_hours` that is *not* in `people_pass_hours`, at most once per slot per day | "you have a moment. what have you been thinking about?" |
-| **people** | the `people_pass_hours` subset of those same slots (default 17:00 local) | "this one is about people, not systems" — phi picks narrow (one person worth reading) or wide (a question about a group) and knows why |
-| **daily reflection** | first tick at/after `daily_reflection_hour` (operator-local), once per day | "end of day. post a reflection if you have one" |
-| **bio refresh** | first unpaused poll tick after startup, then every 24 hours; includes image review when seven days have elapsed | "Refresh your bio; when due, look at your avatar/header and keep or revise them" |
+| Notifications | Poll tick, 10 seconds by default | Read a batch of received events and decide what each exchange needs |
+| Operator DM | Incoming messages in the private operator conversation | Interpret the specific request; respond privately when useful |
+| Cycle | Configured operator-local thought slots | Follow Phi's attention; at most one public composition or none |
+| People | A subset of thought slots | Read people and their work |
+| Daily reflection | Configured operator-local reflection hour | Reflect on the day and update changed goal state |
+| Bio | First unpaused tick when due, then every 24 hours | Review profile description; include avatar/header review weekly |
+| Alert | Logfire webhook or watched relay incident; hourly alert reconciliation | Inspect the incident with fresh workload context |
+| Pull comment/review | Forge events and review trigger | Read and review the identified patch or respond to review material |
+| Chicken scout/precheck | External Prefect schedules/control triggers | Assess the current play-money market and act within trade restrictions |
+| Publication curation / likes review | External weekly triggers | Read and curate material Phi wants to retain or recommend |
+| Editorial | External daily trigger | Research developments, preserve sources and update Coral context |
+| Character retrospective | External monthly trigger | Review the stored SELF account; keeping it unchanged is valid |
+| Extraction | Daily reflection processing | Extract observations from unprocessed exchanges |
 
-Bio refresh is a tracked background task with a three-minute execution limit
-(ten minutes when reviewing images, to allow generation).
-It respects pause, voice reset, and the operator override, cannot overlap itself,
-and is cancelled on shutdown before the profile goes offline. Classifier or PDS
-failure leaves the existing description in place; the next scheduled pass remains
-enabled. The profile form accepts accurate self-description without a joke.
+The bot's `notification_poller.py` owns local polling and due-time decisions;
+`my-prefect-server/prefect.yaml` owns external schedules. Refer to those sources
+for exact hours. Slot state seeds from history to avoid deploy-triggered repeats.
+Logfire incidents replaced the separate Prefect failure monitor; there is no
+second failure-polling schedule to configure.
 
-The weekly image review uses this same main-agent run and its normal dynamic
-context and tools. Phi loads `self-presentation`, inspects her current profile
-images, and decides whether to keep or revise them. Keeping both is a complete
-outcome. The last completed review pass is persisted in `/data/status.json`, so
-restarts do not restart the week. Failed or timed-out runs remain due for the
-next daily bio pass. This records a completed pass, not proof of an image change.
+Bio work runs in a tracked background task and never blocks startup. Its timeout
+is three minutes, or ten when image review is due. Failed writes preserve the
+existing profile; failed image-review passes remain due. Last completed review
+state persists across restarts. Pause, voice reset and operator override apply.
 
-the **cycle** subsumes what used to be three separate scheduled jobs (musing / relay check / prefect check): one integrated read, one decision, so the operator never gets two disconnected commentaries in the same minute. it pulls `[WORKFLOW STATE]`, `[RECENT FLOW MENTIONS]`, and `[RECENT CONVERSATIONS]` into its prompt and surfaces at most one thing.
+## Notification and evidence flow
 
-it used to open on `[GOALS AND INTERESTS]`, then list `[WORKFLOW STATE]` first among what to look at, then spend two thirds of its length on a decision table mapping each workflow classification to a fixed response. every scheduled wake pointed at machine state, so phi wrote status reports even when she picked the subject — `[SELF-AWARENESS]` reported `mode: mostly operational alerts and incident reports`, accurately. the cycle now opens on what she has been thinking about and names infrastructure as one of the things she can see rather than the point of looking; the label semantics moved into the `[WORKFLOW STATE]` block header, next to the labels they define. the **people** pass exists because nothing in the schedule ever sent her to read a person.
+Notifications are captured before filtering or hydration. The handler groups
+received events into a batch, fetches thread/author context and builds verified
+reply references. Dynamic context adds relevant per-person and episodic history.
+Phi calls tools; confirmed results and exchanges are recorded separately from
+her summary of the run. Scheduled summaries retain work that produced no post.
 
-## data flow (notifications)
+New signals are facts to judge. Entry-point tasks identify the current activity;
+block headers explain evidence and limits; tool descriptions and runtime skills
+own procedure. A quiet run can be complete. The posting boundary independently
+checks contact, prior coverage and public delivery, including all split parts.
 
-```
-bsky.notification.listNotifications (every 10s)
-  ↓
-filter unread × allow-list (rate limit per author)
-  ↓
-build notifications_context: per-notif fetch (post body, thread context,
-  reply refs, embeds), pre-fetch stranger profiles for unfamiliar authors
-  ↓
-PhiDeps assembled, system prompt composed:
-  identity / time / known relays / goals / self-awareness / self state
-  / notifications block / per-author memory / selected episodic / ...
-  ↓
-agent.run() — tool calls happen inside (post, like_post, etc.)
-  ↓
-post-action: store interaction in turbopuffer for next time
-```
+## Models and cache
 
-see [system-prompt.md](system-prompt.md) for what each block contains and when it refreshes.
+| Setting | Agents | Default |
+|---|---|---|
+| `agent_model` | Main Phi and observation extractor | `anthropic:claude-sonnet-5-5` |
+| `policy_model` | Independent policy judge | `openai-responses:gpt-5.6-terra` |
+| `extraction_model` | Episodic selector, reconciler, posting inventory and post-topic labels | `openai-responses:gpt-5.6-luna` |
 
-## scheduling
+Settings hold full provider/model identifiers. The `openai-responses:` prefix
+selects the API needed for the configured reasoning/structured-output agents.
+The main extractor uses prompted structured output for its configured Anthropic
+model. Provider credentials and helper-model choices are independent.
 
-all schedules run from one `notification_poller.py` loop (`_poll_loop`). on each tick (`notification_poll_interval`, 10s default):
+`model_cache_settings` supplies Anthropic's 1-hour tool/instruction and 5-minute
+message TTLs, or OpenAI's stable prompt-cache key. Context is memoized per run;
+provider-reported accounting is observed, not inferred from configuration.
+Switching models does not rewrite Phi's PDS personality or share caches.
 
-1. `_check_notifications` — fetch + dispatch any unread notifications as one batch
-2. `_should_do_daily_post` — at/after `daily_reflection_hour` (operator-local) and not yet reflected today → run the daily reflection
-3. `_should_run_cycle` — operator-local hour is one of `thought_post_hours` and that slot hasn't fired today → run one cycle, or the people pass when the hour is in `people_pass_hours`
-4. `_check_alert_watch` — hourly logfire alert-state reconciliation (firings arrive by webhook push at `/api/alerts`; flow failures ride the same path via the zig-prefect-server 'flow run failed' alert)
+MCP clients are fresh per run. Tool filtering and deferral live in `agent.py`;
+[MCP integration](mcp.md) describes their families and failure handling. Skills
+load procedural guidance on demand. Native tools and their risk declarations
+are introspected for the cockpit and the policy judge.
 
-schedule hours are interpreted in `operator_timezone` so posts land at human times of day for the reader. "did we already fire" state seeds from phi's own post history at startup (`_seed_schedule_from_history`) so deploys don't double-post.
+## Identity and authority
 
-workflow failure delivery is deliberately separate from the cycle's latest-state
-classification. a flow may fail and recover between cycle slots; the event monitor
-still delivers the failed run once. delivered run IDs persist in `/data/status.json`
-so deploys do not replay old incidents. the first monitor poll seeds existing history
-without announcing it.
+Phi owns her live personality revisions, public writing and library. SELF and
+goal scope changes retain their operator gates. A private operator request is
+sufficient for `_is_owner`; existing public approval remains supported in an
+unmixed batch. This establishes participation, not cryptographic action-bound
+approval. The request still determines the authorized action and target.
+Contact with someone else is a separate judgment. See [operator workflow](internal/operator-workflow.md).
 
-## intent state on PDS
+Phi requests and reviews maintenance; Gardener is the maintenance identity;
+Pi is its coding harness. Prefect orchestrates the workflow, currently using
+exe.dev for the Gardener route, and Aperture supplies inference. Trusted workflow
+code holds publishing credentials. The operator authorizes merging; a harness
+response or completed run is not proof of publication, merge or deployment.
 
-phi's *durable* intent lives on its own PDS as records under `io.zzstoatzz.phi.*`:
+## External state producers
 
-- `io.zzstoatzz.phi.goal` — phi's goals and interests. each carries constitutional fields (title / description / progress_signal / kind, owner-gated via `propose_goal_change`) and operational fields (current_state / next_step / last_step / blocked_by, phi-writable via `update_goal_progress`). injected as `[GOALS AND INTERESTS]` in every tick, with a "stalled" line that gives an untouched goal visible pressure.
-- `io.zzstoatzz.phi.mentionConsent` — handles opted-in to be tagged by phi.
+`my-prefect-server` builds relationship summaries/likes observations, the atlas
+and the docket. Atlas projects memory and public records; docket proposes optional
+work from that projection. They are available explicitly rather than injected
+into every conversation. Phi alone authors and maintains her Semble library.
 
-Owner-gated mutations (such as goal changes, follows, and feed creation) accept
-an operator-authored interaction, including a private DM. Existing public likes
-or reposts on Phi's posts remain a compatibility path, only in a batch without
-other participants. `_is_owner` establishes participation, not a cryptographic
-approval bound to an exact action; Phi must still act only on the request in
-context. Do not require the operator to repeat a private request publicly.
-See [operator workflow](internal/operator-workflow.md) for channel and receipt boundaries.
+Coral discovers patterns of attention and consumes Phi's factual editorial
+context. Phi's articles and public source library remain distinct from that
+feedback channel. Influence records identify chosen reading; a background reader
+is not connected to conversational runs.
 
-## why this shape
-
-**tool-based actions.** phi decides AND acts inside one agent run. no structured decide-then-dispatch layer to maintain. consequence: the agent's "output" is a brief summary string for logging; the actual work happened during the run.
-
-**network-first context.** thread bodies are fetched from atproto on demand per batch (~200ms). nothing about the conversation is cached locally. the network is source of truth.
-
-**docstrings, not prompt restatement.** what each tool does and when to use it lives in the tool's docstring. the framework surfaces docstrings to the model. the system prompt is for cross-cutting rules (consent, ownership, memory trust hierarchy), not per-tool documentation.
-
-**a small sub-agent pass before injecting where shape matters.** memory candidates from a vector store are ranked by cosine similarity, which doesn't reconcile or note recency. recent posts are compiled into the posting inventory by `phi-posting-inventory`. episodic candidates are different: `phi-episodic-selector` only picks which candidates are relevant, and python renders the chosen records unchanged, so the helper cannot author what phi recalls. see [memory.md](memory.md) and [system-prompt.md](system-prompt.md).
-
-**MCP for capabilities outside this codebase.** atproto record CRUD (pdsx) and long-form publication search (pub-search) are remote MCP servers. reusable, not bundled.
-
-The externally scheduled editorial pass follows developments using Coral history,
-research sources, and Phi's Semble library. Its `coral-editorial` skill owns the
-workflow: public coverage and monthly reading indexes remain separate from the
-compact factual context consumed by Coral's curator. Story/source references can
-continue across monthly collections. The schedule is unchanged; publication is an
-editorial choice rather than a per-pass quota. Bounded helper-led historical digests
-and immutable Coral snapshots are not yet integrated into this pass.
-
-## Maintenance identity and execution
-
-Phi (`phi.zzstoatzz.io`) requests work and reviews it. Gardener
-(`gardener.pds.zat.dev`, `did:plc:7vx7exykq2zfxjxxejovrymi`) is the
-maintenance identity that investigates, authors patches, and revises them.
-Pi is Gardener's coding harness, not another participant. Prefect orchestrates
-the work, Sprites provides isolated compute, and Aperture supplies inference.
-The trusted workflow holds publishing credentials and publishes as Gardener;
-the Pi process does not hold those credentials. The operator authorizes merging.
-
-Keep actor and execution attribution separate in descriptions and results:
-Phi requested; Gardener implemented using Pi; Phi reviewed the identified patch
-round; the operator authorized merging. A harness response alone does not prove
-that a patch was published, reviewed, or merged. Existing deployment names such
-as `pi-agent` and `pi-pr` are technical identifiers, not author identities.
-
-## Market heuristic selection
-
-`services/typesafe.py` owns the reusable TypeSafe SDK client, configured by
-`TYPESAFE_API_KEY`, `TYPESAFE_MODEL`, `TYPESAFE_BASE_URL`, and `TYPESAFE_TIMEOUT`.
-The client is shared across calls, makes no automatic retries, and closes during
-application shutdown. Market-specific questions live in `core/chicken_strategy.py`.
-
-`check_top_chicken` collects a market/wallet snapshot and sends one batch of
-independent Jev relevance questions over active heuristic metadata. The snapshot
-includes current leaders, fastest one-hour movers, all held and requested
-contenders, and wallet balances/positions. Omitted contenders and missing earlier
-checkpoints are explicit; trade history, post text, and avatars are excluded. Only matched
-rule bodies enter the result. Selection failures are explicit and never append
-the old doctrine automatically. Operator trade restrictions remain in the trade
-tool, outside retrieval. `rule_id="index"` returns metadata; a specific rule ID
-returns its body; `rule_id="legacy"` reads the preserved old record explicitly.
-
-`update_chicken_strategy` writes one `rule-*` record in
-`io.zzstoatzz.phi.strategy`, containing summary, applicability, body, and retired
-status. Other rules and the old `topchicken` singleton remain untouched. Explicit
-records override same-ID legacy rules, including retirement. Until individually
-rewritten, complete numbered blocks in the old singleton are read as candidates;
-references such as “Rules 1–44 unchanged” never create guessed rule bodies.
-Historical memory summaries are not automatically promoted into live doctrine.
+The TypeSafe client in `services/typesafe.py` selects relevant market heuristics
+against a current snapshot. `core/chicken_strategy.py` owns those questions and
+PDS rule records. The shared client makes no automatic retries and closes at
+shutdown. Selection failures are explicit; they do not append the old doctrine.
+Trade restrictions are enforced by the trade tool, outside heuristic retrieval.

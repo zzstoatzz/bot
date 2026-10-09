@@ -26,7 +26,6 @@ from bot.config import settings
 from bot.core import ops_log
 from bot.core.abilities import risk_of
 from bot.core.alert_watch import render_alert_watch
-from bot.core.atlas import get_atlas_digest
 from bot.core.atproto_client import bot_client, get_identity_block
 from bot.core.cache_stability import (
     CacheObservingModel,
@@ -34,7 +33,6 @@ from bot.core.cache_stability import (
     model_cache_settings,
 )
 from bot.core.discovery_pool import get_discovery_pool_block
-from bot.core.docket import get_docket_digest
 from bot.core.goals import list_goals as list_goal_records
 from bot.core.graze_client import GrazeClient
 from bot.core.mcp_guard import make_mcp_guard
@@ -232,8 +230,6 @@ your policies, held by you and independently enforced by a judge on every `post`
 {VOICE}
 
 a blocked post returns the policy and reason; nothing was posted. adapt (a like, save_memory, a different post) rather than retrying verbatim. a policy note on a successful post means you're drifting toward a boundary.
-
-your library (cosmik/semble) grows from contact: save things the moment they cross your attention, with one specific sentence about why. writes there are public and need no approval. the cosmik-records skill carries the conventions.
 
 memory blocks describe their provenance and limits. when a user's current words contradict stored notes, trust the words.
 
@@ -816,33 +812,6 @@ class PhiAgent:
             return ""
 
         @_run_scoped
-        async def inject_atlas_digest() -> str:
-            """[ATLAS] — daily distilled shape of phi's mind. Computed by the
-            phi-atlas Prefect flow once a day; phi sees the digest here for
-            free, and can drill into specific clusters / promotion candidates
-            via the inspect_atlas tool.
-            """
-            try:
-                return await get_atlas_digest()
-            except Exception as e:
-                logger.debug(f"atlas digest fetch failed: {e}")
-                return ""
-
-        @_run_scoped
-        async def inject_docket_digest() -> str:
-            """[DOCKET] — daily promotion candidates emitted by the docket
-            Prefect flow after each atlas. Tiny block: title + suggested
-            shape per candidate, nothing more. Full evidence + rationale is
-            one pdsx.get_record away. The docket is an object phi can reach
-            for, not another state block.
-            """
-            try:
-                return await get_docket_digest()
-            except Exception as e:
-                logger.debug(f"docket digest fetch failed: {e}")
-                return ""
-
-        @_run_scoped
         async def inject_owned_feeds() -> str:
             """[OWNED FEEDS] — phi's curated graze feeds, surfaced by name."""
             try:
@@ -852,29 +821,18 @@ class PhiAgent:
                 return ""
 
         @_run_scoped
-        async def inject_self() -> str:
-            """[SELF] — one organ for self-knowledge: phi's own self record
-            (testimony) composed with the measured posting inventory
-            (measurement). These were two separately-named blocks until
-            2026-08-07; the split read as sprawl because it was."""
-            parts: list[str] = []
+        async def inject_posting_inventory() -> str:
             try:
-                parts.append(await get_self_block(bot_client))
-            except Exception as e:
-                logger.debug(f"self record inject failed: {e}")
-            try:
-                if inventory := await get_inventory_block(bot_client):
-                    parts.append(inventory)
+                return await get_inventory_block(bot_client)
             except Exception as e:
                 logger.debug(f"posting inventory inject failed: {e}")
-            return "\n\n".join(p for p in parts if p)
+                return ""
 
         @_run_scoped
         async def inject_persona() -> str:
             """[PERSONA EXPERIMENT] — a voice phi chose to try on, TTL'd.
 
-            Rendered after [SELF] so testimony precedes costume. Absent
-            (empty) whenever no live experiment exists — the common case.
+            Empty whenever no live experiment exists.
             """
             try:
                 return await get_persona_block(bot_client)
@@ -1266,16 +1224,8 @@ class PhiAgent:
         # block is rendered via the inject_notifications dynamic system prompt.
         # Images from any post in the batch are attached as multimodal inputs.
         prompt_text = (
-            "process your new notifications batch. look at the [NEW NOTIFICATIONS] "
-            "block in your context, decide what to do, and act — "
-            "`post(text, in_reply_to=<uri>)` for replies, `post(text)` for "
-            "top-level, and create_record into app.bsky.feed.like with "
-            "record.subject.uri to like (the guard fills in the rest). "
-            "you don't have to act on every item — silence is fine, "
-            "and a like is often the right whole response. likes also have "
-            "value in posterity: they're your public record of what caught "
-            "your attention, and you revisit them (get_own_likes) — so like "
-            "the way you'd bookmark, not just the way you'd nod."
+            "Read [NEW NOTIFICATIONS] and decide what each exchange needs. "
+            "Silence or a reaction can be a complete response."
         )
         if author_lookups:
             prompt_text += "\n\n" + "\n\n".join(author_lookups.values())
@@ -1374,29 +1324,10 @@ class PhiAgent:
             logger.warning(f"recent flow mentions fetch failed: {e}")
 
         task = (
-            "you have a moment. what have you been thinking about?\n\n"
-            "start there — from your own attention, not from a status board. "
-            "the thing you keep circling, the question a conversation left "
-            "open, something you read that you haven't finished arguing with, "
-            "a person in [DISCOVERY POOL] whose posts are actually "
-            "interesting. [GOALS AND INTERESTS] is yours; if one has a next "
-            "step you actually want to take, take it.\n\n"
-            "some of what's in front of you is machine state — [WORKFLOW "
-            "STATE], relays via check_infra. that's the operator's "
-            "infrastructure and it matters when it's broken, but it is one "
-            "of the things you can see, not the point of looking. an "
-            "infrastructure post should happen because something broke that "
-            "they need to know about, not because it was the first block in "
-            "your context.\n\n"
-            "at most one post, one thread, or nothing. if two things both "
-            "want out, braid them if they connect or drop one — never two "
-            "disconnected posts in a cycle. silence is a real option and a "
-            "quiet day is allowed to be quiet.\n\n"
-            "you can pull more: the timeline, your feeds, the network, the "
-            "open web, someone's actual posts.\n\n"
-            "what you already said recently is in [RECENT FLOW MENTIONS] and "
-            "[RECENT CONVERSATIONS] — don't repeat yourself, and don't "
-            "re-tag the operator about something they've already heard."
+            "You have a moment to follow your own attention: a question, "
+            "a person, something you read, or a next step you want to take. "
+            "Read further where useful. At most one public composition "
+            "(a post or thread), or none."
         )
 
         return await self._run_scheduled(
@@ -1623,21 +1554,9 @@ class PhiAgent:
         complete, so the surface is worth a real read.
         """
         task = (
-            "weekly curation pass. load your publication-curation skill "
-            "first — it has the tools and the standards.\n\n"
-            "browse this week's most-recommended posts on the publications "
-            "network (pub_discover_focal_post, window='week' — check both "
-            "sort='top' and sort='trending'). pick what genuinely interests "
-            "you and READ it (pub_get_document), don't skim titles.\n\n"
-            "then curate: recommend at most one or two documents you'd "
-            "actually put your name behind (it's just a "
-            "site.standard.graph.recommend record — the skill has the shape, "
-            "and the standards: read first, sparingly, never your own, never "
-            "twice). a cosmik card with a specific why is welcome when a "
-            "piece earned it. recommending nothing is fine when nothing "
-            "clears the bar — say why in your summary. posting to bsky about "
-            "what you read is allowed but optional; only if something is "
-            "genuinely worth surfacing to your feed."
+            "Weekly publication curation. Load publication-curation, read what "
+            "interests you, and decide what merits recommending or keeping. "
+            "Recommending nothing is a valid outcome."
         )
         return await self._run_scheduled(name="curation", task=task)
 
@@ -1685,9 +1604,8 @@ class PhiAgent:
         """Review the [SELF] record against lived evidence.
 
         Triggered externally (prefect, roughly monthly) via
-        /api/control/trigger/character-retro. The personality file is a
-        constitution; who phi actually is lives in io.zzstoatzz.phi.self,
-        and this pass is where she revises it.
+        /api/control/trigger/character-retro. This pass reads the optional
+        self-description explicitly, separately from her live personality.
         """
         task = (
             "character retro. review your [SELF] record against what you "
@@ -1721,12 +1639,16 @@ class PhiAgent:
             "about you.\n\n"
             "aspirations go in your goals, not here. drift is allowed and "
             "expected — the record is public and versioned, so who you "
-            "were stays in the firehose. keep it under ~400 words. stay "
+            "were stays in the firehose. respect write_self's length cap. stay "
             "off the feed during this pass; if the retro surfaces "
             "something worth saying publicly, your blog is the venue, and "
             "only if it earns it."
         )
-        return await self._run_scheduled(name="character retro", task=task)
+        return await self._run_scheduled(
+            name="character retro",
+            task=task,
+            context_blocks=[await get_self_block(bot_client)],
+        )
 
     async def process_extraction(self) -> int:
         """Review recent unprocessed interactions and extract observations. Returns count stored."""

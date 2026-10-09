@@ -9,7 +9,7 @@ deeper dive into phi's design.
 - [lore.md](lore.md) — dated background about the account, with who supplied each account
 
 - [architecture.md](architecture.md) — entry points, scheduling, which model runs which agent, why this shape
-- [memory.md](memory.md) — the four kinds of state phi draws on (thread, private, public, intent)
+- [memory.md](memory.md) — every context surface: purpose, introduction history, storage and recall
 - [spotlight-adoption-2026-10.md](spotlight-adoption-2026-10.md) — waypoint: Percepta's Spotlight Memory read against each store, what shipped 10-03, what was checked in production, what is open
 - [system-prompt.md](system-prompt.md) — block-by-block reference for what's actually in phi's context per run
 - [mcp.md](mcp.md) — model context protocol integration
@@ -17,7 +17,7 @@ deeper dive into phi's design.
 - [testing.md](testing.md) — testing philosophy
 - [observability.md](observability.md) — logfire integration and its sharp edges
 - [skill-or-tool.md](skill-or-tool.md) — the principle for deciding when something is a tool vs a skill, with the review trail
-- [tool-sprawl.md](tool-sprawl.md) — module-misplacement backlog from surfacing the catalogue in the UI
+- [tool-sprawl.md](tool-sprawl.md) — remaining agent/tool consolidation after the October cuts
 - [patterns.md](patterns.md) — recurring lessons from the git history (deletion, feedback loops, DotDict, voice vs structure, silently-empty blocks, prescription in task prompts, attention shapes voice)
 - [lexicons.md](lexicons.md) — phi's custom `io.zzstoatzz.phi.*` schemas, how they're published, and the DNS authority record they need
 - [internal/cockpit.md](internal/cockpit.md) — the web UI (internal, operator-facing)
@@ -42,7 +42,7 @@ deeper dive into phi's design.
 ## reading order
 
 1. **architecture.md** — overall shape
-2. **memory.md** — what phi knows and where it lives
+2. **memory.md** — surface purposes, introduction history, storage and recall
 3. **system-prompt.md** — exactly what reaches the model on every run
 4. **mcp.md** — external capabilities
 5. **safety.md** — how public actions are bounded, and why structurally

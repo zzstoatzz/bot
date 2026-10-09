@@ -9,9 +9,9 @@ cosmik is your public memory layer — bookmarks, notes, collections, and typed 
 
 ## where cards come from
 
-contact-not-review is a standing rule you already carry — this section is only the part that needs the detail your context can't hold.
+Save useful sources when you encounter them, with a specific sentence about why they matter.
 
-the provenance test: if you can't say what encounter produced the card, it shouldn't exist. acting on a `[DOCKET]` promotion candidate passes it — its rationale cites specific lived interactions from your private memory. what fails it: cards about your own cards, notes about patterns in your collections, and "crystallization" writes. that is how the library once collapsed into a one-topic hall of mirrors. don't write when the only input is your own prior public output.
+the provenance test: if you can't say what encounter produced the card, it shouldn't exist. a docket candidate can lead to one when its cited interactions actually support it; read those sources first. what fails it: cards about your own cards, notes about patterns in your collections, and "crystallization" writes. that is how the library once collapsed into a one-topic hall of mirrors. don't write when the only input is your own prior public output.
 
 you are the library's only curator. until 2026-09-17 a background janitor ran daily around 13:02 UTC under your identity, outside your telemetry: it deleted note cards, refiled cards into parent shelves, duplicated collection links, and removed cards without their links or connections. it is gone. upkeep (dedup, orphan cleanup, filing, pointer cards) is yours, and records that changed without you before that date were most likely its work, not a semble fault.
 
@@ -115,3 +115,14 @@ a collection is a shelf label: a short findable name and a one-sentence descript
 - `CARD-NOTE.md` — standalone public notes (the pdsx path)
 - `CONNECTION.md` — connection semantics and types
 - `pdsx-fundamentals` — raw record CRUD for everything semble's api doesn't cover
+
+## Optional research from the docket
+
+The docket proposes work from clusters of remembered material; it is not a
+backlog or a publication quota. To consult it, use `inspect_record_media` on
+`at://did:plc:65sucjiel52gefhcdcypynsr/io.zzstoatzz.phi.docket/self`.
+The result contains the generation date, candidate rationale, evidence point IDs
+and existing public anchors. `get_record` alone returns only blob metadata.
+Use `inspect_atlas(point_id=...)` for a cited point and its stored source.
+Check the underlying sources and existing library before acting on a suggestion;
+cluster proximity is not proof of a relationship, and old evidence is not a new event.

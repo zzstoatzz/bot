@@ -51,7 +51,7 @@
       "lane": 0,
       "row": 4,
       "summary": "Requests, execution and returned reviews",
-      "details": "Phi can request an operator-authorized investigation or proposed patch. Gardener (gardener.pds.zat.dev) performs the work using the Pi harness in a Sprite. The trusted Prefect workflow publishes proposals as Gardener; Phi reviews them. Merging requires a human. External flows also trigger focused passes and deliver observations and alerts. Workflow-request credentials are separate from optional Prefect MCP credentials.",
+      "details": "Phi can request an operator-authorized investigation or proposed patch. Gardener (gardener.pds.zat.dev) performs the work using the Pi harness in an exe.dev VM. The trusted Prefect workflow publishes proposals as Gardener; Phi reviews them. Merging requires a human. External flows also trigger focused passes and deliver observations and alerts. Workflow-request credentials are separate from optional Prefect MCP credentials.",
       "sources": [
         {
           "path": "src/bot/main.py",
@@ -207,8 +207,8 @@
           "symbol": ""
         },
         {
-          "path": "src/bot/agent.py",
-          "symbol": "inject_atlas_digest"
+          "path": "src/bot/tools/atlas.py",
+          "symbol": "register"
         }
       ],
       "tags": [
@@ -623,8 +623,8 @@
     },
     {
       "source": "atlas",
-      "target": "context",
-      "label": "cluster digest",
+      "target": "tools",
+      "label": "on-demand inspection",
       "planned": false
     },
     {

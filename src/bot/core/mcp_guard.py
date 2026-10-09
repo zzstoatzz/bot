@@ -676,6 +676,16 @@ async def _invoke(
     except Exception as e:
         logger.warning(f"{server} {name} failed during {run_label}: {e}")
         detail = str(e)
+        if any(
+            signature in detail.lower()
+            for signature in ("reponotfound", "could not resolve handle", "could not find pds")
+        ):
+            return (
+                f"{server} {name} could not resolve or find the requested repository "
+                f"({detail[:400]}). Verify the handle, resolve its DID and PDS, "
+                "and retry the read with the DID. This lookup failure does not "
+                "establish a service outage."
+            )
         if _is_correctable(detail):
             # a rejected argument is not an outage. semble told phi
             # `Input should be 'OPEN' or 'CLOSED'` and this wrapper

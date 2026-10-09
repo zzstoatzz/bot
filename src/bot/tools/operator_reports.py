@@ -29,12 +29,20 @@ def register(agent):
             str,
             Field(
                 max_length=1000,
-                description="Private report and needed action; omit to check delivery",
+                description="Brief plain-language decision or action needed; omit to check delivery",
             ),
         ] = "",
     ) -> dict:
         """Send one private message to the operator by DM, or check its delivery.
 
+        Explain what is affected and what you need the operator to decide or do.
+        A simple permission request needs one question and any material scope or
+        risk. Do not repeat that permission is needed, nothing has started, or
+        you are waiting; do not prescribe approve/decline reply wording.
+        Keep routine diagnostics, tool names, record IDs, and approval mechanics
+        in logs. Do not narrate your attempts. Technical detail belongs here only
+        when requested or necessary for the decision. Reuse the same key for the
+        same work; a new key does not justify repeating an unchanged request.
         Report only issues needing their hands. An alert incident is keyed
         by its opening; anything else takes a note: key you choose, sent
         once per key. An uncertain send must be investigated, never retried
@@ -59,9 +67,14 @@ def register(agent):
                 override = await get_override()
                 if override["active"]:
                     return {"error": refusal_text(override)}
+                history = await operator_reports.recent_conversation()
                 verdict = await check_action(
                     action=f"Private Bluesky DM to operator: {text}",
-                    provenance=f"Operator authorized private-first incident reporting. Incident: {incident}. No prior report for this opening.",
+                    provenance=(
+                        f"Operator authorized private-first incident reporting. Incident: {incident}. "
+                        "No prior receipt for this key; the same work may already have been reported. "
+                        f"Recent private conversation: {history}"
+                    ),
                     tool="report_operator",
                 )
                 if verdict["verdict"] != "allow":
@@ -94,6 +107,10 @@ def register(agent):
 
         Silence is valid. One reply per incoming batch; an uncertain delivery is
         held for inspection rather than sent again. Private context stays private.
+        Answer the operator's actual message concisely. For operational decisions,
+        explain the impact and what you need from them in ordinary language.
+        Do not dump tool names, request keys, IDs, or approval mechanics; include
+        technical detail when the operator asks for it or needs it to act.
         """
         if not ctx.deps.private_message_id:
             return {

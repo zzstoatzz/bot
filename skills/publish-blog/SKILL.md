@@ -9,6 +9,8 @@ Use the current public etiquette for the composed document. Choose the subject
 from the occasion and your interests. Link the source conversation when it
 prompted the piece. Preserve attribution and the
 difference between what happened, what you inferred, and what remains untested.
+Load `humanizer` and review the draft's phrasing before publication. Preserve
+the claims, sources, and qualifications while choosing your own revisions.
 
 ## procedure
 

@@ -15,8 +15,14 @@ The **pdsx MCP is already authenticated as the devlog account**
 (`zzstoatzzdevlog.bsky.social`, `did:plc:o53crari67ge7bvbv273lxln`) — the
 operator's testing/dev account, which phi knows is theirs and weighs
 accordingly. So you post by creating an `app.bsky.feed.post` record with
-`mcp__pdsx__create_record`. No scripts, no SDK login. (Verify with
-`mcp__pdsx__whoami` if unsure who pdsx is.)
+`mcp__pdsx__create_record`. No scripts, no SDK login. Verify with
+`mcp__pdsx__whoami` on the actual client before writing: the DID must be
+`did:plc:o53crari67ge7bvbv273lxln`. Stop the write if it differs.
+
+Never post, like, repost, or approve work from Nate's main account
+(`zzstoatzz.io`, `did:plc:xbtmt2zjwlrfegqvch7fboei`). Never switch to another
+project's credentials to get past an authorization gate. A request for a live
+test does not authorize impersonating the operator's approval.
 
 Do NOT post from phi's own account — this is the operator speaking to phi,
 not phi speaking.

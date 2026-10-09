@@ -42,6 +42,11 @@ def report(monkeypatch):
     monkeypatch.setattr(tool_module.operator_reports, "send_report", send_report)
     monkeypatch.setattr(
         tool_module.operator_reports,
+        "recent_conversation",
+        AsyncMock(return_value="No existing private conversation."),
+    )
+    monkeypatch.setattr(
+        tool_module.operator_reports,
         "report_state",
         AsyncMock(return_value={"state": "not-sent"}),
     )

@@ -1,20 +1,4 @@
-"""[PERSONA EXPERIMENT] — a voice phi chose to try on, with an expiry.
-
-The constitution delegates manner of speech to phi ("mine to evolve — in
-the [SELF] record, not here"), but [SELF] is testimony about who she IS —
-rewriting it to experiment would launder a costume into a constitution.
-This is the try-on rack: a singleton record phi writes through her own
-agency (no owner gate — the gate is the TTL), rendered into context while
-it lives, gone when it expires.
-
-Deliberately easy to revert, in four independent ways: the record expires
-on its own (1-7 days, mandatory), phi drops it early, the operator can
-delete the record, or the whole organ is one inject function + one tool
-to remove.
-
-Capped at PERSONA_MAX_CHARS so the experiment can't become a new bloat
-source in the context it lives in.
-"""
+"""Temporary voice experiments with automatic expiry, separate from live personality."""
 
 from __future__ import annotations
 
@@ -65,10 +49,9 @@ def render_persona(value: dict, now: datetime | None = None) -> str:
     return (
         f"[PERSONA EXPERIMENT{adopted_part}, expires in {left} — a voice "
         "you chose to try on, via the persona tool (drop it early whenever "
-        "it stops being interesting). an experiment, not your self record: "
-        "the constitution's craft rules and your policies still outrank "
-        "it. if it earns a place in who you are, that goes through "
-        "write_self.]\n" + text[:PERSONA_MAX_CHARS]
+        "it stops being interesting). Your policies and public-delivery "
+        "craft rules still apply. Lasting voice changes belong in your "
+        "live personality via write_personality.]\n" + text[:PERSONA_MAX_CHARS]
     )
 
 

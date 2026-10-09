@@ -51,12 +51,17 @@ sandbox/                   # experiments (graduate to scripts/ once proven)
 - personality is separate from operational rules. tool docstrings carry per-tool guidance, not the system prompt; a block's semantics live in that block's header, next to the labels they define.
 - scheduled attention is deliberate: `thought_post_hours` fires 4 cycles/day in operator-local waking hours, and `people_pass_hours` routes one of those slots to the people pass. what phi is woken up to look at is what she writes about (docs/patterns.md).
 - memory: turbopuffer namespaces (`phi-users-{handle}`, `phi-episodic`). intent state on PDS under `io.zzstoatzz.phi.*` (goals, mention consent, override, atlas, docket).
+- `docs/memory.md` maps context surfaces to their purpose, introducing changes and current writers. Semble is the public reference library; atlas is a dated projection; docket suggests optional investigations. Atlas/docket are read on demand, not injected. SELF is explicit or monthly-review context; the separate posting inventory remains ambient.
 - owner-gated mutations (`follow_user`, `propose_goal_change`, `write_self`, `manage_account`) pass `_is_owner` one of two ways: in a public batch, phi posts an authorization request, the owner likes it, and the next batch lets the action through; in an operator DM run the owner is the author, so the request itself is the approval. contact with a third party is a separate gate: the DM conversation is evidence the judge reads, not a pass.
 - MCP servers: pdsx (atproto record CRUD, feed-writes guarded), pub-search (publication search), semble (public knowledge graph; jev-ranked search_tools + call_tool), prefect (workflow state; only when auth configured). connected via `MCPServerStreamableHTTP`, fresh per `agent.run()`. phi carries a subset of prefect, pub-search, tangled and pdsx: the tables are `MCP_KEPT` and `MCP_DROPPED` in `agent.py`, and a tool named by a prompt or a skill must not be on them. tangled and lexidraw are deferred behind `search_tools` (`MCP_DEFERRED`) except in runs whose prompt names their tools (docs/mcp.md).
 - atproto apps beyond Bluesky: `describe_lexicon` reads any published lexicon; `call_xrpc` calls a query or procedure as phi through her PDS's service proxy, only for the NSIDs in `settings.xrpc_methods` (each a deliberate addition, grouped by service DID). records in a Bluesky-shaped app (`*.feed.post`, `*.feed.like`, `*.feed.repost`, `*.actor.profile` outside `app.bsky`) are pdsx writes the guard judges like their Bluesky twins (`core/app_records.py`).
 - web grounding via tavily: `web_search` discovers sources; `read_web_page` reads extracted Markdown with explicit pagination. The runtime `choose-influences` skill uses this reading capability; background influence reading is still unconnected.
 
 ## skills
+
+`skills/humanizer` is Phi's runtime phrasing review, pinned to upstream
+Humanizer 3.1.0 with an explicit Phi-specific scope. The policy judge reads
+the same SKILL.md. Review upstream updates; preserve the attribution and license.
 
 two distinct namespaces — don't confuse them:
 
@@ -66,7 +71,9 @@ two distinct namespaces — don't confuse them:
   - `phi-check` — inspect phi's health/activity via logfire, bsky, fly, PDS.
   - `devlog-to-phi` — post a message to phi from the operator's devlog account (the pdsx MCP is already authed as devlog; it's a thin record-create recipe, no script).
 
-when you add a capability, decide which namespace it belongs to and document it here. prefer the pdsx MCP over hand-rolled scripts for any atproto write — pdsx is authenticated as the devlog account (`mcp__pdsx__whoami` to confirm).
+when you add a capability, decide which namespace it belongs to and document it here. prefer the pdsx MCP over hand-rolled scripts for any atproto write.
+
+Operator-facing automation must never post, like, repost, or approve work from Nate's main account (`zzstoatzz.io`, `did:plc:xbtmt2zjwlrfegqvch7fboei`). Devlog communication uses only `did:plc:o53crari67ge7bvbv273lxln`; verify `whoami` on the actual client before writing. Credentials from another project are not authorization. If Phi requires an operator decision, do not manufacture it through Nate's account to complete a test.
 
 ## documentation
 

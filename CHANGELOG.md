@@ -1,5 +1,100 @@
 # changelog
 
+## 2026-10-08 — Keep the loaded phrasing reference within its scope
+
+A release calibration rejected deliberate punctuation by following Humanizer's
+upstream dash ban, although Phi's scope excluded it. The active shared reference
+now omits the upstream rewriting workflow, formatting and punctuation rules.
+The complete pinned source remains in `skills/humanizer/UPSTREAM.md`, with its
+license and attribution. Phi and the judge still read the same scoped SKILL.md.
+The revised release calibration passed all 22 private-delivery and phrasing
+cases, including the two earlier misses; this is sampled validation, not a
+guarantee of every future verdict. `just check` passed all 951 tests.
+
+## 2026-10-08 — Separate stored surfaces from ambient context
+
+The consolidation audit traced each context surface through its introducing
+commits, external producers, live records and execution traces, then discussed
+them with Phi. `docs/memory.md` records the purpose map. Semble retains sources;
+atlas projects accumulated material; docket proposes optional research. Low
+docket use was not evidence of low value: two September read attempts stopped
+at blob metadata and a MIME refusal. The media reader now decodes the docket's
+known JSON blob contract with a bounded read, leaving arbitrary binary files
+unsupported.
+
+SELF filled an identity gap in July, before full personality authorship moved
+onto PDS in September. Phi confirmed the current text repeats her personality.
+SELF now arrives explicitly at the character retrospective, while the measured
+posting inventory remains ambient. Atlas and docket likewise move to explicit
+reads. Their records, builders and cockpit views remain intact. Goal age no
+longer implies “stalled”; last-step age is labeled as the record's age, preserving
+the authored account. Scheduled summaries stay eligible for recall because they
+retain work that produced no post.
+
+Notification, cycle and curation tasks now identify the activity without repeating
+tool procedures. Curation limits and library conventions live in their runtime
+skills. Current architecture, prompt, memory, delivery and tool-surface docs were
+reconciled; obsolete trials remain history in this changelog. Memory-repair
+operator guidance was reviewed and retained, with its next review due October 22.
+Independent enforcement and existing authorization boundaries remain in place.
+
+## 2026-10-08 — Moderate private operator messages
+
+Private operational messages must explain impact and the needed decision in
+plain language. Both DM tools now carry that guidance and the policy judge
+rejects diagnostic dumps and unnecessary process narration. Requested technical
+answers remain allowed. Unsolicited reports supply the judge with the latest
+20 private messages so changing incident keys cannot hide a repeated request.
+History-read failures withhold delivery. Workflow refusals direct Phi to a
+private decision instead of prescribing public like/repost choreography.
+
+## 2026-10-08 — Preserve repository lookup errors
+
+PDSX returned RepoNotFound for a valid handle on a PDS that required a DID.
+The MCP wrapper labeled it a service outage and told Phi to stop. Repository
+lookup and identity-resolution failures now direct her to verify the handle,
+DID, and PDS and retry the read, without claiming an outage.
+
+## 2026-10-08 — Share Humanizer between writer and judge
+
+The initial phrasing calibration covered too few patterns to establish improved
+voice. Phi now has a pinned Humanizer 3.1.0 runtime skill; the classifier reads
+the same reference. The local scope focuses on phrasing and preserves her
+organization, meaningful caveats, ordinary idioms, and deliberate stylistic
+choices. Phi makes her own revisions. Upstream text and license are retained;
+updates are explicit reviewed changes.
+
+Validation: `just check` passed (951 tests). All 13 installed production-gate
+cases passed, including controls for ordinary idioms, meaningful contrasts,
+quoted criticism, and punctuation. In the
+[devlog smoke test](https://bsky.app/profile/zzstoatzzdevlog.bsky.social/post/3mxf55acj7t2k),
+Phi loaded Humanizer, selected her October 4 Kyiv article, and published a
+revision in the thread. Trace `01a11cdf08db73e753022f91067aab9d` confirms the
+shared reference in both model requests and a v12 classifier approval. This
+verifies the integration on a requested sample; ongoing voice quality still
+needs observation.
+
+## 2026-10-08 — Check phrasing even when the contribution is useful
+
+The public classifier accepted Phi's "quotas wearing a coat" acknowledgement
+because it answered the operator. A production calibration also accepted a
+stock sunlight metaphor on the same basis. Adding a policy paragraph alone
+still allowed the first example: the judge's form instructions needed to assess
+phrasing independently of whether the contribution was useful.
+
+`curious-regular-v11` applies that check to replies and blogs. Manufactured
+contrasts, decorative metaphors, and slogan-like claims can block an otherwise
+valid public form. Rejection feedback describes the offending move without
+quoting an unpublished draft or prescribing Phi's replacement sentence.
+Real corrections and explanatory analogies remain allowed. Article structure,
+headings, and necessary caveats are outside this phrasing change.
+
+The production model rejected all four negative calibration cases and accepted
+all four positive controls with the revised policy and judge instructions.
+These are bounded calibration results, not evidence that every future judgment
+will match the operator's taste. Phi revised her own live personality in the
+[devlog conversation](https://bsky.app/profile/zzstoatzzdevlog.bsky.social/post/3mxewqcddyo2i).
+
 ## 2026-10-08 — An operator DM reaches the gates it was meant to, and the notes index is in view
 
 The penny introduction on 10-08 went sideways in three places. The operator

@@ -159,6 +159,29 @@ async def delivery_context() -> str:
     return "\n".join(lines)
 
 
+async def recent_conversation() -> str:
+    """Private evidence for the report judge, never public prompt context."""
+    available = await asyncio.to_thread(
+        chat().get_convo_availability, {"members": [settings.owner_did]}
+    )
+    if not available.convo:
+        return "No existing private conversation."
+    page = await asyncio.to_thread(
+        chat().get_messages, {"convo_id": available.convo.id, "limit": 20}
+    )
+    history = [
+        {
+            "id": message.id,
+            "author": message.sender.did,
+            "text": message.text,
+            "sent": message.sent_at,
+        }
+        for message in reversed(page.messages)
+        if getattr(message, "text", None) and getattr(message, "sender", None)
+    ]
+    return conversation_material(history, [])
+
+
 async def incoming_messages() -> tuple[list[dict], list[str]]:
     """Read the existing operator conversation since private reporting began."""
     with connect() as db:

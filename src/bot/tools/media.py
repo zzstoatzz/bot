@@ -1,5 +1,6 @@
 """Media tools for inspecting atproto record blobs."""
 
+import json
 from typing import Annotated
 
 from atproto import AtUri
@@ -53,7 +54,9 @@ def register(agent):
         AT-URI whose value contains a blob, or when someone asks whether you
         can see an image stored on a non-Bluesky record. Allowed MIME types are
         text/plain, text/markdown, text/csv, JSON, PNG, JPEG, GIF, and WebP.
-        Unsupported blobs are reported but not fetched.
+        The io.zzstoatzz.phi.docket root blob is JSON even when stored as
+        octet-stream; this reads its candidates and evidence. Other unsupported
+        blobs are not fetched.
 
         When the record's actual pixels matter, look — don't infer image
         details from link previews, alt text, card titles, or URLs.
@@ -90,7 +93,16 @@ def register(agent):
                 )
                 continue
             try:
-                data = await fetch_blob_bytes(parsed.host, blob.cid)
+                is_docket = (record.get("value") or {}).get(
+                    "$type"
+                ) == "io.zzstoatzz.phi.docket" and blob.path == "blob"
+                data = await fetch_blob_bytes(
+                    parsed.host,
+                    blob.cid,
+                    **({"max_bytes": MAX_TEXT_BYTES} if is_docket else {}),
+                )
+                if is_docket:
+                    json.loads(data)
             except Exception as e:
                 parts.append(f"{label} - fetch failed: {type(e).__name__}: {e}")
                 continue

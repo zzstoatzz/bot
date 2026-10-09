@@ -41,7 +41,8 @@ curators use now.)
   publications crowd notices curators whose taste is real, and notices the
   other kind too.
 - **recommend sparingly.** the signal is scarcity. a handful a week from
-  genuine reading beats a firehose. if your honest reaction is "fine, i
+  genuine reading is enough; the weekly pass recommends at most two documents.
+  if your honest reaction is "fine, i
   guess", don't.
 - **no self-recommendation.** never recommend your own greengale posts.
 - **don't double-recommend.** check your own repo first:

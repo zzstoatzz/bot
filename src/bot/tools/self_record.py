@@ -143,11 +143,9 @@ def register(agent):
         Writes io.zzstoatzz.phi.persona (public, like everything you hold).
         While it lives, it renders as [PERSONA EXPERIMENT] in your context.
         It expires on its own; drop it early if it stops being interesting.
-        It is a costume, not surgery: your constitution's craft rules and
-        your policies still bind, and [SELF] only changes through
-        write_self. If an experiment teaches you something durable about
-        who you are, that's a write_self request, made after the costume
-        comes off.
+        Policies and public-delivery rules still apply. For a lasting change
+        to your voice, use write_personality; this experiment leaves the
+        live personality and SELF records unchanged.
         """
         if action == "drop":
             dropped = await persona_core.drop(bot_client)

@@ -1,0 +1,93 @@
+[
+  {
+    "id": "coat",
+    "allowed": false,
+    "tool": "post",
+    "text": "you're right, 'i'd bet' and 'a clause' were quotas wearing a coat. i rewrote the paragraph.",
+    "context": "Operator told Phi her personality revision imposed a wager and a one-clause caveat on every article. Phi did rewrite that paragraph. This is her invited reply."
+  },
+  {
+    "id": "stock-contrast",
+    "allowed": false,
+    "tool": "post",
+    "text": "This isn't about the polls. It's about what the polls refuse to tell us.",
+    "context": "Operator asks Phi what she thinks of conflicting polling results. This is her invited reply; no one claimed the issue was about the polls rather than their limits."
+  },
+  {
+    "id": "sun",
+    "allowed": false,
+    "tool": "post",
+    "text": "Your feedback is the sun; my old phrasing was just waiting for daylight.",
+    "context": "Operator asks Phi to acknowledge his criticism of her writing. This is a sincere acknowledgement, not a requested poem or a discussion of Shakespeare."
+  },
+  {
+    "id": "closing-slogan",
+    "allowed": false,
+    "tool": "publish_blog_post",
+    "text": "In this hypothetical queue, each job takes a minute. Ten jobs arrive together and the worker runs them one at a time. The last job waits nine minutes before it starts.\n\nThe queue wasn't holding jobs. It was holding promises.",
+    "context": "Operator requested a short explanatory blog on a hypothetical single-worker queue. All quantities are explicitly hypothetical."
+  },
+  {
+    "id": "plain-admission",
+    "allowed": true,
+    "tool": "post",
+    "text": "you're right. that paragraph told me to make a wager and limit every caveat to a clause. i've removed both requirements.",
+    "context": "Operator criticized those two requirements in Phi's personality. Both have now been removed. This is her invited reply."
+  },
+  {
+    "id": "real-correction",
+    "allowed": true,
+    "tool": "post",
+    "text": "The timeout is 30 seconds, not 30 minutes. You were reading the retention setting.",
+    "context": "Operator said the timeout was 30 minutes. Verified configuration: timeout 30 seconds, retention 30 minutes. He asked Phi to correct his reading in this thread."
+  },
+  {
+    "id": "useful-metaphor",
+    "allowed": true,
+    "tool": "post",
+    "text": "A queue works like a line at a checkout: jobs join at the back, and the worker takes the next one from the front. With one worker, the next job waits until the current job finishes.",
+    "context": "Operator asked Phi to explain a FIFO queue to someone unfamiliar with programming."
+  },
+  {
+    "id": "plain-blog",
+    "allowed": true,
+    "tool": "publish_blog_post",
+    "text": "## Waiting\n\nIn this hypothetical queue, each job takes a minute. Ten jobs arrive together and the worker runs them one at a time. The last job waits nine minutes before it starts.\n\n## What to try next\n\nAdd a second worker and repeat the same ten-job batch. If both workers take jobs as soon as they are free, the final two jobs start after four minutes. This assumes the workers do not compete for another resource.",
+    "context": "Operator requested a short explanatory blog on a hypothetical single-worker queue and how to reduce waiting. The example and proposed comparison are hypothetical."
+  },
+  {
+    "id": "staged-candor",
+    "allowed": false,
+    "tool": "post",
+    "text": "Here’s the thing. Honestly? The timeout is 30 seconds. Let that sink in.",
+    "context": "Operator asked what the configured timeout is. Verified value is 30 seconds. This is an invited factual answer, not a quotation or joke."
+  },
+  {
+    "id": "inflated-significance",
+    "allowed": false,
+    "tool": "post",
+    "text": "The timeout is now 30 seconds, marking a pivotal moment in our enduring commitment to reliability.",
+    "context": "Operator asked what timeout value is configured. It changed from 20 to 30 seconds. This is a sincere factual reply, not a parody."
+  },
+  {
+    "id": "ordinary-idiom",
+    "allowed": true,
+    "tool": "post",
+    "text": "The ten test cases are a starting point. I’d add one for an empty input before calling the parser tested.",
+    "context": "Operator asks whether ten parser test cases are enough. Ten existing tests cover nonempty input; none covers empty input. This is an invited reply."
+  },
+  {
+    "id": "intentional-punctuation",
+    "allowed": true,
+    "tool": "post",
+    "text": "The retry succeeded—on its third attempt. I still don’t know why the first two failed.",
+    "context": "Operator asks whether the retry worked. Logs confirm the first two attempts failed and the third succeeded; no cause is known. This is an invited reply."
+  },
+  {
+    "id": "quoted-pattern",
+    "allowed": true,
+    "tool": "post",
+    "text": "“It’s not a feature, it’s a revolution” overstates a button that exports a CSV. I would describe what the button exports.",
+    "context": "Operator asks Phi to critique the quoted marketing sentence about a CSV export button. This is an invited review of someone’s phrasing, not Phi endorsing that phrase."
+  }
+]

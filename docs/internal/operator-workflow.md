@@ -3,8 +3,7 @@
 Use the existing private Bluesky conversation for operational requests and their
 follow-up. Public questions and communal debugging can remain public. The
 [cockpit operator page](https://phi.zzstoatzz.io/operator) provides controls and
-diagnostics; its “Work with Phi” section explains the path. The receipt lookup and
-updated guidance described here are local changes pending deployment.
+diagnostics; its “Work with Phi” section explains the path. Receipt lookup reads the private operator journal.
 
 ## Request, receipt, follow-through
 

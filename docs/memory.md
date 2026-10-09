@@ -1,252 +1,157 @@
-# memory
+# Memory and context surfaces
 
-where each thing phi remembers lives, who is allowed to write it, and which
-key unlocks it when she reads. three diagrams carry the structure; the prose
-here is what the diagrams cannot say. they are checked in as SVG so they can
-be read as text from inside the repo (`docs/diagrams/`).
+Phi has several kinds of memory because they answer different questions:
+what happened, what she believes about it, what she wants to do, and what she
+has published. A stored record, a view of that record, and an instruction are
+different things. Putting all three into every run obscures that distinction.
 
-## one loop, ten rows
+## What each surface is for
 
-![every store, who writes it, which block reads it](diagrams/memory-map.svg)
+The dates and commits below identify the original purpose and important changes.
+They explain why a surface exists; they do not establish that it remains useful.
+Commit references without a repository name are in this repository.
 
-every memory surface is a row with the same three cells: something writes
-it, it lives in a store, a prompt block reads it. there are ten rows in three
-stores:
-
-| store | visibility | what lives there |
+| Surface | Intended purpose and origin | Writer and current use |
 |---|---|---|
-| turbopuffer namespaces | private to phi | `phi-users-{handle}` (interaction · observation · summary), `phi-episodic` (notes · run summaries), `phi-own-posts` (every post, id = rkey) |
-| phi's PDS | public | `io.zzstoatzz.phi.{self,goal,persona}` (intent), `.atlas` / `.docket` (daily derived blobs), `network.cosmik.*` (her library, indexed by semble) |
-| the fly volume | local | `ops_log.jsonl` — a 48h jetstream tail of her own repo; `own_posts_watermark.json` |
+| Per-person exchanges | Remember what was said, with both speakers preserved. They are historical speech, not current instructions. | The notification handler stores user/bot exchanges in `phi-users-{handle}`. Relevant exchanges accompany that person's incoming posts. |
+| Per-person observations | Retain facts without rereading every exchange. March reconciliation and April append-only changes addressed contradictory facts and extraction feedback (`715fb91`, `21a0b73`). | Daily extraction proposes observations; reconciliation compares three active neighbours and supersedes named versions. External `compact` also extracts observations from the operator's liked posts. These are inferences with source references, not verified facts. |
+| Relationship summaries | A compact impression of a person. Introduced March 24 by `my-prefect-server:8c6b846` and consumed by `08b6f32`. | External `phi-memory-synthesis` writes summaries from observations and exchanges. Only summaries under seven days old enter per-person context; absence is not forgetting the underlying records. |
+| Episodic notes | Deliberate private memory of events and useful knowledge (`0d6ce26`, February 12). | `save_memory` writes `phi-episodic`. Automatic recall ranks by relevance and recency, then a helper selects original records without rewriting them. Exact reads, correction, retirement and restoration preserve versions. |
+| Scheduled-run summaries | Remember work even when it produced no post or explicit note. Added in August after repeated rediscovery of the same music catalogue. | `_run_agent` stores each scheduled run's complete summary as a separate `source=run:<label>` event in `phi-episodic`. It remains searchable and eligible for recall. A model's account is not an execution receipt. |
+| Encounters | Remember incoming events even when Phi never replied. Added September 5 (`1074da9`). | Capture precedes filtering/hydration in `phi-encounters`. Every ordinary memory-connected run sees eight recent events within 48 hours; search works across people. Processing receipts distinguish capture, exposure, completion and failure. |
+| Recent conversations | Show both sides of completed exchanges, so an old question does not look unanswered. Restored September 14 after encounters alone lost that information (`d9e8d6d`). | Cycle, people and reflection receive the five latest stored exchanges. This is a view of existing exchanges, not another store. |
+| Prior coverage | Answer “have I already said this?” beyond a short recency window. Added August 6 after the same post recurred 24 hours later (`cee8881`). | Jetstream and startup backfill index Phi's published posts in `phi-own-posts`. Incoming material and relevant tool results retrieve coverage; the posting gate independently compares the draft. Same-parent reply coverage uses Constellation plus AppView. |
+| Recent operations | Know what changed on her repo. Introduced April 19 (`81d7bc9`); moved from snapshots to a Jetstream event log in August (`cee8881`) to retain edits and deletes. | `/data/ops_log.jsonl` supplies a 48-hour view. Routine activity is tallied; authored artifacts, deletions and external edits retain detail. Topic labels identify top-level posts without replaying all their prose. |
+| Semble library | Keep public sources, annotations and explicit relationships that Phi and other readers can revisit. Cosmik wrappers became a runtime skill May 3 (`9e6e2a5`). | Phi writes `network.cosmik.*` through Semble/pdsx. Collections are flat indexes; cards hold sources/notes; connections assert a relationship. The ambient block shows shelves and recent cards. July 6 (`9ef8f49`) replaced counts because counts did not tell her what already existed. |
+| Atlas | A browsable map across memory and public artifacts. The May design replaced a handle-only graph that stopped being useful around 40 people (`my-prefect-server:5300db8`, bot `5ae9aaf`). | External `phi-atlas` embeds, projects, clusters and labels material, then publishes `io.zzstoatzz.phi.atlas/self` with a JSON blob. The cockpit and `inspect_atlas` read it. It is a dated projection, not another canonical memory or a work queue. |
+| Docket | Suggest useful work from clusters of private material without nearby public anchors. Introduced May 16 (`my-prefect-server:1219e6a`, bot `0c54a05`). | After atlas completes, an external model pass emits 0–10 candidates with evidence, public anchors and a suggested form into `io.zzstoatzz.phi.docket/self`. The cockpit and `inspect_record_media` can read the blob. Suggestions are optional; “raw” does not mean something must be published. |
+| Goals and interests | Retain chosen direction instead of following whatever is loudest in the feed. Introduced April 18 (`1f9e3a6`); gained current/next/last state in May (`41623ce`). | PDS `io.zzstoatzz.phi.goal`. Scope changes are owner-gated; progress is Phi's account. Last-step age describes when an update was recorded, not whether work is stalled. |
+| Live personality | Phi's own current voice and disposition. Full versioned authorship moved onto PDS September 5 (`60f3b55`). | `write_personality` appends revisions; the newest is read each run. The repository file only seeds an empty collection. Operational policy is separate. |
+| SELF | An evidence-grounded self-description. Introduced July 15 (`3ca6984`) when the personality file had been reduced to operator constraints and no longer described her character. | Operator-authorized `write_self` replaces the PDS singleton after charter review and judgment. Read explicitly or at the monthly character retrospective. It no longer repeats her self-description in every run alongside the now-authored personality. |
+| Posting inventory | Describe actual recent activity without treating it as identity. Began April 17 as an outside observer (`36c3cb2`); became a plain topic/person/mode tally after voice feedback in May (`41623ce`). | A helper reads the last ten top-level posts. Its persisted cache refreshes after an hour or a new post. This remains ambient, separately labeled from SELF. |
+| Persona experiment | Try a temporary voice without a permanent identity rewrite. Added August 7 (`6df1590`), before live personality authorship. | Phi writes a 1–7 day, 600-character PDS experiment; only an active experiment enters context. Its overlap with live personality remains a tool-consolidation question. |
+| Influences | Record writers and works Phi wants to learn from. Added September 5 (`3a5f576`). | Phi owns `io.zzstoatzz.phi.influence` choices via `choose-influences`. The background reader is not connected to conversational runs. Choosing an influence does not demonstrate reading or change her prompt by itself. |
+| Discovery pool | Supply interesting people to read, rather than waiting for strangers to arrive. Added April 19 (`3ef7230`) from the operator's likes. | The hub supplies candidates; the bot filters known people and narrows by incoming material. Scheduled runs retain breadth. Reply samples include their parents. Discovery is neither an invitation to contact nor an instruction to imitate. |
+| Owned feeds | Keep curated reading sources discoverable by their exact names. | Graze owns feed definitions; the block lists names for `read_feed`. This is a directory, not memory. |
+| Operator guidance | Temporary operator-owned working direction, separate from identity. Introduced September 10 for memory repair (`a86a578`). | Deployed `operator-guidance.md`, with a review date. Phi can propose edits; operator approval and deployment change it. The review date does not erase it. |
+| Operator notes | Expose what has already been worked out in Nate's notes. Added October 8 (`1d88f5e`) after the reading skill went unloaded for 267 runs. | An hourly cached title index from `notes.zzstoatzz.io/llms.txt`. It is a discovery map; the notes still require reading. |
+| Operational state | Know the time, identity, pause, override, valid relays, current incidents and workflows. | Live services, PDS and local status supply factual blocks. Alert history is distinct from current workload health. The override enforces mutation restrictions independently of its prompt banner. |
+| Private operator conversation and receipts | Discuss operational requests privately and follow work without redispatching it. Added September 10–20. | Bluesky DMs plus the local operator journal. Receipts store request identity and delivery state; Prefect/forge retain execution and review evidence. See [operator workflow](internal/operator-workflow.md). |
+| Editorial context | Give Coral's curator concise researched facts that affect its future selections. | Phi writes `io.zzstoatzz.phi.editorialContext`; Coral consumes it. This is separate from her articles and source library. Returning Coral labels are not independent corroboration. |
+| Market strategy | Keep revisable trading heuristics, retrieved against the current market state. | Phi writes `io.zzstoatzz.phi.strategy`. `check_top_chicken` selects applicable rules; trade tools enforce operator restrictions independently. This is domain-specific decision support, not personality. |
+| Execution and review evidence | Establish what a run received, attempted and returned. | Logfire, encounter/run receipts, tool-use and etiquette journals. Private revision notes record Phi's response to rejection; they do not feed ambient memory. The archive records public changes, not internal reasoning. |
 
-| row | written by | read as | trust |
-|---|---|---|---|
-| interaction | phi's reply inside a batch — `after_interaction`, verbatim user/bot pair | `[PAST EXCHANGES WITH @h]` | historical wording, not factual or current authority |
-| observation | daily extraction at 19:00 UTC → `phi-extractor` → `observation-reconciler`; and prefect `compact.py` from nate's likes → `likes-observer` → `likes-reconciler` (same contract) | `[OBSERVATIONS ABOUT @h]` — 10 nearest the batch text | inferred, possibly mistaken or outdated |
-| summary | prefect `phi-memory-synthesis` (`compact.py`), hourly, from observations + interactions | `[PHI'S SYNTHESIZED IMPRESSION OF @h]`, only while under 7 days old | low — labeled *may hallucinate* |
-| note | `save_memory`, `publish_blog` — deliberate | `[RELEVANT MEMORIES — selected historical records]` — top-10 → index selection → original records | medium |
-| run summary | every scheduled run, unconditionally (`tags=[run-summary, <label>]`) | same block · `search_memory` ("have I done this") | medium |
-| own post | jetstream tail of her repo; backfilled from PDS at start | `[PRIOR COVERAGE]` · the `self-repeat` judge | high |
-| repo event | the same tail, 48h | `[RECENT OPERATIONS]` — edits and deletes visible | high |
-| self · goal · persona | gated tools (`propose_goal_change` like-as-approval; self-record judge) | `[SELF]` `[GOALS]` `[PERSONA EXPERIMENT]` | highest |
-| atlas · docket | prefect `phi-atlas`, daily — reads every turbopuffer namespace | `[ATLAS]` `[DOCKET]` | derived |
-| card · collection · connection | semble tools, live; phi is the only writer | `[SEMBLE]` | higher — intentional, public |
+## How the surfaces relate
 
-two things the picture makes obvious: `phi-users-{handle}` is three rows with
-three writers with distinct provenance sharing one namespace, and the two
-prefect flows (in `my-prefect-server`) are writers like any other — neither
-is visible from inside this repo's code.
+```mermaid
+flowchart LR
+    incoming[Incoming notifications] --> encounters[Captured encounters]
+    incoming --> exchanges[Stored exchanges]
+    exchanges --> observations[Reconciled observations]
+    observations --> summaries[Relationship summaries]
+    runs[Scheduled runs] --> episodic[Episodic notes and run accounts]
+    authored[Public sources and authored records] --> library[Semble library]
+    observations --> atlas[Atlas projection]
+    episodic --> atlas
+    authored --> atlas
+    atlas --> docket[Docket suggestions]
+    docket -. optional investigation .-> runs
+    library --> runs
+```
 
-**not memory, but adjacent**: thread context is fetched live from the network
-per batch and never stored; the policy judge reads `phi-own-posts` and recent
-posts but writes nothing; logfire traces are what she *did* (`self-traces`
-skill), memory is what she chose to write down.
+Atlas and docket are derived readers of existing material. Removing their
+ambient digests does not remove sources, public artifacts or their cockpit views.
+Their evidence can be consulted deliberately through `inspect_atlas` and
+`inspect_record_media`; the always-visible atlas tool description gives the
+docket's exact reader route, also described in `cosmik-records`.
 
-`inspect_atlas(point_id=...)` follows an existing `tpuf_namespace` / `tpuf_id`
-reference to the current stored memory row. It returns the complete stored
-content, kind, timestamp, status (including superseded), and original source
-URIs. The atlas label remains a dated projection; the backing row can have
-changed since generation. Missing rows and failed reads are reported separately.
-This lookup does not search across people or recreate missing encounters.
+Semble has a different purpose: it is authored public reference material.
+A background curation loop once wrote from its own library, producing repeated
+self-synthesis. July limited it to cleanup; September 17 removed the external
+janitor. Phi owns both authorship and upkeep now. The external summary/likes
+pipeline and atlas/docket builders remain separate writers of their own outputs.
 
-Stored `source_uris` survive tool search (scoped, unified, and tagged),
-per-author observations and exchanges, and the recent-conversations view.
-Each reference is rendered as `source: <uri>` so Phi can fetch the underlying
-record. Legacy rows without references still render; no reference is inferred
-from a summary's text. Carrying a reference does not verify the claim attached
-to it. Search scope and automatic context selection are unchanged by this.
+## Storage and trust
 
-## how a reply becomes an observation
+| Location | Contents |
+|---|---|
+| Private Turbopuffer | `phi-users-{handle}`, `phi-episodic`, `phi-own-posts`, `phi-encounters`, processing/run receipts |
+| Public PDS | Personality, SELF, goals, persona, influences, strategy, editorial context, atlas/docket blobs, Cosmik and authored public records |
+| Fly volume | Operation log, schedule/status state, caches, private operator receipts, etiquette and tool-use journals |
 
-![interaction → high-water mark → extraction → reconciliation → recall](diagrams/memory-lifecycle.svg)
+An intentional record can still be mistaken. Public visibility is not a higher
+truth level. Source references permit verification; they do not perform it.
+Current operator instructions, live state, historical speech and model accounts
+retain their different authority when rendered.
 
-the observation is the only row derived from another row, and its lifecycle
-is the part that has broken most often.
+Per-person observations are reconciled on write. Extraction walks interactions
+above the namespace high-water mark, oldest first in chunks of eight. Each
+proposal is compared with three fetched active neighbours; UPDATE/DELETE
+supersede every named row and preserve the nearest named predecessor. Different
+things of the same kind must remain distinct. Unretrieved contradictions can
+remain active; this is bounded reconciliation, not global consistency.
 
-1. a reply in a batch is stored verbatim at once (`store_interaction`).
-2. at 19:00 UTC, `process_extraction` reads every interaction above the
-   namespace's **high-water mark** — the latest active observation — oldest
-   first, `EXTRACTION_CHUNK` (8) at a time. the mark is the only bound; the
-   per-namespace read is a 1000-row page that logs when it fills.
-3. `phi-extractor` proposes facts from the chunk. it never sees existing
-   observations, so it cannot pattern-match off a bad prior fact.
-4. `observation-reconciler` compares each proposal with the 3 nearest active
-   observations and returns ADD / UPDATE / NOOP / DELETE, naming which of the
-   three the action applies to. UPDATE and DELETE write a new row with
-   `supersedes` → the nearest named id and patch every named row to
-   `status=superseded`. nothing is deleted; the chain is provenance.
-5. the next batch with that author renders the active set.
+Explicit `save_memory` notes retain submitted wording. Exact correction through
+`supersedes_id` requires an active target read first; original versions remain
+readable. A redundant save can retain different wording without displacing the
+old account. Scheduled summaries are separate timestamped events, never merged
+into another run. They remain in recall because silent work needs continuity.
 
-the mark is per namespace. the two 2026-08 bugs compounded because both
-bounds were counts: a first-page namespace listing hid every handle sorting
-after "museical" (100 of 167), and a five-row read cap moved the mark past
-what it had not read. 178 interactions were recovered by
-`scripts/extraction_backfill.py`; see the changelog for 08-20 and 08-21.
+`retire_memory` excludes a read note from ordinary recall without erasing its
+wording or citations; `restore_memory` reverses retirement. Superseded versions
+cannot be restored over their corrections. These are process-local operations,
+not distributed compare-and-swap against external writers.
 
-## three keys
+## Retrieval and coverage
 
-![the batch, the clock, the draft](diagrams/memory-keys.svg)
+Incoming text and its verified immediate parent seed per-person and episodic
+recall. Event wakes use event material; clock-only runs fall back to the task.
+Episodic candidates are recency-weighted (14-day half-life); the helper returns
+indices, and Python renders original wording, dates and references. It cannot
+rewrite history into present instructions. A diagnostic preview with no task has
+no episodic query; that does not mean scheduled runs lack episodic recall.
 
-at read time every block is unlocked by one of three keys. this is the
-simplest true statement of how phi recalls:
+`search_memory` exposes stored accounts; `read_memory` opens an exact version.
+Missing namespaces and partial failures are distinguished from empty searches.
+`search_people` resolves identity clues, not conversation topics. `search_encounters`
+searches captured incoming text across people. Recent exchanges preserve both
+speakers; exact-parent coverage preserves prior answers. None alone proves a
+conversation resolved or that absent evidence never existed.
 
-- **the batch** — what people just said is the query. per-author blocks,
-  `[RELEVANT MEMORIES]`, `[PRIOR COVERAGE]`, the shape of `[DISCOVERY POOL]`.
-- **the clock** — state, no query. `[SELF]` `[GOALS]` `[RECENT OPERATIONS]`
-  `[SEMBLE]` `[ATLAS]` `[DOCKET]`, and the path blocks (`[RECENT
-  CONVERSATIONS]` on cycle and reflection).
-- **the draft** — the text she is about to post is the query, inside the
-  `post` tool, feeding the `self-repeat` policy.
+Encounter identity is `(uri, cid, reason)`. Startup and six-hourly recovery are
+bounded to twenty pages and do not redispatch actions. Capture, model exposure,
+run completion and confirmed publication are different events. Operator DMs do
+not enter public conversation extraction or the public atlas.
 
-scheduled runs have no batch, so batch-keyed blocks render empty there. that
-is the oldest recurring failure (the 22:02 gracekind repeat, the botnana
-staleness): a scheduled path perceives through tools, not a batch. the fixes
-were to ride `[PRIOR COVERAGE]` on `search_posts` / `read_feed` results and
-to add the draft key.
+`inspect_atlas(point_id=...)` resolves stored source-row references when present.
+The projection may be older than its backing row. `read_archive` supplies bounded,
+snapshot-pinned Jetstream V2 history with explicit coverage and continuation;
+current PDS records cannot reconstruct previous edits or deletions. Use Logfire
+for execution evidence. See `self-traces` for choosing among these readers.
 
-## why it is shaped this way
+The cockpit's memory graph projects active per-person observations; the atlas
+maps a broader mixed collection. Neither visualization is the retrieval index
+used for semantic memory search.
 
-- **supersession, not deletion.** observations and episodic rows carry
-  `status` and `supersedes`; only active rows reach the prompt; the chain
-  stays as provenance.
-- **select episodic records without rewriting them.** The helper sees goals,
-  the current situation and candidates, and returns indices only. Python renders
-  exact stored wording, dates, tags and source references. Old instructions stay
-  dated history. The helper cannot report what is currently in Phi's context.
-  Per-author observations are reconciled on write.
-- **the library has one writer.** cards originate in the moment, and upkeep
-  is phi's too. a review loop that authored from its own output once collapsed
-  the library into one-topic self-synthesis; the delete-only janitor that
-  replaced it (`curate`, removed 2026-09-17) then spent months undoing her
-  shelving from outside her telemetry. no background flow writes here.
-- **observations have one reviewer.** the same `curate` flow also ran an
-  agent that hard-deleted observation rows, invisible from this repo and
-  missing from the table above. it is gone; reconciliation on write, with
-  retired versions kept readable, is the only thing that revises them.
-- **residue was removed (2026-08-15).** a 7-item decaying buffer of
-  "what runs left behind" carried claims with no ground truth, each carry
-  reset its TTL, and the reflection copied them into goals; two resolved
-  threads stayed flagged open for weeks. run summaries in episodic memory
-  are the continuity mechanism now.
+## Consolidation evidence
 
-## where it could be simpler
+The October 8 discussion with [Phi](https://bsky.app/profile/zzstoatzzdevlog.bsky.social/post/3mxg3kkfgx32k)
+identified useful source retention in Semble, duplicated SELF/personality text,
+misleading age-based goal pressure and repetitive reflection recall. Phi explicitly
+limited her first report to the current run rather than claiming a usage audit.
 
-none of these is made; each removes a row without removing a capability
-anyone has asked for.
+The preceding fortnight's Logfire calls showed active Semble use and two docket
+read attempts. Both docket attempts returned blob metadata, then a MIME refusal
+(September 27 and 28). Low use did not establish low value. The reader now accepts
+the docket's known JSON blob contract; arbitrary binary blobs remain unsupported.
 
-1. **retire the summary row and the hourly compact flow.** it is the only
-   row labeled *may hallucinate*, rebuilt hourly from rows phi already sees,
-   and the one surface carrying an external flow's voice into her per-author
-   context. the likes-observation half of `compact` would move into the
-   bot's extraction or be dropped.
-2. **split run summaries out of episodic** (`phi-runs`, or a tag filter at
-   synth time), so `[RELEVANT MEMORIES]` draws only on what she chose to
-   remember and "have I done this" stays answerable from `search_memory`.
-3. **name the keys in the code.** group the `inject_*` callbacks by key so
-   figure 3 is visible in `agent.py` rather than reconstructed from twenty
-   functions — the change that most helps phi draw herself accurately.
-
-## the graph (`/memory`)
-
-a visualization at `/memory` positions phi + user nodes by semantic
-similarity of their observation vectors (PCA). only active observations
-contribute.
-
-see [system-prompt.md](system-prompt.md) for the block-by-block reference
-and `skills/own-source` for how phi reads this document herself.
-
-Explicit `search_memory` reports incomplete retrieval separately from an empty
-successful search. Missing namespaces are identified; backend or embedding
-failures are not evidence that no encounter occurred. Unified search retains
-successful results and their citations when the other namespace fails. With
-no current author, it queries episodic memory only rather than a blank-handle
-user namespace. This does not provide cross-person search.
-
-`search_people(query)` resolves a name or handle prefix through
-typeahead.waow.tech, returning up to ten candidate handles and DIDs. Phi can
-use an established handle with `search_memory(about=...)`; ambiguous matches
-can be clarified in the conversation. Identity lookup does not establish a
-prior encounter and cannot search conversation topics. The tool reports an
-unavailable service separately from an empty candidate list. No structured
-elicitation transport or automatic choice of person is added.
-
-
-## Received encounters
-
-`phi-encounters` stores original notification versions before filtering or
-hydration. `(uri, cid, reason)` determines identity; replay preserves first
-capture time. Read flags are not evidence of capture. Startup and six-hourly
-recovery scans are bounded to twenty pages and do not dispatch actions. Scan
-receipts distinguish incomplete traversal from cursor exhaustion; exhaustion
-is not a claim about deleted or unavailable history.
-
-Every run receives up to eight captured events indexed in the preceding
-48 hours, replacing scheduled conversation replay. `search_encounters` searches
-captured text across people; `read_encounter` opens the stored source version
-and recent related processing receipts. Existing per-person and episodic
-memories remain accessible through `search_memory`.
-
-Run/request receipts record input preparation, provider response receipt, and
-run outcomes. Event capture alone does not prove model exposure. Completion
-does not establish a public action or a motive for silence. Confirmed tool
-results and dated statements remain in the linked execution traces.
-
-The public atlas still selects its existing per-person/episodic sources;
-encounter and processing records are not added to that publication.
-
-`save_memory` returns the resulting note ID, text, citations, and reconciliation
-action after a successful write (or the retained note on NOOP). Explicit notes preserve the submitted wording; reconciliation chooses their
-relationship to older versions without rewriting their text. Automatic run
-summaries retain text consolidation.
-The saved account and its citations remain claims, not independent verification.
-
-An explicit save judged redundant (NOOP) still retains different submitted
-wording as a separate note. It does not archive the existing account: a brief
-confirmation must not displace a detailed correction just to preserve its text.
-
-
-Scheduled-run summaries are stored in full as separate timestamped events
-(`source=run:<label>`), not reconciled with similar older runs. General episodic
-writes also exclude run-summary rows from consolidation. This keeps one run's
-account from absorbing another run's actions; it does not independently verify
-Phi's account. Explicit `save_memory` notes still preserve their wording.
-
-`save_memory(..., supersedes_id="<active note id>")` corrects that exact version
-without similarity selection or reconciliation. Read it first with `read_memory`.
-Missing/superseded targets are refused; the original text remains readable and
-source references are retained. Correction calls are serialized in Phi's process
-and recheck the target before writing; this is not a distributed compare-and-swap
-against external writers.
-
-## Historical source repair
-
-`read_archive` supplies bounded pages of public Jetstream V2 records from
-stream.waow.tech, across exact collections and one DID per call. Its
-`JETSTREAM_API_KEY` is held by the runtime, never supplied as a tool argument.
-`self-traces` explains when to use archive records, PDS state, or Logfire.
-Archive reads do not write memories, enqueue reviews, or grant contact authority.
-The reader pins a sealed snapshot and exposes continuation, errors, and coverage;
-bootstrap timestamps and delete compaction prevent claims of complete historical
-coverage. The v1 operational tail and notification processing are unchanged.
-
-Reads are serialized and limited to six calls per minute per process, 24 blocks,
-8 MiB downloaded, and 45 seconds per call. No automatic retries turn a 429 into
-a burst. Source records exceeding the output budget are explicitly omitted.
-Encounter-triggered context review and replacement of the Prefect summary writer
-are separate work, not effects of installing this reader.
-
-### Retiring private notes
-
-Phi can call `retire_memory(note_id, reason)` after `read_memory` in the same
-run. It marks that episodic version `retired`, preserving its exact wording,
-citations, and retirement reason/date. Semantic search, combined search,
-automatic recall, and reconciliation exclude retired versions. Exact ID reads
-still return them. `restore_memory(note_id)` makes a retired version active
-again; superseded versions cannot be restored over their corrections.
-
-This is private context curation, not deletion of source encounters, public
-records, or safety policy. No public report or separate operator approval is
-required. Retirement and exact correction share the existing process-local
-lock; this is not a distributed transaction across independent writers.
-Search still oversamples before client-side status filtering for compatibility
-with legacy namespaces, so many inactive nearest matches can shorten results.
+The first consolidation removes SELF, atlas and docket from ambient injection,
+keeps the posting inventory, and removes the inferred “stalled” status from goals.
+Source records, on-demand access and scheduled summary continuity remain.
+Phi's follow-up identified two dependencies: explicit SELF for the monthly
+retrospective, and a standing discovery route for the docket. Both are retained.
+The follow-up tool audit found persona unused in the recorded 30-day window,
+but Phi identified its automatic expiry as distinct from a lasting personality
+revision. It remains available for reversible experiments. Influence reading
+remains explicitly unconnected. Neither age nor absence of calls alone establishes
+that a capability should be deleted.

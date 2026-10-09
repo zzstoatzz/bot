@@ -1,13 +1,4 @@
-"""[SELF] block — phi's self-description, in her own words, from her own PDS.
-
-The operator's personality file is a constitution: boundaries and anti-slop
-guardrails. Character lives here instead — a singleton record phi rewrites
-in periodic character retros, where every claim about herself must cite an
-incident. Injected each run; absent record yields an invitation to write
-the first one rather than silence.
-
-Cached 5min, mirroring the other PDS state blocks.
-"""
+"""Phi's operator-reviewed self-description, read on demand and at retrospectives."""
 
 import logging
 import time
@@ -93,13 +84,9 @@ async def get_self_block(client: BotClient) -> str:
 
     block = (
         (
-            f"[SELF — your own words, from your self record{_age(updated_at)}. "
-            "yours to rewrite whenever it stops being true, via write_self "
-            "(the rewrite lands once the operator likes your request). keep "
-            "it constitutional — who you are, claims cited to incidents. "
-            "posting statistics don't belong here; the measured inventory "
-            "below covers that and stays fresh on its own.]\n"
-            + text
+            f"[SELF — your self-description{_age(updated_at)}. "
+            "A dated account, separate from your live personality. "
+            "write_self requires operator authorization for the replacement.]\n" + text
         )
         if text
         else _MISSING

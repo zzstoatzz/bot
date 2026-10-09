@@ -48,7 +48,7 @@ def test_inventory_is_derived_and_runtime_configuration_is_allowlisted():
     )
     model = architecture_model()
     assert "choose-influences" in model["skills"]
-    assert "inject_self" in {f["name"] for f in model["prompt_blocks"]}
+    assert "inject_posting_inventory" in {f["name"] for f in model["prompt_blocks"]}
     assert set(model["configuration"]) == {
         "main_model",
         "policy_model",
@@ -70,7 +70,8 @@ def test_inventory_works_from_installed_package(tmp_path, monkeypatch):
         modules = source_inventory()
         assert modules[0]["path"] == "src/bot/agent.py"
         reference = architecture.source_reference(
-            architecture.Source(path="src/bot/agent.py", symbol="process_cycle"), modules
+            architecture.Source(path="src/bot/agent.py", symbol="process_cycle"),
+            modules,
         )
         assert reference["evidence"] == "packaged source"
         assert reference["line"] == 1

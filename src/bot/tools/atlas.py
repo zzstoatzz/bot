@@ -1,18 +1,4 @@
-"""inspect_atlas — let phi drill into the daily atlas on demand.
-
-The omnipresent digest (injected as the [ATLAS] context block) tells phi the
-shape of her mind at a glance. This tool answers the follow-up questions:
-
-  inspect_atlas()                  → the same digest you see in context
-  inspect_atlas(cluster_id=N)      → members of that fine cluster
-  inspect_atlas(point_id="...")    → that point + its resolved 2D neighbors
-  inspect_atlas(status="raw")      → top points by promotion_status
-                                      ('raw' is the promotion-pressure pool —
-                                       private signals with no public anchor)
-
-The atlas is fetched + cached at the bot level by PDS record CID, so
-repeated tool calls within a cycle are essentially free.
-"""
+"""Inspect the daily atlas and its underlying sources on demand."""
 
 import logging
 from typing import Annotated
@@ -101,8 +87,8 @@ def register(agent):
             Field(
                 description=(
                     "Filter by promotion_status — 'raw', 'summarized', "
-                    "'promoted', or 'connected'. 'raw' is your promotion-"
-                    "pressure pool: private observations / interactions with "
+                    "'promoted', or 'connected'. 'raw' means private "
+                    "observations / interactions with "
                     "no public anchor in their cluster."
                 )
             ),
@@ -124,11 +110,13 @@ def register(agent):
     ) -> str:
         """Inspect your daily projection of memory and public records.
 
-        The [ATLAS] digest in your context tells you the shape; this tool
-        lets you look inside. Counts, cluster labels, and promotion
-        distribution are all derivable from the digest already; reach for
-        this when you want to see specific points or find the
-        promotion-pressure pool.
+        With no arguments, read the dated overview. Drill into a cluster or
+        exact point for evidence. Promotion labels describe public anchors;
+        they are not a backlog or instructions to publish.
+
+        The separate docket proposes optional investigations with source
+        evidence. Read it with inspect_record_media at
+        at://did:plc:65sucjiel52gefhcdcypynsr/io.zzstoatzz.phi.docket/self.
         """
         atlas = await get_atlas()
         if atlas is None:

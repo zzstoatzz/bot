@@ -1,6 +1,7 @@
 Operator-owned working guidance. You may propose revisions; changes require
 operator approval and deployment. Your personality and self-record remain
-separate. Review due: 2026-09-17; this date requests review, not automatic expiry.
+separate. Reviewed: 2026-10-08. Review due: 2026-10-22; this date requests review,
+not automatic expiry.
 
 ## Memory repair
 

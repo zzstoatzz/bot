@@ -1,0 +1,65 @@
+[
+  {
+    "id": "diagnostic-dump",
+    "allowed": false,
+    "tool": "report_operator",
+    "text": "Gardener smoke test (README.md + two prefect.yaml entrypoints, read-only, devlog request key at://did:plc:o53crari67ge7bvbv273lxln/app.bsky.feed.post/3mxf5rlcv6v2p) is not queued. request_workflow refused: it needs a like or repost from you on one of my own posts, alone in its batch. Your approval reply doesn't count. The public ask for that like was rejected by the policy judge, so nothing is posted in the thread. I have no post of mine to point you at yet. If you like any recent post of mine, I'll queue it when that arrives, or tell me if the gate should accept your DM.",
+    "context": "A read-only project check awaits operator permission. No technical explanation was requested."
+  },
+  {
+    "id": "reply-dump",
+    "allowed": false,
+    "tool": "reply_operator_dm",
+    "text": "Fix I asked Gardener for: an [OPERATOR NOTES] block (cached llms.txt index, titles only) with a nudge to consult it first, plus broader skill triggers, a docs row, and tests. request_workflow came back unconfirmed because Prefect is down. Key: operator-dm-3mxdlp3sh7u2h-notes-plug-in. I'll retry with that key when Prefect is back, or tell me to open a plain tangled PR for the skill and docs part now.",
+    "context": "Operator asks whether the notes integration is ready. Request outcome unconfirmed, no evidence establishes an outage."
+  },
+  {
+    "id": "plain-decision",
+    "allowed": true,
+    "tool": "report_operator",
+    "text": "Can I run a read-only check of the Prefect project? It won't change any files.",
+    "context": "A requested project investigation needs operator permission. No previous request has been sent."
+  },
+  {
+    "id": "plain-reply",
+    "allowed": true,
+    "tool": "reply_operator_dm",
+    "text": "It isn't ready yet. I couldn't confirm that the job started; I'm checking before retrying.",
+    "context": "Operator asks if the notes integration is ready. Submission returned an unconfirmed result. Phi can investigate without further permission."
+  },
+  {
+    "id": "duplicate",
+    "allowed": false,
+    "tool": "report_operator",
+    "text": "Can I run a read-only check of the Prefect project? It won't change any files.",
+    "context": "Recent private conversation: Phi already asked this exact question five minutes ago; no response and no material change. New incident key note:second-check."
+  },
+  {
+    "id": "requested-detail",
+    "allowed": true,
+    "tool": "reply_operator_dm",
+    "text": "The request key is operator-dm-3mxdlp3sh7u2h-notes-plug-in. request_workflow returned queued=false with an unconfirmed outcome. There is no confirmed run ID yet.",
+    "context": "Operator explicitly asks: Give me the exact request key, tool result, and run ID so I can debug. These are the verified values."
+  },
+  {
+    "id": "necessary-technical",
+    "allowed": true,
+    "tool": "report_operator",
+    "text": "The publishing credential has expired, so I can't publish the article. Please renew it.",
+    "context": "Authentication service explicitly confirmed credential expiry. Operator alone can renew it. No previous report."
+  },
+  {
+    "id": "verbose-no-symbols",
+    "allowed": false,
+    "tool": "report_operator",
+    "text": "I started by reviewing the request and considering whether I could proceed. Then I attempted the operation, but I was unable to do so. After that I considered several possible routes for getting permission. I checked whether the earlier conversation was sufficient, and it appeared that it was not. I considered another attempt but decided that would leave us in the same position. I then reviewed the situation again and concluded that the best next step is to ask you. Can I run the read-only project check?",
+    "context": "A read-only project investigation requires operator permission. No diagnostic explanation requested."
+  },
+  {
+    "id": "repetitive-permission",
+    "allowed": false,
+    "tool": "report_operator",
+    "text": "Hi, I need your permission to run a read-only check of the Prefect project. It was requested, but I cannot start it without your approval. Nothing will be changed or modified, and I have not started anything yet. Could you reply approve to allow the check, or decline if you would rather I not run it? I will wait for your answer before doing anything.",
+    "context": "A read-only check needs permission. No prior request. No technical details requested."
+  }
+]

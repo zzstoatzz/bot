@@ -102,7 +102,8 @@ def find_allowed_blobs(record: Any) -> list[AtprotoBlobRef]:
 
     The allowlist is intentionally narrow: text and images only. Unknown,
     missing, video/audio, and application/octet-stream blobs are ignored here
-    because the model cannot safely infer how to inspect them generically.
+    because their format is unknown. The docket lexicon's root blob is known
+    JSON stored as octet-stream and is read under that contract.
     """
     found: list[AtprotoBlobRef] = []
 
@@ -111,6 +112,13 @@ def find_allowed_blobs(record: Any) -> list[AtprotoBlobRef]:
         if isinstance(plain, Mapping):
             cid = _blob_cid(plain)
             mime_type = str(plain.get("mimeType") or plain.get("mime_type") or "")
+            if (
+                path == "blob"
+                and isinstance(record, Mapping)
+                and record.get("$type") == "io.zzstoatzz.phi.docket"
+                and mime_type == "application/octet-stream"
+            ):
+                mime_type = "application/json"
             if cid and mime_type in ALLOWED_MEDIA_MIME_TYPES:
                 size = plain.get("size")
                 found.append(
