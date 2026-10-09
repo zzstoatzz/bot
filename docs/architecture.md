@@ -73,7 +73,10 @@ Switching models does not rewrite Phi's PDS personality or share caches.
 MCP clients are fresh per run. Tool filtering and deferral live in `core/mcp_tools.py`;
 [MCP integration](mcp.md) describes their families and failure handling. Skills
 load procedural guidance on demand. Native tools and their risk declarations
-are introspected for the cockpit and the policy judge.
+are introspected for the cockpit and the policy judge. Read-only context previews,
+offered-tool listings and budget assembly live in `core/context_diagnostics.py`;
+they reuse the agent's registered blocks and MCP construction rather than
+maintaining another prompt or tool catalogue.
 
 ## Identity and authority
 

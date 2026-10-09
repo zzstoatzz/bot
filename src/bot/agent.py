@@ -14,16 +14,13 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import httpx
 from pydantic_ai import Agent, AgentRunResult, ImageUrl, PromptedOutput, RunContext
-from pydantic_ai.models import infer_model
 from pydantic_ai.tools import ToolDefinition
 from pydantic_ai.toolsets import AbstractToolset
-from pydantic_ai.toolsets._tool_search import ToolSearchToolset
 from pydantic_ai.usage import RunUsage
 from pydantic_ai_skills import SkillsToolset
 
 from bot.config import settings
-from bot.core import ops_log
-from bot.core.abilities import risk_of
+from bot.core import context_diagnostics, ops_log
 from bot.core.alert_watch import render_alert_watch
 from bot.core.atproto_client import bot_client, get_identity_block
 from bot.core.cache_stability import (
@@ -34,7 +31,7 @@ from bot.core.cache_stability import (
 from bot.core.discovery_pool import get_discovery_pool_block
 from bot.core.goals import list_goals as list_goal_records
 from bot.core.graze_client import GrazeClient
-from bot.core.mcp_tools import _mcp_origin, _mcp_url, build_toolsets
+from bot.core.mcp_tools import _mcp_url, build_toolsets
 from bot.core.operator import get_operator_guidance_block, get_operator_profile
 from bot.core.operator_notes import get_operator_notes_block
 from bot.core.owned_feeds import get_owned_feeds_block
@@ -393,33 +390,6 @@ class PhiAgent:
         # action — actions happen as tool calls during the run (post,
         # reaction records, etc). The final string return is just a brief summary
         # for logging.
-        # anthropic prompt caching — tool definitions are perfectly static
-        # across runs (~30 tools; observed ~12k tokens cached). 1h TTL chosen
-        # for active-period coverage: tool-call loops, notification bursts,
-        # startup ritual, and any clustered traffic. it does NOT bridge the
-        # 4-hour cycle cadence; between cycles the cache will normally lapse.
-        # break-even on the write premium is ~1-2 reads: 1h writes cost +100%
-        # of base input, hits cost 10%, so each hit saves 90% of base while
-        # the write costs 100% extra over base — recouped after the second
-        # read on cached prefix.
-        #
-        # instructions caching: the static base (personality + operational
-        # rules) is passed as `instructions=`, and the dynamic context blocks
-        # below register via @agent.instructions (pydantic-ai marks function
-        # instructions dynamic). anthropic_cache_instructions places the
-        # breakpoint at the static/dynamic boundary, so tools + the static
-        # base cache as one prefix while the dynamic blocks render after it.
-        #
-        # messages caching adds a breakpoint on the last message of each
-        # request — within a run's tool loop the history is append-only, so
-        # each step reads the previous step's cache instead of re-sending
-        # the whole conversation uncached. runs are fresh conversations, so
-        # 5m TTL covers the loop (steps are seconds apart).
-        #
-        # none of the above was measured until CacheObservingModel — it reads
-        # the provider's own cache verdict off each response so a regression
-        # (a block that stops memoizing, a reordered prefix) surfaces as a
-        # warning instead of a silently larger bill (core/cache_stability.py).
         observed_model = CacheObservingModel(settings.agent_model)
         self.agent = Agent[PhiDeps, str](
             name="phi",
@@ -802,55 +772,7 @@ class PhiAgent:
         )
 
     def get_capabilities(self) -> list[dict]:
-        """Plain-data introspection of phi's registered function-tools.
-
-        Reads from `self.agent._function_toolset.tools` (where pydantic-ai
-        stores the registered `@agent.tool` callables). Returns one entry
-        per tool with:
-          - name: the registered tool name
-          - description: the tool's docstring (what gets sent to the LLM)
-          - operator_only: heuristic — true if the tool is gated to the
-            bot's owner. Detected via either an `_is_owner(` source-call
-            or owner-restriction phrasing in the docstring. When an
-            explicit owner-gating attribute lands on `Tool`, swap this
-            heuristic for a direct read.
-
-        Surfaced via /api/abilities so the cockpit UI can render real
-        names + real docstrings instead of inventing them.
-        """
-        import inspect
-
-        tools = self.agent._function_toolset.tools
-        out: list[dict] = []
-        for name in sorted(tools.keys()):
-            t = tools[name]
-            try:
-                src = inspect.getsource(t.function)
-            except (OSError, TypeError):
-                src = ""
-            doc = (t.description or "").strip()
-            doc_lower = doc.lower()
-            operator_only = "_is_owner(" in src or any(
-                marker in doc_lower
-                for marker in (
-                    "owner-only",
-                    "only the bot's owner",
-                    "operator-only",
-                    "only @",
-                )
-            )
-            out.append(
-                {
-                    "name": name,
-                    "description": doc,
-                    "operator_only": operator_only,
-                    # required by lexicons/io/zzstoatzz/phi/getAbilities.json —
-                    # tests/test_abilities.py fails if any registered tool
-                    # lacks a declaration, so this is never None in practice
-                    "risk": risk_of(name),
-                }
-            )
-        return out
+        return context_diagnostics.get_capabilities(self)
 
     def _mcp_toolsets(self, run_label: str = "") -> list[AbstractToolset[PhiDeps]]:
         return build_toolsets(run_label)
@@ -1500,160 +1422,10 @@ class PhiAgent:
         return stored
 
     async def render_context_preview(self) -> list[dict]:
-        """Render every dynamic context block as a fresh scheduled run would
-        see it right now — the /diagnostic page's data source.
-
-        Stateless by construction: a throwaway PhiDeps (no notifications
-        context, its own run_cache) is exactly what a scheduled entry point
-        gets, so batch-seeded blocks render empty here just as they would
-        there. Blocks read their module caches like any run; nothing is
-        written. A block that raises reports its error instead of taking
-        the preview down.
-        """
-        from types import SimpleNamespace
-        from typing import cast as _cast
-
-        if settings.voice_reset:
-            return []
-        deps = PhiDeps(author_handle="", memory=self.memory)
-        ctx = _cast(RunContext[PhiDeps], SimpleNamespace(deps=deps))
-
-        static_text = await self.personality_instructions(ctx)
-        blocks: list[dict] = [
-            {
-                "name": "static_instructions",
-                "text": static_text,
-                "chars": len(static_text),
-                "ms": 0.0,
-                "error": None,
-            }
-        ]
-        for name, block in self.context_blocks:
-            t0 = time.perf_counter()
-            text, error = "", None
-            try:
-                text = await block(ctx)
-            except Exception as e:
-                error = f"{type(e).__name__}: {e}"
-            blocks.append(
-                {
-                    "name": name,
-                    "text": text,
-                    "chars": len(text),
-                    "ms": round((time.perf_counter() - t0) * 1000, 1),
-                    "error": error,
-                }
-            )
-        return blocks
+        return await context_diagnostics.render_context_preview(self)
 
     async def list_tool_definitions(self) -> list[tuple[str, ToolDefinition]]:
-        """every tool definition the next run would send, tagged with where
-        it comes from: ``function`` for @agent.tool registrations, ``skills``
-        for the skills toolset, ``mcp:<prefix>`` per MCP server. MCP servers
-        are connected the same way a run connects them and released after
-        listing; one that is down costs its tools, not the listing."""
-        from pydantic_ai.usage import RunUsage
-
-        if settings.voice_reset:
-            return []
-
-        # a real RunContext: toolsets `replace()` it per tool and read
-        # `retries`, so a stand-in namespace is not enough here
-        deps = PhiDeps(author_handle="", memory=self.memory)
-        model = self.agent.model
-        assert model is not None
-        ctx = RunContext[PhiDeps](deps=deps, model=infer_model(model), usage=RunUsage())
-        out: list[tuple[str, ToolDefinition]] = []
-        for name in sorted(self.agent._function_toolset.tools):
-            out.append(("function", self.agent._function_toolset.tools[name].tool_def))
-        for name, tool in sorted((await self.skills_toolset.get_tools(ctx)).items()):
-            out.append(("skills", tool.tool_def))
-        sent = {tool_def.name for _, tool_def in out}
-        for ts in self._mcp_toolsets(run_label="context-budget"):
-            origin = f"mcp:{_mcp_origin(ts)}"
-            # deferred tools are not sent; the search tool that finds them is
-            visible = ToolSearchToolset(wrapped=ts)
-            try:
-                async with ts:
-                    for name, tool in sorted((await visible.get_tools(ctx)).items()):
-                        if name not in sent:
-                            sent.add(name)
-                            out.append((origin, tool.tool_def))
-            except Exception as e:
-                logger.warning(
-                    f"{origin} unavailable for the context budget: {type(e).__name__}: {str(e)[:120]}"
-                )
-        return out
+        return await context_diagnostics.list_tool_definitions(self)
 
     async def render_context_budget(self) -> dict:
-        """what the next scheduled run would send, weighed: the model and its
-        window from the catalog, every section with a token count, and the
-        provider's own numbers from the last real run for comparison. the
-        operator page's context panel reads this."""
-        from datetime import UTC, datetime
-
-        from bot.core.cache_stability import cache_monitor
-        from bot.core.context_tokens import (
-            ContextSection,
-            count_context_tokens,
-            tool_section,
-        )
-        from bot.core.model_catalog import lookup_model_limits
-
-        blocks = await self.render_context_preview()
-        sections: list[ContextSection] = []
-        for b in blocks:
-            sections.append(
-                ContextSection(
-                    kind="static" if b["name"] == "static_instructions" else "block",
-                    name=b["name"],
-                    chars=b["chars"],
-                    ms=b["ms"],
-                    error=b["error"],
-                    text=b["text"],
-                )
-            )
-        for origin, tool_def in await self.list_tool_definitions():
-            sections.append(tool_section(tool_def, origin))
-
-        model = None
-        if not settings.voice_reset and not isinstance(self.agent.model, str):
-            model = self.agent.model
-        counting, prompt_total = await count_context_tokens(model, sections)
-        limits = await lookup_model_limits(settings.agent_model)
-        totals = {
-            "static": sum(s.tokens for s in sections if s.kind == "static"),
-            "blocks": sum(s.tokens for s in sections if s.kind == "block"),
-            "tools": sum(s.tokens for s in sections if s.kind == "tool"),
-            "prompt": prompt_total,
-        }
-        last = next((r for r in reversed(cache_monitor.runs) if r.samples), None)
-        return {
-            "generated_at": datetime.now(UTC).isoformat(),
-            "path": "voice reset (context disabled)"
-            if settings.voice_reset
-            else "scheduled (no notifications batch)",
-            "voice_reset": settings.voice_reset,
-            "model": limits.as_dict(),
-            "counting": counting,
-            "sections": [s.as_dict() for s in sections],
-            "totals": totals,
-            "recent": cache_monitor.request_sizes(),
-            "last_run": None
-            if last is None
-            else {
-                "label": last.label,
-                "started_at": last.started_at.isoformat(),
-                "model": last.samples[0].model,
-                "trace_url": last.as_dict()["trace_url"],
-                "requests": [
-                    {
-                        "input_tokens": r.uncached,  # Cockpit field means uncached input.
-                        "cache_read": r.cache_read,
-                        "cache_write": r.cache_write,
-                        "billed_prefix": r.billed_prefix,
-                    }
-                    for r in last.samples
-                ],
-            },
-        }
+        return await context_diagnostics.render_context_budget(self)

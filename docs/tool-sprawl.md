@@ -23,7 +23,9 @@ Treat agent organization and tool disclosure together: identify the consuming
 entry point, skill or block before moving or hiding a capability. MCP construction,
 filtering and deferral now live together in `core/mcp_tools.py`; `agent.py` owns
 run orchestration, retry boundaries, context assembly and task prompts. This
-separation does not change the model's tool surface.
+separation does not change the model's tool surface. Cockpit context previews and
+budget assembly live in `core/context_diagnostics.py`, beside token counting,
+while the agent retains its public diagnostic methods.
 
 Rare native readers and generators remain deferral candidates. The October 8
 refresh covered 538 recorded runs: atlas and persona had no calls, archive had

@@ -67,7 +67,9 @@ writes observe the same override; their existing owner and validation contracts
 still apply when it is off. Reads, SELF's initial review, private memory and
 private thread mutes remain available. Runtime pause and `VOICE_RESET` separately
 prevent normal run dispatch. Do not describe safe mode as preserving an outbound
-PDS-note or DM escape channel: those delivery routes are gated.
+PDS-note or DM escape channel: those delivery routes are gated. The operator's
+pause/resume and application lifecycle separately flip the existing bio status
+marker through `ProfileManager`; this is not the agent's `write_bio` tool.
 
 The July 25 generalized MCP guard closed gaps in Semble/Tangled mutations and
 raw deletes. September 5 (`6867786`) added the native blog override check. The

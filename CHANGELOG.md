@@ -1,5 +1,15 @@
 # changelog
 
+## 2026-10-08 — Separate cockpit diagnostics from agent execution
+
+Context preview, offered-tool listing and budget assembly now live beside the
+token counter in `core/context_diagnostics.py`. The public agent methods remain
+stable, and diagnostic composition still uses the same registered blocks and
+MCP factory as runs. This preserves voice-reset suppression, error isolation,
+deferral visibility and provider-versus-estimate accounting. Removed the stale
+cache narrative from agent initialization and duplicate workflow risk entries;
+the existing cache implementation and canonical risk declarations own them.
+
 ## 2026-10-08 — Apply safe mode consistently to native public state
 
 The July 25 override expansion intended to stop public mutations across surfaces,
