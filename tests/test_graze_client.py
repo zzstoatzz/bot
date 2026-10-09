@@ -1,6 +1,6 @@
 """Tests for the graze.social REST client."""
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import httpx
 import pytest
@@ -58,82 +58,6 @@ class TestLogin:
             mock_login.assert_called_once()
 
 
-class TestCreateFeed:
-    async def test_full_create_flow(self, graze):
-        """Test the 5-step create flow: putRecord → migrate → complete → publish → set-publicity."""
-        graze._cookies = httpx.Cookies()
-        graze._user_id = 42
-
-        # mock bot_client for PDS putRecord
-        mock_bot = MagicMock()
-        mock_bot.authenticate = AsyncMock()
-        mock_bot.client.me.did = "did:plc:testdid"
-        mock_bot.client.com.atproto.repo.put_record = MagicMock()
-
-        call_log = []
-
-        async def fake_request(method, path, **kwargs):
-            call_log.append((method, path))
-            if path == "/app/migrate_algo":
-                return _ok_response(json={"id": 99})
-            return _ok_response()
-
-        with (
-            patch("bot.core.graze_client.bot_client", mock_bot),
-            patch.object(graze, "_request", side_effect=fake_request),
-        ):
-            result = await graze.create_feed(
-                rkey="jazz-feed",
-                display_name="Jazz Music",
-                description="posts about jazz",
-                filter_manifest={
-                    "filter": {"and": [{"regex_any": ["text", ["jazz", "bebop"]]}]}
-                },
-            )
-
-        assert result["uri"] == "at://did:plc:testdid/app.bsky.feed.generator/jazz-feed"
-        assert result["algo_id"] == 99
-
-        # verify PDS record was created
-        mock_bot.client.com.atproto.repo.put_record.assert_called_once()
-        put_data = mock_bot.client.com.atproto.repo.put_record.call_args
-        record = put_data.kwargs["data"]["record"]
-        assert record["displayName"] == "Jazz Music"
-        assert record["did"] == "did:web:api.graze.social"
-
-        # verify all 5 graze API calls in order
-        assert call_log == [
-            ("POST", "/app/migrate_algo"),
-            ("POST", "/app/complete_migration"),
-            ("GET", "/app/publish_algo/99"),
-            ("GET", "/app/api/v1/algorithm-management/set-publicity/99/true"),
-            ("POST", "/app/api/v1/algorithm-management/backfill/99"),
-        ]
-
-    async def test_create_feed_propagates_errors(self, graze):
-        graze._cookies = httpx.Cookies()
-        graze._user_id = 42
-
-        mock_bot = MagicMock()
-        mock_bot.authenticate = AsyncMock()
-        mock_bot.client.me.did = "did:plc:testdid"
-        mock_bot.client.com.atproto.repo.put_record = MagicMock()
-
-        async def fail_migrate(method, path, **kwargs):
-            raise httpx.HTTPStatusError(
-                "bad request",
-                request=httpx.Request("POST", f"{BASE_URL}/app/migrate_algo"),
-                response=httpx.Response(400),
-            )
-
-        with (
-            patch("bot.core.graze_client.bot_client", mock_bot),
-            patch.object(graze, "_request", side_effect=fail_migrate),
-        ):
-            with pytest.raises(httpx.HTTPStatusError):
-                await graze.create_feed("test", "Test", "test", {"filter": {}})
-
-
 class TestListFeeds:
     async def test_list_feeds(self, graze):
         feeds_data = [
@@ -149,20 +73,6 @@ class TestListFeeds:
 
         assert len(result) == 2
         assert result[0]["display_name"] == "Jazz"
-
-
-class TestDeleteFeed:
-    async def test_delete_feed(self, graze):
-        graze._user_id = 42
-
-        async def fake_request(method, path, **kwargs):
-            assert method == "POST"
-            assert path == "/app/delete_algo"
-            assert kwargs["json"] == {"id": 99, "user_id": 42}
-            return _ok_response()
-
-        with patch.object(graze, "_request", side_effect=fake_request):
-            await graze.delete_feed(99)
 
 
 class TestReloginOn401:

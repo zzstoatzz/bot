@@ -1,5 +1,19 @@
 # changelog
 
+## 2026-10-09 — Finish the retired feed-authoring cleanup
+
+October 2 removed `manage_feeds`, but Graze create/delete/backfill code and paid
+evals with copied feed-creation tools remained. Removed those unused methods,
+their mock-only tests, obsolete eval fixtures and an unused Graze registration
+argument. Graze login/listing, the owned-feeds index and all existing feed records
+remain. Current feed routing now uses production schemas held before execution;
+local HTTP tests exercise actual reading and follow authorization/write behavior.
+
+A provider probe of four rare native capabilities showed added discovery turns
+and changed archive routing when hidden. That does not prove a net benefit or
+equivalent coverage, so atlas, persona, archive and image tools remain visible.
+Their historical purposes and Phi's request to retain distinct capabilities stand.
+
 ## 2026-10-08 — Separate cockpit diagnostics from agent execution
 
 Context preview, offered-tool listing and budget assembly now live beside the

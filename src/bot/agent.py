@@ -756,7 +756,7 @@ class PhiAgent:
 
         # --- register tools from tools/ package ---
 
-        register_all(self.agent, self.graze_client)
+        register_all(self.agent)
 
         # Extraction agent — phi extracts its own observations using its own model
         self._extraction_agent = Agent[None, ExtractionResult](

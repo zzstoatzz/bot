@@ -68,3 +68,13 @@ tests never touch production:
 - separate turbopuffer namespace for tests
 - deterministic mock responses where needed
 
+
+## Feed capability coverage
+
+Feed routing evals register the production feed tools and hold execution through
+`DeferredToolRequests`; the model selects the real `read_feed` schema without
+posting or following. `tests/test_feed_tools.py` exercises the SDK over local HTTP
+for empty timelines, owned feed slugs, follow authorization and the actual follow
+record. The former copied `create_feed`, `list_feeds` and `read_timeline` eval
+tools described a retired surface and were removed with their fixtures. Graze
+login/listing coverage remains for the owned-feeds context block.

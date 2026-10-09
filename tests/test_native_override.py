@@ -12,7 +12,6 @@ from pydantic_ai.models.test import TestModel
 from bot.config import settings
 from bot.core import mentionable, override, self_record
 from bot.core.atproto_client import BotClient
-from bot.core.graze_client import GrazeClient
 from bot.tools import bluesky, feeds, goals
 from bot.tools import self_record as self_tools
 from bot.tools._helpers import PhiDeps
@@ -92,7 +91,7 @@ def tool(name):
     goals.register(agent)
     self_tools.register(agent)
     bluesky.register(agent)
-    feeds.register(agent, GrazeClient("phi.test", "test"))
+    feeds.register(agent)
     return agent._function_toolset.tools[name].function
 
 

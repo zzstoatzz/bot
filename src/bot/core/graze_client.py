@@ -1,22 +1,18 @@
 """Async client for graze.social's undocumented REST API.
 
-Graze serves custom Bluesky feed algorithms. This client handles the full
-feed lifecycle: login → create PDS record → register with graze → publish.
+Lists existing custom feeds for the owned-feeds context block. Feed authoring
+was retired on October 2; reading those feeds remains available.
 
 API reference: https://whtwnd.com/did:plc:r2whjvupgfw55mllpksnombn/3mgbz7xdeil2h
 """
 
 import logging
-from datetime import UTC, datetime
 
 import httpx
-
-from bot.core.atproto_client import bot_client
 
 logger = logging.getLogger("bot.graze_client")
 
 BASE_URL = "https://api.graze.social"
-GRAZE_DID = "did:web:api.graze.social"
 
 
 class GrazeClient:
@@ -70,98 +66,8 @@ class GrazeClient:
             r.raise_for_status()
             return r
 
-    async def create_feed(
-        self,
-        rkey: str,
-        display_name: str,
-        description: str,
-        filter_manifest: dict,
-    ) -> dict:
-        """Create a new graze-powered feed. Full 5-step flow:
-
-        1. putRecord on PDS (app.bsky.feed.generator)
-        2. migrate_algo (register filter with graze)
-        3. complete_migration
-        4. publish_algo
-        5. set-publicity to public
-
-        Returns {"uri": ..., "algo_id": ...}.
-        """
-        # 1. create the feed generator record on phi's PDS
-        await bot_client.authenticate()
-        assert bot_client.client.me is not None
-        did = bot_client.client.me.did
-        feed_uri = f"at://{did}/app.bsky.feed.generator/{rkey}"
-
-        bot_client.client.com.atproto.repo.put_record(
-            data={
-                "repo": did,
-                "collection": "app.bsky.feed.generator",
-                "rkey": rkey,
-                "record": {
-                    "$type": "app.bsky.feed.generator",
-                    "did": GRAZE_DID,
-                    "displayName": display_name,
-                    "description": description,
-                    "createdAt": datetime.now(UTC).isoformat(),
-                },
-            }
-        )
-        logger.info(f"PDS record created: {feed_uri}")
-
-        # 2. register the filter manifest with graze
-        r = await self._request(
-            "POST",
-            "/app/migrate_algo",
-            json={
-                "user_id": self._user_id,
-                "feed_uri": feed_uri,
-                "algorithm_manifest": filter_manifest,
-            },
-        )
-        algo_id = r.json()["id"]
-        logger.info(f"algo migrated, algo_id={algo_id}")
-
-        # 3. complete migration
-        await self._request(
-            "POST",
-            "/app/complete_migration",
-            json={"algo_id": algo_id, "user_id": self._user_id},
-        )
-
-        # 4. publish
-        await self._request("GET", f"/app/publish_algo/{algo_id}")
-
-        # 5. make public
-        await self._request(
-            "GET",
-            f"/app/api/v1/algorithm-management/set-publicity/{algo_id}/true",
-        )
-
-        # 6. backfill so the feed isn't empty
-        await self.backfill_feed(algo_id)
-
-        logger.info(f"feed published: {feed_uri}")
-        return {"uri": feed_uri, "algo_id": algo_id}
-
     async def list_feeds(self) -> list[dict]:
         """List phi's existing graze feeds."""
         r = await self._request("GET", "/app/my_feeds")
         data = r.json()
         return data.get("user_algos", data) if isinstance(data, dict) else data
-
-    async def delete_feed(self, algo_id: int) -> None:
-        """Delete a graze feed by algo_id."""
-        await self._request(
-            "POST",
-            "/app/delete_algo",
-            json={"id": algo_id, "user_id": self._user_id},
-        )
-        logger.info(f"feed deleted: algo_id={algo_id}")
-
-    async def backfill_feed(self, algo_id: int) -> None:
-        """Trigger a backfill for a feed so it picks up existing posts."""
-        await self._request(
-            "POST", f"/app/api/v1/algorithm-management/backfill/{algo_id}"
-        )
-        logger.info(f"feed backfill triggered: algo_id={algo_id}")

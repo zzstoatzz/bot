@@ -17,7 +17,7 @@ Do not maintain a second list of names or tool counts here.
 See the [October audit](toolset-audit-2026-10.md#what-landed-2026-10-02) for measured
 costs and the exact landed scope. Its opening numbers describe the pre-cut state.
 
-## Remaining work
+## Current organization and disclosure decisions
 
 Treat agent organization and tool disclosure together: identify the consuming
 entry point, skill or block before moving or hiding a capability. MCP construction,
@@ -32,10 +32,21 @@ refresh covered 538 recorded runs: atlas and persona had no calls, archive had
 one and image generation had three. These are measured calls, not evidence of
 capability value or completeness of historical use. Phi identified automatic
 expiry as persona's distinct purpose and asked to keep it. The atlas now supplies
-the standing docket discovery route. Further deferral needs a replacement route
-and an observed benefit before adding discovery overhead. Follow/account/feed
-module boundaries deserve review against today's catalogue, not the retired
-30-tool inventory. An unused undo or control can still justify its existence.
+the standing docket discovery route. A provider routing probe used the production native schemas with execution held
+before side effects. Atlas, persona and image requests discovered their hidden
+tools with an extra model request. A dated archive request selected `read_archive`
+when visible and `search_posts` when hidden. Both are plausible readers; the probe
+does not establish equivalent coverage or an end-to-end benefit. The four schemas
+cost about 1,970 tokens in the October 8 exact budget. They remain visible rather
+than adding routing instructions to compensate for an unproven saving.
+
+Feed reading and following remain together because following determines the
+timeline. Feed registration no longer receives a Graze client it does not use.
+Graze retains login and listing for the owned-feeds index; obsolete authoring
+methods were removed after verifying the October 2 retirement of `manage_feeds`.
+Account labels, mention consent and thread mutes remain in `manage_account`, with
+separate per-action boundaries. An unused undo or control can still justify its
+existence.
 
 Keep one instruction owner per concern: per-tool procedure in its docstring,
 workflow guidance in its skill, context meaning in its header, cross-cutting norms

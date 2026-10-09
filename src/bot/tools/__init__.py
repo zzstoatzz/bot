@@ -1,10 +1,9 @@
 """Tool registration for phi agent."""
 
-from bot.core.graze_client import GrazeClient
 from bot.tools._helpers import PhiDeps, _check_services_impl
 
 
-def register_all(agent, graze_client: GrazeClient):
+def register_all(agent):
     """Register all tools on the agent."""
     from bot.tools import (
         atlas,
@@ -32,7 +31,7 @@ def register_all(agent, graze_client: GrazeClient):
     etiquette.register(agent)
     memory.register(agent)
     search.register(agent)
-    feeds.register(agent, graze_client)
+    feeds.register(agent)
     bluesky.register(agent)
     bio.register(agent)
     self_record.register(agent)
