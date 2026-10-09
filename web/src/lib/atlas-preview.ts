@@ -6,6 +6,19 @@ export interface AtlasPreview {
 	dots: readonly (readonly [number, number, string])[];
 }
 
+/**
+ * The preview and full map are fetched independently. The generated timestamp
+ * is the preview's generation marker, so a successful refresh can invalidate
+ * a full map from an older generation without throwing away the cache for an
+ * unchanged preview.
+ */
+export function atlasGenerationChanged(
+	previous: AtlasPreview | null,
+	next: AtlasPreview,
+): boolean {
+	return previous !== null && previous.generated_at !== next.generated_at;
+}
+
 function count(value: unknown): number {
 	if (typeof value !== 'number' || !Number.isFinite(value) || value < 0)
 		throw new Error('Invalid atlas preview count');

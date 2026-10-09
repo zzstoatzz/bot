@@ -13,7 +13,10 @@
 		getActivity,
 	} from '$lib/api';
 	import { absoluteCT, relativeWhen } from '$lib/time';
-	import type { AtlasPreview as Preview } from '$lib/atlas-preview';
+	import {
+	atlasGenerationChanged,
+	type AtlasPreview as Preview,
+} from '$lib/atlas-preview';
 	import type { Goal, Docket, Atlas, ActivityItem } from '$lib/types';
 
 	const STALE_AFTER_MS = 60_000;
@@ -84,7 +87,13 @@
 					)),
 			),
 			read('goals', getGoals, (r) => (goals = r)),
-			read('atlas', getAtlasPreview, (r) => (preview = r)),
+			read('atlas', getAtlasPreview, (r) => {
+				// The map is loaded lazily and intentionally survives closing. A
+				// preview refresh is also our generation check: don't reopen an
+				// older full map after the preview moved to a new atlas.
+				if (atlas && atlasGenerationChanged(preview, r)) atlas = null;
+				preview = r;
+			}),
 			read('docket', getDocket, (r) => (docket = r)),
 		]);
 		mindCounts.set({
