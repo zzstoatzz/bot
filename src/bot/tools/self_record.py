@@ -39,7 +39,7 @@ def register(agent):
                 max_length=SELF_MAX_CHARS,
                 description=(
                     "The full replacement text of your self record — who you "
-                    "are, in your words. ~400 words, structurally enforced."
+                    f"are, in your words. Maximum {SELF_MAX_CHARS} characters."
                 ),
             ),
         ],

@@ -1309,64 +1309,30 @@ class PhiAgent:
         )
 
     async def process_chicken_precheck(self) -> str:
-        """Pre-lock sanity check on the chicken market position.
-
-        Fires once per round, shortly before the 06:00 UTC trading lock —
-        1am for the operator, deep night for most rivals. By now every
-        eligible post exists and has hours of likes; the books are nearly
-        final and the humans ahead on the leaderboard are asleep. This is
-        the highest-information moment of the round and the one structural
-        edge a bot has here.
-        """
+        """Review the market position at the externally scheduled pre-lock wake."""
         task = (
-            "the chicken market round locks at 06:00 UTC — soon. this is a "
-            "focused market check, not a posting cycle: stay off the feed.\n\n"
-            "run check_top_chicken (one call: round board, your wallet, season). the "
-            "like-race is nearly decided and rivals' books are final — they "
-            "are asleep and cannot counter whatever you do now.\n\n"
-            "then decide: hold, adjust, enter, or deliberately pass — any of "
-            "these is fine, but it must be a decision, not a default, and "
-            "the decision comes from YOUR doctrine, not from this prompt.\n\n"
-            "your strategy doctrine (shown by check_top_chicken) is yours to "
-            "apply and to revise — if the last round's result contradicted "
-            "it, update it with update_chicken_strategy and say what you "
-            "learned. the operator's invariants in place_chicken_trade (ruin "
-            "floor, pre-registration, one wallet) bound sizing; risk "
-            "appetite within them is a doctrine choice you own.\n\n"
-            "state the decision, its reasoning, and your estimated hit "
-            "probability in your closing summary — it's recorded "
-            "automatically. touch update_goal_progress only if the goal's "
-            "state actually moved (a doctrine revision, a new next step)."
+            "Pre-lock chicken market review. Read check_top_chicken for the "
+            "current round, timing, positions and relevant strategy. Decide "
+            "whether to hold, adjust, enter or pass using that evidence. "
+            "Stay off the feed during this pass.\n\n"
+            "In the closing summary, record the decision, reasoning and "
+            "estimated hit probability with its uncertainty. Revise strategy "
+            "only when evidence warrants it; update goal progress only when "
+            "the goal's state actually changed."
         )
         return await self._run_scheduled(name="chicken precheck", task=task)
 
     async def process_chicken_scout(self) -> str:
-        """Mid-round market scout — the early-window half of market attention.
-
-        Triggered externally (prefect, 18:00 UTC) — the round is ~12h old,
-        the like-race is developing, and cheap entries on emerging leaders
-        (the pattern behind every winning trade so far) only exist NOW,
-        before the board converges. The 04:00 pre-lock check is the other
-        half: final books, last call.
-        """
+        """Review emerging opportunities at the externally scheduled scout wake."""
         task = (
-            "chicken market scout — mid-round, the cheap window. this is a "
-            "focused market check, not a posting cycle: stay off the feed.\n\n"
-            "run check_top_chicken. the round is roughly half-run: posts are "
-            "still accumulating likes, the board hasn't converged, and "
-            "whatever will look obvious at the pre-lock check is still "
-            "cheap or invisible right now. this is the window where an "
-            "emerging leader can be bought below its momentum — and where "
-            "your doctrine's sampling blind spot (winners from outside the "
-            "top-5) is worth a deliberate look down the tail.\n\n"
-            "then act per YOUR doctrine: enter, add, exit, or pass — a "
-            "decision with a stated reason, not a default. the operator's "
-            "invariants in place_chicken_trade (ruin floor, pre-registration, "
-            "one wallet) bound sizing; risk appetite is yours.\n\n"
-            "state the decision, reasoning, and estimated hit probability "
-            "in your closing summary — it's recorded automatically. touch "
-            "update_goal_progress only if the goal's state actually moved "
-            "(a doctrine revision, a new next step)."
+            "Chicken market scout. Read check_top_chicken for the current "
+            "round, timing, candidates, positions and relevant strategy. "
+            "Consider emerging candidates as well as current leaders; price "
+            "and momentum must come from the live evidence. Decide whether "
+            "to enter, adjust, exit or pass. Stay off the feed during this pass.\n\n"
+            "In the closing summary, record the decision, reasoning and "
+            "estimated hit probability with its uncertainty. Update goal "
+            "progress only when the goal's state actually changed."
         )
         return await self._run_scheduled(name="chicken scout", task=task)
 

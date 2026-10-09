@@ -1,4 +1,8 @@
-# goals have metabolisms, not just records
+# Goal design history
+
+This records the July 15 design decision. The current surface and ownership
+contract are in [memory.md](memory.md); the goal examples below describe that
+incident, not a current inventory.
 
 ## the incident that forced this
 
@@ -59,7 +63,7 @@ metabolism is rituals and thread-depth-over-months, not counts. metricizing
 intimacy produced the 0-vs-15 contradiction in the first place — the design
 must permit ledgers that are qualitative and slow.
 
-## status
+## Outcome on July 15
 
 - `metabolism` is a constitutional field on goal records; `progress_signal`
   moved to the operational (phi-owned) set. shipped 2026-07-15.

@@ -34,7 +34,7 @@ The operator says "tell phi …", "let phi know …", "ask phi to …",
 words delivered to phi as a message it will see and respond to.
 
 Not for: changing phi's behavior (edit code/personality), inspecting phi
-(`phi-check`), or reading phi's prompts (`phi-prompt-inspect`).
+(`phi-check`), or reading phi's prompts (`hone-prompts`).
 
 ## how
 

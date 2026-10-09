@@ -6,15 +6,10 @@ Repo ownership is the authorization: anyone can write this record to their
 own repo, but the bot only reads ``settings.owner_did``'s copy. atproto's
 own security model is the allowlist.
 
-While active:
-- outward-facing writes (post, governed reaction records) refuse with the
-  operator's message, verbatim
-- the message renders as an [OPERATOR OVERRIDE] block in phi's system
-  prompt, so she learns about it up front rather than by bumping into
-  refusals
-- phi's channel back to the operator stays open: writes to her own PDS
-  (a NOTE card or any record) — the operator watches and replies on the
-  devlog account
+The active record is rendered into context and checked at MCP mutation and
+native publication boundaries. Private operator delivery also observes it;
+there is no PDS-note escape channel. Runtime pause and voice reset are separate.
+See docs/safety.md for the actual action boundaries and their coverage.
 
 Everything is public and inspectable — no hidden state, per the
 no-big-brother principle. Reads go straight to the operator's PDS

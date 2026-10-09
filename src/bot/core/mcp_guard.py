@@ -1,18 +1,8 @@
-"""process_tool_call hooks for phi's MCP toolsets.
+"""Shared MCP mutation guard and provenance reporting.
 
-Two hooks live here: a structural guard on pdsx (refuses feed writes) and
-an observational logger on semble (records library-write provenance).
-
-pdsx guard: posting flows through the trusted tools (bot.tools.posting) —
-
-that's where
-the consent allowlist, the policy judge, and the operator override live. A
-raw ``create_record``/``update_record`` into ``app.bsky.feed.*`` via pdsx
-would bypass all three, which until 2026-06-30 was only a prompt rule.
-This hook makes it structure: feed-collection writes through pdsx refuse
-with a pointer to the trusted path. Every other pdsx capability — phi's
-own custom collections, cosmik cards (her operator channel under an
-override), profile records — passes through untouched.
+Composed posts and selected records use trusted native tools. Reactions,
+retractions, other-app records and public repository prose are governed here.
+Every MCP mutation checks the operator override; reads retain their route.
 """
 
 import asyncio
@@ -135,9 +125,7 @@ def _mutations(server: str, name: str, tool_args: dict[str, Any]) -> list[str]:
 def _structural_refusal(
     server: str, name: str, tool_args: dict[str, Any]
 ) -> str | None:
-    """Refusals that hold regardless of the override — writing a feed record
-    by hand skips the consent allowlist and the policy judge, which no
-    operator setting turns back on."""
+    """Route protected records to native tools; retain governed reactions/deletes."""
     if server != "pdsx" or name not in _PDSX_MUTATIONS:
         return None
     collection = _pdsx_collection(tool_args)
@@ -278,9 +266,9 @@ def make_mcp_guard(server: str, run_label: str = ""):
 
     Three jobs, in order:
 
-    1. **Structural refusal.** A raw feed-record write through pdsx skips
-       the consent allowlist and the policy judge. No operator setting
-       turns those back on, so this refuses regardless of override state.
+    1. **Trusted routes.** Protected collections use their native write
+       paths. Reactions and retractions continue through the checks below;
+       raw composed posts cannot bypass the posting tool.
     2. **The operator override.** Any call that would *change* something
        refuses while safe mode is active. This used to live only in
        `tools/posting.py` and `tools/topchicken.py`, which meant safe mode

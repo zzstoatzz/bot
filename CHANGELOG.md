@@ -1,5 +1,25 @@
 # changelog
 
+## 2026-10-08 — Reconcile remaining tool and policy descriptions
+
+The current safety reference still claimed blogs bypassed the override and
+judge, reactions were unjudged, and raw feed deletions were always refused.
+Those descriptions predated the implemented publication, reaction and retraction
+paths. The reference now separates current checks, native-state coverage and
+historical incidents. Obsolete PDS-note escape-channel descriptions were removed.
+
+Web search now points to Semble's current discovery/call tools. SELF's parameter
+description uses its actual character cap, and capability risk descriptions no
+longer claim SELF is injected into every run. The July goal-design document is
+explicitly dated history rather than a current goal inventory.
+
+Phi's review confirmed that market scout and pre-lock wakes serve different jobs:
+finding emerging candidates versus deciding before positions freeze. Their tasks
+retain those purposes while taking timing and prices from the live board. Claims
+that rivals are asleep, the round is nearly decided, or early candidates are
+necessarily cheap no longer arrive as instructions. Trade checks and schedules
+are unchanged.
+
 ## 2026-10-08 — Make context history distinguishable from current evidence
 
 Phi's post-release review identified stale relative dates inside authored goal

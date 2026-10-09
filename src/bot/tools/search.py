@@ -1,7 +1,7 @@
 """Search tools — bluesky posts, trending, open web.
 
 cosmik/semble network search lives in the semble MCP toolset
-(semble_execute composing search_semantic and friends), not here.
+(Semble method discovery and calling), not here.
 """
 
 import json
@@ -300,7 +300,7 @@ def register(agent):
         Use to ground claims about the world outside atproto — current
         events, primary sources, official statements, technical docs.
         For atproto posts use search_posts; for the cosmik network use
-        the semble tools (semble_execute with search_semantic).
+        semble_search_tools to find a content-search method, then semble_call_tool.
 
         IMPORTANT: if you're about to assert something is recent, current,
         or 'this week,' pass time_range first. headlines without dates
