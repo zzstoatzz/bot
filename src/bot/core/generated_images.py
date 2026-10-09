@@ -21,7 +21,7 @@ def _path(cid: str) -> Path:
 
 
 def remember_image(cid: str, data: bytes) -> None:
-    """Persist the exact uploaded bytes, bounded to the latest 64 images."""
+    """Persist exact uploaded bytes, retaining this write in the bounded cache."""
     if not 0 < len(data) <= MAX_BYTES:
         raise ValueError("generated image exceeds cache limit")
     target = _path(cid)
@@ -33,8 +33,11 @@ def remember_image(cid: str, data: bytes) -> None:
         staging.replace(target)
     finally:
         staging.unlink(missing_ok=True)
-    entries = sorted(target.parent.glob("*.blob"), key=lambda p: p.stat().st_mtime)
-    for old in entries[:-MAX_FILES]:
+    entries = sorted(
+        (p for p in target.parent.glob("*.blob") if p != target),
+        key=lambda p: p.stat().st_mtime_ns,
+    )
+    for old in entries[: max(0, len(entries) + 1 - MAX_FILES)]:
         old.unlink(missing_ok=True)
 
 

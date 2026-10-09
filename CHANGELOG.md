@@ -1,5 +1,12 @@
 # changelog
 
+## 2026-10-09 — Keep newly generated image bytes during cache eviction
+
+The Exe release tests exposed an image cache that could evict the file it had
+just written when filesystem timestamps tied. Eviction now considers only older
+cache entries, reserving a slot for the current write. A real-filesystem regression
+also covers older entries with future timestamps; the cache remains bounded.
+
 ## 2026-10-09 — Keep atlas history from masquerading as current memory
 
 The live map included 625 superseded and two retired memories, 33 expired
