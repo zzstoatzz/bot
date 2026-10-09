@@ -92,3 +92,7 @@ source URIs. The detail drawer renders those rows and links to source posts.
 this field; an empty array means that read succeeded with no rows. Legacy
 rows without source URIs remain visible and identify their missing links.
 This is bounded reply-pair history, not a complete encounter timeline.
+
+The atlas overlay shows its mapping time and each selected record's creation,
+update and memory-status fields when available. A stored predecessor ID identifies
+retained revision history.

@@ -49,6 +49,7 @@ async def read_atlas_source(client: Turbopuffer, point: dict) -> str:
         f"row_id: {row_id}",
         f"kind: {kind}",
         f"created_at: {created}",
+        f"updated_at: {getattr(row, 'updated_at', None) or 'unavailable'}",
         f"status: {status}",
         "content:",
         getattr(row, "content", None) or "(no stored content)",
@@ -58,4 +59,37 @@ async def read_atlas_source(client: Turbopuffer, point: dict) -> str:
     lines.extend(f"- {uri}" for uri in sources)
     if not sources:
         lines.append("(none stored)")
+    previous = getattr(row, "supersedes", None)
+    seen = {row_id}
+    for _ in range(5):
+        if not isinstance(previous, str) or not previous or previous in seen:
+            break
+        seen.add(previous)
+        lines.append(f"Earlier revision (historical): {previous}")
+        try:
+            result = await asyncio.to_thread(
+                client.namespace(namespace).query,
+                rank_by=("id", "asc"),
+                filters=("id", "Eq", previous),
+                top_k=1,
+                include_attributes=True,
+            )
+        except Exception:
+            lines.append("Revision lookup failed; history may still exist.")
+            break
+        if not result.rows or str(result.rows[0].id) != previous:
+            lines.append("Revision not found at the stored reference.")
+            break
+        ancestor = result.rows[0]
+        lines.append(
+            f"recorded: {getattr(ancestor, 'created_at', None) or 'unavailable'}"
+        )
+        lines.append(f"status: {getattr(ancestor, 'status', None) or 'unspecified'}")
+        lines.append((getattr(ancestor, "content", None) or "")[:2000])
+        previous = getattr(ancestor, "supersedes", None)
+    else:
+        if previous:
+            lines.append(
+                f"Further history retained at {namespace}/{previous} (five-revision limit)."
+            )
     return "\n".join(lines)

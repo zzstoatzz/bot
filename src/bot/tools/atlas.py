@@ -22,14 +22,17 @@ def _format_point_brief(p: dict) -> str:
     pid = p.get("id", "")
     promotion = p.get("promotion_status", "")
     bracket = f"[{promotion}]" if promotion else ""
-    return f"- {kind} {bracket} {pid}: {label}"
+    recorded = p.get("created_at") or "unknown date"
+    return f"- {kind} {bracket} {pid} (recorded {recorded}): {label}"
 
 
 def _format_point_detail(p: dict, atlas: dict) -> str:
     """Multi-line summary of a single point with its 2D neighbors resolved."""
     by_id = {pt.get("id"): pt for pt in (atlas.get("points") or [])}
     lines = [
+        f"atlas generated_at: {atlas.get('generated_at', 'unknown')}",
         f"id: {p.get('id')}",
+        f"memory_status at mapping: {p.get('memory_status') or 'unspecified'}",
         f"kind: {p.get('kind')}",
         f"layer: {p.get('layer')}",
         f"promotion_status: {p.get('promotion_status')}",

@@ -16,6 +16,16 @@
 	type Palette = { core: string; mid: string; edge: string };
 	type PointLink = { href: string; label: string; note: string };
 
+	function dated(value?: string): string {
+		if (!value) return 'unknown';
+		const date = new Date(value);
+		return Number.isNaN(date.getTime()) ? 'unknown' : date.toLocaleString();
+	}
+
+	function relationship(status?: string): string {
+		return ({ raw: 'no nearby public anchor', promoted: 'public material in cluster', summarized: 'summary in cluster', connected: 'explicit public connection' })[status ?? ''] ?? '';
+	}
+
 	let canvas: HTMLCanvasElement;
 	let W = 0;
 	let H = 0;
@@ -712,6 +722,7 @@
 			<div class="chrome">semantic atlas</div>
 			<div class="meta mono">
 				{atlas.points.length} points · {atlas.clusters_coarse.length} regions · {atlas.clusters_fine.length} clusters · {view.zoom.toFixed(1)}x
+				<br />Mapped {dated(atlas.generated_at)} · historical encounters retained
 			</div>
 		</div>
 		<button class="close chrome" onclick={onClose}>close<span class="esc-hint"> · esc</span></button>
@@ -740,9 +751,15 @@
 				</div>
 				<div class="readout-title">{p.label ?? p.id ?? 'untitled point'}</div>
 				<div class="readout-meta mono">
-					{#if p.promotion_status}{p.promotion_status} · {/if}
+					{#if p.promotion_status}{relationship(p.promotion_status)} · {/if}
 					{#if p.cluster_coarse != null}region {p.cluster_coarse}{/if}
 					{#if p.cluster_fine != null} · cluster {p.cluster_fine}{/if}
+				</div>
+				<div class="readout-meta mono">
+					Recorded {dated(p.created_at)}
+					{#if p.updated_at && p.updated_at !== p.created_at}<br />Updated {dated(p.updated_at)}{/if}
+					{#if p.memory_status}<br />Memory status: {p.memory_status}{/if}
+					{#if p.supersedes}<br />Replaces {p.supersedes} · earlier revision retained in memory{/if}
 				</div>
 				<div class="readout-id mono">{pointFingerprint(p)}</div>
 				{#if p.tags?.length}

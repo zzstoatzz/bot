@@ -155,3 +155,20 @@ but Phi identified its automatic expiry as distinct from a lasting personality
 revision. It remains available for reversible experiments. Influence reading
 remains explicitly unconnected. Neither age nor absence of calls alone establishes
 that a capability should be deleted.
+
+### Atlas inclusion and history
+
+The producer excludes explicitly superseded/retired rows, relationship summaries
+older than seven days (matching ordinary context), and the known
+`phi-users-smoke_test_example` fixture. Source rows remain untouched. Legacy rows
+without a status remain eligible; historical encounters and active corrections
+are not excluded by age. These choices happen before embeddings and clustering,
+so replaced versions cannot inflate neighborhoods or docket evidence density.
+
+Points carry memory status, row creation/update dates and predecessor IDs when
+stored. Those dates describe stored records, not necessarily the underlying event.
+`inspect_atlas` reads the current exact source and up to five earlier revisions via
+stored `supersedes` references, clearly labelled historical. Full revision history
+remains in memory. Public records retain their source URIs. The cockpit displays
+record dates and translates promotion labels into their actual cluster meaning;
+nearby public material is not proof of verification or publication.

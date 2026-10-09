@@ -81,3 +81,32 @@ async def test_unrelated_namespace_is_not_read():
     )
     assert "outside Phi's memory" in output
     client.namespace.assert_not_called()
+
+
+async def test_revision_history_follows_exact_ids_and_stops_at_cycle():
+    rows = {
+        "current": SimpleNamespace(
+            id="current",
+            content="corrected claim",
+            status="active",
+            supersedes="earlier",
+            updated_at="2026-10-09",
+        ),
+        "earlier": SimpleNamespace(
+            id="earlier",
+            content="original claim",
+            status="superseded",
+            supersedes="current",
+        ),
+    }
+    client = Mock()
+    query = client.namespace.return_value.query
+    query.side_effect = lambda **kw: SimpleNamespace(rows=[rows[kw["filters"][2]]])
+    output = await read_atlas_source(
+        client, {"refs": {"tpuf_namespace": "phi-episodic", "tpuf_id": "current"}}
+    )
+    assert "corrected claim" in output
+    assert "Earlier revision (historical): earlier" in output
+    assert "original claim" in output
+    assert "updated_at: 2026-10-09" in output
+    assert query.call_count == 2

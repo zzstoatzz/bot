@@ -1,5 +1,18 @@
 # changelog
 
+## 2026-10-09 — Keep atlas history from masquerading as current memory
+
+The live map included 625 superseded and two retired memories, 33 expired
+relationship summaries, and a smoke-test profile. The producer now excludes
+these from projection and clustering without deleting source rows. Historical
+encounters and active corrections remain. The docket rejects explicitly replaced
+evidence as well. Phi asked to retain correction chains: point inspection now
+follows up to five stored predecessor IDs, including their dates and status.
+
+The cockpit shows mapping and record dates, memory status and predecessor IDs;
+cluster proximity uses descriptive labels instead of implying verification or
+publication.
+
 ## 2026-10-09 — Describe tool authorization explicitly
 
 The catalogue inferred owner-only status by searching function source and

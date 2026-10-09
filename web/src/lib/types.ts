@@ -226,6 +226,10 @@ export interface Atlas {
 		y?: number;
 		layer?: string;
 		promotion_status?: string;
+		created_at?: string;
+		updated_at?: string;
+		memory_status?: string;
+		supersedes?: string;
 		cluster_coarse?: number;
 		cluster_fine?: number;
 		tags?: string[];
