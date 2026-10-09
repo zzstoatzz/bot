@@ -17,7 +17,7 @@ WORKFLOWS = {"investigate", "propose-change"}
 
 
 def register(agent):
-    @agent.tool
+    @agent.tool(metadata={"operator_only": True})
     async def request_workflow(
         ctx: RunContext[PhiDeps],
         workflow: Annotated[
@@ -140,7 +140,7 @@ def register(agent):
             "workflow": workflow,
         }
 
-    @agent.tool
+    @agent.tool(metadata={"operator_only": True})
     async def operator_workflow_status(
         ctx: RunContext[PhiDeps],
         request_key: Annotated[

@@ -34,7 +34,7 @@
         },
         "operator_only": {
           "type": "boolean",
-          "description": "Whether the tool is gated to the operator via the like-as-approval mechanism."
+          "description": "Whether the tool's primary action requires operator authorization. Mixed tools describe per-action restrictions in their descriptions."
         },
         "risk": { "type": "ref", "ref": "#risk" }
       }

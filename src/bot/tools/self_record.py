@@ -31,7 +31,7 @@ from bot.tools._helpers import PhiDeps, _is_owner
 
 
 def register(agent):
-    @agent.tool
+    @agent.tool(metadata={"operator_only": True})
     async def write_self(
         ctx: RunContext[PhiDeps],
         text: Annotated[

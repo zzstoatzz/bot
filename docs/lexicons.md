@@ -1,6 +1,6 @@
 # lexicons
 
-phi defines eight custom record and query types under `io.zzstoatzz.phi.*`.
+phi defines custom record and query types under `io.zzstoatzz.phi.*`.
 They live in `lexicons/`, one file per NSID, and are **published as records on
 phi's own PDS** so anyone can resolve the schema from the NSID alone.
 

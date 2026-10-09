@@ -58,7 +58,7 @@ def register(agent):
         except Exception as e:
             return f"failed to read feed: {e}"
 
-    @agent.tool
+    @agent.tool(metadata={"operator_only": True})
     async def follow_user(
         ctx: RunContext[PhiDeps], handle: str, subscribe_posts: bool = False
     ) -> str:

@@ -1,9 +1,10 @@
 import json
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from types import SimpleNamespace
 
 import pytest
+from pydantic_ai import Agent, RunContext, RunUsage
+from pydantic_ai.models.test import TestModel
 
 from bot.core import operator_reports, workflow_receipts
 from bot.tools import workflows
@@ -75,10 +76,9 @@ async def test_private_status_reads_live_state_without_dispatch(journal, monkeyp
         f"http://127.0.0.1:{server.server_port}/api",
     )
     monkeypatch.setattr(workflows.settings, "prefect_api_auth_string", "test:local")
-    registered = {}
-    workflows.register(
-        SimpleNamespace(tool=lambda fn: registered.setdefault(fn.__name__, fn))
-    )
+    agent = Agent("test")
+    workflows.register(agent)
+    registered = {name: tool.function for name, tool in agent._function_toolset.tools.items()}
     workflow_receipts.reserve(
         {"request_key": "one", "repo": "bot", "workflow": "investigate"}, "dm:1"
     )
@@ -86,10 +86,11 @@ async def test_private_status_reads_live_state_without_dispatch(journal, monkeyp
     status = registered["operator_workflow_status"]
     owner = workflows.settings.owner_handle
     try:
-        public = await status(SimpleNamespace(deps=PhiDeps(author_handle=owner)))
+        public = await status(RunContext(deps=PhiDeps(author_handle=owner), model=TestModel(), usage=RunUsage()))
         assert "error" in public and not calls
         private = await status(
-            SimpleNamespace(
+            RunContext(
+                model=TestModel(), usage=RunUsage(),
                 deps=PhiDeps(author_handle=owner, private_message_id="dm:2")
             )
         )
@@ -97,7 +98,8 @@ async def test_private_status_reads_live_state_without_dispatch(journal, monkeyp
         assert calls == [("GET", "/api/flow_runs/run-one")]
         monkeypatch.setattr(workflows.settings, "prefect_api_auth_string", None)
         unavailable = await status(
-            SimpleNamespace(
+            RunContext(
+                model=TestModel(), usage=RunUsage(),
                 deps=PhiDeps(author_handle=owner, private_message_id="dm:3")
             )
         )

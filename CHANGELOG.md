@@ -1,5 +1,15 @@
 # changelog
 
+## 2026-10-09 — Describe tool authorization explicitly
+
+The catalogue inferred owner-only status by searching function source and
+docstrings. That labelled all of `manage_account` as operator-only even though
+only mention consent needs that authorization. Registration metadata now declares
+whole-tool authorization for follows, goal scope, SELF and operator workflows;
+mixed account actions retain their specific rules in the tool description.
+Enforcement is unchanged. The query schema describes the current authorization
+contract, including private operator requests rather than only public likes.
+
 ## 2026-10-09 — Finish the retired feed-authoring cleanup
 
 October 2 removed `manage_feeds`, but Graze create/delete/backfill code and paid

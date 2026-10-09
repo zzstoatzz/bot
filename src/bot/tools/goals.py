@@ -38,7 +38,7 @@ def register(agent):
                 lines.append(f"  next = {g['next_step']}")
         return "\n".join(lines)
 
-    @agent.tool
+    @agent.tool(metadata={"operator_only": True})
     async def propose_goal_change(
         ctx: RunContext[PhiDeps],
         title: Annotated[

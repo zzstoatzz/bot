@@ -1,9 +1,9 @@
-from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import httpx
 import pytest
 from pydantic import SecretStr
+from pydantic_ai import Agent
 
 from bot.core import operator_reports
 from bot.tools import workflows
@@ -12,13 +12,9 @@ from bot.tools import workflows
 @pytest.fixture
 def harness(monkeypatch, tmp_path):
     monkeypatch.setattr(operator_reports, "JOURNAL", tmp_path / "operator.sqlite3")
-    registered = {}
-
-    def tool(fn):
-        registered[fn.__name__] = fn
-        return fn
-
-    workflows.register(SimpleNamespace(tool=tool))
+    agent = Agent("test")
+    workflows.register(agent)
+    registered = {name: tool.function for name, tool in agent._function_toolset.tools.items()}
     monkeypatch.setattr(workflows, "_is_owner", lambda ctx: True)
     monkeypatch.setattr(
         workflows, "get_override", AsyncMock(return_value={"active": False})

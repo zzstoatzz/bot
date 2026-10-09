@@ -14,8 +14,11 @@ import json
 from pathlib import Path
 
 import pytest
+from pydantic_ai import Agent
 
+from bot.agent import PhiAgent
 from bot.core.abilities import ORDER, RISK, describe, risk_of
+from bot.tools import register_all
 
 LEXICON = json.loads(Path("lexicons/io/zzstoatzz/phi/getAbilities.json").read_text())
 
@@ -130,3 +133,18 @@ def test_describe_gives_the_judge_magnitude_and_consequence():
 def test_describe_is_empty_for_an_unknown_tool():
     """MCP tools aren't declared here; the judge just gets nothing extra."""
     assert describe("mcp__pdsx__create_record") == ""
+
+
+def test_live_catalogue_distinguishes_whole_tool_and_mixed_authorization():
+    phi = PhiAgent.__new__(PhiAgent)
+    phi.agent = Agent("test")
+    register_all(phi.agent)
+    catalogue = {item["name"]: item for item in phi.get_capabilities()}
+    assert {name for name, item in catalogue.items() if item["operator_only"]} == {
+        "follow_user", "propose_goal_change", "write_self",
+        "request_workflow", "operator_workflow_status",
+    }
+    account = catalogue["manage_account"]
+    assert account["operator_only"] is False
+    assert "mentionable list is OWNER-ONLY" in account["description"]
+    assert "Thread mutes are private and reversible" in account["description"]

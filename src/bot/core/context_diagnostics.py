@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import inspect
 import logging
 import time
 from datetime import UTC, datetime
@@ -182,11 +181,9 @@ def get_capabilities(phi: PhiAgent) -> list[dict]:
     per tool with:
       - name: the registered tool name
       - description: the tool's docstring (what gets sent to the LLM)
-      - operator_only: heuristic — true if the tool is gated to the
-        bot's owner. Detected via either an `_is_owner(` source-call
-        or owner-restriction phrasing in the docstring. When an
-        explicit owner-gating attribute lands on `Tool`, swap this
-        heuristic for a direct read.
+      - operator_only: explicit registration metadata for tools whose primary
+        action requires operator authorization. Mixed tools describe per-action
+        rules in their docstrings rather than claiming the whole tool is gated.
 
     Surfaced via /api/abilities so the cockpit UI can render real
     names + real docstrings instead of inventing them.
@@ -195,26 +192,12 @@ def get_capabilities(phi: PhiAgent) -> list[dict]:
     out: list[dict] = []
     for name in sorted(tools.keys()):
         t = tools[name]
-        try:
-            src = inspect.getsource(t.function)
-        except (OSError, TypeError):
-            src = ""
         doc = (t.description or "").strip()
-        doc_lower = doc.lower()
-        operator_only = "_is_owner(" in src or any(
-            marker in doc_lower
-            for marker in (
-                "owner-only",
-                "only the bot's owner",
-                "operator-only",
-                "only @",
-            )
-        )
         out.append(
             {
                 "name": name,
                 "description": doc,
-                "operator_only": operator_only,
+                "operator_only": (t.metadata or {}).get("operator_only") is True,
                 # required by lexicons/io/zzstoatzz/phi/getAbilities.json —
                 # tests/test_abilities.py fails if any registered tool
                 # lacks a declaration, so this is never None in practice
