@@ -70,7 +70,7 @@ message TTLs, or OpenAI's stable prompt-cache key. Context is memoized per run;
 provider-reported accounting is observed, not inferred from configuration.
 Switching models does not rewrite Phi's PDS personality or share caches.
 
-MCP clients are fresh per run. Tool filtering and deferral live in `agent.py`;
+MCP clients are fresh per run. Tool filtering and deferral live in `core/mcp_tools.py`;
 [MCP integration](mcp.md) describes their families and failure handling. Skills
 load procedural guidance on demand. Native tools and their risk declarations
 are introspected for the cockpit and the policy judge.

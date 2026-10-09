@@ -1,6 +1,6 @@
 # mcp integration
 
-phi uses the [model context protocol](https://modelcontextprotocol.io) to access external tools hosted as remote servers, connected via `MCPServerStreamableHTTP` (pydantic-ai). the authoritative list is `_mcp_toolsets` in `src/bot/agent.py`; currently: pdsx (atproto record CRUD, phi's credentials), pub-search (long-form publication search), semble (ranked search + call surface over phi's public knowledge graph), tangled (code collab — repos, issues, PRs), and prefect (workflow state, only when auth is configured).
+phi uses the [model context protocol](https://modelcontextprotocol.io) to access external tools hosted as remote servers, connected via `MCPServerStreamableHTTP` (pydantic-ai). the authoritative list is `build_toolsets` in `src/bot/core/mcp_tools.py`; currently: pdsx (atproto record CRUD, phi's credentials), pub-search (long-form publication search), semble (ranked search + call surface over phi's public knowledge graph), tangled (code collab — repos, issues, PRs), and prefect (workflow state, only when auth is configured).
 
 ## why mcp
 
@@ -21,7 +21,7 @@ a server can fail at two moments:
 ## which tools phi carries
 
 a server's whole surface costs its weight in every request. `_offered` in
-`src/bot/agent.py` narrows four servers with `filtered()`, which needs no
+`src/bot/core/mcp_tools.py` narrows four servers with `filtered()`, which needs no
 server change and leaves the prompt cache alone because the list is fixed:
 
 - **prefect** and **pub-search** are allowlists (`MCP_KEPT`). a tool added

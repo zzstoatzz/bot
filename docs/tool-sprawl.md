@@ -20,12 +20,18 @@ costs and the exact landed scope. Its opening numbers describe the pre-cut state
 ## Remaining work
 
 Treat agent organization and tool disclosure together: identify the consuming
-entry point, skill or block before moving or hiding a capability. `agent.py`
-currently owns setup, context assembly and task prompts; moving functions alone
-will not remove duplicated instructions or reduce the model's tool surface.
+entry point, skill or block before moving or hiding a capability. MCP construction,
+filtering and deferral now live together in `core/mcp_tools.py`; `agent.py` owns
+run orchestration, retry boundaries, context assembly and task prompts. This
+separation does not change the model's tool surface.
 
-Rare native readers and generators remain deferral candidates. Persona predates
-live personality authorship and needs a purpose decision. Follow/account/feed
+Rare native readers and generators remain deferral candidates. The October 8
+refresh covered 538 recorded runs: atlas and persona had no calls, archive had
+one and image generation had three. These are measured calls, not evidence of
+capability value or completeness of historical use. Phi identified automatic
+expiry as persona's distinct purpose and asked to keep it. The atlas now supplies
+the standing docket discovery route. Further deferral needs a replacement route
+and an observed benefit before adding discovery overhead. Follow/account/feed
 module boundaries deserve review against today's catalogue, not the retired
 30-tool inventory. An unused undo or control can still justify its existence.
 

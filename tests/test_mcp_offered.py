@@ -12,7 +12,8 @@ from pydantic_ai.tools import ToolDefinition
 from pydantic_ai.toolsets import DeferredLoadingToolset, FunctionToolset
 
 from bot import agent as agent_module
-from bot.agent import MCP_DROPPED, MCP_KEPT, PhiAgent, _mcp_origin, _mcp_url
+from bot.agent import PhiAgent
+from bot.core.mcp_tools import MCP_DROPPED, MCP_KEPT, _mcp_origin, _mcp_url
 from bot.tools._helpers import PhiDeps
 
 

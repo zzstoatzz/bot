@@ -1,5 +1,15 @@
 # changelog
 
+## 2026-10-08 — Give MCP exposure one implementation home
+
+Server construction, filtering, deferral and wrapper inspection now live in
+`core/mcp_tools.py`. The agent retains run orchestration and its retry boundary:
+failures after a model response cannot repeat actions. Existing exposure and
+failure tests exercise the same toolsets; no capability or authorization changed.
+The tool/skill reference no longer presents retired tool names or Semble code-mode
+routing as current instructions. Phi asked to preserve persona's automatic expiry;
+its guidance now distinguishes that experiment from lasting personality authorship.
+
 ## 2026-10-08 — Keep the loaded phrasing reference within its scope
 
 A release calibration rejected deliberate punctuation by following Humanizer's

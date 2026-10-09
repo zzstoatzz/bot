@@ -1,131 +1,48 @@
-# skill or tool
+# Skills and tools
 
-how to decide what's a skill vs what stays a tool, and what we're
-doing about the current sprawl.
+A runtime skill describes a workflow. A tool performs an operation and enforces
+its invariants. Before replacing a wrapper with instructions, identify which
+validation, authorization, receipts or backend access would disappear.
 
-> [history note] this was originally a "what i was thinking" handoff
-> after a pushback on incomplete sprawl reduction. it got reviewed and
-> partially corrected; this version captures the agreed-upon state.
+## When a native tool earns its place
 
-## the principle
+| Responsibility | Examples |
+|---|---|
+| Verify targets and enforce public-action policy | `post`, `write_bio`, `publish_blog_post` |
+| Enforce operator authorization | `follow_user`, `propose_goal_change`, `write_self` |
+| Preserve private memory versions and references | `save_memory`, `read_memory`, `retire_memory`, `restore_memory` |
+| Access a backend or return model-readable content | Graze readers, `inspect_record_media`, `inspect_atlas` |
+| Record delivery and distinguish uncertain outcomes | `report_operator`, `reply_operator_dm`, `request_workflow` |
 
-> **tools enforce, skills suggest.**
+A generic record API cannot replace these responsibilities with prose. Conversely,
+a wrapper that only repeats schema guidance may belong in a skill. Cosmik wrappers
+were removed on that basis; today's `cosmik-records` skill routes library work to
+Semble's method discovery/calling tools, with standalone note-card writes through
+pdsx. The MCP guard still applies to mutations.
 
-a tool wrapper runs code unconditionally. a skill is documentation —
-the agent reads it and may follow it, may not. so the test for
-skill-replaceability is:
+`publish_blog_post` survived an earlier deletion proposal because it validates
+publication, checks duplicates and records the result in episodic memory. The
+`publish-blog` skill supplies the reading and composition workflow. These roles
+complement each other; the skill is not a substitute for the publication gate.
 
-> does the work this tool does require structural enforcement, or is
-> it just guidance about how to use a general capability well?
+## Names and discovery
 
-cosmik writes were pure guidance: no consent layer, no owner-gate, no
-memory pipeline side effects. skill alone was sufficient.
+Use verbs that distinguish operations. `save_memory` and `search_memory` replaced
+ambiguous remember/recall names. Saved notes may enter automatic episodic recall
+as well as explicit search; public Cosmik cards remain a different store.
 
-every other tool we have today has at least one of:
+Availability includes a usable discovery route. A hidden capability that a prompt
+names directly is a broken contract. Deferred Tangled/Lexidraw tools are discoverable
+through `search_tools`; runs whose tasks name Tangled tools load them outright.
+The atlas tool description identifies the docket's record-media reader.
 
-- **consent enforcement** (mention-allowlist construction + reply-ref
-  logic in the bsky posting tools)
-- **owner-gating** (`_is_owner` check that depends on this batch's
-  notification context — pdsx can't see that)
-- **memory pipeline side effects** (`after_interaction` writes,
-  episodic memory writes after publish)
-- **non-pdsx-reachable backend** (turbopuffer for private memory,
-  graze API for feeds, external monitoring services)
+Low invocation counts require investigation: a control may be valuable precisely
+because it is seldom needed, and a failed reader may look unused. The October
+consolidation retained persona's automatic expiry after reviewing its history and
+Phi's feedback, despite no recorded calls in the preceding 30 days.
 
-removing those tools and giving phi raw pdsx + a skill description
-trades structural enforcement for documentation-mediated correctness.
-that's the wrong direction for anything that has to be enforced.
-
-## the naming smell — separate from sprawl
-
-the private-memory pair is `save_memory` (write) + `search_memory` (read).
-the names were a mess before: write went `note` → `remember`, read was
-`recall`. "remember" and "recall" are synonyms — the names didn't signal
-which one writes and which reads, so the model had to memorize the mapping.
-`remember` only beat the older `note` because it had to contrast with
-`observe` (the attention pool); once `observe` was deleted that justification
-evaporated, leaving an unforced collision with `recall`. the fix: name each
-tool after its operation. `save_memory` / `search_memory` — the verb says
-write vs read, and the read side mirrors the other `search_*` tools
-(`search_posts`, `semble_search`). not reused: `note` — phi also writes
-`network.cosmik.card` records of kind NOTE (public), so a `note` tool for
-private memory would just trade one confusion for another. `save_memory`
-writes to turbopuffer `phi-episodic` (private vector) — never re-surfaces on
-its own, found later via `search_memory`.
-
-## what was deleted (last round)
-
-| tool | why removable | replacement |
-|---|---|---|
-| `save_url` | no consent, no owner-gate, no side effects, pdsx-covered | `mcp__pdsx__create_record(collection="network.cosmik.card", record={kind: "URL", ...})` via `cosmik-records` skill |
-| `create_connection` | same | `mcp__pdsx__create_record(collection="network.cosmik.connection", ...)` via skill |
-
-> [history note] the pdsx replacements above were themselves superseded on
-> 2026-06-11: URL cards, collections, and connections now write through the
-> semble code-mode MCP toolset (`semble_execute`); only standalone NOTE cards
-> remain on pdsx. see [tool-sprawl.md](tool-sprawl.md) and the
-> `cosmik-records` skill for current routing.
-
-## what was corrected mid-review
-
-`publish_blog_post` was originally going to be the next deletion. on
-re-read it has real enforcement:
-
-- pydantic validation via `GreenGaleDocument`
-- **duplicate-title refusal** (refuses to publish if a doc with the
-  same title already exists)
-- post-publish `store_episodic_memory` write
-
-skill-replacing it would lose all three unless the skill teaches phi
-to do them by hand. **kept as a tool**; instead enriched the
-`publish-blog` skill body to formalize the before/after procedure
-(list existing first, save_memory after) so the skill and the tool
-reinforce each other.
-
-`list_blog_posts` is a candidate for deletion (read-only, pdsx covers
-it via `list_records(collection="app.greengale.document")`) but
-`publish_blog_post` calls it internally and the `publish-blog` skill
-recommends it for "what should i write about next." marginal benefit;
-**leaving for now**.
-
-## what was done this round
-
-1. **renamed the private-memory tools to `save_memory` (write) +
-   `search_memory` (read)** (history: write `note` → `remember` →
-   `save_memory`; read `recall` → `search_memory`). the verb now names the
-   operation; see "the naming smell" above.
-2. **excluded `run_skill_script` from the SkillsToolset.** every skill
-   we ship is documentation-only (markdown + resource files); leaving
-   the script-execution tool registered was extra capability surface
-   phi never used. one fewer tool, free.
-3. **enriched `publish-blog` SKILL.md** with the before/after procedure
-   (list existing → publish via tool → optional save_memory pointer) and
-   a "why a tool plus a skill" section that names the
-   tools-enforce-skills-suggest split explicitly.
-
-net: 28 tools (after the cosmik deletion) → 28 tools (rename, not
-removal) — but the surface is now more honest about what each piece
-is and the publish-blog skill carries the full procedure.
-
-## what stays as tools, in case it comes up again
-
-| category | tools | why they stay |
-|---|---|---|
-| posting / engagement (consent layer) | `post` (top-level or reply via `in_reply_to`), `like_post`, `repost_post` | `_build_allowed_handles` consent enforcement; reply-ref construction; grapheme splitting; memory writes after interaction; target URIs verified by fetch |
-| owner-gated (owner's like in a batch, or an operator DM run) | `follow_user`, `manage_account`, `manage_labels`, `propose_goal_change`, `write_self` | `_is_owner` check at runtime; can't be enforced from a skill prompt |
-| private memory | `save_memory`, `search_memory` | turbopuffer is not exposed as an MCP; pdsx can't reach it |
-| self/profile state | `write_bio`, `inspect_atlas` | profile writes use local profile/status conventions; atlas has cached blob parsing and cluster/point projections |
-| reads against external surfaces | `read_timeline`, `read_feed`, `list_feeds`, `search_posts`, `web_search`, `get_trending`, `pub_search`, `check_relays`, `check_services`, `check_urls`, `changelog` | external services with APIs not exposed by pdsx |
-| public knowledge graph | `semble_search`, `semble_get_schema`, `semble_execute` (MCP) | code-mode composition over the whole semble api — replaced `search_network` and covers writes (url cards, collections, connections) that land on phi's own PDS |
-| structural publishing | `publish_blog_post`, `list_blog_posts` | duplicate-check refusal; episodic memory write after publish |
-| media inspection | `inspect_record_media` | pdsx finds/fetches records, but this returns allowed record blobs as model-readable text or image content |
-
-## open work
-
-- **`/api/abilities`** + **`/api/skills`** are live; the cockpit can
-  switch from hand-curated `web/src/lib/abilities.ts` to fetching from
-  these endpoints. (already done in the most recent UI commit.)
-- **module reorg from [tool-sprawl.md](tool-sprawl.md) items 1–9** — the misplacements
-  noted there are still real (e.g. `follow_user` lives in `feeds.py`,
-  `check_urls` lives in `bluesky.py`). independent of the
-  skill-vs-tool question; can be done as a no-behavior-change pass.
+The live `/api/abilities` and `/api/tool-usage` endpoints supply the catalogue and
+usage evidence. See [tool consolidation](tool-sprawl.md) for remaining decisions,
+[the surface map](memory.md) for purpose and provenance, and Git history for the
+retired wrappers and earlier naming review. Historical tool inventories are not
+current routing instructions.

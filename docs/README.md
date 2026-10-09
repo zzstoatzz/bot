@@ -16,7 +16,7 @@ deeper dive into phi's design.
 - [safety.md](safety.md) — how public actions are bounded: policies + judge, the pdsx guard, the operator override
 - [testing.md](testing.md) — testing philosophy
 - [observability.md](observability.md) — logfire integration and its sharp edges
-- [skill-or-tool.md](skill-or-tool.md) — the principle for deciding when something is a tool vs a skill, with the review trail
+- [skill-or-tool.md](skill-or-tool.md) — the principle for deciding when something is a tool vs a skill, with historically justified boundaries
 - [tool-sprawl.md](tool-sprawl.md) — remaining agent/tool consolidation after the October cuts
 - [patterns.md](patterns.md) — recurring lessons from the git history (deletion, feedback loops, DotDict, voice vs structure, silently-empty blocks, prescription in task prompts, attention shapes voice)
 - [lexicons.md](lexicons.md) — phi's custom `io.zzstoatzz.phi.*` schemas, how they're published, and the DNS authority record they need
@@ -48,11 +48,12 @@ deeper dive into phi's design.
 5. **safety.md** — how public actions are bounded, and why structurally
 6. **testing.md** — how we verify behavior
 7. **skill-or-tool.md** — the design principle behind the tool/skill split
-8. **tool-sprawl.md** — known module misplacements to clean up over time
+8. **tool-sprawl.md** — remaining agent and tool-disclosure decisions
 9. **patterns.md** — recurring lessons; read before refactoring anything that looks accidental
 
 each doc is self-contained and can be read independently.
 
-these docs describe how phi works *now*. for how it came to work that way — the
+The references describe current behavior; dated audits and proposals preserve
+their stated observation window. For how Phi came to work this way — the
 incidents, the reversals, the reasoning that isn't in any diff — see
 [../CHANGELOG.md](../CHANGELOG.md).
