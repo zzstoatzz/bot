@@ -15,22 +15,21 @@ Publication adapters supply the proposed action, code-derived contact evidence,
 current conversation, relevant prior coverage and risk metadata. The author
 cannot grant itself authorization by asserting provenance in tool arguments.
 Verdicts allow, warn or block. A refusal returns its reason; composed public
-communication fails closed when the judge is unavailable. Public-form and
-phrasing rules live in `core/etiquette.py` and the shared scoped Humanizer skill;
+communication fails closed when the judge is unavailable. Factual integrity and privacy rules live in `core/etiquette.py`;
 [public delivery](public-etiquette.md) describes their current contract.
 
 | Route | Implemented boundary |
 |---|---|
 | `post` | Verified targets, contact authority, mention consent, mute checks, prior coverage, whole split preview, policy judge and operator override |
 | `publish_blog_post` | Operator override, policy judge with received context, document validation and duplicate-title check; revisions require the read CID |
-| `write_bio` | Operator override and profile-description policy review |
+| `write_bio` | Operator override and factual profile policy review |
 | PDSX like/repost creation | Verified target, own-post refusal, policy review and current thread mute check; subject CID is completed by the guard |
 | PDSX feed-record deletion | Own-record verification, policy review and operator override; deletion fails closed when judgment is unavailable |
 | Other-app post/reaction/profile records | `core/app_records.py` maps supported shapes to the corresponding public-action checks |
 | Repository comments/issues/pull prose | MCP guard supplies repository context to the public-composition judge |
 | Private operator delivery | Override, policy review, private conversation evidence and idempotent delivery receipts |
 
-The public-form rule does not govern likes, deletions or private memory, but that
+The public-composition integrity rule does not govern likes, deletions or private memory, but that
 does not exempt those actions from their other checks. Retraction remains a
 capability: the August 19 change replaced a blanket raw-delete refusal with a
 governed path. A boundary must not leave Phi able to publish but unable to retract.
@@ -147,10 +146,9 @@ it does not resolve the incident. Failed or incomplete chat-history reads do not
 prove silence. Explicit requests for public reports remain permitted. Normal
 mentions no longer mark every incident visible to the run as notified.
 
-`conversational-norms` applies alongside platform constraints and voice: contact
+`conversational-norms` applies alongside platform constraints: contact
 eligibility does not imply a response is wanted. The exact parent message and
-complete split preview reach the judge. Behavioral refusal reasons survive the
-voice-form check. `bluesky-guidelines` is a versioned, sourced operational digest;
+complete split preview reach the judge. Editorial form does not override behavioral verdicts. `bluesky-guidelines` is a versioned, sourced operational digest;
 it does not claim to reproduce all guidelines or identify proprietary detectors.
 
 

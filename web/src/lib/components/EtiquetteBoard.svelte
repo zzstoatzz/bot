@@ -23,14 +23,14 @@
 	<p>Public drafts are checked before publication. These counts record the classifier’s decisions, not a measure of writing quality. Private thinking and memory keep their own form.</p>
 	{#if error}<p role="alert">{error}. {data ? 'Showing the last successful read.' : ''}</p>{/if}
 	{#if data}
-		<div class="readout"><strong>{data.counts.block ?? 0}<small>rejected / {judged} judged</small></strong><strong>{judged ? Math.round((data.counts.block ?? 0) / judged * 100) + '%' : '—'}<small>rejection rate</small></strong><strong>{data.pending}<small>awaiting Phi’s private note</small></strong></div>
+		<div class="readout"><strong>{data.counts.block ?? 0}<small>rejected / {judged} judged</small></strong><strong>{judged ? Math.round((data.counts.block ?? 0) / judged * 100) + '%' : '—'}<small>rejection rate</small></strong><strong>{data.pending}<small>without an optional private note</small></strong></div>
 		<p>{data.counts.error ?? 0} classifier outages, counted separately. Approval is permission to attempt publication, not proof it succeeded.</p>
 		<p>Current rule: {data.version}. Totals include all versions. {data.since ? `Recording since ${new Date(data.since).toLocaleString()}` : 'No attempts recorded yet.'}</p>
 		{#if data.reasons.length}<p>Rejections by rule: {data.reasons.map(r => `${r.policy} (${r.count})`).join(', ')}</p>{/if}
 		<ol>{#each data.recent as attempt (attempt.id)}
 			<li class:rejected={attempt.outcome === 'block'}><div><strong>{attempt.outcome}</strong> · {attempt.tool} · {attempt.version} <time datetime={attempt.at}>{new Date(attempt.at).toLocaleString()}</time></div>
 				{#if attempt.reason}<p>{attempt.policy}: {attempt.reason}</p>{/if}
-				{#if attempt.outcome === 'block'}<small>{attempt.documented_at ? 'Phi documented a revision privately' : 'Waiting for Phi’s revision note'}</small>{/if}
+				{#if attempt.outcome === 'block'}<small>{attempt.documented_at ? 'Phi documented a revision privately' : 'No private revision note'}</small>{/if}
 			</li>
 		{/each}</ol>
 	{:else if !error}<p>Loading classifier history…</p>{/if}

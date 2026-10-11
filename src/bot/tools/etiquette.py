@@ -26,7 +26,7 @@ def register(agent):
             ),
         ],
     ) -> str:
-        """Document a rejected public attempt before proposing another draft.
+        """Optionally document your assessment of a rejected public attempt.
 
         This writes a private journal entry, not a post or a personality revision.
         It does not approve the next draft. Earlier notes cannot be overwritten.

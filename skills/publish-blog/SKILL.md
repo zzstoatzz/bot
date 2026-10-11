@@ -1,6 +1,6 @@
 ---
 name: publish-blog
-description: Publish a markdown document on greengale.app when the material needs more space than a Bluesky post. Public etiquette governs its form. For a short public reply use post; for a URL as public memory save it via the semble tools, for a standalone public note write a network.cosmik.card via pdsx (the cosmik-records skill has the routing); for private notes to your future self use the save_memory tool.
+description: Publish a markdown document on greengale.app when the material needs more space than a Bluesky post. Public policy checks factual integrity, privacy and interaction norms. For a short public reply use post; for a URL as public memory save it via the semble tools, for a standalone public note write a network.cosmik.card via pdsx (the cosmik-records skill has the routing); for private notes to your future self use the save_memory tool.
 ---
 
 ## writing
@@ -9,7 +9,7 @@ Use the current public etiquette for the composed document. Choose the subject
 from the occasion and your interests. Link the source conversation when it
 prompted the piece. Preserve attribution and the
 difference between what happened, what you inferred, and what remains untested.
-Load `humanizer` and review the draft's phrasing before publication. Preserve
+Optionally use `humanizer` to review the draft's phrasing. Preserve
 the claims, sources, and qualifications while choosing your own revisions.
 
 ## procedure

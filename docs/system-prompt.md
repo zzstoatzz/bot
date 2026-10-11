@@ -13,7 +13,7 @@ what reaches the model.
 | Phi's voice and disposition | Live `io.zzstoatzz.phi.personality`; repository personality is the empty-collection seed |
 | Cross-cutting operational constraints | `_build_operational_instructions` in `agent.py` |
 | Policy | `POLICIES` in `core/policy.py`; the actor receives `POLICY_SUMMARIES`, the independent judge receives full rules |
-| Public delivery and phrasing | `core/etiquette.py` and the shared, scoped Humanizer reference; see [public delivery](public-etiquette.md) |
+| Public delivery and phrasing | `core/etiquette.py`; Humanizer is an optional actor-side reference; see [public delivery](public-etiquette.md) |
 | Meaning, dates and limits of context | The header supplied by that block's renderer |
 | Tool arguments and procedure | Registered tool docstrings |
 | Multi-tool workflows | Runtime `skills/` |
@@ -24,7 +24,7 @@ The actor receives all nine policy summaries: `uninvited-reply`, `bliss-attracto
 `pile-on`, `handle-hygiene`, `self-repeat`, `public-etiquette`,
 `conversational-norms`, `operator-reporting`, and `bluesky-guidelines`.
 Contact eligibility, mention consent, owner authorization, conversational welcome
-and public form are distinct checks. See [safety](safety.md) for enforcement.
+and factual integrity are distinct checks. See [safety](safety.md) for enforcement.
 
 ## Ambient context
 

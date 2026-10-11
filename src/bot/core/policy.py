@@ -24,7 +24,6 @@ Other notification-batch actions retain their existing fail-open behavior.
 
 import logging
 from contextvars import ContextVar
-from pathlib import Path
 from typing import Annotated, Literal, NotRequired, TypedDict
 
 from pydantic import Field
@@ -269,51 +268,17 @@ def _get_judge() -> Agent[None, PolicyVerdict]:
             "you are not phi. you are the independent judge between phi "
             "and the outside world. you receive phi's policies, one "
             "proposed action, and its provenance. return a verdict.\n\n"
-            "- For write_bio, use profile-description for an accurate description "
-            "of Phi, her interests, capabilities, or operator. A factual capability "
-            "list is valid. A bio need not answer a conversational turn or be funny. "
-            "Assess humor, if present, as part of that profile description. "
-            "All other policies still apply, including factual grounding.\n"
-            "- For short public text, judge its contribution to the actual exchange. "
-            "Use direct-turn for a specific question, useful answer, or explicit "
-            "correction. Accurate reporting responsive to a request is sufficient; "
-            "it does not need a comic turn. Use deadpan-bit for subject-specific "
-            "humor. Neither form outranks the other. In form_evidence identify "
-            "what the text asks, answers, corrects, or makes funny. "
-            "Reject generic-quip when a packaged verdict substitutes for engagement: "
-            "a portable punchline, inflated claim of significance, or stock contrast "
-            "that could be attached to unrelated subjects. A relevant noun alone "
-            "does not make a generic closing verdict specific. Classify the actual "
-            "meaning, not punctuation or the presence of particular words. "
-            "For publish_blog_post, use developed-piece for one connected subject "
-            "with humor, when present, arising from its details, or deadpan-set for "
-            "separate bits that are each specific to the subject, as in a roast. "
-            "Both are accepted; neither outranks the other. In form_evidence "
-            "describe what the piece does and how its humor participates. Plain "
-            "passages need no punchline. Portable observations with appended "
-            "punchlines are generic-quip. No fixed template or mandatory climax. "
-            "Never treat an operator request as a waiver of public_form. "
-            "For memory, reactions, and deletions use not-applicable.\n"
-            "- Distinguish participation from narrated significance. A question "
-            "seeks an answer; a correction establishes what changed; an explanation "
-            "helps someone understand the requested subject. These are direct-turn. "
-            "A sentence announcing the essence, hidden lesson, or importance of "
-            "an observation without developing it is not made comic by translating "
-            "its nouns into an analogy. Judge that as generic-quip, including when "
-            "the analogy is locally relevant. Humor may be quiet or absent. "
-            "Do not require emotional adjectives, absurdity, a punchline, or a "
-            "closing lesson as proof of personality. Assess what this text does "
-            "for this exchange, rather than rewarding a recognizable joke shape.\n"
-            "- An accepted public_form does not establish acceptable phrasing. "
-            "Apply the public-etiquette sentence-level rule to every public form, "
-            "including developed-piece and direct-turn. In form_evidence assess "
-            "the phrasing as well as the contribution; block public-etiquette "
-            "when a stock rhetorical move fails that rule, even inside otherwise "
-            "useful, sourced writing. Keep explanations public-safe.\n"
+            "- Phi owns her wording, interests, tone, length, and structure. "
+            "Do not block or warn for style, rhetorical phrasing, humor, lack of "
+            "humor, unfamiliar subject matter, or an explanatory form. "
+            "public_form is descriptive metadata only, never a permission gate. "
+            "Use explanation for explanatory writing, profile-description for bios, "
+            "and not-applicable when no other label fits. In form_evidence describe "
+            "the action and policy evidence, not an editorial assessment.\n"
             "- judge against the listed policies only. do not add "
             "restrictions that the policies do not contain.\n"
             "- When no policy applies, return allow. For public composition, "
-            "public-etiquette always applies and must be positively satisfied.\n"
+            "check public-etiquette for factual integrity and privacy, not taste.\n"
             "- return block when the action clearly violates a policy.\n"
             "- return warn when the action is permitted but moves toward "
             "a boundary that a policy names. tendency policies (the "
@@ -330,21 +295,17 @@ def _get_judge() -> Agent[None, PolicyVerdict]:
             "Conversational norms and platform constraints still apply. Mention facets have a separate consent allowlist; "
             "that does not authorize other contacts in the same publication.\n"
             "- when the provenance shows that the operator authorized "
-            "this specific action (a like on phi's authorization "
-            "request, or the operator's own post in the batch directing "
-            "phi at the reply target), the etiquette policies "
-            "(uninvited-reply, pile-on) do not apply. tendency policies "
-            "still apply.\n"
+            "this specific contact, that satisfies uninvited-reply for that target "
+            "only. Conversational norms, pile-on prevention, privacy, and the "
+            "other policies still apply.\n"
             "- self-repeat is judged only from the prior-coverage section, "
             "when one is supplied. a listed earlier post is phi's own "
             "words, already published; the question is whether the "
             "proposed post says anything it did not.\n"
             "- Reasons and form_evidence appear on a public stats board: describe "
-            "the form problem without quoting drafts or disclosing private context.\n"
+            "the relevant policy evidence without quoting drafts or disclosing private context.\n"
             "- when you block, write one sentence to phi. name what to "
             "do instead."
-            "\n\nShared Humanizer phrasing reference:\n"
-            + (Path(settings.skills_dir) / "humanizer" / "SKILL.md").read_text()
         ),
     )
     return judge
@@ -383,15 +344,6 @@ async def check_action(
     bot/core/reply_coverage.py. It is the evidence for `self-repeat`;
     the judge never sees the index directly.
     """
-    if tool in etiquette.PUBLIC_TOOLS and (waiting := etiquette.pending()):
-        return {
-            "verdict": "block",
-            "policy": "public-etiquette",
-            "reason": "Document the previous rejection before another public attempt.",
-            "public_form": "not-applicable",
-            "form_evidence": "Waiting for a private revision note; no new classification.",
-            "attempt_id": waiting[0],
-        }
     for contact in contacts or []:
         if not contact["evidence"]:
             reason = (
@@ -464,30 +416,6 @@ async def check_action(
         raise
     verdict = result.output
     if tool in etiquette.PUBLIC_TOOLS:
-        accepted_forms = (
-            {"profile-description"}
-            if tool == "write_bio"
-            else {"developed-piece", "deadpan-set"}
-            if tool == "publish_blog_post"
-            else {"direct-turn", "deadpan-bit"}
-        )
-        if (
-            verdict["verdict"] != "block"
-            and verdict.get("public_form") not in accepted_forms
-        ):
-            judge_verdict = verdict["verdict"]
-            verdict["verdict"] = "block"
-            verdict["policy"] = "public-etiquette"
-            verdict["reason"] = (
-                f"The judge returned {judge_verdict}, but selected public form "
-                f"{verdict.get('public_form')!r}; this tool's form gate accepts only "
-                f"{', '.join(sorted(accepted_forms))}. Publication was refused by "
-                "the form gate. The judge's descriptive form assessment is not "
-                "an additional rejection reason."
-            )
-
-        if verdict.get("policy") == "public-etiquette" and verdict["verdict"] == "warn":
-            verdict["verdict"] = "block"
         verdict["attempt_id"] = etiquette.record(
             tool,
             verdict["verdict"],

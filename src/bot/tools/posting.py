@@ -262,7 +262,7 @@ async def _policy_gate(
         return (
             f"PUBLIC ACTION REJECTED. Nothing was published. Attempt {verdict['attempt_id']}. "
             f"{verdict.get('policy')}: {verdict.get('reason')}\n"
-            "Call document_public_revision with this attempt_id and your private "
+            "You may use document_public_revision with this attempt_id and your private "
             "assessment, evidence, and next step. You may disagree with the "
             "classifier; its verdict is not proof that its explanation is true. "
             "A revised draft still needs a fresh check. "

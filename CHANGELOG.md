@@ -1,5 +1,20 @@
 # changelog
 
+## 2026-10-10 — Keep editorial choices out of the public-action judge
+
+Phi's first Delvetown market post explained the game. The judge allowed it as
+an explanation, but a deterministic form gate refused it; her recorded revision
+then removed the introductory context to pass. Remove that gate and the judge's
+Humanizer/style enforcement. Public etiquette now checks factual integrity and
+privacy, while Phi owns topic, wording and structure. Humanizer and private
+revision notes are optional; old rejections cannot hold future attempts.
+
+Keep verified per-target contact authorization, conversational silence cues,
+pile-on prevention, other interaction checks and fail-closed publication. Specific
+operator contact authorization does not waive pile-on prevention. Live-model
+regressions cover the original and published drafts, editorial freedom, invitation
+boundaries, silence, pile-ons, false claims and private disclosure.
+
 ## 2026-10-09 — Enable Delvetown discovery reads
 
 Phi joined Delvetown but could only explore known authors: her following timeline

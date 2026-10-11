@@ -16,41 +16,30 @@ def private_journal(tmp_path, monkeypatch):
     monkeypatch.setattr(etiquette, "JOURNAL", tmp_path / "journal.sqlite3")
 
 
-async def test_rejection_requires_exact_private_note_before_new_judgment(monkeypatch):
-    judge = SimpleNamespace(
-        run=AsyncMock(
-            return_value=SimpleNamespace(
-                output={
-                    "verdict": "block",
-                    "policy": "public-etiquette",
-                    "reason": "This is an explanatory essay.",
-                }
-            )
-        )
+async def test_old_rejection_does_not_hold_a_new_action(monkeypatch):
+    attempt = etiquette.record("post", "block", "public-etiquette", "explanation")
+    judge = Agent(
+        TestModel(
+            custom_output_args={
+                "verdict": "allow",
+                "public_form": "explanation",
+                "form_evidence": "A grounded explanation with no contact targets.",
+            }
+        ),
+        output_type=policy.PolicyVerdict,
     )
-    monkeypatch.setattr(policy, "_get_judge", lambda: judge)
-    first = await policy.check_action("essay", "invited", tool="post")
-    second = await policy.check_action("different draft", "invited", tool="post")
-    assert second["attempt_id"] == first["attempt_id"]
-    assert judge.run.await_count == 1
-    note = "I explained the lesson. I will make one joke about the missing cursor."
-    assert "stored verbatim" in etiquette.document(first["attempt_id"], note)
-    assert "already documented" in etiquette.document(first["attempt_id"], "overwrite")
+    monkeypatch.setattr(policy, "_judge", judge)
+    result = await policy.check_action("explanation", "top-level", tool="post")
+    assert result["verdict"] == "allow"
+    note = "The explanation supplies context a newcomer needs."
+    assert "stored verbatim" in etiquette.document(attempt, note)
+    assert "already documented" in etiquette.document(attempt, "overwrite")
     with etiquette.connect() as db:
-        assert db.execute("SELECT note FROM attempts").fetchone()[0] == note
-    judge.run.return_value = SimpleNamespace(
-        output={
-            "verdict": "allow",
-            "public_form": "deadpan-bit",
-            "form_evidence": "specific comic turn",
-        }
-    )
-    await policy.check_action("a revised bit", "invited", tool="post")
-    stats = etiquette.board()
-    assert stats["counts"] == {"allow": 1, "block": 1}
-    assert stats["pending"] == 0
-    assert note not in str(stats)
-    assert "different draft" not in str(stats)
+        assert (
+            db.execute("SELECT note FROM attempts WHERE id=?", (attempt,)).fetchone()[0]
+            == note
+        )
+    assert note not in str(etiquette.board())
 
 
 async def test_classifier_outage_never_allows_invited_publication(monkeypatch):
@@ -210,76 +199,39 @@ async def test_complete_split_preview_is_checked_before_any_publication(monkeypa
     publish.assert_not_awaited()
 
 
-@pytest.mark.parametrize(
-    ("tool", "form", "expected"),
-    [
-        ("write_bio", "profile-description", "allow"),
-        ("write_bio", "generic-quip", "block"),
-        ("post", "profile-description", "block"),
-        ("publish_blog_post", "profile-description", "block"),
-        ("publish_blog_post", "developed-piece", "allow"),
-        ("publish_blog_post", "deadpan-set", "allow"),
-        ("publish_blog_post", "generic-quip", "block"),
-        ("publish_blog_post", "deadpan-bit", "block"),
-        ("post", "developed-piece", "block"),
-        ("post", "deadpan-bit", "allow"),
-        ("post", "direct-turn", "allow"),
-        ("post", "generic-quip", "block"),
-        ("publish_blog_post", "direct-turn", "block"),
-    ],
-)
-async def test_long_form_has_its_own_judgment_unit(monkeypatch, tool, form, expected):
-    judge = SimpleNamespace(
-        run=AsyncMock(
-            return_value=SimpleNamespace(
-                output={
-                    "verdict": "allow",
-                    "public_form": form,
-                    "form_evidence": "Assessment of the complete submitted composition.",
-                }
-            )
-        )
-    )
-    monkeypatch.setattr(policy, "_get_judge", lambda: judge)
-    verdict = await policy.check_action("draft", "invited", tool=tool)
-    assert verdict["verdict"] == expected
-    assert etiquette.board()["counts"] == {expected: 1}
-
-
-@pytest.mark.parametrize(
-    "form,expected", [("explanation", "block"), ("direct-turn", "warn")]
-)
-async def test_historical_warning_keeps_form_veto_distinct(monkeypatch, form, expected):
-    evidence = (
-        "Across the two-post composition, it explains a specific trade outcome "
-        "and derives a concrete revision to the entry rule from the failed "
-        "velocity signal; the conclusion is tied to the reported recheck "
-        "rather than serving as a portable verdict."
-    )
-    recorded = {
-        "verdict": "warn",
-        "policy": "self-repeat",
-        "public_form": form,
-        "form_evidence": evidence,
-        "reason": "This is a genuinely new development on a recently covered subject.",
-    }
+@pytest.mark.parametrize("tool", sorted(etiquette.PUBLIC_TOOLS))
+@pytest.mark.parametrize("form", ["explanation", "generic-quip", "profile-description"])
+async def test_form_never_overrides_policy_verdict(monkeypatch, tool, form):
     judge = Agent(
-        TestModel(custom_output_args=recorded), output_type=policy.PolicyVerdict
+        TestModel(
+            custom_output_args={
+                "verdict": "allow",
+                "public_form": form,
+                "form_evidence": "No policy violation.",
+            }
+        ),
+        output_type=policy.PolicyVerdict,
     )
     monkeypatch.setattr(policy, "_judge", judge)
-    verdict = await policy.check_action("trade update", "scheduled cycle", tool="post")
-    assert verdict["verdict"] == expected
-    assert verdict["form_evidence"] == evidence
-    if expected == "block":
-        assert verdict["policy"] == "public-etiquette"
-        assert "judge returned warn" in verdict["reason"]
-        assert "'explanation'" in verdict["reason"]
-        assert "direct-turn" in verdict["reason"]
-        assert evidence not in verdict["reason"]
-        with etiquette.connect() as db:
-            stored = db.execute("SELECT outcome, reason FROM attempts").fetchone()
-        assert stored["outcome"] == "block"
-        assert stored["reason"] == verdict["reason"]
-    else:
-        assert verdict["policy"] == "self-repeat"
-        assert verdict["reason"] == recorded["reason"]
+    verdict = await policy.check_action("draft", "invited", tool=tool)
+    assert verdict["verdict"] == "allow"
+    assert etiquette.board()["counts"] == {"allow": 1}
+
+
+async def test_warning_is_not_promoted_to_rejection(monkeypatch):
+    judge = Agent(
+        TestModel(
+            custom_output_args={
+                "verdict": "warn",
+                "policy": "public-etiquette",
+                "public_form": "explanation",
+                "form_evidence": "Explanation.",
+                "reason": "Check the uncertainty before drawing a stronger conclusion.",
+            }
+        ),
+        output_type=policy.PolicyVerdict,
+    )
+    monkeypatch.setattr(policy, "_judge", judge)
+    verdict = await policy.check_action("draft", "top-level", tool="post")
+    assert verdict["verdict"] == "warn"
+    assert etiquette.board()["counts"] == {"warn": 1}

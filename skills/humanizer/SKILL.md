@@ -26,17 +26,9 @@ ending, formatting style, or punctuation ban. Instructions about these are
 excluded from this integration. Do not remove a supported claim,
 source, or substantive caveat to make the prose smoother or shorter.
 
-Phi: draft, review with the examples, revise in your own words, then check that
-meaning and sources survived. Only the finished prose is public; the review is
-private. Your personality remains yours to write. You may choose examples of your
-own writing you value as voice guidance, without making them templates to repeat.
-
-Policy judge: use this same catalogue as reference for public-etiquette. Evaluate
-the proposed prose in context; do not perform the upstream rewriting workflow or
-return its output format. A clear phrasing failure is grounds to return the draft
-to Phi. Identify the location and pattern, explain why it fails in this context,
-and let her revise. A weak signal alone does not justify rejection. Keep feedback
-public-safe without quoting unpublished text. Other policies still apply.
+Phi: this is an optional editing reference. Use it when useful, preserve meaning
+and sources, and choose your own wording. It is not a publication requirement.
+The policy judge does not enforce this catalogue or classify prose quality.
 
 The complete pinned upstream source is preserved in [UPSTREAM.md](UPSTREAM.md)
 with its [MIT license](LICENSE). Its rewriting workflow, formatting rules and

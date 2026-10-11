@@ -59,9 +59,9 @@ sandbox/                   # experiments (graduate to scripts/ once proven)
 
 ## skills
 
-`skills/humanizer` is Phi's runtime phrasing review, pinned to upstream
-Humanizer 3.1.0 with an explicit Phi-specific scope. The policy judge reads
-the same SKILL.md. Review upstream updates; preserve the attribution and license.
+`skills/humanizer` is Phi's optional editing reference, pinned to upstream
+Humanizer 3.1.0 with an explicit Phi-specific scope. The policy judge does not
+enforce phrasing or form. Review upstream updates; preserve attribution and license.
 
 two distinct namespaces — don't confuse them:
 
@@ -118,8 +118,7 @@ Bio authoring runs on the first unpaused poll tick and every 24 hours through
 The same pass reviews avatar/header images weekly through `self-presentation`
 and `inspect_record_media`; keeping them unchanged is valid. Its last completed
 review pass persists in status, and failed runs remain due for the next bio pass.
-Profile descriptions have their own public form; factual self-description does
-not need a joke. Failed writes preserve the existing bio and report failure.
+Profile descriptions are checked for factual integrity, not editorial form. Failed writes preserve the existing bio and report failure.
 
 secrets via `fly secrets set` or `fly secrets import` (pipe `grep ^KEY .env` into it to keep values off the terminal).
 
