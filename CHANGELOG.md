@@ -1,5 +1,15 @@
 # changelog
 
+## 2026-10-15 — See posts shared in DMs
+
+The operator shared a post in DMs and asked Phi to follow its author. She never
+saw it: a shared post is a chat message with empty text and a record embed, and
+DM ingestion kept only text and skipped empty-text messages. DMs now pass through
+a platform-neutral `InboundMessage` (`core/inbound.py`) that keeps shared posts
+with their author handle and DID, verified mentions and full link targets from
+facets. `docs/inbound-messages.md` proposes routing notifications through the
+same shape next.
+
 ## 2026-10-10 — Keep editorial choices out of the public-action judge
 
 Phi's first Delvetown market post explained the game. The judge allowed it as

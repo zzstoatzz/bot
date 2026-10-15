@@ -27,6 +27,8 @@ deeper dive into phi's design.
 
 ## proposed work
 
+- [inbound-messages.md](inbound-messages.md) — one platform-neutral shape for incoming messages and what rides along (shared posts, mentions, links, media); the DM adapter ships, the rest is proposed
+
 - [internal/waow-stewardship.md](internal/waow-stewardship.md) — waow.tech stewardship vision, gradual Gardener expansion, and the first offline jev evaluation milestone (2026-09-19; not deployed behavior)
 
 - [internal/operator-interaction-design.md](internal/operator-interaction-design.md) — consolidate conversation, evidence, and scoped decisions before broader stewardship

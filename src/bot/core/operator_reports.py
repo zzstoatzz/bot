@@ -9,6 +9,7 @@ from pathlib import Path
 
 from bot.config import settings
 from bot.core.atproto_client import bot_client
+from bot.core.inbound import from_bsky_chat
 from bot.status import bot_status
 
 JOURNAL = Path("/data/operator-reports.sqlite3")
@@ -170,14 +171,9 @@ async def recent_conversation() -> str:
         chat().get_messages, {"convo_id": available.convo.id, "limit": 20}
     )
     history = [
-        {
-            "id": message.id,
-            "author": message.sender.did,
-            "text": message.text,
-            "sent": message.sent_at,
-        }
+        inbound.as_material()
         for message in reversed(page.messages)
-        if getattr(message, "text", None) and getattr(message, "sender", None)
+        if (inbound := from_bsky_chat(message))
     ]
     return conversation_material(history, [])
 
@@ -206,24 +202,13 @@ async def incoming_messages() -> tuple[list[dict], list[str]]:
         page = await asyncio.to_thread(chat().get_messages, params)
         reached_start = False
         for message in page.messages:
-            if not getattr(message, "text", None) or not getattr(
-                message, "sender", None
-            ):
+            inbound = from_bsky_chat(message)
+            if inbound is None:
                 continue
-            sent = datetime.fromisoformat(
-                message.sent_at.replace("Z", "+00:00")
-            ).timestamp()
-            if sent < start:
+            if inbound.sent < start:
                 reached_start = True
                 continue
-            history.append(
-                {
-                    "id": message.id,
-                    "author": message.sender.did,
-                    "text": message.text,
-                    "sent": sent,
-                }
-            )
+            history.append(inbound.as_material())
         if reached_start or not page.cursor:
             break
         cursor = page.cursor
@@ -263,6 +248,11 @@ def conversation_material(history: list[dict], new_ids: list[str]) -> str:
                     "new_incoming": message["id"] in new_ids,
                     "sent_at": message["sent"],
                     "text": message["text"],
+                    **{
+                        key: message[key]
+                        for key in ("mentions", "references", "attachments", "reply_to")
+                        if message.get(key)
+                    },
                 }
                 for message in history
             ],
