@@ -33,7 +33,7 @@ each surface gets one adapter into this shape (`from_bsky_chat` today). the
 agent reads the neutral shape, so "a post was shared with me" looks the same in
 a DM, a mention, or a future channel.
 
-## relation to letta channels
+## prior art: letta channels
 
 letta-code's channels (`src/channels/types.ts` `InboundChannelMessage`) are the
 same idea: adapters per platform (telegram, slack, discord, whatsapp, signal)
@@ -42,10 +42,20 @@ normalize into one inbound message (text, verified `userMentions`,
 it's rendered as XML for the agent, and one `MessageChannel` tool sends replies,
 with each plugin advertising which actions it supports.
 
-what to borrow: the adapter + neutral message + one reply tool with
-per-channel capabilities. what not to borrow: the runtime. channels is part of
-letta-code's TypeScript agent host; phi is pydantic-ai, and adopting it means
-moving phi onto letta rather than adding a feature. and letta's attachments are
+prior art worth taking:
+
+- **schema from capabilities.** each plugin's `describeMessageTool()` lists its
+  actions; the reply tool's schema is rebuilt per conversation with `channel`
+  and `action` narrowed to what's live, and params no live channel supports
+  removed. the model is never offered an action the surface can't do.
+- **inline verified mentions.** mentions render at their offsets as
+  `<mention id="...">@name</mention>`, falling back to plain text if an offset
+  doesn't line up, so the referent sits where the name appears.
+- **duplicate-send guard.** an identical send to the same destination in one
+  turn is refused with an error telling the model not to retry.
+
+letta also debounces bursts into one turn. phi doesn't need it: each poll reads
+every unseen operator DM plus ten prior messages. and letta's attachments are
 files only; on atproto most of what rides along is a *pointer* (a post, a feed,
 a link card), which is why `references` is its own field here.
 
@@ -65,10 +75,11 @@ I send here" instead of knowing which surface she's in.
 
 1. **done:** DMs through `from_bsky_chat`; shared posts, mentions and full links
    reach the operator-DM prompt.
-2. mentions/notifications: `message_handler` already builds `embed_desc`,
+2. render mentions inline at their byte offsets instead of as a separate list.
+3. mentions/notifications: `message_handler` already builds `embed_desc`,
    `image_urls` and cited posts from the same embeds with its own code
    (`utils/thread.py`, `utils/cited_posts.py`). route that through
    `_embed_parts` so both paths share one parser and one shape.
-3. one reply surface with per-channel capabilities, replacing the
+4. one reply surface whose schema comes from per-channel capabilities, replacing the
    DM-specific `reply_operator_dm` when a second private channel exists.
-4. only then consider other channels (group DMs exist in `chat.bsky` now).
+5. only then consider other channels (group DMs exist in `chat.bsky` now).
