@@ -14,6 +14,7 @@ Run from the bot/ directory:
 
     uv run python scripts/merge_duplicate_observations.py           # write the plan
     uv run python scripts/merge_duplicate_observations.py --apply   # apply the saved plan
+    uv run python scripts/merge_duplicate_observations.py --restore-status
 """
 
 import argparse
@@ -160,7 +161,43 @@ async def apply() -> None:
     print(f"applied {len(steps)} steps")
 
 
+def restore() -> None:
+    """Re-mark rows the applied plan superseded that have since lost `status`.
+
+    my-prefect-server's tag maintenance upserted whole rows until cb03d28,
+    which dropped the field and made them active again.
+    """
+    mem = NamespaceMemory(api_key=settings.turbopuffer_api_key)
+    wanted: dict[str, set[str]] = {}
+    for step in json.loads(PLAN.read_text()):
+        wanted.setdefault(step["namespace"], set()).update(step["supersede"])
+    restored = 0
+    for name, ids in sorted(wanted.items()):
+        ns = mem.client.namespace(name)
+        response = ns.query(
+            rank_by=("created_at", "desc"),
+            top_k=1000,
+            filters=("kind", "Eq", "observation"),
+            include_attributes=["status"],
+        )
+        lost = [
+            row.id
+            for row in response.rows or []
+            if row.id in ids and getattr(row, "status", None) is None
+        ]
+        if lost:
+            ns.write(patch_rows=[{"id": i, "status": "superseded"} for i in lost])
+            restored += len(lost)
+    print(f"restored superseded status on {restored} rows")
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--apply", action="store_true")
-    asyncio.run(apply() if parser.parse_args().apply else plan())
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--apply", action="store_true")
+    mode.add_argument("--restore-status", action="store_true")
+    args = parser.parse_args()
+    if args.restore_status:
+        restore()
+    else:
+        asyncio.run(apply() if args.apply else plan())
