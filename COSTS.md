@@ -15,13 +15,15 @@ current monthly cost for this repo from the daily snapshot (collected by
 curl -s https://hub.waow.tech/api/costs.json | jq '{
   as_of: .generatedAt,
   this_repo_monthly_usd: (
-    [ .lineItems[] | select(.service as $s | ["zzstoatzz-phi"] | index($s)) ]
-    | (map(.amount) | add // 0) / 100
+    [ .lineItems[] | select((.service | split(":" )[0]) as $s | ["zzstoatzz-phi"] | index($s)) ]
+    | if length == 0 then null else (map(.amount) | add) / 100 end
   ),
-  lines: [ .lineItems[] | select(.service as $s | ["zzstoatzz-phi"] | index($s))
+  lines: [ .lineItems[] | select((.service | split(":" )[0]) as $s | ["zzstoatzz-phi"] | index($s))
            | {service, provider, usd: (.amount/100), estimated} ]
 }'
 ```
+
+`null` means no matching provider lines were found; it does not mean free.
 
 Or open the costs panel at https://hub.waow.tech and group **by project**.
 
