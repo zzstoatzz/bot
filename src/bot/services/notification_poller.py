@@ -13,6 +13,7 @@ from bot.core import operator_reports
 from bot.core.alert_watch import fetch_alert_states, gate_scoped
 from bot.core.atproto_client import BotClient
 from bot.core.override import get_override
+from bot.core.provider_watch import check_provider_watch
 from bot.core.relay_watch import fetch_relay_states, is_relay_key, wake_material
 from bot.memory.encounters import ENCOUNTER_NAMESPACE
 from bot.services.encounter_recovery import recover_encounters
@@ -65,6 +66,7 @@ class NotificationPoller:
         self._background_tasks: set[asyncio.Task] = set()
         self._next_alert_watch_poll = 0.0
         self._next_relay_watch_poll = 0.0
+        self._next_provider_watch_poll = 0.0
         self._next_review_poll = 0.0
         self._next_dm_poll = 0.0
         self._dm_task: asyncio.Task | None = None
@@ -259,6 +261,17 @@ class NotificationPoller:
                     await self._check_relay_watch()
             except Exception as e:
                 logger.error(f"relay watch poll error: {e}", exc_info=True)
+
+            try:
+                if settings.provider_watch_interval > 0 and (
+                    time.monotonic() >= self._next_provider_watch_poll
+                ):
+                    self._next_provider_watch_poll = (
+                        time.monotonic() + settings.provider_watch_interval
+                    )
+                    await check_provider_watch()
+            except Exception as e:
+                logger.error(f"provider watch error: {e}", exc_info=True)
 
             try:
                 if time.monotonic() >= self._next_review_poll:

@@ -1,5 +1,18 @@
 # changelog
 
+## 2026-10-16 — Tell the operator when Fly's incidents reach their checks
+
+pds.zzstoatzz.io went down during Fly's platform-wide rolling host reboots.
+Fly gave 28 minutes' notice, and nothing told the operator the outage was
+Fly's. Evergreen's `/providers` now lists the operator's checks each Fly event
+reaches, and the provider watch sends one private DM per event, including a
+heads-up when maintenance is scheduled. This is a courier notice, not a wake:
+the alert doctrine defaults to silence and holds reports for six hours, and the
+operator asked to hear about provider events as they happen. The DM skips the
+private-report judge because its text is a fixed template over Fly's status
+page. The operator-reports journal dedupes it, and override and pause still
+apply.
+
 ## 2026-10-15 — See posts shared in DMs
 
 The operator shared a post in DMs and asked Phi to follow its author. She never

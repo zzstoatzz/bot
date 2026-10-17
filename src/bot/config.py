@@ -302,6 +302,16 @@ class Settings(BaseSettings):
         "minutes, so 15 minutes bounds detection latency at about one "
         "eval run",
     )
+    provider_status_url: str = Field(
+        default="https://evergreen-proxy.n8-3e9.workers.dev/providers",
+        description="Evergreen's provider status: Fly incidents and maintenance, "
+        "each with the operator checks it reaches",
+    )
+    provider_watch_interval: int = Field(
+        default=300,
+        description="Seconds between provider status checks; 0 disables. "
+        "Evergreen caches Fly's status page for 60 seconds",
+    )
     relay_watch_hosts: list[str] = Field(
         default=[
             "zlay.waow.tech",

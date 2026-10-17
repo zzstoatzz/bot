@@ -34,6 +34,12 @@ for exact hours. Slot state seeds from history to avoid deploy-triggered repeats
 Logfire incidents replaced the separate Prefect failure monitor; there is no
 second failure-polling schedule to configure.
 
+The provider watch (`core/provider_watch.py`) is not an agent run. Every five
+minutes it reads evergreen's `/providers`. Each Fly incident or maintenance that
+reaches the operator's checks becomes one templated private DM, keyed in the
+operator-reports journal so the same event is never sent twice. Pause, voice
+reset and operator override silence it.
+
 Bio work runs in a tracked background task and never blocks startup. Its timeout
 is three minutes, or ten when image review is due. Failed writes preserve the
 existing profile; failed image-review passes remain due. Last completed review
