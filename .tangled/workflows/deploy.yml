@@ -10,9 +10,11 @@ dependencies:
     - uv
     - python312
     # manylinux wheels (numpy, pillow) dlopen libstdc++.so.6, which a nix
-    # image has nowhere on the default loader path; libgcc ships it and the
-    # test step points LD_LIBRARY_PATH at it.
-    - libgcc
+    # image has nowhere on the default loader path; gcc's lib output ships it
+    # and the test step points LD_LIBRARY_PATH at it. not `libgcc`: from
+    # 2026-10-15 nixery.dev answers this exact package set with
+    # "image build failure", though every subset and superset builds.
+    - stdenv.cc.cc.lib
 
 steps:
   # Settings() validates at import and requires the bot's credentials; the
