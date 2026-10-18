@@ -37,7 +37,7 @@ max_lines = 700
 
 [[rules]]
 path = "src/bot/services/notification_poller.py"
-max_lines = 621
+max_lines = 657
 
 [[rules]]
 path = "web/src/lib/components/ContextBudget.svelte"
@@ -66,3 +66,11 @@ max_lines = 770
 [[rules]]
 path = "src/bot/core/policy.py"
 max_lines = 568
+
+[[rules]]
+path = "src/bot/services/message_handler.py"
+max_lines = 518
+
+[[rules]]
+path = "src/bot/tools/posting.py"
+max_lines = 668

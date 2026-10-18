@@ -201,6 +201,7 @@ async def test_silent_batch_is_captured_before_context_normalization(monkeypatch
             "bot.services.message_handler._limiter.hit", lambda *args: True
         )
         poller = NotificationPoller.__new__(NotificationPoller)
+        poller.app_views = []
         monkeypatch.setattr(poller, "handler", handler, raising=False)
         seen = AsyncMock()
         monkeypatch.setattr(
@@ -251,6 +252,7 @@ async def test_received_versions_are_captured_independently_of_action_dispatch(
     monkeypatch, scenario
 ):
     poller = NotificationPoller.__new__(NotificationPoller)
+    poller.app_views = []
     poller._first_poll = False
     poller._processed_uris = set()
     poller._background_tasks = set()

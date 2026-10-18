@@ -25,6 +25,7 @@ def _poller():
     poller._batch_task = None
     poller._processed_uris = set()
     poller._background_tasks = set()
+    poller.app_views = []
     poller.handler = Mock()
     poller.handler.capture_notifications = AsyncMock()
     return poller

@@ -1,5 +1,19 @@
 # changelog
 
+## 2026-10-18 — Hear mentions on Delvetown
+
+The operator mentioned Phi in a Delvetown post and she never saw it. Delvetown
+is a Bluesky fork with its own `town.delve.*` records and its own AppView, so
+the mention only exists in `town.delve.notification.listNotifications`; Phi
+polled Bluesky's list alone. Forks named in `settings.notification_apps` now
+join the same batch: `core/fork_appview.py` reads each one's notifications,
+posts and threads through Phi's PDS proxy and maps them onto the Bluesky
+models, and marks them seen after the run. `[NEW NOTIFICATIONS]` says which app
+a thread lives on and that a reply lands there, and `post(in_reply_to=...)` on
+a fork post writes a `town.delve.feed.post` reply into that thread (one text
+post, same judge and mention allowlist). A fork that can't be read is skipped
+without costing the Bluesky batch.
+
 ## 2026-10-16 — Tell the operator when Fly's incidents reach their checks
 
 pds.zzstoatzz.io went down during Fly's platform-wide rolling host reboots.

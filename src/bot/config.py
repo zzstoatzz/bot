@@ -399,6 +399,17 @@ class Settings(BaseSettings):
             "deliberate addition."
         ),
     )
+    notification_apps: dict[str, tuple[str, str]] = Field(
+        default={
+            "town.delve": ("delve.town", "did:web:api.delve.town#bsky_appview"),
+        },
+        description=(
+            "Bluesky forks whose notifications join phi's batch, keyed by "
+            "lexicon namespace: (name phi sees, AppView service her PDS "
+            "proxies to). Replies to their posts are written back into the "
+            "same app (core/fork_appview.py)."
+        ),
+    )
 
     # Lexidraw — drawings as app.lexidraw.scene records in phi's own repo,
     # via the stdio node MCP server baked into the image. Absent path (dev,

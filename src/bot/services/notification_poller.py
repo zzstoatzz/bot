@@ -12,6 +12,7 @@ from bot.config import settings
 from bot.core import operator_reports
 from bot.core.alert_watch import fetch_alert_states, gate_scoped
 from bot.core.atproto_client import BotClient
+from bot.core.fork_appview import ForkAppView, app_for_uri, fork_views
 from bot.core.override import get_override
 from bot.core.provider_watch import check_provider_watch
 from bot.core.relay_watch import fetch_relay_states, is_relay_key, wake_material
@@ -48,11 +49,13 @@ MAX_CONCURRENT = 3
 
 
 class NotificationPoller:
-    """Polls for and processes Bluesky notifications."""
+    """Polls for and processes notifications from Bluesky and its forks."""
 
     def __init__(self, client: BotClient):
         self.client = client
         self.handler = MessageHandler(client)
+        self.app_views = fork_views(client)
+        self._app_poll_failing: set[str] = set()
         self._running = False
         self._task: asyncio.Task | None = None
         self._recovery_task: asyncio.Task | None = None
@@ -393,6 +396,8 @@ class NotificationPoller:
             notifications = await visible_unread_notifications(
                 self.client, capture=self.handler.capture_notifications
             )
+            for view in self.app_views:
+                notifications += await self._app_notifications(view)
 
             unread = [n for n in notifications if not n.is_read]
 
@@ -404,6 +409,9 @@ class NotificationPoller:
                     [
                         {
                             "uri": n.uri,
+                            "app": app.name
+                            if (app := app_for_uri(n.uri))
+                            else "bluesky",
                             "cid": getattr(n, "cid", "") or "",
                             "author_handle": n.author.handle,
                             "reason": n.reason,
@@ -436,6 +444,27 @@ class NotificationPoller:
         if not batch:
             return
         self._dispatch_batch(batch, check_time)
+
+    async def _app_notifications(self, view: ForkAppView) -> list:
+        """The unread window of one fork app; empty when its AppView can't be read.
+
+        A fork being down, or phi not being a member, must not cost her the
+        Bluesky batch, so failures are logged once per outage and skipped.
+        """
+        name = view.app.name
+        try:
+            found = await visible_unread_notifications(
+                view, max_pages=5, capture=self.handler.capture_notifications
+            )
+        except Exception as e:
+            if name not in self._app_poll_failing:
+                logger.warning(f"{name} notifications unavailable: {e}")
+            self._app_poll_failing.add(name)
+            return []
+        if name in self._app_poll_failing:
+            logger.info(f"{name} notifications readable again")
+            self._app_poll_failing.discard(name)
+        return found
 
     def _dispatch_batch(self, batch: list, check_time: str) -> bool:
         """Start one handler run for *batch*, unless one is already running.
@@ -558,6 +587,13 @@ class NotificationPoller:
                 await self.client.mark_notifications_seen(check_time)
             except Exception as e:
                 logger.warning(f"mark_notifications_seen failed: {e}")
+            for view in self.app_views:
+                if not any(app_for_uri(n.uri) == view.app for n in batch):
+                    continue
+                try:
+                    await view.mark_notifications_seen(check_time)
+                except Exception as e:
+                    logger.warning(f"{view.app.name} updateSeen failed: {e}")
 
     def _should_do_daily_post(self) -> bool:
         """Check if it's time for a daily reflection (operator-local hour)."""

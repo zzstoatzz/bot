@@ -9,6 +9,7 @@ from collections.abc import AsyncIterator, Awaitable, Callable
 from atproto import models
 
 from bot.core.atproto_client import BotClient
+from bot.core.fork_appview import ForkAppView
 
 
 class IncompleteNotificationScan(RuntimeError):
@@ -16,7 +17,7 @@ class IncompleteNotificationScan(RuntimeError):
 
 
 async def notification_pages(
-    client: BotClient, *, max_pages: int = 100
+    client: BotClient | ForkAppView, *, max_pages: int = 100
 ) -> AsyncIterator[models.AppBskyNotificationListNotifications.Response]:
     """Yield all visible pages, retaining original events and read flags.
 
@@ -45,7 +46,7 @@ async def notification_pages(
 
 
 async def visible_unread_notifications(
-    client: BotClient,
+    client: BotClient | ForkAppView,
     *,
     max_pages: int = 100,
     capture: Callable[[list], Awaitable[None]] | None = None,

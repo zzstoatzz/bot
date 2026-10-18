@@ -206,6 +206,22 @@ def _thread_frame(root_uri: str, entries: list[dict]) -> str:
     )
 
 
+def _app_frame(entries: list[dict]) -> str:
+    """Where a thread lives when it isn't Bluesky, and where a reply to it lands.
+
+    Delvetown and other Bluesky forks share handles and DIDs with Bluesky,
+    so without this line a mention there reads like any other mention.
+    """
+    app = next((e["app"] for e in entries if e.get("app")), "")
+    if not app:
+        return ""
+    return (
+        f"on {app}, an atproto app separate from Bluesky. post(in_reply_to=...) "
+        f"on these URIs publishes your reply on {app}, in this thread; "
+        "nobody on Bluesky sees it."
+    )
+
+
 def _format_notifications_block(notifications_context: dict) -> str:
     """Format the notifications batch as a readable [NEW NOTIFICATIONS] block.
 
@@ -251,6 +267,8 @@ def _format_notifications_block(notifications_context: dict) -> str:
         thread_ctx = entries[0].get("thread_context", "") or ""
 
         lines.append("")
+        if app_frame := _app_frame(entries):
+            lines.append(app_frame)
         frame = _thread_frame(root_uri, entries)
         if frame:
             lines.append(frame)
@@ -279,6 +297,7 @@ def _format_notifications_block(notifications_context: dict) -> str:
             handle = e.get("author_handle", "?")
             reason = e.get("reason", "")
             uri = e.get("uri", "")
+            where = f" on {e['app']}" if e.get("app") else ""
             target_text = e.get("post_text", "")
             target_part = f' — "{target_text[:120]}"' if target_text else ""
             thread_ctx = e.get("thread_context") or ""
@@ -287,9 +306,11 @@ def _format_notifications_block(notifications_context: dict) -> str:
                     f"event [{e['event_uri']}] cid={e['event_cid']}; indexed {e.get('indexed_at', 'unknown')}"
                 )
             if reason == "follow":
-                lines.append(f"@{handle} followed you")
+                lines.append(f"@{handle} followed you{where}")
             else:
-                lines.append(f"@{handle} {reason}d your post [{uri}]{target_part}")
+                lines.append(
+                    f"@{handle} {reason}d your post{where} [{uri}]{target_part}"
+                )
                 if thread_ctx and thread_ctx != "No previous messages in this thread.":
                     lines.append(f"  thread context:\n  {thread_ctx}")
                 for cited in cited_by_source.get(uri, []):

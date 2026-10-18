@@ -24,6 +24,7 @@ from limits.strategies import MovingWindowRateLimiter
 from bot.agent import PhiAgent
 from bot.config import settings
 from bot.core.atproto_client import BotClient
+from bot.core.fork_appview import ForkAppView, app_for_uri
 from bot.memory.encounters import (
     ENCOUNTER_NAMESPACE,
     append_encounters,
@@ -72,6 +73,11 @@ class MessageHandler:
         self.client = client
         self.agent = PhiAgent()
         self._captured_versions: dict[str, None] = {}
+
+    def _view_for(self, notification) -> BotClient | ForkAppView:
+        """The AppView that hydrates this event: Bluesky's, or the fork app's it came from."""
+        app = app_for_uri(notification.uri)
+        return ForkAppView(app, self.client) if app else self.client
 
     async def capture_notifications(self, notifications: list) -> None:
         """Persist delivered events before filtering, hydration, or generation."""
@@ -122,8 +128,9 @@ class MessageHandler:
         re-fetch anything.
         """
         post_uri = notification.uri
+        view = self._view_for(notification)
         try:
-            posts_resp = await self.client.get_posts([post_uri])
+            posts_resp = await view.get_posts([post_uri])
         except Exception as e:
             logger.warning(f"failed to fetch post {post_uri}: {e}")
             return _delivered_post_entry(notification, "lookup failed")
@@ -155,7 +162,7 @@ class MessageHandler:
         thread_context = "No previous messages in this thread."
         root_author_handle, root_text = "", ""
         try:
-            thread_data = await self.client.get_thread(thread_uri, depth=100)
+            thread_data = await view.get_thread(thread_uri, depth=100)
             thread_context = build_thread_context(thread_data.thread)
             root_author_handle, root_text = thread_root_view(
                 thread_data.thread, root_uri
@@ -167,7 +174,7 @@ class MessageHandler:
         reply = getattr(post.record, "reply", None)
         if reply:
             try:
-                parents = await self.client.get_posts([reply.parent.uri])
+                parents = await view.get_posts([reply.parent.uri])
                 parent = next(
                     (
                         p
@@ -229,6 +236,7 @@ class MessageHandler:
         thread_context = ""
         cited_refs: list[dict] = []
         post_author_handle = ""
+        view = self._view_for(notification)
         with logfire.span(
             "build engagement entry",
             post_uri=post_uri,
@@ -237,7 +245,7 @@ class MessageHandler:
             reason=notification.reason,
         ):
             try:
-                posts_resp = await self.client.get_posts([post_uri])
+                posts_resp = await view.get_posts([post_uri])
                 if posts_resp.posts:
                     p = posts_resp.posts[0]
                     post_author_handle = p.author.handle
@@ -260,9 +268,7 @@ class MessageHandler:
                         logger.info(f"fetching thread context from {thread_uri}")
 
                     try:
-                        thread_data = await self.client.get_thread(
-                            thread_uri, depth=100
-                        )
+                        thread_data = await view.get_thread(thread_uri, depth=100)
                         thread_context = build_thread_context(thread_data.thread)
                         logger.info(
                             f"thread context for engagement: "
@@ -367,6 +373,8 @@ class MessageHandler:
                         continue
                     entry["event_uri"] = n.uri
                     entry["event_cid"] = n.cid
+                    if app := app_for_uri(n.uri):
+                        entry["app"] = app.name
                     notification_events.append(entry)
                     if not entry.get("hydration_status"):
                         notifications_context[entry["uri"]] = entry
