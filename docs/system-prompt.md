@@ -37,7 +37,7 @@ of what any historical request received.
 |---|---|---|
 | `inject_identity` | `[YOUR INFRASTRUCTURE]`: authenticated account identity | Per run |
 | `inject_operator_override` | `[OPERATOR OVERRIDE]`: operator PDS override | 60-second cache; absent when inactive; enforcement is independent |
-| `inject_operator` | `[OPERATOR]`: resolved profile | One-hour cache |
+| `inject_operator` | `[OPERATOR]`: resolved profile, plus the operator's other posting accounts | One-hour cache |
 | `inject_operator_guidance` | `[OPERATOR WORKING GUIDANCE]`: deployed file | Per run; missing/empty file reports unavailability |
 | `inject_today` | `[NOW]`, `[WHERE]`, operator-local time | Per run; location only when supplied by the environment |
 | `inject_pause_history` | `[OPERATIONAL HISTORY]`: last pause/resume | Only during the 24 hours after resume |
@@ -48,7 +48,7 @@ of what any historical request received.
 | `inject_discovery_pool` | `[DISCOVERY POOL]`: operator-liked writing from unfamiliar people | Batch-ranked top three; broader cached pool on scheduled paths; parent context for reply samples |
 | `inject_notifications` | `[NEW NOTIFICATIONS]`: received events grouped by thread | Current batch; delivered versions and hydration status remain distinct from verified reply targets |
 | `inject_recent_encounters` | `[RECENT ENCOUNTERS]`: captured events, mute state and prior replies | Newest eight within 48 hours; exact incoming event text is referenced rather than repeated; metadata and coverage remain |
-| `inject_user_memory` | Per-author synthesized impression, observations, historical exchanges | Query is the author's current material; summaries older than seven days omitted; source references retained |
+| `inject_user_memory` | Per-author synthesized impression, observations, historical exchanges; a post from any operator account recalls all of them | Query is the author's current material; summaries older than seven days omitted; source references retained |
 | `inject_prior_coverage` | `[PRIOR COVERAGE]`: Phi's published work relevant to incoming material | Batch/event material; feed/search reads also return coverage |
 | `inject_episodic` | `[RELEVANT MEMORIES]`: selected original historical records | Batch plus verified immediate parent, event material, or scheduled task seeds retrieval; empty without a query |
 | `inject_owned_feeds` | `[OWNED FEEDS]`: curated Graze names for `read_feed` | Cached directory; not a memory store |

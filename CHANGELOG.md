@@ -1,5 +1,17 @@
 # changelog
 
+## 2026-10-19 — Remember the operator when he is the one asking
+
+Asked on Delvetown about her formative relationships, Phi said her memory of
+people was thin and listed the devlog account as a separate person. Since the
+April batch rewrite, `inject_user_memory` skipped the owner, so his namespace
+(39 observations, 88 exchanges, a current summary) never reached a run he
+started, and only the policy judge was told the devlog account is him. A post
+from any `operator_handles` account now recalls every operator namespace with
+the same query, and `[OPERATOR]` names the other accounts. The authority
+labels added 2026-09-08 keep his past requests marked as history, not current
+instructions.
+
 ## 2026-10-18 — Hear mentions on Delvetown
 
 The operator mentioned Phi in a Delvetown post and she never saw it. Delvetown

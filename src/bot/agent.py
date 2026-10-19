@@ -356,6 +356,29 @@ def render_recent_conversations(recent: list[dict], limit: int = 5) -> str:
     return "\n".join(lines)
 
 
+def memory_queries(notifs: dict) -> dict[str, str]:
+    """Per-person recall queries for a batch, keyed by memory namespace handle.
+
+    The operator posts from several accounts, each with its own namespace, so
+    a post from any of them recalls all of them. Only Phi's own posts are
+    skipped. Excluding the owner (April's batch rewrite) left her answering
+    the operator with no memory of him.
+    """
+    texts: dict[str, list[str]] = {}
+    for entry in notifs.values():
+        handle = entry.get("author_handle")
+        if not handle or handle == settings.bluesky_handle:
+            continue
+        handles = (
+            settings.operator_handles
+            if handle in settings.operator_handles
+            else (handle,)
+        )
+        for h in handles:
+            texts.setdefault(h, []).append(entry.get("post_text") or "")
+    return {h: " ".join(t for t in ts if t) or h for h, ts in texts.items()}
+
+
 def _clip(text: str, n: int) -> str:
     text = " ".join(text.split())
     return text if len(text) <= n else text[: n - 1] + "…"
@@ -474,7 +497,11 @@ class PhiAgent:
             name = profile["display_name"]
             handle = profile["handle"]
             did = profile["did"]
-            return f"[OPERATOR]: {name} (@{handle}, {did})"
+            line = f"[OPERATOR]: {name} (@{handle}, {did})"
+            others = [f"@{h}" for h in settings.operator_handles if h != handle]
+            if others:
+                line += f"; the same person also posts as {', '.join(others)}"
+            return line
 
         @_run_scoped
         def inject_operator_guidance() -> str:
@@ -638,8 +665,8 @@ class PhiAgent:
             For each unique author across the notifications context, build a
             memory block keyed on the union of their post texts in this batch
             (so semantic search returns memories relevant to what they're
-            currently saying). Core memory is fetched once via the first block
-            to avoid repetition.
+            currently saying). The operator's accounts recall together; see
+            `memory_queries`.
             """
             if not ctx.deps.memory:
                 return ""
@@ -647,22 +674,12 @@ class PhiAgent:
             if not notifs:
                 return ""
 
-            by_author: dict[str, list[str]] = {}
-            for entry in notifs.values():
-                handle = entry.get("author_handle")
-                text = entry.get("post_text", "")
-                if handle and handle not in (
-                    settings.owner_handle,
-                    settings.bluesky_handle,
-                ):
-                    by_author.setdefault(handle, []).append(text or "")
-
-            if not by_author:
+            queries = memory_queries(notifs)
+            if not queries:
                 return ""
 
             blocks: list[str] = []
-            for handle, texts in by_author.items():
-                query = " ".join(t for t in texts if t) or handle
+            for handle, query in queries.items():
                 try:
                     block = await ctx.deps.memory.build_user_context(
                         handle, query_text=query
