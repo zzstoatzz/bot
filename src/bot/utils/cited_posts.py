@@ -66,8 +66,9 @@ def _cited_thread_context(thread_node) -> str:
         )
     if missing := _unloaded_replies(thread_node):
         context += (
-            f"\n… {missing} more replies sit deeper than {CITED_THREAD_DEPTH} levels;"
-            " the read-thread skill reads them."
+            f"\n… the thread continues below {CITED_THREAD_DEPTH} levels"
+            f" (at least {missing} more {'reply' if missing == 1 else 'replies'});"
+            " the read-thread skill reads the rest."
         )
     return context
 

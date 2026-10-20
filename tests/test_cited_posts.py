@@ -206,7 +206,7 @@ async def test_resolved_cited_entry_carries_its_replies():
     assert entry is not None
     assert entry["reply_count"] == 1
     assert "@friend.test: and yet the bee flies anyway" in entry["thread_context"]
-    assert "deeper than" not in entry["thread_context"]
+    assert "continues below" not in entry["thread_context"]
 
 
 async def test_cited_thread_marks_replies_below_the_depth_cut():
@@ -218,4 +218,6 @@ async def test_cited_thread_marks_replies_below_the_depth_cut():
     entry = await _resolve_with_thread(root, [SimpleNamespace(post=cut, replies=[])])
 
     assert entry is not None
-    assert "… 2 more replies sit deeper than 6 levels" in entry["thread_context"]
+    assert (
+        "continues below 6 levels (at least 2 more replies)" in entry["thread_context"]
+    )
