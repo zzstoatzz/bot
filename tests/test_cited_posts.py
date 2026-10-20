@@ -166,3 +166,56 @@ async def test_resolved_cited_entry_keeps_image_media():
     assert entry["image_urls"] == [
         "https://cdn.bsky.app/img/feed_fullsize/plain/did/x/png"
     ]
+
+
+def _thread_post(rkey, handle, text, reply_count=0):
+    return SimpleNamespace(
+        uri=f"at://did:plc:xyz/app.bsky.feed.post/{rkey}",
+        cid=f"bafy{rkey}",
+        author=SimpleNamespace(handle=handle, did="did:plc:xyz"),
+        record=_make_record(text=text),
+        embed=None,
+        indexed_at=f"2026-10-20T0{len(rkey)}:00:00Z",
+        reply_count=reply_count,
+        quote_count=0,
+    )
+
+
+async def _resolve_with_thread(root, replies):
+    async def get_posts(uris):
+        return SimpleNamespace(posts=[root])
+
+    async def get_thread(uri, depth=10):
+        return SimpleNamespace(
+            thread=SimpleNamespace(post=root, parent=None, replies=replies)
+        )
+
+    return await resolve_cited_entry(
+        SimpleNamespace(get_posts=get_posts, get_thread=get_thread),
+        {"handle_or_did": "did:plc:xyz", "rkey": "a", "source": "embed"},
+        "at://did:plc:phi/app.bsky.feed.post/root",
+    )
+
+
+async def test_resolved_cited_entry_carries_its_replies():
+    root = _thread_post("a", "nate.test", "what? i have been living in ignorance", 1)
+    reply = _thread_post("bb", "friend.test", "and yet the bee flies anyway")
+
+    entry = await _resolve_with_thread(root, [SimpleNamespace(post=reply, replies=[])])
+
+    assert entry is not None
+    assert entry["reply_count"] == 1
+    assert "@friend.test: and yet the bee flies anyway" in entry["thread_context"]
+    assert "deeper than" not in entry["thread_context"]
+
+
+async def test_cited_thread_marks_replies_below_the_depth_cut():
+    """the 2026-10-20 thread's best branch ran 8 levels; a depth-6 fetch
+    dropped its end silently."""
+    root = _thread_post("a", "nate.test", "taylor swift air travel maxxing", 1)
+    cut = _thread_post("bb", "friend.test", "so the guitarist", 2)
+
+    entry = await _resolve_with_thread(root, [SimpleNamespace(post=cut, replies=[])])
+
+    assert entry is not None
+    assert "… 2 more replies sit deeper than 6 levels" in entry["thread_context"]

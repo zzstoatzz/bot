@@ -222,6 +222,22 @@ def _app_frame(entries: list[dict]) -> str:
     )
 
 
+def _engagement_counts(entry: dict) -> str:
+    """How much conversation hangs off a post: "3 replies, 1 quote".
+
+    A cited post arrives as one line of text; its size says whether there
+    is more to read before answering about it.
+    """
+    parts = []
+    for key, one, many in (
+        ("reply_count", "reply", "replies"),
+        ("quote_count", "quote", "quotes"),
+    ):
+        if n := entry.get(key) or 0:
+            parts.append(f"{n} {one if n == 1 else many}")
+    return ", ".join(parts)
+
+
 def _format_notifications_block(notifications_context: dict) -> str:
     """Format the notifications batch as a readable [NEW NOTIFICATIONS] block.
 
@@ -257,7 +273,13 @@ def _format_notifications_block(notifications_context: dict) -> str:
         c_handle = e.get("author_handle", "?")
         c_uri = e.get("uri", "")
         c_text = (e.get("post_text", "") or "").replace("\n", " ")
-        return f'  cited: @{c_handle} [{c_uri}]: "{c_text[:200]}"'
+        line = f'  cited: @{c_handle} [{c_uri}]: "{c_text[:200]}"'
+        if counts := _engagement_counts(e):
+            line += f" ({counts})"
+        if thread_ctx := e.get("thread_context"):
+            indented = "\n".join(f"    {row}" for row in thread_ctx.splitlines())
+            line += f"\n  thread around the cited post:\n{indented}"
+        return line
 
     lines: list[str] = []
     lines.append("[NEW NOTIFICATIONS]")

@@ -1,5 +1,18 @@
 # changelog
 
+## 2026-10-20 — Size a thread before answering about it
+
+The devlog quoted a post of the operator's and asked Phi to "analyze this
+thread, see if you can find the interesting part". She answered from the
+quoted screenshot alone; the payoff was four replies down, and she found it
+only when asked whether she had read the whole thread. A cited post reached
+`[NEW NOTIFICATIONS]` as one line with no hint that anything hung off it, and
+nothing told her to look. A cited post now carries its reply and quote counts
+and the thread under it (depth 6, cut at 6,000 characters, with a marker for
+replies left below the cut), and `read-thread` opens with the thread's size
+and participants, shows image alt text and quoted posts, and is described for
+answering about a thread someone points at, not only for joining one.
+
 ## 2026-10-19 — Remember the operator when he is the one asking
 
 Asked on Delvetown about her formative relationships, Phi said her memory of

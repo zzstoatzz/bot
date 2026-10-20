@@ -67,3 +67,35 @@ def test_unknown_root_has_no_frame():
     )
     assert _thread_frame(ROOT, [e]) == ""
     assert "thread by" not in _format_notifications_block({e["uri"]: e})
+
+
+def test_cited_post_shows_its_size_and_thread():
+    """regression (2026-10-20): asked to "analyze this thread" with nate's post
+    quoted, phi answered from the quoted screenshot alone; the payoff was four
+    replies down and nothing in the block said there were replies at all."""
+    src = "at://did:plc:devlog/app.bsky.feed.post/3ask"
+    cited = "at://did:plc:nate/app.bsky.feed.post/3bee"
+    block = _format_notifications_block(
+        {
+            src: {
+                "uri": src,
+                "reason": "mention",
+                "author_handle": "devlog.test",
+                "post_text": "please analyze this thread",
+                "root_uri": src,
+                "thread_context": "",
+            },
+            cited: {
+                "uri": cited,
+                "reason": "cited",
+                "cited_by": src,
+                "author_handle": "nate.test",
+                "post_text": "what? i have been living in ignorance",
+                "reply_count": 1,
+                "quote_count": 2,
+                "thread_context": "@nate.test: what?\n@a2.test: and yet the bee flies anyway",
+            },
+        }
+    )
+    assert "(1 reply, 2 quotes)" in block
+    assert "    @a2.test: and yet the bee flies anyway" in block

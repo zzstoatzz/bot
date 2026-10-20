@@ -19,7 +19,14 @@ import re
 
 from atproto import AsyncIdResolver, AtUri
 
-from bot.utils.thread import describe_embed, extract_image_urls, resolve_facet_links
+from bot.utils.thread import (
+    build_thread_context,
+    describe_embed,
+    extract_image_urls,
+    extract_posts_chronological,
+    resolve_facet_links,
+    traverse_thread,
+)
 
 logger = logging.getLogger("bot.utils.cited_posts")
 
@@ -30,6 +37,39 @@ _BSKY_POST_URL_RE = re.compile(
 )
 
 _id_resolver = AsyncIdResolver()
+
+CITED_THREAD_DEPTH = 6
+CITED_THREAD_CHARS = 6000
+
+
+def _unloaded_replies(thread_node) -> int:
+    """Replies the service left out below its depth limit."""
+    missing = 0
+
+    def visit(node):
+        nonlocal missing
+        if not (getattr(node, "replies", None) or []):
+            missing += getattr(node.post, "reply_count", None) or 0
+
+    traverse_thread(thread_node, visit, include_parent=False)
+    return missing
+
+
+def _cited_thread_context(thread_node) -> str:
+    if len(extract_posts_chronological(thread_node)) <= 1:
+        return ""
+    context = build_thread_context(thread_node)
+    if len(context) > CITED_THREAD_CHARS:
+        return (
+            context[:CITED_THREAD_CHARS]
+            + "\n… cut here; the read-thread skill reads the rest."
+        )
+    if missing := _unloaded_replies(thread_node):
+        context += (
+            f"\n… {missing} more replies sit deeper than {CITED_THREAD_DEPTH} levels;"
+            " the read-thread skill reads them."
+        )
+    return context
 
 
 def _parse_bsky_post_url(url: str) -> tuple[str, str] | None:
@@ -137,6 +177,16 @@ async def resolve_cited_entry(client, ref: dict, cited_by_uri: str) -> dict | No
         root_uri = cited_uri
         root_cid = post.cid
 
+    # The cited post is often the root of a conversation the citer wants read
+    # ("analyze this thread"). Without its replies phi answers from the root
+    # alone, so pull the thread around it the same way mentions get theirs.
+    thread_context = ""
+    try:
+        thread_data = await client.get_thread(cited_uri, depth=CITED_THREAD_DEPTH)
+        thread_context = _cited_thread_context(thread_data.thread)
+    except Exception as e:
+        logger.debug(f"thread unavailable for cited post {cited_uri}: {e}")
+
     embed = post.embed if hasattr(post, "embed") and post.embed else None
     if not embed and hasattr(post.record, "embed") and post.record.embed:
         embed = post.record.embed
@@ -154,7 +204,9 @@ async def resolve_cited_entry(client, ref: dict, cited_by_uri: str) -> dict | No
         "root_uri": root_uri,
         "root_cid": root_cid,
         "thread_uri": root_uri,
-        "thread_context": "",
+        "thread_context": thread_context,
+        "reply_count": getattr(post, "reply_count", None) or 0,
+        "quote_count": getattr(post, "quote_count", None) or 0,
         "indexed_at": getattr(post, "indexed_at", "") or "",
         "cited_refs": [],
     }
