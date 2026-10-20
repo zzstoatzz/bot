@@ -69,3 +69,46 @@ def test_allowlist_preserves_byte_positions():
     start = facets[0]["index"]["byteStart"]
     end = facets[0]["index"]["byteEnd"]
     assert text.encode("UTF-8")[start:end] == b"@owner.handle"
+
+
+# regression (2026-10-20): phi replied in bufo.uk's thread with
+# "@jev.zzstoatzz.io top 10 movies all time?". jev had posted in that thread,
+# but only the parent's author reached the allowlist, so the tag went out as
+# plain text and `post` said "published" with no hint of it.
+
+
+async def test_thread_participants_cover_everyone_who_posted(monkeypatch):
+    from bot.tools import posting
+
+    def _post(handle):
+        return SimpleNamespace(author=SimpleNamespace(handle=handle), indexed_at="")
+
+    thread = SimpleNamespace(
+        post=_post("bufo.uk"),
+        parent=None,
+        replies=[
+            SimpleNamespace(
+                post=_post("jev.zzstoatzz.io"),
+                replies=[SimpleNamespace(post=_post("phi.zzstoatzz.io"), replies=[])],
+            )
+        ],
+    )
+
+    async def get_thread(uri, depth=10):
+        return SimpleNamespace(thread=thread)
+
+    monkeypatch.setattr(posting.bot_client, "get_thread", get_thread)
+    assert await posting._thread_participants("at://root") == {
+        "bufo.uk",
+        "jev.zzstoatzz.io",
+        "phi.zzstoatzz.io",
+    }
+
+
+def test_untagged_mentions_are_named():
+    from bot.tools.posting import _untagged_note
+
+    note = _untagged_note("@jev.zzstoatzz.io and @bufo.uk top 10?", allowed={"bufo.uk"})
+    assert "@jev.zzstoatzz.io" in note
+    assert "@bufo.uk" not in note
+    assert _untagged_note("@bufo.uk hi", allowed={"bufo.uk"}) == ""

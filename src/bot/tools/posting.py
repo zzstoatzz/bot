@@ -42,8 +42,10 @@ from bot.core.policy import ContactTarget, check_action
 from bot.core.post_images import PostImage, prepare_images
 from bot.core.prior_coverage import coverage_note
 from bot.core.reply_coverage import reply_coverage
+from bot.core.rich_text import mention_handles
 from bot.status import bot_status
 from bot.tools._helpers import PhiDeps, notification_input
+from bot.utils.thread import extract_posts_chronological
 
 logger = logging.getLogger("bot.tools.posting")
 
@@ -61,6 +63,39 @@ async def _build_allowed_handles(*extra: str) -> set[str]:
     except Exception as e:
         logger.warning(f"failed to load mentionable handles: {e}")
     return base | {h for h in extra if h}
+
+
+async def _thread_participants(root_uri: str) -> set[str]:
+    """Handles of everyone who has posted in a Bluesky thread.
+
+    The allowlist has promised "conversation participants" since the
+    consent system landed (2026-04-06), but only the parent's author was
+    ever passed in, so a tag of someone two replies up went out as plain
+    text (@jev in bufo.uk's thread, 2026-10-20).
+    """
+    try:
+        thread = await bot_client.get_thread(root_uri, depth=100)
+    except Exception as e:
+        logger.warning(f"thread participants unavailable for {root_uri}: {e}")
+        return set()
+    return {
+        p.author.handle
+        for p in extract_posts_chronological(thread.thread)
+        if getattr(getattr(p, "author", None), "handle", "")
+    }
+
+
+def _untagged_note(text: str, allowed: set[str]) -> str:
+    """Say which @handles went out as plain text, so a dead tag isn't silent."""
+    untagged = [h for h in mention_handles(text) if h not in allowed]
+    if not untagged:
+        return ""
+    names = ", ".join(f"@{h}" for h in untagged)
+    return (
+        f"\nplain text, no notification: {names}. they aren't in this thread "
+        "and haven't opted in to being mentioned; the operator can add them "
+        "with manage_account."
+    )
 
 
 def _recent_own_posts(limit: int = 6) -> str:
@@ -551,7 +586,11 @@ def register(agent):
                 )
                 bot_status.record_response()
                 logger.info(f"posted: {text[:80]}")
-                return f"published: {result.uri}\ncid: {result.cid}" + warn_note
+                return (
+                    f"published: {result.uri}\ncid: {result.cid}"
+                    + _untagged_note(text, allowed)
+                    + warn_note
+                )
             except Exception as e:
                 logger.exception(f"post failed: {e}")
                 return f"failed to post: {e}"
@@ -611,7 +650,8 @@ def register(agent):
         reply_ref = models.AppBskyFeedPost.ReplyRef(parent=parent_ref, root=root_ref)
 
         try:
-            allowed = await _build_allowed_handles(author_handle)
+            participants = set() if app else await _thread_participants(root_uri)
+            allowed = await _build_allowed_handles(author_handle, *participants)
             if app:
                 result = await create_app_reply(
                     app,
@@ -664,5 +704,6 @@ def register(agent):
         return (
             (f"published on {app.name}: " if app else "published: ")
             + f"{result.uri}\ncid: {result.cid}\nreply to: {in_reply_to}"
+            + _untagged_note(text, allowed)
             + warn_note
         )

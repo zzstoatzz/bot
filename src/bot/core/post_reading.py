@@ -90,6 +90,6 @@ async def read_post_url(url: str, uri: str) -> list[str | BinaryContent]:
         "post": post,
         "context": context,
         "images": media,
-        "scope": "Requested post and available exact parent/root versions only. Replies have not been read. Linked and quoted records are references, not inspected contents.",
+        "scope": "Requested post and available exact parent/root versions only. Replies have not been read; the read-thread skill reads them. Linked and quoted records are references, not inspected contents.",
     }
     return [json.dumps(evidence, ensure_ascii=False), *attachments]

@@ -1,5 +1,15 @@
 # changelog
 
+## 2026-10-20 — Tag the people in the thread, and say when a tag is dropped
+
+Told by bufo.uk to tag jev, Phi replied "@jev.zzstoatzz.io top 10 movies all
+time?" and it went out as plain text; `post` said "published" and nothing
+else (trace 01a15840…). The allowlist has promised conversation participants
+since 2026-04-06, but only the parent's author was ever passed in. A reply now
+allows everyone who has posted in its thread, `post` names any @handle that
+went out as plain text, and `read_web_page` names read-thread when it leaves
+replies unread.
+
 ## 2026-10-20 — Look it up instead of asking
 
 bufo.uk asked Jev "top 10 movies all time?" in one thread and Jev answered.

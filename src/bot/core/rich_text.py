@@ -15,6 +15,14 @@ URL_REGEX = rb"(?:^|[$|\W])(https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a
 BARE_URL_REGEX = rb"(?<![\w/.@-])((?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}(?:/[-a-zA-Z0-9@:%_\+.~#?&//=,]*[-a-zA-Z0-9@%_\+~#//=])?)"
 
 
+def mention_handles(text: str) -> list[str]:
+    """Every @handle in *text*, in order, without the @."""
+    return [
+        m.group(1)[1:].decode("UTF-8")
+        for m in re.finditer(MENTION_REGEX, text.encode("UTF-8"))
+    ]
+
+
 def parse_mentions(
     text: str, client: Client, allowed_handles: set[str] | None = None
 ) -> list[dict[str, Any]]:
