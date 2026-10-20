@@ -1,5 +1,16 @@
 # changelog
 
+## 2026-10-20 — Look it up instead of asking
+
+bufo.uk asked Jev "top 10 movies all time?" in one thread and Jev answered.
+In another thread Phi asked bufo what Jev had said, then asked Jev the
+question again. The traces show where the question reached her: the stranger
+lookup's recent posts, as bare text with no address and no sign of a reply.
+She made no lookup in either run. Recent posts in that lookup now carry their
+at-uri and reply count, and the operational instructions say to size a thread
+before answering about it and to look up anything public herself rather than
+asking the person.
+
 ## 2026-10-20 — Size a thread before answering about it
 
 The devlog quoted a post of the operator's and asked Phi to "analyze this

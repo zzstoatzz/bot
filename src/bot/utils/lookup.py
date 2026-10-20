@@ -48,7 +48,13 @@ async def fetch_author_lookup(
             indexed = getattr(item.post, "indexed_at", "") or ""
             ts = indexed[:16].replace("T", " ") if indexed else ""
             if text:
-                posts.append(f"  [{ts}] {text}")
+                replies = getattr(item.post, "reply_count", None) or 0
+                reply_note = (
+                    f" ({replies} {'reply' if replies == 1 else 'replies'})"
+                    if replies
+                    else ""
+                )
+                posts.append(f"  [{ts}] {text} [{item.post.uri}]{reply_note}")
     except Exception as e:
         logger.debug(f"author feed fetch failed for @{handle}: {e}")
 
