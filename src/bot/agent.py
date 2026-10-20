@@ -336,7 +336,10 @@ def _format_notifications_block(notifications_context: dict) -> str:
                     f"@{handle} {reason}d your post{where} [{uri}]{target_part}"
                 )
                 if thread_ctx and thread_ctx != "No previous messages in this thread.":
-                    lines.append(f"  thread context:\n  {thread_ctx}")
+                    indented = "\n".join(
+                        f"    {row}" for row in thread_ctx.splitlines()
+                    )
+                    lines.append(f"  thread context:\n{indented}")
                 for cited in cited_by_source.get(uri, []):
                     lines.append(_format_cited(cited))
 

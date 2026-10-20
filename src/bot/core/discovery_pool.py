@@ -23,6 +23,7 @@ import httpx
 
 from bot.config import settings
 from bot.memory import NamespaceMemory
+from bot.utils.thread import post_line
 
 logger = logging.getLogger("bot.discovery_pool")
 
@@ -58,12 +59,6 @@ class _SamplePost(TypedDict):
     uri: str
     text: str
     liked_at: str
-
-
-class _ReplyContext(TypedDict):
-    parent_uri: str
-    parent_handle: str
-    parent_text: str
 
 
 class _Entry(TypedDict):
@@ -142,13 +137,16 @@ async def _fetch_posts(uris: list[str]) -> list[dict]:
     return posts
 
 
-async def _reply_contexts(uris: list[str]) -> dict[str, _ReplyContext | None]:
-    """Map each reply sample to the post it answers.
+async def _hydrate(
+    uris: list[str],
+) -> tuple[dict[str, dict], dict[str, dict | None]]:
+    """Appview views of the samples, and each reply sample's parent.
 
-    Top-level samples are absent. A reply whose parent cannot be hydrated
-    maps to None, so the render still says it is a reply.
+    Top-level samples are absent from the second map. A reply whose parent
+    cannot be hydrated maps to None, so the render still says it is a reply.
     """
     posts = await _fetch_posts(uris)
+    views = {post["uri"]: post for post in posts if post.get("uri")}
     parents = {
         post["uri"]: parent
         for post in posts
@@ -159,40 +157,34 @@ async def _reply_contexts(uris: list[str]) -> dict[str, _ReplyContext | None]:
         )
     }
     if not parents:
-        return {}
+        return views, {}
     hydrated = {
         post["uri"]: post for post in await _fetch_posts(sorted(set(parents.values())))
     }
-    contexts: dict[str, _ReplyContext | None] = {}
-    for uri, parent_uri in parents.items():
-        parent = hydrated.get(parent_uri)
-        contexts[uri] = (
-            {
-                "parent_uri": parent_uri,
-                "parent_handle": (parent.get("author") or {}).get("handle", ""),
-                "parent_text": (parent.get("record") or {}).get("text", ""),
-            }
-            if parent
-            else None
-        )
-    return contexts
+    return views, {uri: hydrated.get(parent) for uri, parent in parents.items()}
+
+
+def _short_view(view: dict) -> dict:
+    record = view.get("record") or {}
+    return {**view, "record": {**record, "text": _short(record.get("text") or "")}}
 
 
 def _render_sample(
-    post: _SamplePost, contexts: dict[str, _ReplyContext | None]
+    handle: str,
+    post: _SamplePost,
+    views: dict[str, dict],
+    contexts: dict[str, dict | None],
 ) -> list[str]:
-    text = _short(post.get("text") or "")
     uri = post.get("uri", "")
-    lines = [f"  · {text!r}"]
+    view = {"uri": uri, "author": {"handle": handle}, **views.get(uri, {})}
+    view["record"] = {**(view.get("record") or {}), "text": post.get("text") or ""}
+    lines = [f"  · {post_line(_short_view(view))}"]
     if uri in contexts:
-        context = contexts[uri]
-        if context is None:
+        parent = contexts[uri]
+        if parent is None:
             lines.append("    ↳ a reply; the post it answers is unavailable")
         else:
-            lines.append(
-                f"    ↳ a reply to @{context['parent_handle'] or 'unknown'}: "
-                f"{_short(context['parent_text'])!r}"
-            )
+            lines.append(f"    ↳ a reply to {post_line(_short_view(parent))}")
     return lines
 
 
@@ -201,7 +193,8 @@ def _render(
     *,
     ranked: bool,
     samples: int,
-    contexts: dict[str, _ReplyContext | None] | None = None,
+    views: dict[str, dict] | None = None,
+    contexts: dict[str, dict | None] | None = None,
 ) -> str:
     if not entries:
         return ""
@@ -227,7 +220,9 @@ def _render(
         lines.append(f"@{e['handle']} ×{likes}{f' ({last[5:10]})' if last else ''}")
         for post in _best_samples(e.get("sample_posts") or [], samples):
             if _short(post.get("text") or ""):
-                lines.extend(_render_sample(post, contexts or {}))
+                lines.extend(
+                    _render_sample(e["handle"], post, views or {}, contexts or {})
+                )
     return "\n".join(lines)
 
 
@@ -239,7 +234,7 @@ async def _render_hydrated(entries: list[_Entry], *, ranked: bool, samples: int)
         if post.get("uri")
     ]
     try:
-        contexts = await _reply_contexts(uris) if uris else {}
+        views, contexts = await _hydrate(uris) if uris else ({}, {})
     except Exception as e:
         logger.warning(
             f"discovery pool reply hydration failed: {type(e).__name__}: {e}"
@@ -249,7 +244,9 @@ async def _render_hydrated(entries: list[_Entry], *, ranked: bool, samples: int)
             f"{block}\n\n(reply context unavailable this run: any sample may be "
             "a reply in someone else's thread. read it before treating it as standalone.)"
         )
-    return _render(entries, ranked=ranked, samples=samples, contexts=contexts)
+    return _render(
+        entries, ranked=ranked, samples=samples, views=views, contexts=contexts
+    )
 
 
 async def get_filtered_pool(

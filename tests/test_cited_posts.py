@@ -205,8 +205,11 @@ async def test_resolved_cited_entry_carries_its_replies():
 
     assert entry is not None
     assert entry["reply_count"] == 1
-    assert "@friend.test: and yet the bee flies anyway" in entry["thread_context"]
-    assert "continues below" not in entry["thread_context"]
+    assert (
+        "  @friend.test [at://did:plc:xyz/app.bsky.feed.post/bb]: "
+        "and yet the bee flies anyway"
+    ) in entry["thread_context"]
+    assert "more repl" not in entry["thread_context"]
 
 
 async def test_cited_thread_marks_replies_below_the_depth_cut():
@@ -219,5 +222,6 @@ async def test_cited_thread_marks_replies_below_the_depth_cut():
 
     assert entry is not None
     assert (
-        "continues below 6 levels (at least 2 more replies)" in entry["thread_context"]
-    )
+        "    … 2 more replies below, read-thread from "
+        "[at://did:plc:xyz/app.bsky.feed.post/bb]"
+    ) in entry["thread_context"]

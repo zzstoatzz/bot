@@ -106,8 +106,9 @@ async def test_unseeded_block_is_smaller_per_author_than_seeded():
         )
         # one sample per author on the broad path — and it's the most
         # substantive one, not the most recently liked
-        assert unseeded.count("'the longest sample'") == 1
-        assert "'one'" not in unseeded and "'two'" not in unseeded
+        assert unseeded.count(": the longest sample") == 1
+        lines = unseeded.splitlines()
+        assert not any(line.endswith((": one", ": two")) for line in lines)
     finally:
         POOL.pop()
 
@@ -216,7 +217,7 @@ def test_render_is_compact_and_essay_free():
     assert "@someone.bsky.social ×7 (08-06)" in block
     assert "humor" not in block
     assert "likes from operator" not in block
-    assert "'a real post'" in block
+    assert "  · @someone.bsky.social [u]: a real post" in block
 
 
 OKAMI_REPLY = "at://did:plc:3rwz3xfw2crswgifqgc3g7zh/app.bsky.feed.post/3mwhch3mylk2x"
@@ -258,7 +259,7 @@ async def test_a_reply_sample_names_the_post_it_answers(monkeypatch):
     finally:
         POOL.pop()
     okami = block[block.index("@okami.mom") :]
-    assert "a reply to @zzstoatzz.io: 'messing with mcp apps'" in okami
+    assert f"a reply to @zzstoatzz.io [{NATE_ROOT}]: messing with mcp apps" in okami
     assert "↳" not in block[: block.index("@okami.mom")]
 
 

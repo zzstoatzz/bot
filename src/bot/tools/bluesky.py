@@ -18,6 +18,7 @@ from bot.core.atproto_client import bot_client
 from bot.core.mentionable import add_handle, get_mentionable_handles, remove_handle
 from bot.core.override import get_override, refusal_text
 from bot.tools._helpers import PhiDeps, _check_services_impl, _is_owner, _relative_age
+from bot.utils.thread import post_line
 
 logger = logging.getLogger("bot.tools")
 
@@ -76,14 +77,8 @@ def register(agent):
             lines = []
             for item in posts:
                 p = item.post
-                text = p.record.text if hasattr(p.record, "text") else ""
-                age = (
-                    _relative_age(p.indexed_at, today)
-                    if hasattr(p, "indexed_at") and p.indexed_at
-                    else ""
-                )
-                age_str = f" ({age})" if age else ""
-                lines.append(f"[{p.uri}]{age_str}: {text[:200]}")
+                age = _relative_age(p.indexed_at, today) if p.indexed_at else ""
+                lines.append(post_line(p, extras=[age], limit=200))
             return "\n\n".join(lines)
         except Exception as e:
             return f"failed to get own posts: {e}"
@@ -99,14 +94,8 @@ def register(agent):
             lines = []
             for item in feed:
                 p = item.post
-                text = p.record.text if hasattr(p.record, "text") else ""
-                age = (
-                    _relative_age(p.indexed_at, today)
-                    if getattr(p, "indexed_at", "")
-                    else ""
-                )
-                age_str = f" ({age})" if age else ""
-                lines.append(f"@{p.author.handle} [{p.uri}]{age_str}: {text[:200]}")
+                age = _relative_age(p.indexed_at, today) if p.indexed_at else ""
+                lines.append(post_line(p, extras=[age], limit=200))
             return "\n\n".join(lines)
         except Exception as e:
             return f"failed to get likes: {e}"

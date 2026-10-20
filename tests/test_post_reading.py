@@ -9,6 +9,15 @@ from pydantic_ai import BinaryContent
 from bot.core import post_reading as reading
 
 URI = "at://did:plc:author/app.bsky.feed.post/post"
+
+
+@pytest.fixture(autouse=True)
+def no_network_replies(monkeypatch):
+    monkeypatch.setattr(
+        reading, "_replies_below", AsyncMock(return_value="@a.test [x] (1 reply): hi")
+    )
+
+
 PARENT = "at://did:plc:parent/app.bsky.feed.post/parent"
 
 
@@ -79,7 +88,8 @@ async def test_parent_version_and_image_attribution(monkeypatch, changed):
     assert isinstance(parts[0], str)
     evidence = json.loads(parts[0])
     assert fetch.await_count == 2  # identical parent/root ref read only once
-    assert "Replies have not been read" in evidence["scope"]
+    assert "replies below it" in evidence["scope"]
+    assert evidence["replies"] == "@a.test [x] (1 reply): hi"
     if changed:
         assert evidence["context"][0]["status"] == "version_changed"
         blob.assert_not_awaited()
@@ -124,3 +134,56 @@ async def test_image_budget_keeps_unread_images_visible(monkeypatch):
         "not_loaded",
     ]
     assert blob.await_count == 1
+
+
+async def test_replies_below_render_as_a_nested_thread(monkeypatch):
+    """2026-10-20: read_web_page is phi's reader for any bsky link, and it
+    left every reply out, so a conversation read as a single post."""
+    thread = {
+        "post": {
+            "uri": URI,
+            "author": {"handle": "a.test"},
+            "record": {"text": "question"},
+            "replyCount": 1,
+        },
+        "replies": [
+            {
+                "post": {
+                    "uri": PARENT,
+                    "author": {"handle": "b.test"},
+                    "record": {"text": "answer"},
+                    "replyCount": 3,
+                },
+                "replies": [],
+            }
+        ],
+    }
+
+    class Response:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"thread": thread}
+
+    class Client:
+        def __init__(self, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return None
+
+        async def get(self, url, params):
+            assert params["uri"] == URI
+            return Response()
+
+    monkeypatch.undo()
+    monkeypatch.setattr(reading.httpx, "AsyncClient", Client)
+    assert await reading._replies_below(URI) == (
+        f"@a.test [{URI}] (1 reply): question\n"
+        f"  @b.test [{PARENT}] (3 replies): answer\n"
+        f"    … 3 more replies below, read-thread from [{PARENT}]"
+    )

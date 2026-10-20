@@ -9,6 +9,7 @@ from pydantic_ai import RunContext
 
 from bot.config import settings
 from bot.memory import NamespaceMemory
+from bot.utils.thread import post_line
 
 logger = logging.getLogger("bot.tools")
 
@@ -150,30 +151,15 @@ def _relative_age(timestamp: str, today: date) -> str:
     return f"{years}y ago"
 
 
-def _post_url(uri: str, handle: str) -> str:
-    """Convert an AT-URI to a bsky.app URL."""
-    # at://did:plc:.../app.bsky.feed.post/rkey -> https://bsky.app/profile/handle/post/rkey
-    rkey = uri.split("/")[-1] if "/" in uri else ""
-    return f"https://bsky.app/profile/{handle}/post/{rkey}" if rkey else ""
-
-
 def _format_feed_posts(feed_posts, limit: int = 20) -> str:
     """Format feed posts into a readable summary."""
     today = date.today()
     lines = []
     for item in feed_posts[:limit]:
         post = item.post
-        text = post.record.text if hasattr(post.record, "text") else ""
-        handle = post.author.handle
         likes = post.like_count or 0
-        url = _post_url(post.uri, handle)
-        age = (
-            _relative_age(post.indexed_at, today)
-            if hasattr(post, "indexed_at") and post.indexed_at
-            else ""
-        )
-        age_str = f", {age}" if age else ""
-        lines.append(f"@{handle} ({likes} likes{age_str}): {text[:200]}\n  {url}")
+        age = _relative_age(post.indexed_at, today) if post.indexed_at else ""
+        lines.append(post_line(post, extras=[f"{likes} likes", age], limit=200))
     return "\n\n".join(lines)
 
 

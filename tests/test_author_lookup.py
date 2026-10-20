@@ -36,6 +36,7 @@ def _item(uri, text, replies):
     return SimpleNamespace(
         post=SimpleNamespace(
             uri=uri,
+            author=SimpleNamespace(handle="bufo.uk"),
             record=SimpleNamespace(text=text),
             indexed_at="2026-10-20T07:13:40Z",
             reply_count=replies,
@@ -55,5 +56,11 @@ async def test_recent_posts_carry_their_address_and_replies():
     )
 
     assert block is not None
-    assert f"top 10 movies all time? [{QUESTION}] (1 reply)" in block
-    assert "hi [at://did:plc:bufo/app.bsky.feed.post/3hi]\n" in block
+    assert (
+        f"@bufo.uk [{QUESTION}] (1 reply, 2026-10-20 07:13): "
+        "@jev.zzstoatzz.io top 10 movies all time?"
+    ) in block
+    assert (
+        "@bufo.uk [at://did:plc:bufo/app.bsky.feed.post/3hi] (2026-10-20 07:13): hi"
+        in block
+    )

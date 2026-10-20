@@ -1,5 +1,22 @@
 # changelog
 
+## 2026-10-20 — One way to show a post
+
+Posts reached phi through seven renderers, and most dropped the at-uri or the
+reply count: feeds, discovery samples, her own posts, the stranger lookup. A
+thread was a flat list fetched from its root, and the appview stops 10 levels
+below wherever a fetch starts, so in bufo.uk's thread phi's own post and the
+devlog reply asking her to fix it never reached her (trace 01a15853…).
+`read_web_page`, her reader for any bsky link, left out every reply.
+
+Now every post is `@handle [at-uri] (N replies, M quotes): text`, a thread is
+the parent chain then replies nested under what they answer, with "… N more
+below, read-thread from [uri]" wherever replies weren't loaded, and a
+notification whose post sits below the root fetch also gets the branch down to
+it. `read_web_page` on a post returns the replies under it. The tag allowlist
+reads that branch too. A contract test builds each surface from the same posts
+and fails if a line is missing its uri or reply count.
+
 ## 2026-10-20 — Tag the people in the thread, and say when a tag is dropped
 
 Told by bufo.uk to tag jev, Phi replied "@jev.zzstoatzz.io top 10 movies all

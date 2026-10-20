@@ -20,6 +20,7 @@ from bot.core.post_reading import post_uri_from_url, read_post_url
 from bot.core.prior_coverage import coverage_note
 from bot.tools._helpers import PhiDeps, WebSourceCapture, _relative_age
 from bot.tools.coral import entity_page
+from bot.utils.thread import post_line
 
 # coral: the operator's firehose NER service (sibling repo). `/` returns its
 # own endpoint list; the coral-editorial skill documents what each route is for.
@@ -56,13 +57,9 @@ def render_posts(posts: list[dict], today: date) -> str:
     for post in posts:
         record = post.get("record") or {}
         text = record.get("text", "")
-        handle = (post.get("author") or {}).get("handle", "?")
         likes = post.get("likeCount") or 0
         age = _relative_age(post.get("indexedAt") or "", today)
-        age_str = f", {age}" if age else ""
-        lines.append(
-            f"@{handle} [{post.get('uri', '')}] ({likes} likes{age_str}): {text}"
-        )
+        lines.append(post_line(post, extras=[f"{likes} likes", age]))
         encoded = text.encode("utf-8")
         for facet in record.get("facets") or []:
             index = facet.get("index") or {}

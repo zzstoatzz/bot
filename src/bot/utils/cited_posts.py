@@ -20,12 +20,11 @@ import re
 from atproto import AsyncIdResolver, AtUri
 
 from bot.utils.thread import (
-    build_thread_context,
     describe_embed,
     extract_image_urls,
     extract_posts_chronological,
+    render_thread,
     resolve_facet_links,
-    traverse_thread,
 )
 
 logger = logging.getLogger("bot.utils.cited_posts")
@@ -42,33 +41,14 @@ CITED_THREAD_DEPTH = 6
 CITED_THREAD_CHARS = 6000
 
 
-def _unloaded_replies(thread_node) -> int:
-    """Replies the service left out below its depth limit."""
-    missing = 0
-
-    def visit(node):
-        nonlocal missing
-        if not (getattr(node, "replies", None) or []):
-            missing += getattr(node.post, "reply_count", None) or 0
-
-    traverse_thread(thread_node, visit, include_parent=False)
-    return missing
-
-
 def _cited_thread_context(thread_node) -> str:
     if len(extract_posts_chronological(thread_node)) <= 1:
         return ""
-    context = build_thread_context(thread_node)
+    context = render_thread(thread_node)
     if len(context) > CITED_THREAD_CHARS:
         return (
             context[:CITED_THREAD_CHARS]
             + "\n… cut here; the read-thread skill reads the rest."
-        )
-    if missing := _unloaded_replies(thread_node):
-        context += (
-            f"\n… the thread continues below {CITED_THREAD_DEPTH} levels"
-            f" (at least {missing} more {'reply' if missing == 1 else 'replies'});"
-            " the read-thread skill reads the rest."
         )
     return context
 

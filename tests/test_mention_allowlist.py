@@ -98,7 +98,7 @@ async def test_thread_participants_cover_everyone_who_posted(monkeypatch):
         return SimpleNamespace(thread=thread)
 
     monkeypatch.setattr(posting.bot_client, "get_thread", get_thread)
-    assert await posting._thread_participants("at://root") == {
+    assert await posting._thread_participants("at://root", "at://root") == {
         "bufo.uk",
         "jev.zzstoatzz.io",
         "phi.zzstoatzz.io",

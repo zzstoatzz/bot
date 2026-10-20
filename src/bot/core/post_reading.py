@@ -8,9 +8,12 @@ from atproto import AtUri
 from pydantic_ai import BinaryContent
 
 from bot.core.media import fetch_blob_bytes, fetch_record, find_allowed_blobs
+from bot.utils.thread import render_thread
 
+APPVIEW = "https://public.api.bsky.app"
 MAX_IMAGES = 6
 MAX_IMAGE_BYTES = 2_000_000
+REPLY_DEPTH = 6
 
 
 def post_uri_from_url(url: str) -> str | None:
@@ -24,8 +27,24 @@ def post_uri_from_url(url: str) -> str | None:
     return f"at://{actor}/app.bsky.feed.post/{rkey}"
 
 
+async def _replies_below(uri: str) -> str:
+    """The post and the replies under it, nested, with cut markers."""
+    async with httpx.AsyncClient(timeout=15) as client:
+        response = await client.get(
+            f"{APPVIEW}/xrpc/app.bsky.feed.getPostThread",
+            params={"uri": uri, "depth": REPLY_DEPTH, "parentHeight": 0},
+        )
+        response.raise_for_status()
+    return render_thread(response.json().get("thread") or {})
+
+
 async def read_post_url(url: str, uri: str) -> list[str | BinaryContent]:
-    """Read the post and exact cited parent/root versions, never crawl replies."""
+    """Read the post, its exact cited parent/root versions, and the replies below it.
+
+    Replies used to be out of scope here, and this is the tool phi reaches for
+    on any bsky link (442 calls to read-thread's 23 by 2026-10-20), so a link
+    to a conversation read as one post with nothing under it.
+    """
     post = await fetch_record(uri)
     if not post.get("cid") or not post.get("uri"):
         raise ValueError("post read returned no versioned identity")
@@ -84,12 +103,17 @@ async def read_post_url(url: str, uri: str) -> list[str | BinaryContent]:
                 item.update(
                     status="unavailable", error=f"{type(error).__name__}: {error}"
                 )
+    try:
+        replies = await _replies_below(post["uri"])
+    except Exception as error:
+        replies = f"unavailable: {type(error).__name__}: {error}"
     evidence = {
         "url": url,
         "source_type": "atproto_post",
         "post": post,
         "context": context,
         "images": media,
-        "scope": "Requested post and available exact parent/root versions only. Replies have not been read; the read-thread skill reads them. Linked and quoted records are references, not inspected contents.",
+        "replies": replies,
+        "scope": f"Requested post, available exact parent/root versions, and replies below it to {REPLY_DEPTH} levels; '… more below' marks where read-thread continues. Other branches of the thread and linked or quoted records are not read.",
     }
     return [json.dumps(evidence, ensure_ascii=False), *attachments]

@@ -399,7 +399,11 @@ def _render(rows: list[_Row], truncated: int = 0, *, repo: str = "") -> str:
         if tag and not r["local"]:
             tag += " (not via this process)"
         tag_part = f"{tag}  " if tag else ""
-        lines.append(f"{time_part}  {nsid_part}  {tag_part}{r['summary']}")
+        summary = r["summary"]
+        # a post phi can't open is a post she can't check for replies
+        if repo and not tag and summary.startswith("top-level post"):
+            summary += f" [at://{repo}/{r['nsid']}/{r['rkey']}]"
+        lines.append(f"{time_part}  {nsid_part}  {tag_part}{summary}")
         if repo and tag:
             lines.append(f"  record: at://{repo}/{r['nsid']}/{r['rkey']}")
     if routine:

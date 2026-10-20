@@ -35,9 +35,9 @@ from bot.status import bot_status
 from bot.utils.cited_posts import extract_cited_references, resolve_cited_entry
 from bot.utils.lookup import fetch_author_lookup
 from bot.utils.thread import (
-    build_thread_context,
     describe_embed,
     extract_image_urls,
+    fetch_thread_context,
     resolve_facet_links,
     thread_root_view,
 )
@@ -162,11 +162,10 @@ class MessageHandler:
         thread_context = "No previous messages in this thread."
         root_author_handle, root_text = "", ""
         try:
-            thread_data = await view.get_thread(thread_uri, depth=100)
-            thread_context = build_thread_context(thread_data.thread)
-            root_author_handle, root_text = thread_root_view(
-                thread_data.thread, root_uri
+            thread_context, root_node = await fetch_thread_context(
+                view, thread_uri, post_uri
             )
+            root_author_handle, root_text = thread_root_view(root_node, root_uri)
         except Exception as e:
             logger.warning(f"failed to fetch thread context for {thread_uri}: {e}")
 
@@ -268,8 +267,9 @@ class MessageHandler:
                         logger.info(f"fetching thread context from {thread_uri}")
 
                     try:
-                        thread_data = await view.get_thread(thread_uri, depth=100)
-                        thread_context = build_thread_context(thread_data.thread)
+                        thread_context, _ = await fetch_thread_context(
+                            view, thread_uri, post_uri
+                        )
                         logger.info(
                             f"thread context for engagement: "
                             f"{len(thread_context)} chars"

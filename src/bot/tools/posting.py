@@ -65,24 +65,29 @@ async def _build_allowed_handles(*extra: str) -> set[str]:
     return base | {h for h in extra if h}
 
 
-async def _thread_participants(root_uri: str) -> set[str]:
+async def _thread_participants(root_uri: str, parent_uri: str) -> set[str]:
     """Handles of everyone who has posted in a Bluesky thread.
 
     The allowlist has promised "conversation participants" since the
     consent system landed (2026-04-06), but only the parent's author was
     ever passed in, so a tag of someone two replies up went out as plain
-    text (@jev in bufo.uk's thread, 2026-10-20).
+    text (@jev in bufo.uk's thread, 2026-10-20). The appview stops 10 levels
+    below the post a thread is fetched from, so the branch down to the
+    parent is fetched too.
     """
-    try:
-        thread = await bot_client.get_thread(root_uri, depth=100)
-    except Exception as e:
-        logger.warning(f"thread participants unavailable for {root_uri}: {e}")
-        return set()
-    return {
-        p.author.handle
-        for p in extract_posts_chronological(thread.thread)
-        if getattr(getattr(p, "author", None), "handle", "")
-    }
+    handles: set[str] = set()
+    for uri in dict.fromkeys((root_uri, parent_uri)):
+        try:
+            thread = await bot_client.get_thread(uri, depth=100)
+        except Exception as e:
+            logger.warning(f"thread participants unavailable for {uri}: {e}")
+            continue
+        handles |= {
+            p.author.handle
+            for p in extract_posts_chronological(thread.thread)
+            if getattr(getattr(p, "author", None), "handle", "")
+        }
+    return handles
 
 
 def _untagged_note(text: str, allowed: set[str]) -> str:
@@ -650,7 +655,9 @@ def register(agent):
         reply_ref = models.AppBskyFeedPost.ReplyRef(parent=parent_ref, root=root_ref)
 
         try:
-            participants = set() if app else await _thread_participants(root_uri)
+            participants = (
+                set() if app else await _thread_participants(root_uri, in_reply_to)
+            )
             allowed = await _build_allowed_handles(author_handle, *participants)
             if app:
                 result = await create_app_reply(
