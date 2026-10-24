@@ -26,6 +26,16 @@ from bot.utils.thread import post_line
 # own endpoint list; the coral-editorial skill documents what each route is for.
 CORAL_BASE = "https://coral.fly.dev"
 
+# coral's three populations share one route set under a prefix. `/` lists only
+# global and simcluster routes, so the skill names /delve too.
+TrendScope = Literal["global", "simcluster", "delve"]
+CORAL_SCOPES: dict[str, tuple[str, str]] = {
+    "global": ("", "the firehose"),
+    "simcluster": ("/simcluster", "a ~600-account cohort"),
+    "delve": ("/delve", "native delve.town posts"),
+}
+GRAPH_PATHS = {f"{prefix}/entity-graph" for prefix, _ in CORAL_SCOPES.values()}
+
 
 def _day_bound(day: str) -> str:
     """YYYY-MM-DD -> the ISO instant searchPosts wants; full timestamps pass through."""
@@ -358,8 +368,23 @@ def register(agent):
         return result
 
     @agent.tool
-    async def get_trending(ctx: RunContext[PhiDeps]) -> str:
-        """Get what's currently trending on Bluesky. Returns coral's curated stories (named groups of co-occurring entities from the firehose), the entities driving them, and official Bluesky trending topics. Use this when someone asks about current events, what people are talking about, or when you want timely context. For anything deeper than this summary, use coral_query."""
+    async def get_trending(
+        ctx: RunContext[PhiDeps],
+        scope: Annotated[
+            TrendScope,
+            Field(
+                description=(
+                    "Which population coral reads: 'global' (the Bluesky "
+                    "firehose plus delve.town, with Bluesky's own trending "
+                    "topics), 'simcluster' (a ~600-account cohort, so baselines "
+                    "mean surprising for those people), or 'delve' (native "
+                    "delve.town posts)."
+                )
+            ),
+        ] = "global",
+    ) -> str:
+        """Get what's trending. Returns coral's curated stories (named groups of co-occurring entities) and the entities driving them for the chosen scope; the global scope adds official Bluesky trending topics. Use this when someone asks about current events, what people are talking about (on Bluesky, in the cohort, or on delve.town), or when you want timely context. For anything deeper than this summary, use coral_query."""
+        prefix, source = CORAL_SCOPES[scope]
         parts: list[str] = []
 
         async with httpx.AsyncClient(timeout=15) as client:
@@ -368,12 +393,12 @@ def register(agent):
             # what phi's own editorialContext notes shape).
             try:
                 r = await client.get(
-                    f"{CORAL_BASE}/groups/history", params={"limit": 8}
+                    f"{CORAL_BASE}{prefix}/groups/history", params={"limit": 8}
                 )
                 r.raise_for_status()
                 topics = r.json().get("topics", [])
                 if topics:
-                    lines = ["coral stories (curated from the firehose):"]
+                    lines = [f"coral {scope} stories (curated from {source}):"]
                     for t in topics:
                         members = ", ".join(t.get("entities", [])[:5])
                         lines.append(
@@ -382,12 +407,12 @@ def register(agent):
                         )
                     parts.append("\n".join(lines))
             except Exception as e:
-                parts.append(f"coral stories unavailable: {e}")
+                parts.append(f"coral {scope} stories unavailable: {e}")
 
             # entities second, and fewer of them: they catch a spike the curator
             # has not named yet, which is the one thing the groups cannot show.
             try:
-                r = await client.get(f"{CORAL_BASE}/entity-graph")
+                r = await client.get(f"{CORAL_BASE}{prefix}/entity-graph")
                 r.raise_for_status()
                 data = r.json()
                 entities = data.get("entities", [])
@@ -398,7 +423,7 @@ def register(agent):
                 )[:8]
 
                 lines = [
-                    f"coral entities ({stats.get('active', 0)} active, "
+                    f"coral {scope} entities ({stats.get('active', 0)} active, "
                     f"{stats.get('clusters', 0)} clusters"
                     f"{', percolating' if stats.get('percolates') else ''}):"
                 ]
@@ -409,22 +434,26 @@ def register(agent):
                     )
                 parts.append("\n".join(lines))
             except Exception as e:
-                parts.append(f"coral unavailable: {e}")
+                parts.append(f"coral {scope} unavailable: {e}")
 
-            # official bluesky trending topics
-            try:
-                r = await client.get(
-                    "https://public.api.bsky.app/xrpc/app.bsky.unspecced.getTrendingTopics"
-                )
-                r.raise_for_status()
-                topics = r.json().get("topics", [])
-                if topics:
-                    lines = ["bluesky trending:"]
-                    for t in topics[:15]:
-                        lines.append(f"  {t.get('displayName', t.get('topic', ''))}")
-                    parts.append("\n".join(lines))
-            except Exception as e:
-                parts.append(f"bluesky trending unavailable: {e}")
+            # official bluesky trending topics describe the whole network, so
+            # they only belong beside the global scope.
+            if scope == "global":
+                try:
+                    r = await client.get(
+                        "https://public.api.bsky.app/xrpc/app.bsky.unspecced.getTrendingTopics"
+                    )
+                    r.raise_for_status()
+                    topics = r.json().get("topics", [])
+                    if topics:
+                        lines = ["bluesky trending:"]
+                        for t in topics[:15]:
+                            lines.append(
+                                f"  {t.get('displayName', t.get('topic', ''))}"
+                            )
+                        parts.append("\n".join(lines))
+                except Exception as e:
+                    parts.append(f"bluesky trending unavailable: {e}")
 
         return "\n\n".join(parts) if parts else "no trending data available"
 
@@ -437,8 +466,8 @@ def register(agent):
                 description=(
                     "coral API path, e.g. '/groups/history?limit=20', "
                     "'/entity-graph', '/history/topics?range=day', '/stats', "
-                    "or the '/simcluster/...' mirror. GET '/' for the "
-                    "endpoint list."
+                    "or the same routes under '/simcluster/...' or "
+                    "'/delve/...'. GET '/' for the global endpoint list."
                 )
             ),
         ],
@@ -463,7 +492,7 @@ def register(agent):
         if not path.startswith("/"):
             path = "/" + path
         graph_path = path.split("?", 1)[0]
-        is_graph = graph_path in {"/entity-graph", "/simcluster/entity-graph"}
+        is_graph = graph_path in GRAPH_PATHS
         if is_graph and "?" in path:
             return "Use query, limit, and offset tool arguments for graph pages; remove URL parameters."
         if not 1 <= limit <= 20 or offset < 0:

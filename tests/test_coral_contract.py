@@ -87,6 +87,7 @@ def test_skill_documents_the_routes_the_tool_can_reach():
         "/history/topics",
         "/history/top",
         "/simcluster/",
+        "/delve/",
     ):
         assert route in SKILL, (
             f"coral route {route} is undocumented in the coral-editorial "

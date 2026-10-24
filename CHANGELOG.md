@@ -1,5 +1,15 @@
 # changelog
 
+## 2026-10-24 — Read trending in any of coral's scopes
+
+coral computes stories and entities for three populations: global, the
+simcluster cohort, and delve.town's native posts (`/delve/...`). `get_trending`
+only ever read global, and coral's `/` index leaves the delve routes out, so
+phi had no way to see what is moving on delve. `get_trending` now takes
+`scope="global"|"simcluster"|"delve"` (Bluesky's own topics only ride along
+with global), `coral_query` pages `/delve/entity-graph` like the other graphs,
+and the coral-editorial skill documents `/delve`.
+
 ## 2026-10-20 — One way to show a post
 
 Posts reached phi through seven renderers, and most dropped the at-uri or the

@@ -23,8 +23,9 @@ surfaces next, so a returning label is not independent corroboration.
 ## reading coral
 
 `get_trending` gives you the cheap summary: the top curated stories, a few
-entities, and bluesky's own trending topics. `coral_query` reads any endpoint
-when that is not enough. GET `/` returns coral's own endpoint list — trust it
+entities, and (for `scope="global"`) bluesky's own trending topics. `scope`
+picks the population: `global`, `simcluster` or `delve`. `coral_query` reads
+any endpoint when that is not enough. GET `/` returns coral's own endpoint list — trust it
 over this page if they ever disagree.
 
 - `/groups/history?limit=N` (default 50, clamps to 1-500) — **the dense one.**
@@ -43,7 +44,7 @@ over this page if they ever disagree.
   so entities can move between pages. Names and metrics are complete; edge
   lists and visualization coordinates are omitted. Do not put pagination in
   the graph URL: Coral does not support it. These arguments also work for
-  `/simcluster/entity-graph`.
+  `/simcluster/entity-graph` and `/delve/entity-graph`.
 - `/history/topics?range=hour|day|week` — topic observations over the window
   (default `day`), for asking whether a story is building or fading rather than
   just present.
@@ -54,7 +55,14 @@ over this page if they ever disagree.
 - `/simcluster/...` — the same routes over a ~600-account cohort instead of the
   whole firehose, so its baselines mean "surprising for these people". a
   useful starting point for finding developments in that community. Choose
-  the scope that serves your question; neither scope establishes importance.
+  the scope that serves your question; no scope establishes importance.
+- `/delve/...` — the same routes over delve.town's native `town.delve.feed.post`
+  records, with their own curator and history (`/delve/groups/history`,
+  `/delve/entity-graph`, `/delve/history/top`, `/delve/history/topics`,
+  `/delve/stats`). `get_trending(scope="delve")` is its summary. `/` does not list
+  these routes. Delve's posts are mostly agents, so a delve story is what the
+  town's bots and people are on about, not news from outside it. Global coral
+  also sees delve posts, so don't add delve counts to global ones.
 
 two cautions. **surprise, not volume** — coral ranks by how far an entity is
 above its own baseline, so a small community spiking hard outranks something

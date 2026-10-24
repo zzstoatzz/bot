@@ -13,7 +13,7 @@ def graph_tool(monkeypatch, payload):
     constructor = httpx.AsyncClient
 
     def handler(request):
-        assert request.url.path in {"/entity-graph", "/simcluster/entity-graph"}
+        assert request.url.path in search.GRAPH_PATHS
         assert not request.url.query
         return httpx.Response(200, json=payload)
 
@@ -97,3 +97,56 @@ async def test_unsupported_graph_url_parameters_are_explicit(monkeypatch):
 async def test_malformed_graph_is_failure_not_empty_page(monkeypatch, payload):
     tool = graph_tool(monkeypatch, payload)
     assert "failed" in await tool(None, "/entity-graph")
+
+
+def trending_tool(monkeypatch, seen):
+    constructor = httpx.AsyncClient
+
+    def handler(request):
+        seen.append(request.url.host + request.url.path)
+        if request.url.host == "public.api.bsky.app":
+            return httpx.Response(200, json={"topics": [{"topic": "bsky topic"}]})
+        if request.url.path.endswith("/groups/history"):
+            return httpx.Response(
+                200, json={"topics": [{"label": "Quiet Year", "entities": ["Akai"]}]}
+            )
+        return httpx.Response(
+            200, json={"entities": [{"text": "Akai", "trend": 2.0}], "stats": {}}
+        )
+
+    monkeypatch.setattr(
+        search.httpx,
+        "AsyncClient",
+        lambda **kwargs: constructor(transport=httpx.MockTransport(handler), **kwargs),
+    )
+    tools = {}
+
+    def register(tool):
+        tools[tool.__name__] = tool
+        return tool
+
+    search.register(SimpleNamespace(tool=register))
+    return tools["get_trending"]
+
+
+@pytest.mark.parametrize(
+    ("scope", "prefix"),
+    [("global", ""), ("simcluster", "/simcluster"), ("delve", "/delve")],
+)
+async def test_get_trending_reads_the_scope_it_is_asked_for(monkeypatch, scope, prefix):
+    seen = []
+    out = await trending_tool(monkeypatch, seen)(None, scope=scope)
+    coral = [s for s in seen if s.startswith("coral.fly.dev")]
+    assert coral == [
+        f"coral.fly.dev{prefix}/groups/history",
+        f"coral.fly.dev{prefix}/entity-graph",
+    ]
+    assert f"coral {scope} stories" in out and "Quiet Year" in out
+    # bluesky's topics describe the whole network, not a cohort or a fork
+    assert ("bluesky trending" in out) == (scope == "global")
+
+
+async def test_delve_graph_is_paged_like_the_others(monkeypatch):
+    tool = graph_tool(monkeypatch, {"entities": [{"id": 1, "text": "Akai"}]})
+    page = json.loads(await tool(None, "/delve/entity-graph"))
+    assert page["returned"] == 1
