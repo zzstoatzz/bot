@@ -35,7 +35,7 @@ lexicons/                  # custom io.zzstoatzz.phi.* lexicon definitions (publ
 docs/                      # deeper reference (docs/README.md has the reading order)
 personalities/             # personality definitions (public; phi.md is the live one)
 skills/                    # phi's runtime skills (loaded by the agent at run time)
-.claude/skills/            # operator-facing skills (for the human + claude code working on phi)
+.agents/skills/             # operator-facing skills for coding agents working on phi
 evals/                     # behavioral tests
 scripts/                   # proven utility scripts
 sandbox/                   # experiments (graduate to scripts/ once proven)
@@ -67,9 +67,14 @@ two distinct namespaces — don't confuse them:
 
 - `.tangled/workflows/deploy.yml` — CI: tests, then `flyctl deploy` on every push to main (`FLY_API_TOKEN` is a tangled repo secret). a merged pull request deploys phi, including the ones she opens against `personalities/phi.md`.
 - `skills/` — **phi's runtime skills.** loaded by the agent during `agent.run()`. `choose-influences` manages Phi-owned author/work choices on PDS; the background reader is not yet connected to runs. these are things *phi* does: `publish-blog`, `cosmik-records`, `pdsx-fundamentals`, `self-traces` (execution evidence from Logfire and bounded public history from Jetstream V2), `own-source` (what she is, from this repo via the tangled tools), `read-thread` (a whole Bluesky conversation, sized first, before she joins it or answers about it).
-- `.claude/skills/` — **operator-facing skills.** for the human + claude code working *on* phi, not phi itself. these are things *you* do to inspect or talk to phi:
+- `.agents/skills/` — **operator-facing skills.** for the human and coding agents working *on* phi, not phi itself. these are things *you* do to inspect or talk to phi:
   - `phi-check` — inspect phi's health/activity via logfire, bsky, fly, PDS.
   - `devlog-to-phi` — post a message to phi from the operator's devlog account (the pdsx MCP is already authed as devlog; it's a thin record-create recipe, no script).
+  - `toolset-audit` — inspect tool and skill weight, use, and ownership.
+  - `hone-prompts` — review prompt/context boundaries against captured runs.
+
+Pi and Codex discover `.agents/skills/` directly. Keep `.claude/skills`
+symlinked to `../.agents/skills` for Claude Code, including future additions.
 
 when you add a capability, decide which namespace it belongs to and document it here. prefer the pdsx MCP over hand-rolled scripts for any atproto write.
 

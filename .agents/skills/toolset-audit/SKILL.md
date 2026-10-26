@@ -1,6 +1,12 @@
 ---
 name: toolset-audit
-description: Audit an agent's toolset and skills against evidence — what each tool weighs in the context window, how often it was actually called, when it was added and under which gating paradigm — and produce a remove / filter / keep decision per tool. Use when an agent's prompt feels heavy, a toolset has grown by accretion, or before changing what an agent can do. phi-specific: the queries and paradigm dates are hers.
+description: >-
+  Audit an agent's toolset and skills against evidence — what each tool weighs in
+  the context window, how often it was actually called, when it was added and
+  under which gating paradigm — and produce a remove / filter / keep decision
+  per tool. Use when an agent's prompt feels heavy, a toolset has grown by
+  accretion, or before changing what an agent can do. phi-specific: the queries
+  and paradigm dates are hers.
 ---
 
 # agent toolset audit

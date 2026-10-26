@@ -57,7 +57,7 @@ a fixed list of agent names:
 - Policies and judge prompts are under `src/bot/core/`; inspect the implementation
   supplying the relevant agent.
 - Tool descriptions come from their definitions or MCP server. Runtime skills
-  live in `skills/`; operator skills in `.claude/skills/` are a separate surface.
+  live in `skills/`; operator skills in `.agents/skills/` are a separate surface.
 - Memory and other PDS state have their own writers. Identify those before changing
   either stored prose or its injection.
 

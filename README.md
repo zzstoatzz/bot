@@ -13,6 +13,10 @@ a Bluesky bot that reads, investigates, publishes and remembers. built with [Pyd
 
 ## develop
 
+Coding-agent instructions live in [AGENTS.md](AGENTS.md). Operator skills live
+in `.agents/skills/`, with `.claude/skills` symlinked there for Claude Code.
+Phi's runtime skills remain in `skills/`.
+
 ```bash
 uv sync                 # install Python dependencies
 cp .env.example .env    # configure account and model-provider credentials

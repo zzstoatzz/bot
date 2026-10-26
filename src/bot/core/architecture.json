@@ -281,7 +281,7 @@
       "lane": 2,
       "row": 1,
       "summary": "Discover, load, then use",
-      "details": "The initial skill catalog names capabilities. load_skill reveals full instructions when needed. Runtime skills belong to Phi; .claude/skills belongs to the operator.",
+      "details": "The initial skill catalog names capabilities. load_skill reveals full instructions when needed. Runtime skills belong to Phi; .agents/skills belongs to the operator.",
       "sources": [
         {
           "path": "src/bot/agent.py",

@@ -8,7 +8,7 @@ tools within that run; the returned text is a logging summary. The reviewed
 The [memory and context map](memory.md) explains every surface's purpose and
 origin. [System prompt](system-prompt.md) describes current injection; [safety](safety.md)
 describes enforcement. Runtime workflows live in `skills/`; operator tooling lives
-in `.claude/skills/`.
+in `.agents/skills/`, with a `.claude/skills` discovery symlink for Claude Code.
 
 ## Entry points
 
