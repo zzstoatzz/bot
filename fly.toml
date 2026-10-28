@@ -8,8 +8,7 @@ primary_region = "ord"
   strategy = "rolling"
 
 [[restart]]
-  policy = "on-failure"
-  retries = 10
+  policy = "always"
 
 [mounts]
   source = "phi_data"
