@@ -1,5 +1,16 @@
 # changelog
 
+## 2026-11-01 — Restarts no longer re-run today's reflection
+
+On startup the poller guessed which scheduled slots had run by looking for
+today's top-level posts. Most reflections and many cycles end without a post,
+so a deploy after the reflection hour ran it again: on 11-01 the 21:48Z deploy
+re-ran the 20:00Z reflection, which then posted. The last reflection and cycle
+times now persist in `/data/status.json` beside the bio refresh time, and the
+post-history guess is gone. With no record (a fresh volume, or this first
+deploy) the current slots count as run, since skipping one is safe and
+repeating one is not.
+
 ## 2026-11-01 — Library receipts fit turbopuffer's id limit
 
 Every semble library call writes a `started` and a `returned` receipt to the

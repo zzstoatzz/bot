@@ -34,6 +34,11 @@ class BotStatus:
     resumed_at: datetime | None = None
     last_profile_review_at: datetime | None = None
     last_bio_refresh_at: datetime | None = None
+    # when the daily reflection and the latest cycle slot last fired. persisted
+    # so a restart does not run today's again: both often end without a post,
+    # so post history cannot tell whether they happened.
+    last_daily_reflection_at: datetime | None = None
+    last_cycle_at: datetime | None = None
     # logfire alert incidents (core/alert_watch.py) and the per-alert
     # last_run cursor that keeps a re-observed firing from counting twice.
     alert_incidents: dict = field(default_factory=dict)
@@ -101,6 +106,22 @@ class BotStatus:
             self.last_profile_review_at = started_at
         self._save()
 
+    def record_daily_reflection(self, at: datetime):
+        self.last_daily_reflection_at = at
+        self._save()
+
+    def record_cycle(self, at: datetime):
+        self.last_cycle_at = at
+        self._save()
+
+    def assume_schedule_ran(self, at: datetime):
+        """With no record, count the current slots as run: a skip is safe, a repeat is not."""
+        if self.last_daily_reflection_at is None:
+            self.last_daily_reflection_at = at
+        if self.last_cycle_at is None:
+            self.last_cycle_at = at
+        self._save()
+
     def seconds_until_bio_refresh(self) -> float:
         if self.last_bio_refresh_at is None:
             return 0.0
@@ -151,6 +172,12 @@ class BotStatus:
                 "last_bio_refresh_at": self.last_bio_refresh_at.isoformat()
                 if self.last_bio_refresh_at
                 else None,
+                "last_daily_reflection_at": self.last_daily_reflection_at.isoformat()
+                if self.last_daily_reflection_at
+                else None,
+                "last_cycle_at": self.last_cycle_at.isoformat()
+                if self.last_cycle_at
+                else None,
                 "alert_incidents": self.alert_incidents,
                 "alert_watch_cursor": self.alert_watch_cursor,
             }
@@ -188,6 +215,12 @@ class BotStatus:
                 self.last_bio_refresh_at = datetime.fromisoformat(
                     data["last_bio_refresh_at"]
                 )
+            if data.get("last_daily_reflection_at"):
+                self.last_daily_reflection_at = datetime.fromisoformat(
+                    data["last_daily_reflection_at"]
+                )
+            if data.get("last_cycle_at"):
+                self.last_cycle_at = datetime.fromisoformat(data["last_cycle_at"])
             self.alert_incidents = dict(data.get("alert_incidents") or {})
             self.alert_watch_cursor = dict(data.get("alert_watch_cursor") or {})
             logger.info(

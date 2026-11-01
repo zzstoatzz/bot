@@ -3,7 +3,7 @@
 import asyncio
 import logging
 import time
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import logfire
@@ -61,9 +61,6 @@ class NotificationPoller:
         self._recovery_task: asyncio.Task | None = None
         self._processed_uris: set[str] = set()
         self._first_poll = True
-        self._last_daily_post: datetime | None = None
-        self._last_thought_hours: set[int] = set()
-        self._last_thought_date: date | None = None
         self._semaphore = asyncio.Semaphore(MAX_CONCURRENT)
         self._batch_task: asyncio.Task | None = None
         self._background_tasks: set[asyncio.Task] = set()
@@ -142,74 +139,11 @@ class NotificationPoller:
                 delay = 5 * 60
             await asyncio.sleep(delay)
 
-    async def _seed_schedule_from_history(self):
-        """Seed scheduling state from phi's recent post history.
-
-        Without this, every restart wipes _last_daily_post and
-        _last_thought_hours, causing phi to re-run today's daily reflection
-        and any thought-post hours that already happened. The fix: at startup,
-        look at phi's recent top-level posts and infer which schedule slots
-        have already been filled today.
-
-        Heuristic (deliberately loose), all in operator-local time:
-        - any top-level post made today (operator local) at or after
-          daily_reflection_hour marks the daily reflection slot as done
-        - any top-level post made today (operator local) during a
-          thought_post_hours hour marks that hour as done
-
-        This is approximate — phi makes top-level posts from many contexts
-        besides scheduled reflections (e.g. agent replies that decided to go
-        top-level). But the worst case of being approximate is that phi
-        SKIPS a scheduled post that was actually a reply-shaped post — which
-        is the safe failure mode (silence is fine, double-posting is not).
-        """
-        try:
-            feed = await self.client.get_own_posts(limit=20)
-        except Exception as e:
-            logger.warning(f"failed to seed schedule from history: {e}")
-            return
-
-        tz = _operator_tz()
-        today_local = datetime.now(tz).date()
-        seeded_daily = False
-        seeded_hours: set[int] = set()
-
-        for item in feed:
-            indexed_at = getattr(item.post, "indexed_at", None)
-            if not indexed_at:
-                continue
-            try:
-                ts = datetime.fromisoformat(indexed_at.replace("Z", "+00:00"))
-            except (ValueError, TypeError):
-                continue
-            ts_local = ts.astimezone(tz)
-            if ts_local.date() != today_local:
-                continue
-
-            if not seeded_daily and ts_local.hour >= settings.daily_reflection_hour:
-                self._last_daily_post = ts
-                seeded_daily = True
-
-            if ts_local.hour in settings.thought_post_hours:
-                seeded_hours.add(ts_local.hour)
-
-        if seeded_hours:
-            self._last_thought_hours = seeded_hours
-            self._last_thought_date = today_local
-
-        if seeded_daily or seeded_hours:
-            logger.info(
-                f"seeded schedule from history: "
-                f"daily_done={seeded_daily}, thought_hours={sorted(seeded_hours)}"
-            )
-
     async def _poll_loop(self):
         """Main polling loop."""
         await self.client.authenticate()
 
-        # Restore scheduling state from observed post history so deploys
-        # don't cause duplicate scheduled posts.
-        await self._seed_schedule_from_history()
+        bot_status.assume_schedule_ran(datetime.now(UTC))
 
         while self._running:
             try:
@@ -602,17 +536,14 @@ class NotificationPoller:
             return False
         if bot_status.paused:
             return False
-        if (
-            self._last_daily_post
-            and self._last_daily_post.astimezone(_operator_tz()).date()
-            == now_local.date()
-        ):
-            return False
-        return True
+        last = bot_status.last_daily_reflection_at
+        return (
+            last is None or last.astimezone(_operator_tz()).date() != now_local.date()
+        )
 
     async def _maybe_daily_post(self):
         """Post a daily reflection."""
-        self._last_daily_post = datetime.now(UTC)
+        bot_status.record_daily_reflection(datetime.now(UTC))
         logger.info("triggering daily reflection")
         try:
             await self.handler.daily_reflection()
@@ -627,25 +558,21 @@ class NotificationPoller:
         ``settings.thought_post_hours`` slot, at most once per slot per day.
         """
         now_local = _now_local()
-        today_local = now_local.date()
-        if bot_status.paused:
+        if bot_status.paused or now_local.hour not in settings.thought_post_hours:
             return False
-        # reset tracked hours at local midnight (operator's day)
-        if self._last_thought_date != today_local:
-            self._last_thought_hours = set()
-            self._last_thought_date = today_local
-        hour = now_local.hour
-        if hour not in settings.thought_post_hours:
-            return False
-        if hour in self._last_thought_hours:
-            return False
-        return True
+        last = bot_status.last_cycle_at
+        if last is None:
+            return True
+        last_local = last.astimezone(_operator_tz())
+        return (last_local.date(), last_local.hour) != (
+            now_local.date(),
+            now_local.hour,
+        )
 
     async def _maybe_run_cycle(self):
         """Trigger one cognitive cycle."""
         now_local = _now_local()
-        self._last_thought_hours.add(now_local.hour)
-        self._last_thought_date = now_local.date()
+        bot_status.record_cycle(now_local)
         # a slot is either a general cycle or a people pass. same rhythm,
         # different attention — see settings.people_pass_hours.
         is_people = now_local.hour in settings.people_pass_hours
