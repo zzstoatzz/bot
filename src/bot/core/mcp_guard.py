@@ -660,7 +660,7 @@ async def _invoke(
 ) -> Any:
     """Call the tool, turning failures into something phi can act on."""
     try:
-        return await call_tool(name, tool_args, None)
+        return await call_tool(name, tool_args)
     except Exception as e:
         logger.warning(f"{server} {name} failed during {run_label}: {e}")
         detail = str(e)

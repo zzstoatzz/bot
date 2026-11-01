@@ -34,7 +34,7 @@ def calls():
 
 
 def call_tool_stub(calls: list):
-    async def call_tool(name, args, _):
+    async def call_tool(name, args, *, metadata=None):
         calls.append((name, args))
         return "ok"
 
@@ -336,7 +336,7 @@ async def test_logger_passes_call_through_and_logs(monkeypatch):
     with patch("bot.core.mcp_guard.logfire") as mock_logfire:
         result = await process(None, call_tool, "execute", {"code": code})
     assert result == "ok"
-    call_tool.assert_awaited_once_with("execute", {"code": code}, None)
+    call_tool.assert_awaited_once_with("execute", {"code": code})
     kwargs = mock_logfire.info.call_args.kwargs
     assert kwargs["run_label"] == "batch"
     # renamed from `writes` when the hook generalized to every MCP server
@@ -416,7 +416,7 @@ async def test_guard_appends_coverage_to_sizeable_read(monkeypatch):
     guard = mcp_guard.make_mcp_guard("pdsx", "test")
     big = "x" * 500
 
-    async def call_tool(name, args, meta):
+    async def call_tool(name, args, *, metadata=None):
         return big
 
     ctx = SimpleNamespace(deps=SimpleNamespace(memory=object()))
@@ -435,13 +435,13 @@ async def test_guard_skips_coverage_for_small_or_memoryless(monkeypatch):
     monkeypatch.setattr(mcp_guard, "coverage_note", note)
     guard = mcp_guard.make_mcp_guard("pdsx", "test")
 
-    async def call_tool(name, args, meta):
+    async def call_tool(name, args, *, metadata=None):
         return "tiny"
 
     ctx = SimpleNamespace(deps=SimpleNamespace(memory=object()))
     assert await guard(ctx, call_tool, "list_records", {}) == "tiny"
 
-    async def call_tool_big(name, args, meta):
+    async def call_tool_big(name, args, *, metadata=None):
         return "y" * 500
 
     assert await guard(None, call_tool_big, "list_records", {}) == "y" * 500
@@ -558,7 +558,7 @@ async def test_logger_records_call_tool_writes(monkeypatch):
     with patch("bot.core.mcp_guard.logfire") as mock_logfire:
         result = await process(None, call_tool, "semble_call_tool", args)
     assert result == "ok"
-    call_tool.assert_awaited_once_with("semble_call_tool", args, None)
+    call_tool.assert_awaited_once_with("semble_call_tool", args)
     kwargs = mock_logfire.info.call_args.kwargs
     assert kwargs["server"] == "semble"
     assert kwargs["changes"] == ["connections_create"]

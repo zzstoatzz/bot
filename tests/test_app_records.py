@@ -31,7 +31,7 @@ def calls(monkeypatch):
 
 
 async def write(calls, name, args, gate=PASS, ctx=None):
-    async def call_tool(tool, sent, _):
+    async def call_tool(tool, sent, *, metadata=None):
         calls.append((tool, sent))
         return "ok"
 
