@@ -35,14 +35,15 @@ logfire (pydantic-ai instrumentation), `/v1/query` with a read token:
 SELECT attributes->>'gen_ai.tool.name' AS tool,
        count(*) AS calls, count(DISTINCT trace_id) AS runs
 FROM records
-WHERE span_name = 'running tool'
+WHERE span_name LIKE 'execute_tool %' OR span_name = 'running tool'
 GROUP BY 1 ORDER BY 2 DESC
 ```
 
 MCP tool names arrive with the toolset's `tool_prefix` (`tangled_read_file`)
 or without one (pdsx's `get_record`); join on both spellings. for skills,
-group `load_skill` by `attributes->>'tool_arguments'` to see which skills are
-ever loaded.
+group `load_capability` by `attributes->>'gen_ai.tool.call.arguments'` (before
+2026-11-01: `load_skill` by `tool_arguments`) to see which skills are ever
+loaded. tool spans were `running tool` before that date.
 
 **3. age and paradigm** — when it was written and what gate existed then.
 

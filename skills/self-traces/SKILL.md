@@ -60,13 +60,17 @@ archive reads themselves do not change memory or authorize public contact.
 
 ## span shapes that matter
 
-- `span_name = 'running tool'` — one row per tool call you made.
+- `span_name LIKE 'execute_tool %'` — one row per tool call you made.
   `attributes->>'gen_ai.tool.name'` is the tool,
-  `attributes->>'tool_arguments'` is the JSON args you passed.
-  `attributes->'tool_response'` is the returned result. Inspect its errors,
-  pagination, and truncation fields when assessing a search's coverage.
-- `span_name = 'agent run'` — one row per run of you (a batch, a cycle, a
-  scheduled pass).
+  `attributes->>'gen_ai.tool.call.arguments'` is the JSON args you passed.
+  `attributes->'gen_ai.tool.call.result'` is the returned result. Inspect its
+  errors, pagination, and truncation fields when assessing a search's coverage.
+- `span_name = 'invoke_agent phi'` — one row per run of you (a batch, a
+  cycle, a scheduled pass). your helpers have their own names
+  (`invoke_agent phi-policy-judge`, ...).
+- spans before 2026-11-01 23:00 UTC use the older names: `running tool`
+  with `tool_arguments` and `tool_response`, and `agent run`. a query that
+  spans that date needs both.
 - `is_exception = true` — things that broke. `exception_type`,
   `exception_message`. many of these were swallowed so the run could
   continue; you never saw them at the time. this is where your blind spots
@@ -80,21 +84,21 @@ locate a call (this lists requests, not their outcomes):
 
 ```sql
 SELECT start_timestamp, trace_id, span_id, attributes->>'gen_ai.tool.name' AS tool,
-       left(attributes->>'tool_arguments', 200) AS args
-FROM records WHERE span_name = 'running tool'
+       left(attributes->>'gen_ai.tool.call.arguments', 200) AS args
+FROM records WHERE span_name LIKE 'execute_tool %'
 ORDER BY start_timestamp LIMIT 50
 ```
 
 inspect a list_records result's coverage in the same tight time window:
 
 ```sql
-SELECT start_timestamp, attributes->'tool_response'->>'error' AS error,
-       attributes->'tool_response'->>'truncated' AS truncated,
-       attributes->'tool_response'->>'shown' AS shown,
-       attributes->'tool_response'->>'fetched' AS fetched,
-       attributes->'tool_response'->>'cursor' AS cursor,
-       attributes->'tool_response'->>'message' AS message
-FROM records WHERE span_name = 'running tool'
+SELECT start_timestamp, attributes->'gen_ai.tool.call.result'->>'error' AS error,
+       attributes->'gen_ai.tool.call.result'->>'truncated' AS truncated,
+       attributes->'gen_ai.tool.call.result'->>'shown' AS shown,
+       attributes->'gen_ai.tool.call.result'->>'fetched' AS fetched,
+       attributes->'gen_ai.tool.call.result'->>'cursor' AS cursor,
+       attributes->'gen_ai.tool.call.result'->>'message' AS message
+FROM records WHERE span_name LIKE 'execute_tool %'
   AND attributes->>'gen_ai.tool.name' = 'list_records'
 ORDER BY start_timestamp LIMIT 20
 ```
@@ -103,7 +107,7 @@ These fields describe the returned page. `limit=100` is a request;
 `shown=48, fetched=100, truncated=true` means 48 records reached you.
 A null field means that field was absent, not that pagination was exhausted.
 For other tools, inspect their own result shape. Fetch one identified span's
-`attributes->>'tool_response'` in numbered SQL substring slices when it
+`attributes->>'gen_ai.tool.call.result'` in numbered SQL substring slices when it
 exceeds query_traces' 6,000-character output cap. Preserve `trace_id` and
 `span_id` so slices and conclusions refer to the same call. Missing or
 scrubbed telemetry leaves the corresponding question unresolved.
@@ -120,7 +124,7 @@ count tool calls over a period (activity totals, not proof of outcomes):
 
 ```sql
 SELECT attributes->>'gen_ai.tool.name' AS tool, count(*) AS n
-FROM records WHERE span_name = 'running tool'
+FROM records WHERE span_name LIKE 'execute_tool %'
 GROUP BY 1 ORDER BY n DESC LIMIT 30
 ```
 

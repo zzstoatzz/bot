@@ -36,7 +36,7 @@ instrumentation. It is silenced at WARNING.
 
 Traces are queryable via the logfire MCP (`query_run`). Two habits worth
 keeping: `query_schema_reference` before writing non-trivial SQL, and never
-truncating a `tool_response` with `left(...)` when the question is whether a
+truncating a tool result (`gen_ai.tool.call.result`, formerly `tool_response`) with `left(...)` when the question is whether a
 value was present — truncating your own evidence and then reporting uncertainty
 is worse than not looking.
 

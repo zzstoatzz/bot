@@ -21,8 +21,15 @@ What moved with the upgrade:
   to name the one that failed and the drop-and-rerun path keeps working.
 - the local tool-search fallback takes `queries=[...]` and stays offered
   after a find; `own-source` and `lexidraw-craft` say so.
-- the openai SDK is 3.x (httpx2), and agent-run spans report
-  `gen_ai.aggregated_usage.*`; chat spans keep their attributes.
+- the openai SDK is 3.x (httpx2). in Logfire, tool spans are
+  `execute_tool <name>` with `gen_ai.tool.call.arguments` / `.result`
+  (formerly `running tool`, `tool_arguments`, `tool_response`), runs are
+  `invoke_agent <agent>` (formerly `agent run`), and run spans report
+  `gen_ai.aggregated_usage.*`. `self-traces`, `phi-check` and
+  `toolset-audit` query both shapes across the boundary.
+- the MCP guard passed `call_tool`'s metadata positionally, which v2
+  rejects, so every MCP tool call failed for the first deploy. phi
+  reported it from a failed atproto-docs search; fixed in the next.
 
 ## 2026-11-01 — Restarts no longer re-run today's reflection
 
