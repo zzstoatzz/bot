@@ -1,6 +1,6 @@
 # mcp integration
 
-phi uses the [model context protocol](https://modelcontextprotocol.io) to access external tools hosted as remote servers, connected via `MCPServerStreamableHTTP` (pydantic-ai). the authoritative list is `build_toolsets` in `src/bot/core/mcp_tools.py`; currently: pdsx (atproto record CRUD, phi's credentials), pub-search (long-form publication search), semble (ranked search + call surface over phi's public knowledge graph), tangled (code collab — repos, issues, PRs), and prefect (workflow state, only when auth is configured).
+phi uses the [model context protocol](https://modelcontextprotocol.io) to access external tools hosted as remote servers, connected via `MCPServerStreamableHTTP` (pydantic-ai). the authoritative list is `build_toolsets` in `src/bot/core/mcp_tools.py`; currently: pdsx (atproto record CRUD, phi's credentials), pub-search (long-form publication search), semble (ranked search + call surface over phi's public knowledge graph), tangled (code collab — repos, issues, PRs), atproto-docs (search over atproto.com specs, guides and blog; read-only, unprefixed so its skill's tool names match), and prefect (workflow state, only when auth is configured).
 
 ## why mcp
 
@@ -51,6 +51,24 @@ against tool names and descriptions, ten results per search.
   appends and keeps the cache.
 - `/api/context/budget` counts what is sent: the search tool, not the tools
   behind it.
+
+## skills from MCP servers
+
+a FastMCP skills provider serves each skill as `skill://<name>/SKILL.md`
+plus a `_manifest` resource listing every file with its size and sha256.
+`core/mcp_skills.py` lists resources on each server in
+`settings.skill_mcp_urls`, reads the manifest and every file, and keeps a
+skill only when each file matches and the frontmatter `name` matches its
+uri. verified skills join phi's `SkillsToolset` catalog as a registry, so
+she loads them with `load_skill` like her own; a local skill with the same
+name wins. the poller re-reads them once per process start, in the
+background.
+
+this is FastMCP's resource fallback. the standard `skills/list` and
+`skills/get` requests (the MCP Skills extension, SEP-2640) need the
+FastMCP 4 client, which requires `mcp>=2`; pydantic-ai 1.x pins `mcp<2`.
+pydantic-ai 2.x routes MCP through FastMCP, so the upgrade to it is where
+phi moves to the extension.
 
 ## process_tool_call hooks
 

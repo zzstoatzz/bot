@@ -31,6 +31,7 @@ from bot.core.cache_stability import (
 from bot.core.discovery_pool import get_discovery_pool_block
 from bot.core.goals import list_goals as list_goal_records
 from bot.core.graze_client import GrazeClient
+from bot.core.mcp_skills import MCPSkillsRegistry
 from bot.core.mcp_tools import _mcp_url, build_toolsets
 from bot.core.operator import get_operator_guidance_block, get_operator_profile
 from bot.core.operator_notes import get_operator_notes_block
@@ -70,6 +71,7 @@ logger = logging.getLogger("bot.agent")
 
 MCP_ATTEMPTS = 3
 MCP_RETRY_PAUSE_S = 2.0
+
 
 def _failed_urls(exc: BaseException) -> set[str]:
     """URLs of the HTTP requests that failed inside an exception or group."""
@@ -447,8 +449,12 @@ class PhiAgent:
         # the script-execution tool registered is extra capability surface
         # phi never uses — and would silently expose subprocess execution
         # if someone added a script to a skill folder by accident.
+        # Skills that MCP servers publish join the same catalog after
+        # `refresh_remote_skills`; a local skill of the same name wins.
+        self.remote_skills = MCPSkillsRegistry(settings.skill_mcp_urls)
         self.skills_toolset = SkillsToolset(
             directories=[settings.skills_dir],
+            registries=[self.remote_skills],
             exclude_tools=["run_skill_script", "list_skills"],
         )
         self.graze_client = GrazeClient(
@@ -837,6 +843,12 @@ class PhiAgent:
             "phi agent initialized with pdsx, pub-search, semble, and tangled MCP tools "
             "(prefect included when configured)"
         )
+
+    async def refresh_remote_skills(self) -> None:
+        """Re-read skills from `settings.skill_mcp_urls` into the catalog."""
+        skills = await self.remote_skills.refresh()
+        self.skills_toolset.reload(include_registries=True)
+        logger.info(f"remote skills: {sorted(s.name for s in skills)}")
 
     def get_capabilities(self) -> list[dict]:
         return context_diagnostics.get_capabilities(self)

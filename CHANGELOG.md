@@ -1,5 +1,18 @@
 # changelog
 
+## 2026-11-01 — Read skills from MCP servers
+
+The atproto docs MCP server (Horizon) now serves an `atproto-docs` skill
+that says how to search atproto.com and cite sections. Phi reads skills
+like it from MCP servers: `core/mcp_skills.py` lists each server's
+`skill://` resources, checks every file against the server's sha256
+manifest, and adds the verified skills to her existing catalog, where a
+local skill of the same name wins. She also carries the server's three
+read-only tools (about 440 tokens), unprefixed, because the skill names
+them. FastMCP 4's `skills/list` client needs `mcp>=2`, which pydantic-ai
+1.80 cannot install beside its own MCP client, so this uses FastMCP's
+manifest-resource fallback until phi moves to pydantic-ai 2.
+
 ## 2026-11-01 — Restarts no longer re-run today's reflection
 
 On startup the poller guessed which scheduled slots had run by looking for

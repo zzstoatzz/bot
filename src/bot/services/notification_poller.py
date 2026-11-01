@@ -144,6 +144,9 @@ class NotificationPoller:
         await self.client.authenticate()
 
         bot_status.assume_schedule_ran(datetime.now(UTC))
+        skills = asyncio.create_task(self.handler.agent.refresh_remote_skills())
+        self._background_tasks.add(skills)
+        skills.add_done_callback(self._background_tasks.discard)
 
         while self._running:
             try:

@@ -54,6 +54,10 @@ class Settings(BaseSettings):
         default="skills",
         description="Directory containing agentskills.io-format skill packages",
     )
+    skill_mcp_urls: list[str] = Field(
+        default=["https://atproto-docs-mcp.fastmcp.app/mcp"],
+        description="MCP servers whose skill:// resources join phi's skill catalog",
+    )
     web_build_dir: str = Field(
         default="/app/web",
         description=(
@@ -375,6 +379,11 @@ class Settings(BaseSettings):
     tangled_mcp_url: str = Field(
         default="https://nate-tangled-mcp.fastmcp.app/mcp",
         description="URL of the tangled MCP server (fastmcp.app deployment)",
+    )
+
+    atproto_docs_mcp_url: str = Field(
+        default="https://atproto-docs-mcp.fastmcp.app/mcp",
+        description="URL of the atproto.com docs search MCP server",
     )
 
     xrpc_methods: dict[str, tuple[str, ...]] = Field(

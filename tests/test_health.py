@@ -32,6 +32,7 @@ def _poller() -> NotificationPoller:
     poller.client = Mock()
     poller.client.authenticate = AsyncMock()
     poller.handler = Mock()
+    poller.handler.agent.refresh_remote_skills = AsyncMock()
     poller._running = True
     poller._background_tasks = set()
     poller._next_alert_watch_poll = float("inf")

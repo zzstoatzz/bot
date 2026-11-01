@@ -151,6 +151,14 @@ def build_toolsets(run_label: str = "") -> list[AbstractToolset[PhiDeps]]:
             ),
             run_label,
         ),
+        # atproto.com docs search. Read-only; it also serves the
+        # atproto-docs skill (core/mcp_skills.py), whose instructions name
+        # these tools unprefixed.
+        MCPServerStreamableHTTP(
+            url=settings.atproto_docs_mcp_url,
+            timeout=30,
+            process_tool_call=make_mcp_guard("atproto-docs", run_label),
+        ),
     ]
     # Lexidraw — phi draws into her own repo (app.lexidraw.scene records,
     # viewable at lexidraw.app). Stdio server baked into the image; her
@@ -192,4 +200,3 @@ def build_toolsets(run_label: str = "") -> list[AbstractToolset[PhiDeps]]:
             )
         )
     return toolsets
-
