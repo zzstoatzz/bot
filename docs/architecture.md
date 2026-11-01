@@ -62,17 +62,18 @@ checks contact, prior coverage and public delivery, including all split parts.
 
 | Setting | Agents | Default |
 |---|---|---|
-| `agent_model` | Main Phi and observation extractor | `anthropic:claude-sonnet-5-5` |
+| `agent_model` | Main Phi and observation extractor | `openrouter:deepseek/deepseek-v4.1-flash` |
 | `policy_model` | Independent policy judge | `openai-responses:gpt-5.6-terra` |
 | `extraction_model` | Episodic selector, reconciler, posting inventory and post-topic labels | `openai-responses:gpt-5.6-luna` |
 
 Settings hold full provider/model identifiers. The `openai-responses:` prefix
 selects the API needed for the configured reasoning/structured-output agents.
-The main extractor uses prompted structured output for its configured Anthropic
-model. Provider credentials and helper-model choices are independent.
+The main extractor uses prompted structured output, which works on any
+provider. Provider credentials and helper-model choices are independent.
 
 `model_cache_settings` supplies Anthropic's 1-hour tool/instruction and 5-minute
-message TTLs, or OpenAI's stable prompt-cache key. Context is memoized per run;
+message TTLs, or OpenAI's stable prompt-cache key. OpenRouter's DeepSeek
+caches prefixes on its own and takes no cache settings. Context is memoized per run;
 provider-reported accounting is observed, not inferred from configuration.
 Switching models does not rewrite Phi's PDS personality or share caches.
 

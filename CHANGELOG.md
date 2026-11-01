@@ -1,5 +1,19 @@
 # changelog
 
+## 2026-11-01 — Run phi on DeepSeek v4.1 Flash
+
+The main agent and the observation extractor move from Claude Sonnet 5.5 to
+`openrouter:deepseek/deepseek-v4.1-flash`. Over 2026-10-19 to 11-01 Sonnet read
+84.3M input tokens (86% cache reads, 14% cache writes) and wrote 0.53M, about
+$42 at list price, most of it 1-hour cache writes. The same tokens at
+OpenRouter's DeepSeek prices come to $1.60–4.05, depending on how much of the
+prefix DeepSeek's automatic cache catches. A replay of 240 recorded requests
+(Oct 26) had no errors or invalid tool calls and made the same tool-or-reply
+choice as Sonnet on 207. The policy judge (Terra), the MCP guard and the
+operator override do not run on this model, so a weaker main model cannot
+widen what phi is allowed to do. Where it falls short, the harness should
+improve rather than the model being swapped back.
+
 ## 2026-10-24 — Read trending in any of coral's scopes
 
 coral computes stories and entities for three populations: global, the

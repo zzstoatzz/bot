@@ -3,6 +3,8 @@
 import os
 from unittest.mock import patch
 
+from pydantic_ai.models import infer_model
+
 from bot.config import settings
 
 
@@ -93,3 +95,11 @@ class TestSubAgentModelStrings:
             assert ":" in getattr(settings, name), (
                 f"settings.{name} must be a full pydantic-ai provider:model string"
             )
+
+
+def test_agent_model_resolves_through_openrouter():
+    """The default main model needs only OPENROUTER_API_KEY to construct."""
+    with patch.dict(os.environ, {"OPENROUTER_API_KEY": "test"}):
+        model = infer_model(settings.agent_model)
+    assert model.system == "openrouter"
+    assert model.model_name == "deepseek/deepseek-v4.1-flash"

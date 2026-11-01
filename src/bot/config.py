@@ -69,6 +69,9 @@ class Settings(BaseSettings):
     anthropic_api_key: str | None = Field(
         default=None, description="The API key for the Anthropic API"
     )
+    openrouter_api_key: str | None = Field(
+        default=None, description="The API key for OpenRouter"
+    )
     typesafe_api_key: SecretStr | None = None
     typesafe_model: str = "jev-1.13.0"
     typesafe_base_url: str = "https://api.typesafe.ai"
@@ -102,7 +105,7 @@ class Settings(BaseSettings):
 
     # Model configuration
     agent_model: str = Field(
-        default="anthropic:claude-sonnet-5-5",
+        default="openrouter:deepseek/deepseek-v4.1-flash",
         description="Model for the main agent (pydantic-ai model string)",
     )
     # Sub-agent models are full pydantic-ai `provider:model` strings, same as
