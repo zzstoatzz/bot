@@ -2,16 +2,14 @@
 
 from pathlib import Path
 
-from pydantic_ai_skills import SkillsToolset
+from pydantic_ai_skills import SkillsCapability
+from pydantic_ai_skills._parsing import read_skill_info
 
 SKILLS_DIR = Path(__file__).parent.parent / "skills"
 
 
 def test_every_skill_directory_loads():
-    toolset = SkillsToolset(
-        directories=[SKILLS_DIR], exclude_tools=["run_skill_script"]
-    )
-    loaded = {skill.name: skill for skill in toolset.skills.values()}
     expected = {path.parent.name for path in SKILLS_DIR.glob("*/SKILL.md")}
-    assert expected == set(loaded)
-    assert all(skill.description for skill in loaded.values())
+    assert set(SkillsCapability(SKILLS_DIR, scripts=False).skill_names) == expected
+    infos = [read_skill_info(SKILLS_DIR / name) for name in expected]
+    assert all(info and info.description for info in infos)

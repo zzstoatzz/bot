@@ -71,7 +71,7 @@ _READ_VERBS = (
 
 
 def _bare_verb(name: str) -> str:
-    """Strip pydantic-ai's ``tool_prefix`` so verbs compare across servers."""
+    """Strip the tool prefix (``.prefixed()`` or a server's own) so verbs compare across servers."""
     for prefix in ("pub_", "semble_", "tangled_", "prefect_", "lexidraw_"):
         if name.startswith(prefix):
             return name[len(prefix) :]
@@ -666,7 +666,11 @@ async def _invoke(
         detail = str(e)
         if any(
             signature in detail.lower()
-            for signature in ("reponotfound", "could not resolve handle", "could not find pds")
+            for signature in (
+                "reponotfound",
+                "could not resolve handle",
+                "could not find pds",
+            )
         ):
             return (
                 f"{server} {name} could not resolve or find the requested repository "

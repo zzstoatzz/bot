@@ -18,7 +18,7 @@ from unittest.mock import Mock, patch
 import httpx
 import pytest
 from pydantic_ai import Agent
-from pydantic_ai.mcp import MCPServerStreamableHTTP
+from pydantic_ai.mcp import MCPToolset
 from pydantic_ai.models.test import TestModel
 from pydantic_ai.usage import RunUsage
 
@@ -70,7 +70,7 @@ async def test_dead_mcp_toolset_does_not_kill_run():
         )
 
     assert out == "ran fine"
-    assert seen["toolsets"] == [good]
+    assert [ts.wrapped for ts in seen["toolsets"]] == [good]
     assert good.entered
 
 
@@ -105,9 +105,9 @@ class _FlakyMCP:
             200, json={"jsonrpc": "2.0", "id": body["id"], "result": result}
         )
 
-    def toolset(self) -> MCPServerStreamableHTTP:
-        return MCPServerStreamableHTTP(
-            url=FLAKY_URL,
+    def toolset(self) -> MCPToolset:
+        return MCPToolset(
+            FLAKY_URL,
             http_client=httpx.AsyncClient(transport=httpx.MockTransport(self._respond)),
         )
 
@@ -131,7 +131,8 @@ def no_retry_pause(monkeypatch):
 
 
 async def test_mcp_502_after_connect_is_retried(no_retry_pause):
-    server = _FlakyMCP(failures=1)
+    """The MCP client retries one failed tools/list itself; two cost a rerun."""
+    server = _FlakyMCP(failures=2)
     phi, offered = _phi_with(server)
     with patch.object(
         PhiAgent, "_mcp_toolsets", side_effect=lambda **_: [server.toolset()]
@@ -212,7 +213,7 @@ class TestQueryTraces:
 
 async def test_filtered_mcp_server_is_still_retried(no_retry_pause):
     """The retry finds a failed server by URL, through the filter wrapped around it."""
-    server = _FlakyMCP(failures=1)
+    server = _FlakyMCP(failures=2)
     phi, offered = _phi_with(server)
     filtered = lambda **_: [server.toolset().filtered(lambda _ctx, _tool: True)]  # noqa: E731
     with patch.object(PhiAgent, "_mcp_toolsets", side_effect=filtered):

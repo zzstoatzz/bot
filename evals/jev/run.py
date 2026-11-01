@@ -12,7 +12,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
-import httpx
+import httpx2
 from dotenv import load_dotenv
 from openai import AsyncOpenAI
 from pydantic_ai.models.openai import OpenAIResponsesModel
@@ -181,7 +181,7 @@ async def evaluate(args):
         stream.write(json.dumps({"manifest": manifest}) + "\n")
     budget = Budget(args.budget, len(selected) * args.repeats * 2)
     rows = []
-    async with httpx.AsyncClient(
+    async with httpx2.AsyncClient(
         timeout=45, event_hooks={"request": [budget.before], "response": [budget.after]}
     ) as http:
         client = AsyncOpenAI(
@@ -193,7 +193,7 @@ async def evaluate(args):
             settings={"max_tokens": MAX_OUTPUT},
         )
         judge = policy._get_judge()
-        judge._max_result_retries = 0
+        judge._max_output_retries = 0
         manifest["policy_sha256"] = fingerprint(
             {"policies": policy.POLICIES, "system": judge._system_prompts}
         )

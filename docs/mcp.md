@@ -1,6 +1,6 @@
 # mcp integration
 
-phi uses the [model context protocol](https://modelcontextprotocol.io) to access external tools hosted as remote servers, connected via `MCPServerStreamableHTTP` (pydantic-ai). the authoritative list is `build_toolsets` in `src/bot/core/mcp_tools.py`; currently: pdsx (atproto record CRUD, phi's credentials), pub-search (long-form publication search), semble (ranked search + call surface over phi's public knowledge graph), tangled (code collab — repos, issues, PRs), atproto-docs (search over atproto.com specs, guides and blog; read-only, unprefixed so its skill's tool names match), and prefect (workflow state, only when auth is configured).
+phi uses the [model context protocol](https://modelcontextprotocol.io) to access external tools hosted as remote servers, connected via pydantic-ai's `MCPToolset` (built on the FastMCP client). the authoritative list is `build_toolsets` in `src/bot/core/mcp_tools.py`; currently: pdsx (atproto record CRUD, phi's credentials), pub-search (long-form publication search), semble (ranked search + call surface over phi's public knowledge graph), tangled (code collab — repos, issues, PRs), atproto-docs (search over atproto.com specs, guides and blog; read-only, unprefixed so its skill's tool names match), and prefect (workflow state, only when auth is configured).
 
 ## why mcp
 
@@ -37,8 +37,10 @@ to. the evidence is in `toolset-audit-2026-10.md`.
 tangled and lexidraw are real capabilities phi reaches for in about one run
 in a hundred, so their tools are deferred (`MCP_DEFERRED`): the request
 carries a `search_tools` tool, and a tool it finds is added from the next
-request on. pydantic-ai 1.80 does this on the client, by keyword match
-against tool names and descriptions, ten results per search.
+request on. phi's model has no native tool search, so pydantic-ai runs its
+local fallback: `search_tools(queries=[...])` matches each query against
+tool names and descriptions. the search tool stays offered after a find, so
+a tool can be searched for again.
 
 - a run whose prompt sends phi straight to a server loads it. the two
   pull-request runs load tangled.
@@ -46,29 +48,25 @@ against tool names and descriptions, ten results per search.
   (`own-source`, `lexidraw-craft`).
 - a discovery changes the tool list, which is the front of the cache prefix,
   so the request after it rewrites what follows. that is the price of
-  deferral on this client and the reason only rarely used servers are
-  deferred. pydantic-ai 2.x uses Anthropic's native tool search, which
-  appends and keeps the cache.
+  deferral without native tool search and the reason only rarely used
+  servers are deferred. on a model with native tool search (Anthropic,
+  OpenAI Responses) the discovery appends and keeps the cache.
 - `/api/context/budget` counts what is sent: the search tool, not the tools
   behind it.
 
 ## skills from MCP servers
 
-a FastMCP skills provider serves each skill as `skill://<name>/SKILL.md`
-plus a `_manifest` resource listing every file with its size and sha256.
-`core/mcp_skills.py` lists resources on each server in
-`settings.skill_mcp_urls`, reads the manifest and every file, and keeps a
-skill only when each file matches and the frontmatter `name` matches its
-uri. verified skills join phi's `SkillsToolset` catalog as a registry, so
-she loads them with `load_skill` like her own; a local skill with the same
-name wins. the poller re-reads them once per process start, in the
-background.
-
-this is FastMCP's resource fallback. the standard `skills/list` and
-`skills/get` requests (the MCP Skills extension, SEP-2640) need the
-FastMCP 4 client, which requires `mcp>=2`; pydantic-ai 1.x pins `mcp<2`.
-pydantic-ai 2.x routes MCP through FastMCP, so the upgrade to it is where
-phi moves to the extension.
+a FastMCP server can publish skills through the MCP Skills extension
+(SEP-2640). `core/mcp_skills.py` connects to each server in
+`settings.skill_mcp_urls` with FastMCP's `SkillsClientExtension`, lists them
+with `skills/list`, and fetches each with `read_skill`, which checks every
+file against the size and sha256 the server's manifest promised. verified
+skills are written to a per-process library that `SkillsCapability` reads
+beside `skills/`, so phi loads them with `load_capability` like her own. a
+remote skill with the same name as a local one is filtered out. the library
+is synced once when `PhiAgent` is built; a skill the server changes reaches
+phi on her next restart. a server that is down costs its skills, not the
+startup.
 
 ## process_tool_call hooks
 

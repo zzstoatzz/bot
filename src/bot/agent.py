@@ -17,7 +17,7 @@ from pydantic_ai import Agent, AgentRunResult, ImageUrl, PromptedOutput, RunCont
 from pydantic_ai.tools import ToolDefinition
 from pydantic_ai.toolsets import AbstractToolset
 from pydantic_ai.usage import RunUsage
-from pydantic_ai_skills import SkillsToolset
+from pydantic_ai_skills import SkillsCapability
 
 from bot.config import settings
 from bot.core import context_diagnostics, ops_log
@@ -32,7 +32,7 @@ from bot.core.discovery_pool import get_discovery_pool_block
 from bot.core.goals import list_goals as list_goal_records
 from bot.core.graze_client import GrazeClient
 from bot.core.mcp_skills import MCPSkillsRegistry
-from bot.core.mcp_tools import _mcp_url, build_toolsets
+from bot.core.mcp_tools import Attributed, MCPServerFailed, _mcp_url, build_toolsets
 from bot.core.operator import get_operator_guidance_block, get_operator_profile
 from bot.core.operator_notes import get_operator_notes_block
 from bot.core.owned_feeds import get_owned_feeds_block
@@ -79,6 +79,8 @@ def _failed_urls(exc: BaseException) -> set[str]:
         return {url for sub in exc.exceptions for url in _failed_urls(sub)}
     if isinstance(exc, httpx.HTTPStatusError | httpx.TransportError):
         return {str(exc.request.url)}
+    if isinstance(exc, MCPServerFailed) and exc.url:
+        return {exc.url}
     return set()
 
 
@@ -439,23 +441,23 @@ class PhiAgent:
             self.memory = None
             logger.warning("no memory - missing turbopuffer or openai key")
 
-        # Skills — filesystem-backed, progressive disclosure. The preamble
-        # (skill names + descriptions) is injected automatically by the
-        # toolset on pydantic-ai>=1.74. Full SKILL.md bodies are loaded on
-        # demand via load_skill.
-        #
-        # exclude_tools=['run_skill_script']: every skill we ship is
-        # documentation-only (markdown bodies + resource files). leaving
-        # the script-execution tool registered is extra capability surface
-        # phi never uses — and would silently expose subprocess execution
-        # if someone added a script to a skill folder by accident.
-        # Skills that MCP servers publish join the same catalog after
-        # `refresh_remote_skills`; a local skill of the same name wins.
+        # Skills — progressive disclosure. Each skill is a deferred
+        # capability: the catalog (names + descriptions) is in the
+        # instructions and `load_capability` brings in a SKILL.md body.
+        # Skills MCP servers publish join the same catalog
+        # (core/mcp_skills.py); a local skill with the same name wins.
+        # scripts=False: every skill is documentation-only, and the script
+        # tool would expose subprocess execution if someone added a script.
+        local_skills = {
+            p.parent.name for p in Path(settings.skills_dir).glob("*/SKILL.md")
+        }
         self.remote_skills = MCPSkillsRegistry(settings.skill_mcp_urls)
-        self.skills_toolset = SkillsToolset(
-            directories=[settings.skills_dir],
-            registries=[self.remote_skills],
-            exclude_tools=["run_skill_script", "list_skills"],
+        self.skills = SkillsCapability[PhiDeps](
+            settings.skills_dir,
+            registries=[
+                self.remote_skills.filtered(lambda info: info.name not in local_skills)
+            ],
+            scripts=False,
         )
         self.graze_client = GrazeClient(
             handle=settings.bluesky_handle, password=settings.bluesky_password
@@ -476,8 +478,7 @@ class PhiAgent:
             model_settings=model_cache_settings(observed_model.system),
             output_type=str,
             deps_type=PhiDeps,
-            toolsets=[self.skills_toolset],
-            capabilities=[ToolUsage()],
+            capabilities=[ToolUsage(), self.skills],
         )
 
         async def personality_instructions() -> str:
@@ -844,12 +845,6 @@ class PhiAgent:
             "(prefect included when configured)"
         )
 
-    async def refresh_remote_skills(self) -> None:
-        """Re-read skills from `settings.skill_mcp_urls` into the catalog."""
-        skills = await self.remote_skills.refresh()
-        self.skills_toolset.reload(include_registries=True)
-        logger.info(f"remote skills: {sorted(s.name for s in skills)}")
-
     def get_capabilities(self) -> list[dict]:
         return context_diagnostics.get_capabilities(self)
 
@@ -870,7 +865,7 @@ class PhiAgent:
         dropped: set[str] = set()
         for attempt in range(1, MCP_ATTEMPTS + 1):
             toolsets = [
-                ts
+                Attributed(ts)
                 for ts in self._mcp_toolsets(run_label=label)
                 if _mcp_url(ts) not in dropped
             ]

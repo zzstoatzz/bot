@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, cast
 from pydantic_ai import RunContext
 from pydantic_ai.models import infer_model
 from pydantic_ai.tools import ToolDefinition
+from pydantic_ai.toolsets import AbstractToolset
 from pydantic_ai.toolsets._tool_search import ToolSearchToolset
 from pydantic_ai.usage import RunUsage
 
@@ -72,6 +73,7 @@ async def render_context_preview(phi: PhiAgent) -> list[dict]:
         )
     return blocks
 
+
 async def list_tool_definitions(phi: PhiAgent) -> list[tuple[str, ToolDefinition]]:
     """every tool definition the next run would send, tagged with where
     it comes from: ``function`` for @agent.tool registrations, ``skills``
@@ -90,8 +92,9 @@ async def list_tool_definitions(phi: PhiAgent) -> list[tuple[str, ToolDefinition
     out: list[tuple[str, ToolDefinition]] = []
     for name in sorted(phi.agent._function_toolset.tools):
         out.append(("function", phi.agent._function_toolset.tools[name].tool_def))
-    for name, tool in sorted((await phi.skills_toolset.get_tools(ctx)).items()):
-        out.append(("skills", tool.tool_def))
+    if isinstance(skills := phi.skills.get_toolset(), AbstractToolset):
+        for name, tool in sorted((await skills.get_tools(ctx)).items()):
+            out.append(("skills", tool.tool_def))
     sent = {tool_def.name for _, tool_def in out}
     for ts in phi._mcp_toolsets(run_label="context-budget"):
         origin = f"mcp:{_mcp_origin(ts)}"
@@ -100,7 +103,7 @@ async def list_tool_definitions(phi: PhiAgent) -> list[tuple[str, ToolDefinition
         try:
             async with ts:
                 for name, tool in sorted((await visible.get_tools(ctx)).items()):
-                    if name not in sent:
+                    if name not in sent and not tool.tool_def.defer_loading:
                         sent.add(name)
                         out.append((origin, tool.tool_def))
         except Exception as e:
@@ -108,6 +111,7 @@ async def list_tool_definitions(phi: PhiAgent) -> list[tuple[str, ToolDefinition
                 f"{origin} unavailable for the context budget: {type(e).__name__}: {str(e)[:120]}"
             )
     return out
+
 
 async def render_context_budget(phi: PhiAgent) -> dict:
     """what the next scheduled run would send, weighed: the model and its

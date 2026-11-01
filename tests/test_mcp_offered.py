@@ -1,7 +1,7 @@
 """Which MCP tools phi carries (docs/toolset-audit-2026-10.md)."""
 
 from typing import Any, cast
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 from pydantic_ai import Agent
@@ -112,7 +112,7 @@ async def test_deferred_tools_reach_the_model_only_after_a_search():
         offered.append([tool.name for tool in info.function_tools])
         if len(offered) == 1:
             return ModelResponse(
-                parts=[ToolCallPart("search_tools", {"keywords": "tangled_read_file"})]
+                parts=[ToolCallPart("search_tools", {"queries": ["tangled_read_file"]})]
             )
         if len(offered) == 2:
             return ModelResponse(
@@ -121,7 +121,11 @@ async def test_deferred_tools_reach_the_model_only_after_a_search():
         return ModelResponse(parts=[TextPart("done")])
 
     phi = PhiAgent.__new__(PhiAgent)
-    phi.agent = Agent(FunctionModel(model), deps_type=PhiDeps)
+    # phi's model has no native tool search, so the local `search_tools` runs
+    phi.agent = Agent(
+        FunctionModel(model, profile={"supported_native_tools": frozenset()}),
+        deps_type=PhiDeps,
+    )
     with patch.object(
         PhiAgent, "_mcp_toolsets", side_effect=lambda **_: [hidden.defer_loading()]
     ):
@@ -130,8 +134,9 @@ async def test_deferred_tools_reach_the_model_only_after_a_search():
         )
 
     assert out == "done"
-    # the search tool goes away once nothing is left to find
-    assert offered == [["search_tools"], ["tangled_read_file"], ["tangled_read_file"]]
+    # the search tool stays: a found tool can be searched for again
+    found = ["tangled_read_file", "search_tools"]
+    assert offered == [["search_tools"], found, found]
 
 
 async def test_the_context_budget_counts_what_is_sent(monkeypatch):
@@ -145,7 +150,7 @@ async def test_the_context_budget_counts_what_is_sent(monkeypatch):
     phi = PhiAgent.__new__(PhiAgent)
     phi.memory = None
     phi.agent = Agent(model=TestModel())
-    monkeypatch.setattr(phi, "skills_toolset", FunctionToolset(), raising=False)
+    monkeypatch.setattr(phi, "skills", Mock(get_toolset=lambda: None), raising=False)
     monkeypatch.setattr(
         phi, "_mcp_toolsets", lambda run_label="": [hidden.defer_loading()]
     )

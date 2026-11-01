@@ -52,7 +52,7 @@ and stores no tool arguments, results, private notes or error messages.
 Native tools with zero exposure are explicitly unobserved. Remote tools appear
 once discovered in a request or invoked. MCP code-mode's nested operations are
 inside one tool call and require inspecting its Logfire span. Skill loading is
-counted as `load_skill`, not as using every capability described by that skill.
+counted as `load_capability`, not as using every capability described by that skill.
 A returned result may be a refusal or text error; unfinished means no completion
 was recorded, which can include an interrupted process. It is not a tool-success
 metric. Observation failures log errors and do not alter Phi's execution.

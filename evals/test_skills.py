@@ -16,7 +16,7 @@ from pathlib import Path
 import pytest
 from pydantic import BaseModel, Field
 from pydantic_ai import Agent, RunContext
-from pydantic_ai_skills import SkillsToolset
+from pydantic_ai_skills import SkillsCapability
 
 from bot.config import Settings
 
@@ -50,9 +50,9 @@ def settings():
 
 @pytest.fixture(scope="session")
 def skills_agent(settings):
-    """Agent with the real SkillsToolset and mocked pdsx record creation.
+    """Agent with the real skills capability and mocked pdsx record creation.
 
-    The SkillsToolset points at the real bot/skills/ directory so phi
+    The capability points at the real bot/skills/ directory so phi
     sees actual skill descriptions in the always-loaded preamble. The
     mocked pdsx create_record lets us assert what record phi tried to
     write without actually hitting any PDS.
@@ -71,7 +71,7 @@ def skills_agent(settings):
         model="anthropic:claude-haiku-4-5-20251001",
         system_prompt=personality,
         output_type=Response,
-        toolsets=[SkillsToolset(directories=[str(skills_dir)])],
+        capabilities=[SkillsCapability(skills_dir, scripts=False)],
     )
 
     @agent.tool
@@ -150,17 +150,17 @@ def skills_agent(settings):
             return result.output
 
         def loaded_skills(self) -> list[str]:
-            """Walk the message history for load_skill tool calls."""
+            """Walk the message history for load_capability calls naming a skill."""
             loaded: list[str] = []
             for msg in self.last_messages:
                 for part in getattr(msg, "parts", []):
                     if (
                         getattr(part, "part_kind", None) == "tool-call"
-                        and getattr(part, "tool_name", None) == "load_skill"
+                        and getattr(part, "tool_name", None) == "load_capability"
                     ):
                         args = getattr(part, "args", {})
                         if isinstance(args, dict):
-                            name = args.get("skill_name") or args.get("name")
+                            name = args.get("id")
                             if name:
                                 loaded.append(name)
             return loaded

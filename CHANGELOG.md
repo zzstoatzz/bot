@@ -1,17 +1,28 @@
 # changelog
 
-## 2026-11-01 — Read skills from MCP servers
+## 2026-11-01 — pydantic-ai 2, FastMCP 4.2, and skills over MCP
 
-The atproto docs MCP server (Horizon) now serves an `atproto-docs` skill
-that says how to search atproto.com and cite sections. Phi reads skills
-like it from MCP servers: `core/mcp_skills.py` lists each server's
-`skill://` resources, checks every file against the server's sha256
-manifest, and adds the verified skills to her existing catalog, where a
-local skill of the same name wins. She also carries the server's three
-read-only tools (about 440 tokens), unprefixed, because the skill names
-them. FastMCP 4's `skills/list` client needs `mcp>=2`, which pydantic-ai
-1.80 cannot install beside its own MCP client, so this uses FastMCP's
-manifest-resource fallback until phi moves to pydantic-ai 2.
+Phi moves from pydantic-ai 1.80 to 2.64, pydantic-ai-skills 0.8 to 2.1 and
+FastMCP 3.4 to 4.2.0a1, so her MCP client and the skills client are the
+same FastMCP. The docs MCP server on Horizon publishes an `atproto-docs`
+skill through the MCP Skills extension; phi lists it with `skills/list`,
+fetches it with FastMCP's `read_skill` (every file checked against the
+server's sha256 manifest) and adds it to her catalog. She also carries that
+server's three read-only search tools, unprefixed because the skill names
+them.
+
+What moved with the upgrade:
+
+- skills are a `SkillsCapability`: each skill is a deferred capability the
+  model loads with `load_capability`, replacing `load_skill`.
+- MCP servers are `MCPToolset`s; prefixes are `.prefixed()`. the MCP client
+  now retries one failed `tools/list` itself, and a server that keeps
+  failing raises `MCPError` without its URL, so each run wraps its servers
+  to name the one that failed and the drop-and-rerun path keeps working.
+- the local tool-search fallback takes `queries=[...]` and stays offered
+  after a find; `own-source` and `lexidraw-craft` say so.
+- the openai SDK is 3.x (httpx2), and agent-run spans report
+  `gen_ai.aggregated_usage.*`; chat spans keep their attributes.
 
 ## 2026-11-01 — Restarts no longer re-run today's reflection
 

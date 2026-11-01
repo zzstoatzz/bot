@@ -1,10 +1,14 @@
 """MCP server construction, exposure and wrapper inspection for Phi runs."""
 
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from pydantic_ai.mcp import MCPServerStdio, MCPServerStreamableHTTP
-from pydantic_ai.toolsets import AbstractToolset
+from fastmcp.client.transports import StdioTransport
+from pydantic_ai import RunContext
+from pydantic_ai.mcp import MCPToolset
+from pydantic_ai.toolsets import AbstractToolset, WrapperToolset
+from pydantic_ai.toolsets.abstract import ToolsetTool
 
 from bot.config import settings
 from bot.core.mcp_guard import make_mcp_guard
@@ -69,23 +73,49 @@ def _mcp_url(toolset: AbstractToolset[Any]) -> str | None:
     """The server URL behind a toolset, through any wrappers around it."""
     while (wrapped := getattr(toolset, "wrapped", None)) is not None:
         toolset = wrapped
-    return getattr(toolset, "url", None)
+    # MCPToolset keeps the url it was built from; there is no public accessor
+    source = getattr(toolset, "_client_source", None)
+    return source if isinstance(source, str) and source.startswith("http") else None
 
 
 def _mcp_origin(ts: AbstractToolset[Any]) -> str:
     """a short name for where a tool came from: the tool prefix when the
-    server has one, else the host's first label or the stdio command."""
-    while (wrapped := getattr(ts, "wrapped", None)) is not None:
+    server has one, else the host's first label or the toolset id."""
+    while True:
+        if prefix := getattr(ts, "prefix", None):
+            return str(prefix)
+        wrapped = getattr(ts, "wrapped", None)
+        if wrapped is None:
+            break
         ts = wrapped
-    if prefix := getattr(ts, "tool_prefix", None):
-        return str(prefix)
-    if url := getattr(ts, "url", None):
-        return str(url).split("//", 1)[-1].split("/", 1)[0].split(".", 1)[0]
-    if args := getattr(ts, "args", None):
-        parts = [p for p in str(list(args)[-1]).split("/") if p]
-        named = [p for p in parts if p not in ("dist", "build", "bin", "opt", "app")]
-        return named[-2] if len(named) > 1 else (named[0] if named else "stdio")
-    return ts.label
+    if url := _mcp_url(ts):
+        return url.split("//", 1)[-1].split("/", 1)[0].split(".", 1)[0]
+    return ts.id or ts.label
+
+
+class MCPServerFailed(Exception):
+    """An MCP server failed to list its tools; names the server so it can be dropped."""
+
+    def __init__(self, url: str | None):
+        super().__init__(url)
+        self.url = url
+
+
+@dataclass
+class Attributed(WrapperToolset[PhiDeps]):
+    """Raise a tools/list failure as `MCPServerFailed` with the server's URL.
+
+    The MCP client reports a server that keeps failing as a bare `MCPError`,
+    which does not say which of the run's servers it came from.
+    """
+
+    async def get_tools(
+        self, ctx: RunContext[PhiDeps]
+    ) -> dict[str, ToolsetTool[PhiDeps]]:
+        try:
+            return await super().get_tools(ctx)
+        except Exception as e:
+            raise MCPServerFailed(_mcp_url(self.wrapped)) from e
 
 
 def build_toolsets(run_label: str = "") -> list[AbstractToolset[PhiDeps]]:
@@ -93,9 +123,9 @@ def build_toolsets(run_label: str = "") -> list[AbstractToolset[PhiDeps]]:
     toolsets: list[AbstractToolset[PhiDeps]] = [
         _offered(
             "pdsx",
-            MCPServerStreamableHTTP(
-                url="https://pdsx-by-zzstoatzz.fastmcp.app/mcp",
-                timeout=30,
+            MCPToolset(
+                "https://pdsx-by-zzstoatzz.fastmcp.app/mcp",
+                read_timeout=30,
                 headers={
                     "x-atproto-handle": settings.bluesky_handle,
                     "x-atproto-password": settings.bluesky_password,
@@ -108,20 +138,18 @@ def build_toolsets(run_label: str = "") -> list[AbstractToolset[PhiDeps]]:
         ),
         _offered(
             "pub-search",
-            MCPServerStreamableHTTP(
-                url="https://pub-search-by-zzstoatzz.fastmcp.app/mcp",
-                timeout=30,
-                tool_prefix="pub",
+            MCPToolset(
+                "https://pub-search-by-zzstoatzz.fastmcp.app/mcp",
+                read_timeout=30,
                 process_tool_call=make_mcp_guard("pub-search", run_label),
-            ),
+            ).prefixed("pub"),
         ),
         # Semble jev-mode server (search_tools/call_tool; one sdk method
         # per call). Keyless = public reads only; the header makes
         # writes attribute to phi.
-        MCPServerStreamableHTTP(
-            url=settings.semble_mcp_url,
-            timeout=30,
-            tool_prefix="semble",
+        MCPToolset(
+            settings.semble_mcp_url,
+            read_timeout=30,
             headers=(
                 {"x-semble-api-key": settings.semble_api_key}
                 if settings.semble_api_key
@@ -130,16 +158,15 @@ def build_toolsets(run_label: str = "") -> list[AbstractToolset[PhiDeps]]:
             # observational: every library write leaves a logfire event
             # with the run label + the sdk method (bot/core/mcp_guard.py)
             process_tool_call=make_mcp_guard("semble", run_label),
-        ),
+        ).prefixed("semble"),
         # Tangled code-collab server. Reads (repos, files, commits,
         # issues) need no auth; the headers carry phi's own PDS
         # credentials so any issue/comment she writes attributes to her.
         _offered(
             "tangled",
-            MCPServerStreamableHTTP(
-                url=settings.tangled_mcp_url,
-                timeout=30,
-                tool_prefix="tangled",
+            MCPToolset(
+                settings.tangled_mcp_url,
+                read_timeout=30,
                 headers={
                     "x-tangled-handle": settings.bluesky_handle,
                     "x-tangled-password": settings.bluesky_password,
@@ -148,15 +175,15 @@ def build_toolsets(run_label: str = "") -> list[AbstractToolset[PhiDeps]]:
                 # name; before 2026-07-25 nothing gated them, so safe mode
                 # stopped her posting to bluesky and left tangled open.
                 process_tool_call=make_mcp_guard("tangled", run_label),
-            ),
+            ).prefixed("tangled"),
             run_label,
         ),
         # atproto.com docs search. Read-only; it also serves the
         # atproto-docs skill (core/mcp_skills.py), whose instructions name
         # these tools unprefixed.
-        MCPServerStreamableHTTP(
-            url=settings.atproto_docs_mcp_url,
-            timeout=30,
+        MCPToolset(
+            settings.atproto_docs_mcp_url,
+            read_timeout=30,
             process_tool_call=make_mcp_guard("atproto-docs", run_label),
         ),
     ]
@@ -168,14 +195,17 @@ def build_toolsets(run_label: str = "") -> list[AbstractToolset[PhiDeps]]:
         toolsets.append(
             _offered(
                 "lexidraw",
-                MCPServerStdio(
-                    "node",
-                    args=[settings.lexidraw_mcp_path],
-                    env={
-                        "LEXIDRAW_HANDLE": settings.bluesky_handle,
-                        "LEXIDRAW_APP_PASSWORD": settings.bluesky_password,
-                    },
-                    timeout=30,
+                MCPToolset(
+                    StdioTransport(
+                        command="node",
+                        args=[settings.lexidraw_mcp_path],
+                        env={
+                            "LEXIDRAW_HANDLE": settings.bluesky_handle,
+                            "LEXIDRAW_APP_PASSWORD": settings.bluesky_password,
+                        },
+                    ),
+                    id="lexidraw",
+                    read_timeout=30,
                     process_tool_call=make_mcp_guard("lexidraw", run_label),
                 ),
                 run_label,
@@ -187,16 +217,15 @@ def build_toolsets(run_label: str = "") -> list[AbstractToolset[PhiDeps]]:
         toolsets.append(
             _offered(
                 "prefect",
-                MCPServerStreamableHTTP(
-                    url=settings.prefect_mcp_url,
-                    timeout=30,
-                    tool_prefix="prefect",
+                MCPToolset(
+                    settings.prefect_mcp_url,
+                    read_timeout=30,
                     process_tool_call=make_mcp_guard("prefect", run_label),
                     headers={
                         "x-prefect-api-url": settings.prefect_api_url,
                         "x-prefect-api-auth-string": settings.prefect_api_auth_string,
                     },
-                ),
+                ).prefixed("prefect"),
             )
         )
     return toolsets

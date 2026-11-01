@@ -23,10 +23,10 @@ TOPIC_LABEL_MAX = 120
 TOPIC_CACHE_FILE = Path("/data/post_topics.json")
 _topic_cache: dict[str, str] | None = None
 _inflight: dict[str, asyncio.Task[str]] = {}
-_topic_agent: Agent | None = None
+_topic_agent: Agent[None, str] | None = None
 
 
-def _get_agent() -> Agent:
+def _get_agent() -> Agent[None, str]:
     global _topic_agent
     if _topic_agent is None:
         _topic_agent = Agent[None, str](

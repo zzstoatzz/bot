@@ -87,7 +87,8 @@ class CountingModel(TestModel):
             str(getattr(p, "content", "")) for m in messages for p in m.parts
         )
         tools = sum(
-            len(t.name) + len(t.description or "") for t in model_request_parameters.function_tools
+            len(t.name) + len(t.description or "")
+            for t in model_request_parameters.function_tools
         )
         # a provider charges a fixed preamble whenever any tool is present
         framing = 100 if model_request_parameters.function_tools else 0
@@ -162,6 +163,8 @@ async def test_tool_listing_walks_function_and_skills_toolsets(monkeypatch):
     """the listing must hand toolsets a real RunContext — they `replace()`
     it per tool and read `retries` (2026-09-02: a namespace stand-in
     500ed the endpoint in prod)."""
+    from unittest.mock import Mock
+
     from pydantic_ai import Agent
     from pydantic_ai.models.test import TestModel
     from pydantic_ai.toolsets import FunctionToolset
@@ -184,7 +187,7 @@ async def test_tool_listing_walks_function_and_skills_toolsets(monkeypatch):
         """read one"""
         return name
 
-    monkeypatch.setattr(phi, "skills_toolset", skills, raising=False)
+    monkeypatch.setattr(phi, "skills", Mock(get_toolset=lambda: skills), raising=False)
     monkeypatch.setattr(phi, "_mcp_toolsets", lambda run_label="": [])
 
     listed = await phi.list_tool_definitions()

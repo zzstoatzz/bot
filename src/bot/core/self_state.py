@@ -45,10 +45,10 @@ def invalidate_state_cache() -> None:
 # Why: this block is read every cycle as "what your recent posts have
 # been about," and if it speaks in phi's register the model will
 # reinforce that register as identity. Stay boring.
-_inventory_agent: Agent | None = None
+_inventory_agent: Agent[None, str] | None = None
 
 
-def _get_inventory_agent() -> Agent:
+def _get_inventory_agent() -> Agent[None, str]:
     global _inventory_agent
     if _inventory_agent is None:
         _inventory_agent = Agent[None, str](

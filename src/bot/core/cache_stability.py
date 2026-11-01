@@ -64,6 +64,7 @@ CACHE_TTLS: dict[str, Literal["5m", "1h"]] = {
 turns it into `AnthropicModelSettings`) and the cockpit (which reports on
 it). Changing a TTL here changes what phi does *and* what the panel says."""
 
+
 def model_cache_settings(provider: str, role: str = "main") -> ModelSettings:
     """Select native cache controls without changing the prompt or its order."""
     if provider == "anthropic":
@@ -470,8 +471,8 @@ cache_monitor = CacheMonitor()
 class CacheObservingModel(WrapperModel):
     """Reports every response's cache verdict to a `CacheMonitor`.
 
-    pydantic-ai 1.x has no after-model-request hook, so the model wrapper is
-    the seam. It is observational — it never alters the request or response.
+    The model wrapper is the seam because it sees every request's usage,
+    streamed or not. It is observational — it never alters the request or response.
     """
 
     def __init__(self, wrapped: Model | str, monitor: CacheMonitor | None = None):
@@ -524,7 +525,7 @@ class CacheObservingModel(WrapperModel):
                 messages, model_settings, model_request_parameters, run_context
             ) as stream:
                 yield stream
-                self._observe(stream.usage())
+                self._observe(stream.usage)
         except BaseException:
             await request_finished(receipt, "failed_or_interrupted")
             raise
