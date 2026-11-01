@@ -3,6 +3,7 @@
 import asyncio
 import json
 from unittest.mock import Mock
+from uuid import uuid4
 
 import httpx
 import pytest
@@ -14,7 +15,7 @@ from turbopuffer import Turbopuffer
 from bot.agent import PhiAgent
 from bot.core.cache_stability import CacheObservingModel
 from bot.memory.namespace_memory import NamespaceMemory
-from bot.memory.run_evidence import current_run
+from bot.memory.run_evidence import RunEvidence, current_run, library_call
 from bot.tools._helpers import PhiDeps
 
 
@@ -80,3 +81,38 @@ async def test_model_boundary_and_run_outcome_remain_distinct(outcome, monkeypat
         assert "completed" not in statuses
         assert ("failed" in statuses) == (outcome == "failure")
     assert all("action" not in r for r in writes)
+
+
+async def test_library_receipts_fit_turbopuffer_id_limit():
+    """turbopuffer rejects ids of 64 bytes or more; library receipts once ran 93-94."""
+    stored = {}
+
+    def serve(request):
+        body = json.loads(request.content)
+        for row in body["upsert_rows"]:
+            if len(row["id"].encode()) >= 64:
+                return httpx.Response(
+                    400, json={"error": "id string should be less than 64 bytes"}
+                )
+            stored[row["id"]] = row
+        return httpx.Response(200, json={"rows_affected": len(body["upsert_rows"])})
+
+    with Turbopuffer(
+        api_key="test",
+        base_url="https://memory.test",
+        max_retries=0,
+        http_client=httpx.Client(transport=httpx.MockTransport(serve)),
+    ) as storage:
+        run = RunEvidence(storage=storage, label="library test")
+        token = current_run.set(run)
+        try:
+            call_id = str(uuid4())
+            await library_call("started", call_id, "semble.addCard(...)")
+            await library_call("returned", call_id, "semble.addCard(...)")
+        finally:
+            current_run.reset(token)
+
+    receipts = [r for r in stored.values() if r["kind"] == "library_call"]
+    assert {r["status"] for r in receipts} == {"started", "returned"}
+    assert {r["call_id"] for r in receipts} == {call_id}
+    assert all(r["run_id"] == run.id for r in receipts)

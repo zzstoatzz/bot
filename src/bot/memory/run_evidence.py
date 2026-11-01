@@ -98,10 +98,14 @@ async def library_call(status: str, call_id: str, code: str) -> None:
     run = current_run.get()
     if run is None:
         return
-    await save_receipt(run, {
-        "id": f"{run.id}-library-{call_id}-{status}",
-        "kind": "library_call",
-        "status": status,
-        "code_sha256": hashlib.sha256(code.encode()).hexdigest(),
-        "recorded_at": timestamp(),
-    })
+    await save_receipt(
+        run,
+        {
+            "id": f"{run.id}-lib-{call_id[:8]}-{status}",
+            "kind": "library_call",
+            "call_id": call_id,
+            "status": status,
+            "code_sha256": hashlib.sha256(code.encode()).hexdigest(),
+            "recorded_at": timestamp(),
+        },
+    )

@@ -1,5 +1,15 @@
 # changelog
 
+## 2026-11-01 — Library receipts fit turbopuffer's id limit
+
+Every semble library call writes a `started` and a `returned` receipt to the
+encounter namespace. Their id, `run-<uuid>-library-<call uuid>-<status>`,
+came to 93–94 bytes, and turbopuffer rejects ids of 64 bytes or more, so
+every one of them failed (8–26 rejected writes a day since at least 10-19),
+leaving library runs with no receipt. Phi found it in her own traces. The id
+now carries the call id's first eight characters, and the full call id is a
+field on the row.
+
 ## 2026-11-01 — Run phi on DeepSeek v4.1 Flash
 
 The main agent and the observation extractor move from Claude Sonnet 5.5 to
