@@ -11,6 +11,7 @@ def register_all(agent):
         blog,
         bluesky,
         etiquette,
+        fastmcp,
         feeds,
         goals,
         images,
@@ -41,6 +42,7 @@ def register_all(agent):
     images.register(agent)
     posting.register(agent)
     atlas.register(agent)
+    fastmcp.register(agent)
     media.register(agent)
     topchicken.register(agent)
     traces.register(agent)

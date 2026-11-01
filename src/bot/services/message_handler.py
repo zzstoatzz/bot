@@ -489,6 +489,10 @@ class MessageHandler:
         """Coral editorial-context refresh — see :meth:`PhiAgent.process_editorial`."""
         await self._run_scheduled("editorial", self.agent.process_editorial)
 
+    async def fastmcp_watch(self):
+        """Weekly fastmcp triage watch — see :meth:`PhiAgent.process_fastmcp_watch`."""
+        await self._run_scheduled("fastmcp watch", self.agent.process_fastmcp_watch)
+
     async def likes_review(self):
         """Weekly read-back of phi's likes — see :meth:`PhiAgent.process_likes_review`."""
         await self._run_scheduled("likes review", self.agent.process_likes_review)

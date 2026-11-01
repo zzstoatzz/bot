@@ -429,6 +429,10 @@ class Settings(BaseSettings):
         default="https://hub.waow.tech/api/agents/discovery-pool",
         description="URL of the discovery-pool JSON endpoint (operator-likes derived)",
     )
+    fastmcp_triage_url: str = Field(
+        default="https://hub.waow.tech/api/agents/fastmcp-triage",
+        description="URL of the fastmcp triage JSON endpoint (operator warehouse derived)",
+    )
 
     # Debug mode
     debug: bool = Field(default=True, description="Whether to run in debug mode")

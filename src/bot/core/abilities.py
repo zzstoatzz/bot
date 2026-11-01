@@ -94,6 +94,10 @@ RISK: dict[str, Risk] = {
         "magnitude": "none",
         "reason": "reads the daily atlas on demand; selecting a focused slice avoids spending context on the entire map.",
     },
+    "inspect_fastmcp_triage": {
+        "magnitude": "none",
+        "reason": "reads the operator's fastmcp triage numbers from his warehouse; public GitHub data, bounded by weeks and stuck_limit.",
+    },
     "inspect_record_media": {
         "magnitude": "none",
         "reason": "fetches blobs from a record so she can actually look at an image instead of inferring it.",

@@ -1379,6 +1379,29 @@ class PhiAgent:
         )
         return await self._run_scheduled(name="likes review", task=task)
 
+    async def process_fastmcp_watch(self) -> str:
+        """Weekly long-horizon watch of fastmcp's triage throughput for the operator.
+
+        Triggered externally (prefect, weekly) via
+        /api/control/trigger/fastmcp-watch. The operator maintains
+        PrefectHQ/fastmcp; this pass is where its backlog gets watched over
+        weeks rather than glanced at.
+        """
+        task = (
+            "fastmcp watch. the operator maintains PrefectHQ/fastmcp, where "
+            "contributor PRs have been piling up. read inspect_fastmcp_triage "
+            "and look at it over the long horizon: is merging and closing "
+            "keeping pace with what comes in, are contributors hearing from a "
+            "maintainer sooner or later than before, what has been stuck the "
+            "longest, and how triage-reviewed PRs fare next to the rest.\n\n"
+            "search_memory for your earlier fastmcp watch notes and compare. "
+            "tell the operator privately with report_operator only when "
+            "something changed that he would act on; a quiet week needs no "
+            "message. save_memory a short note with the numbers you judged, so "
+            "the next watch has something to compare against. stay off the feed."
+        )
+        return await self._run_scheduled(name="fastmcp watch", task=task)
+
     async def process_character_retro(self) -> str:
         """Review the [SELF] record against lived evidence.
 

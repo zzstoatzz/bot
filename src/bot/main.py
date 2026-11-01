@@ -272,6 +272,7 @@ _TRIGGER_SLOTS = {
     "character-retro": lambda handler: handler.character_retro,
     "likes-review": lambda handler: handler.likes_review,
     "pull-review": lambda handler: handler.pull_review,
+    "fastmcp-watch": lambda handler: handler.fastmcp_watch,
 }
 
 # slots that are about a specific thing rather than a clock: the JSON body's

@@ -250,6 +250,10 @@ SERVICE_CHECKS = [
         "url": "https://hub.waow.tech/api/agents/discovery-pool",
         "name": "discovery pool (hub)",
     },
+    {
+        "url": "https://hub.waow.tech/api/agents/fastmcp-triage?days=1&weeks=1&stuck_limit=1",
+        "name": "fastmcp triage (hub)",
+    },
     {"url": "https://notes.zzstoatzz.io/llms.txt", "name": "operator notes index"},
     {"url": "https://typeahead.waow.tech/stats", "name": "typeahead"},
     {"url": "https://zig-bsky-feed.fly.dev/health", "name": "music-feed"},
