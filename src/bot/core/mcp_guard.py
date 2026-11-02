@@ -14,6 +14,7 @@ from typing import Any
 from uuid import uuid4
 
 import logfire
+from pydantic_ai import ModelRetry
 
 from bot.core import ops_log
 from bot.core.app_records import govern_app_record, governed_shape
@@ -210,31 +211,6 @@ def _semble_writes(code: str) -> list[str]:
     return sorted(
         c for c in set(_SEMBLE_TOOL_RE.findall(code)) if not _semble_is_read(c)
     )
-
-
-_CORRECTABLE_SIGNATURES = (
-    "validation error",
-    "input should be",
-    "literal_error",
-    "field required",
-    "missing",
-    "invalidrequest",
-    "unexpected keyword",
-    "recordnotfound",
-    "could not locate record",
-)
-
-
-def _is_correctable(detail: str) -> bool:
-    """Did semble reject the *arguments*, rather than being down?
-
-    The two need different advice. A rejected argument is something phi
-    can fix in the same run; an outage is not. Reporting both as an
-    outage is how a lowercase `access_type` became "skip library writes
-    this run" (2026-07-25).
-    """
-    low = detail.lower()
-    return any(sig in low for sig in _CORRECTABLE_SIGNATURES)
 
 
 def _repository_provenance(ctx: Any, run_label: str, tool_args: dict[str, Any]) -> str:
@@ -661,9 +637,15 @@ async def _invoke(
     """Call the tool, turning failures into something phi can act on."""
     try:
         return await call_tool(name, tool_args)
-    except Exception as e:
-        logger.warning(f"{server} {name} failed during {run_label}: {e}")
+    except ModelRetry as e:
+        # MCPToolset raises ModelRetry when the server returns an error result,
+        # so the server is up and the arguments are what to change. "URL too
+        # long" from a malformed `repo` was once relabelled an outage and phi
+        # abandoned the task (2026-11-02).
         detail = str(e)
+        logger.warning(
+            f"{server} {name} returned an error during {run_label}: {detail}"
+        )
         if any(
             signature in detail.lower()
             for signature in (
@@ -678,18 +660,17 @@ async def _invoke(
                 "and retry the read with the DID. This lookup failure does not "
                 "establish a service outage."
             )
-        if _is_correctable(detail):
-            # a rejected argument is not an outage. semble told phi
-            # `Input should be 'OPEN' or 'CLOSED'` and this wrapper
-            # relabelled it "unavailable, skip library writes" — throwing
-            # away the one thing that would have fixed the call.
-            return (
-                f"{server} rejected those arguments ({detail[:400]}). "
-                "this is fixable from here — check the shape and call it again."
-            )
+        return (
+            f"{server} {name} returned an error: {detail[:400]}. the server "
+            "answered, so it is up: check the arguments you passed and call it "
+            "again. if the corrected call fails the same way, leave it and say "
+            "so in your summary."
+        )
+    except Exception as e:
+        logger.warning(f"{server} {name} failed during {run_label}: {e}")
         return (
             f"{server} is unavailable right now ({type(e).__name__}: "
-            f"{detail[:300]}). skip that write this run and continue with the "
+            f"{str(e)[:300]}). skip that call this run and continue with the "
             "rest of the task — mention the outage in your summary so the "
             "operator sees it."
         )

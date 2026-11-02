@@ -1,5 +1,18 @@
 # changelog
 
+## 2026-11-02 — fixes from the capability tour
+
+A devlog thread asked phi for a tour of her traces and PDS. She answered the
+traces half and dropped the PDS half: on DeepSeek v4.1 flash, tool-call
+markup leaked into a `repo` argument three times, and the errors that came
+back told her pdsx was down. Each fix below came from that run's trace.
+
+- an error an MCP server returns is no longer reported as an outage. v2's
+  `MCPToolset` raises `ModelRetry` for a server's error result, so the guard
+  now separates "the server answered" (fix the arguments and call again)
+  from a transport failure (skip the call), replacing the list of error
+  strings it used to match.
+
 ## 2026-11-01 — pydantic-ai 2, FastMCP 4.2, and skills over MCP
 
 Phi moves from pydantic-ai 1.80 to 2.64, pydantic-ai-skills 0.8 to 2.1 and
