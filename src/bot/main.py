@@ -366,7 +366,7 @@ _abilities_cache: list | None = None
 async def abilities():
     """Phi's currently-registered function-tools — name, docstring, and
     whether owner-gated. Pulled live from `PhiAgent.get_capabilities()`,
-    which introspects `agent._function_toolset.tools`.
+    which introspects the agent's registered function tools.
 
     Cached for the process lifetime: tools are registered at startup and
     don't change without a restart, so re-introspecting per request is

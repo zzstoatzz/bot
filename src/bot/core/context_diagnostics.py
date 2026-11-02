@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, cast
 from pydantic_ai import RunContext
 from pydantic_ai.models import infer_model
 from pydantic_ai.tools import ToolDefinition
-from pydantic_ai.toolsets import AbstractToolset
+from pydantic_ai.toolsets import AbstractToolset, FunctionToolset
 from pydantic_ai.toolsets._tool_search import ToolSearchToolset
 from pydantic_ai.usage import RunUsage
 
@@ -74,6 +74,11 @@ async def render_context_preview(phi: PhiAgent) -> list[dict]:
     return blocks
 
 
+def function_tools(phi: PhiAgent) -> dict:
+    """The `@agent.tool` registrations, by name."""
+    return next(ts for ts in phi.agent.toolsets if isinstance(ts, FunctionToolset)).tools
+
+
 async def list_tool_definitions(phi: PhiAgent) -> list[tuple[str, ToolDefinition]]:
     """every tool definition the next run would send, tagged with where
     it comes from: ``function`` for @agent.tool registrations, ``skills``
@@ -90,8 +95,9 @@ async def list_tool_definitions(phi: PhiAgent) -> list[tuple[str, ToolDefinition
     assert model is not None
     ctx = RunContext[PhiDeps](deps=deps, model=infer_model(model), usage=RunUsage())
     out: list[tuple[str, ToolDefinition]] = []
-    for name in sorted(phi.agent._function_toolset.tools):
-        out.append(("function", phi.agent._function_toolset.tools[name].tool_def))
+    tools = function_tools(phi)
+    for name in sorted(tools):
+        out.append(("function", tools[name].tool_def))
     if isinstance(skills := phi.skills.get_toolset(), AbstractToolset):
         for name, tool in sorted((await skills.get_tools(ctx)).items()):
             out.append(("skills", tool.tool_def))
@@ -180,8 +186,7 @@ async def render_context_budget(phi: PhiAgent) -> dict:
 def get_capabilities(phi: PhiAgent) -> list[dict]:
     """Plain-data introspection of phi's registered function-tools.
 
-    Reads from `phi.agent._function_toolset.tools` (where pydantic-ai
-    stores the registered `@agent.tool` callables). Returns one entry
+    Reads the registered `@agent.tool` callables. Returns one entry
     per tool with:
       - name: the registered tool name
       - description: the tool's docstring (what gets sent to the LLM)
@@ -192,7 +197,7 @@ def get_capabilities(phi: PhiAgent) -> list[dict]:
     Surfaced via /api/abilities so the cockpit UI can render real
     names + real docstrings instead of inventing them.
     """
-    tools = phi.agent._function_toolset.tools
+    tools = function_tools(phi)
     out: list[dict] = []
     for name in sorted(tools.keys()):
         t = tools[name]

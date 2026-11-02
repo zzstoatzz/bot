@@ -34,7 +34,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from opentelemetry import trace
-from pydantic_ai._run_context import RunContext
+from pydantic_ai import RunContext
 from pydantic_ai.messages import InstructionPart, ModelMessage, ModelResponse
 from pydantic_ai.models import (
     Model,
