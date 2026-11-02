@@ -118,74 +118,78 @@ class Attributed(WrapperToolset[PhiDeps]):
             raise MCPServerFailed(_mcp_url(self.wrapped)) from e
 
 
+def _server(source: Any, name: str, run_label: str, **kwargs: Any) -> MCPToolset:
+    """One MCP server for one run, behind phi's guard."""
+    return MCPToolset(
+        source,
+        read_timeout=30,
+        process_tool_call=make_mcp_guard(name, run_label),
+        **kwargs,
+    )
+
+
 def build_toolsets(run_label: str = "") -> list[AbstractToolset[PhiDeps]]:
     """Create fresh MCP server instances for a single agent run."""
     toolsets: list[AbstractToolset[PhiDeps]] = [
+        # structural guard: raw feed-collection writes bypass the consent
+        # layer / policy judge / operator override — refuse them here, not
+        # just in the prompt (bot/core/mcp_guard.py)
         _offered(
             "pdsx",
-            MCPToolset(
+            _server(
                 "https://pdsx-by-zzstoatzz.fastmcp.app/mcp",
-                read_timeout=30,
+                "pdsx",
+                run_label,
                 headers={
                     "x-atproto-handle": settings.bluesky_handle,
                     "x-atproto-password": settings.bluesky_password,
                 },
-                # structural guard: raw feed-collection writes bypass the
-                # consent layer / policy judge / operator override — refuse
-                # them here, not just in the prompt (bot/core/mcp_guard.py)
-                process_tool_call=make_mcp_guard("pdsx", run_label),
             ),
         ),
         _offered(
             "pub-search",
-            MCPToolset(
+            _server(
                 "https://pub-search-by-zzstoatzz.fastmcp.app/mcp",
-                read_timeout=30,
-                process_tool_call=make_mcp_guard("pub-search", run_label),
+                "pub-search",
+                run_label,
             ).prefixed("pub"),
         ),
         # Semble jev-mode server (search_tools/call_tool; one sdk method
-        # per call). Keyless = public reads only; the header makes
-        # writes attribute to phi.
-        MCPToolset(
+        # per call). Keyless = public reads only; the header makes writes
+        # attribute to phi, and every library write leaves a logfire event.
+        _server(
             settings.semble_mcp_url,
-            read_timeout=30,
+            "semble",
+            run_label,
             headers=(
                 {"x-semble-api-key": settings.semble_api_key}
                 if settings.semble_api_key
                 else {}
             ),
-            # observational: every library write leaves a logfire event
-            # with the run label + the sdk method (bot/core/mcp_guard.py)
-            process_tool_call=make_mcp_guard("semble", run_label),
         ).prefixed("semble"),
         # Tangled code-collab server. Reads (repos, files, commits,
         # issues) need no auth; the headers carry phi's own PDS
         # credentials so any issue/comment she writes attributes to her.
+        # issues and comments here are public actions in phi's own name;
+        # before 2026-07-25 nothing gated them, so safe mode stopped her
+        # posting to bluesky and left tangled open.
         _offered(
             "tangled",
-            MCPToolset(
+            _server(
                 settings.tangled_mcp_url,
-                read_timeout=30,
+                "tangled",
+                run_label,
                 headers={
                     "x-tangled-handle": settings.bluesky_handle,
                     "x-tangled-password": settings.bluesky_password,
                 },
-                # issues and comments here are public actions in phi's own
-                # name; before 2026-07-25 nothing gated them, so safe mode
-                # stopped her posting to bluesky and left tangled open.
-                process_tool_call=make_mcp_guard("tangled", run_label),
             ).prefixed("tangled"),
             run_label,
         ),
         # atproto.com docs search. Read-only; it also serves the
         # atproto-docs skill (core/mcp_skills.py), whose instructions name
         # these tools unprefixed.
-        MCPToolset(
-            settings.atproto_docs_mcp_url,
-            read_timeout=30,
-            process_tool_call=make_mcp_guard("atproto-docs", run_label),
-        ),
+        _server(settings.atproto_docs_mcp_url, "atproto-docs", run_label),
     ]
     # Lexidraw — phi draws into her own repo (app.lexidraw.scene records,
     # viewable at lexidraw.app). Stdio server baked into the image; her
@@ -195,7 +199,7 @@ def build_toolsets(run_label: str = "") -> list[AbstractToolset[PhiDeps]]:
         toolsets.append(
             _offered(
                 "lexidraw",
-                MCPToolset(
+                _server(
                     StdioTransport(
                         command="node",
                         args=[settings.lexidraw_mcp_path],
@@ -204,9 +208,9 @@ def build_toolsets(run_label: str = "") -> list[AbstractToolset[PhiDeps]]:
                             "LEXIDRAW_APP_PASSWORD": settings.bluesky_password,
                         },
                     ),
+                    "lexidraw",
+                    run_label,
                     id="lexidraw",
-                    read_timeout=30,
-                    process_tool_call=make_mcp_guard("lexidraw", run_label),
                 ),
                 run_label,
             )
@@ -217,10 +221,10 @@ def build_toolsets(run_label: str = "") -> list[AbstractToolset[PhiDeps]]:
         toolsets.append(
             _offered(
                 "prefect",
-                MCPToolset(
+                _server(
                     settings.prefect_mcp_url,
-                    read_timeout=30,
-                    process_tool_call=make_mcp_guard("prefect", run_label),
+                    "prefect",
+                    run_label,
                     headers={
                         "x-prefect-api-url": settings.prefect_api_url,
                         "x-prefect-api-auth-string": settings.prefect_api_auth_string,
