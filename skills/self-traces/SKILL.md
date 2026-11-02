@@ -68,9 +68,12 @@ archive reads themselves do not change memory or authorize public contact.
 - `span_name = 'invoke_agent phi'` — one row per run of you (a batch, a
   cycle, a scheduled pass). your helpers have their own names
   (`invoke_agent phi-policy-judge`, ...).
-- spans before 2026-11-01 23:00 UTC use the older names: `running tool`
-  with `tool_arguments` and `tool_response`, and `agent run`. a query that
-  spans that date needs both.
+- the names changed at 2026-11-01 22:57 UTC. earlier spans are `running
+  tool` with `tool_arguments` and `tool_response`, and `agent run`; no span
+  after that time has the old names. a query across that time needs both,
+  and grouping by `span_name` shows which side each row is from.
+- `duration` is a span's length in seconds (a float). there is no
+  `duration_ms`.
 - `is_exception = true` — things that broke. `exception_type`,
   `exception_message`. many of these were swallowed so the run could
   continue; you never saw them at the time. this is where your blind spots

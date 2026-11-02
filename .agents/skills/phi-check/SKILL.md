@@ -64,7 +64,7 @@ Pass explicit query time bounds. The Logfire MCP defaults to a 30-minute scan;
 a SQL timestamp condition alone does not widen it. Respect the tool's current
 range limits. Tool spans use `span_name LIKE 'execute_tool %'`, with the name in
 `attributes->>'gen_ai.tool.name'` and arguments in `gen_ai.tool.call.arguments`
-(before 2026-11-01 23:00 UTC: `running tool` and `tool_arguments`). Runs are
+(before 2026-11-01 22:57 UTC: `running tool` and `tool_arguments`). Runs are
 `invoke_agent phi` (formerly `agent run`). Inspect actual names and arguments: reactions
 can be MCP record writes, not a dedicated `like_post` tool.
 
