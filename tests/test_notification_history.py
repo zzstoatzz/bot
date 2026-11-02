@@ -12,7 +12,7 @@ from bot.services.notification_history import (
 )
 
 
-def page(numbers=(), cursor=None, *, read=False):
+def page(numbers=(), cursor=None, *, read=False, indexed="2026-09-05T00:00:00Z"):
     return models.AppBskyNotificationListNotifications.Response.model_validate(
         {
             "cursor": cursor,
@@ -22,7 +22,7 @@ def page(numbers=(), cursor=None, *, read=False):
                     "cid": "bafyreicaafen4qlk56o5yby5bykss5cwbf5lodep62dnw5alwft4mwrnhq",
                     "author": {"did": "did:plc:alice", "handle": "alice.test"},
                     "reason": "mention",
-                    "indexedAt": "2026-09-05T00:00:00Z",
+                    "indexedAt": indexed,
                     "isRead": read,
                     "record": {
                         "$type": "app.bsky.feed.post",
@@ -107,7 +107,10 @@ async def test_delayed_visible_read_event_is_recovered_by_a_later_scan():
     first = [item async for item in notification_pages(client)]
     later = [item async for item in notification_pages(client)]
     assert len(first[0].notifications) == 1
-    assert {n.model_dump()["record"]["text"] for n in later[0].notifications} == {"event 1", "event 2"}
+    assert {n.model_dump()["record"]["text"] for n in later[0].notifications} == {
+        "event 1",
+        "event 2",
+    }
 
 
 async def test_client_passes_explicit_paging_and_priority_to_sdk():
@@ -135,7 +138,11 @@ async def test_live_window_crosses_empty_page_and_deduplicates_overlap():
         ]
     )
     found = await visible_unread_notifications(client)
-    assert [n.model_dump()["record"]["text"] for n in found] == ["event 3", "event 2", "event 1"]
+    assert [n.model_dump()["record"]["text"] for n in found] == [
+        "event 3",
+        "event 2",
+        "event 1",
+    ]
     assert client.get_notifications.await_count == 4
 
 

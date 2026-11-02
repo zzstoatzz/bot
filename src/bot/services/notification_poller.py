@@ -109,7 +109,8 @@ class NotificationPoller:
         """Capture visible history independently of actions and UI read flags.
 
         Five measured pages covered over two months on September 5. Limit each
-        traversal to twenty pages; exhaustion is recorded only if reached.
+        traversal to twenty pages; a scan completes on exhaustion or on reaching
+        what the last completed scan stored.
         Transport/storage failures retry after five minutes. Structural bounds
         remain visible as incomplete and wait until the next scheduled scan.
         Recovered events never dispatch a backlog of public actions.
@@ -132,8 +133,8 @@ class NotificationPoller:
                 )
             except asyncio.CancelledError:
                 raise
-            except IncompleteNotificationScan:
-                logger.exception("encounter recovery reached its traversal bound")
+            except IncompleteNotificationScan as e:
+                logger.warning(f"encounter recovery reached its traversal bound: {e}")
             except Exception:
                 logger.exception("encounter recovery incomplete")
                 delay = 5 * 60
