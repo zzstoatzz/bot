@@ -27,9 +27,10 @@ back told her pdsx was down. Each fix below came from that run's trace.
 - tangled replaced its `sh.tangled.*` API with `org.tangled.*` on 2026-10-30,
   so every tangled read 404'd and `own-source` could not read this repo.
   tangled-mcp now reads bobbin's index and the repo's knot, and writes
-  tickets and comments through the knot. pulls are opened from a pushed
-  branch now, and phi has no repository or git push on tangled, so
-  `own-source` routes code changes through issues and her pull tools refuse.
+  tickets and comments through the knot. a pull is now a pushed branch, so
+  `tangled_create_pull` commits phi's edits on a branch in the repo she
+  collaborates on and opens the pull from it, and the review poll reads new
+  comments from the repo's knot instead of the reviewers' PDSes.
 - hosted pdsx runs the operator's atproto fork (`build/exclude-unset`).
   atproto 0.0.72 began dumping records in unknown fields without
   `exclude_unset`, so `get_record` padded records with nulls for fields they

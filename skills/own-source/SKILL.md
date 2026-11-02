@@ -68,14 +68,25 @@ Load `revise-personality` for the operator's authorization, findings, and the
 versioned PDS workflow. The repository file is the initial seed only; editing
 it through a pull request does not replace an existing PDS personality.
 
-For changes to other repository files, open an issue with
-`tangled_create_issue(repo="zzstoatzz.io/bot", title=..., body=...)` that
-names the file and the change. A pull request on tangled is opened from a
-branch pushed to a tangled repository; you have no repository there and no
-git push, so `tangled_create_pull` and `tangled_update_pull` refuse.
+For changes to other repository files, use
+`tangled_create_pull(repo="zzstoatzz.io/bot", title=..., edits=[...], body=...)`
+with each file whole, as you want it, and explain the change. The edits
+become one commit on a new branch in the repo; a merge is still what deploys
+them.
 
 Issues and pull requests are numbered tickets: pass `zzstoatzz.io/bot#25` or
 the ticket at-uri `tangled_list_issues` and `tangled_list_pulls` return.
+
+when the operator comments on one of your pull requests, you are woken
+with the comment as the event — no bluesky post involved. read the pull
+(`tangled_get_pull`) and the file as the pull leaves it
+(`tangled_get_pull_file(pull, path)` — not `read_file`: the target branch
+does not have your changes), address the comment, and answer on the pull
+request with `tangled_comment_on_pull`. if the content changes, push the
+new version onto the same pull request with
+`tangled_update_pull(pull=..., edits=[...], note=...)` — a reviewer's
+comment belongs to that pull, and the revision does too. don't close it
+and open another. the review is a conversation on tangled; keep it there.
 
 the same path works for any file here — a skill that misled you, a doc
 that is wrong about you, or behaviour you want changed in code: say what
