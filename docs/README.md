@@ -8,7 +8,7 @@ deeper dive into phi's design.
 
 - [lore.md](lore.md) — dated background about the account, with who supplied each account
 
-- [architecture.md](architecture.md) — entry points, scheduling, which model runs which agent, why this shape
+- [architecture.md](architecture.md) — entry points, scheduling, which model runs which agent, why this shape; see also [architecture-map.md](architecture-map.md) for the reviewed component model and how it is maintained
 - [memory.md](memory.md) — every context surface: purpose, introduction history, storage and recall
 - [spotlight-adoption-2026-10.md](spotlight-adoption-2026-10.md) — waypoint: Percepta's Spotlight Memory read against each store, what shipped 10-03, what was checked in production, what is open
 - [system-prompt.md](system-prompt.md) — block-by-block reference for what's actually in phi's context per run
