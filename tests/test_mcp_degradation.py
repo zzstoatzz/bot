@@ -210,6 +210,47 @@ class TestQueryTraces:
         assert out.splitlines() == ["tool | n", "post | 3", "query | 1"]
         assert _render_columnar({"columns": []}) == "no rows"
 
+    async def test_a_malformed_window_is_returned_to_the_model(self, monkeypatch):
+        """2026-11-02: phi passed end='>2026-11-02T01:00:00Z' twice and got
+        Logfire's 422 back as a result; the window is now validated first."""
+        from pydantic_ai import Agent
+        from pydantic_ai.messages import (
+            ModelResponse,
+            TextPart,
+            ToolCallPart,
+            ToolReturnPart,
+        )
+        from pydantic_ai.models.function import FunctionModel
+
+        from bot.tools import traces
+
+        monkeypatch.setattr(traces.settings.logfire, "read_token", "token")
+        monkeypatch.setattr(traces.httpx, "AsyncClient", None)
+        returns = []
+
+        def model(messages, info):
+            returns.extend(
+                part
+                for message in messages[1:]
+                for part in message.parts
+                if isinstance(part, ToolReturnPart)
+            )
+            if len(messages) == 1:
+                args = {
+                    "sql": "select 1",
+                    "start": "2026-11-01T21:00:00Z",
+                    "end": ">2026-11-02T01:00:00Z",
+                }
+                return ModelResponse(parts=[ToolCallPart("query_traces", args)])
+            return ModelResponse(parts=[TextPart("done")])
+
+        agent = Agent(FunctionModel(model))
+        traces.register(agent)
+        await agent.run("trace it")
+        [returned] = returns
+        assert returned.content[0]["loc"] == ["end"]
+        assert returned.content[0]["type"] == "datetime_from_date_parsing"
+
 
 async def test_filtered_mcp_server_is_still_retried(no_retry_pause):
     """The retry finds a failed server by URL, through the filter wrapped around it."""

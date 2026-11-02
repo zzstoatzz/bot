@@ -8,6 +8,7 @@ shapes, recipes, discipline); this module is just the pipe.
 
 import json
 import logging
+from datetime import datetime
 from typing import Annotated
 
 import httpx
@@ -55,7 +56,7 @@ def register(agent):
             ),
         ],
         start: Annotated[
-            str,
+            datetime,
             Field(
                 description=(
                     "ISO 8601 start of the time window, e.g. "
@@ -65,7 +66,7 @@ def register(agent):
             ),
         ],
         end: Annotated[
-            str | None,
+            datetime | None,
             Field(description="ISO 8601 end of the window. Defaults to now."),
         ] = None,
     ) -> str:
@@ -82,9 +83,9 @@ def register(agent):
             return "trace access is not configured (no read token)"
         if sql.lstrip().split(None, 1)[0].lower() not in ("select", "with"):
             return "only SELECT queries are supported"
-        params: dict[str, str] = {"sql": sql, "min_timestamp": start}
+        params = {"sql": sql, "min_timestamp": start.isoformat()}
         if end:
-            params["max_timestamp"] = end
+            params["max_timestamp"] = end.isoformat()
         try:
             async with httpx.AsyncClient(timeout=30) as client:
                 resp = await client.get(

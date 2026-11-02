@@ -12,6 +12,9 @@ back told her pdsx was down. Each fix below came from that run's trace.
   now separates "the server answered" (fix the arguments and call again)
   from a transport failure (skip the call), replacing the list of error
   strings it used to match.
+- `query_traces` types its window as datetimes. a `>` leaked into `end`
+  twice and Logfire answered 422 after the request went out; the tool now
+  returns the validation error to the model before any request.
 
 ## 2026-11-01 — pydantic-ai 2, FastMCP 4.2, and skills over MCP
 
