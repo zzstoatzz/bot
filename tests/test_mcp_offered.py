@@ -5,6 +5,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 from pydantic_ai import Agent
+from pydantic_ai.mcp import MCPToolset
 from pydantic_ai.messages import ModelResponse, TextPart, ToolCallPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 from pydantic_ai.models.test import TestModel
@@ -166,3 +167,15 @@ def test_every_server_is_named_for_logs():
         _mcp_origin(Attributed(ts)) for ts in PhiAgent.__new__(PhiAgent)._mcp_toolsets()
     }
     assert {"pdsx", "pub", "semble", "tangled", "atproto-docs", "prefect"} <= names
+
+
+def test_pdsx_reads_phi_repo_when_repo_is_null():
+    """2026-11-02: DeepSeek sent list_records(repo=null) nine times in one run."""
+    from bot.core.mcp_tools import build_toolsets
+
+    [pdsx] = [ts for ts in build_toolsets() if _mcp_origin(ts) == "pdsx"]
+    while (wrapped := getattr(pdsx, "wrapped", None)) is not None:
+        pdsx = wrapped
+    assert isinstance(pdsx, MCPToolset)
+    headers = pdsx._static_headers or {}
+    assert headers["x-atproto-repo"] == agent_module.settings.bluesky_handle

@@ -19,6 +19,11 @@ back told her pdsx was down. Each fix below came from that run's trace.
   `server/discover` before falling back to `initialize`, and both count
   against the connect limit; a cold hosted server spent the default 5s on
   the probe alone, which dropped prefect and atproto-docs from eight runs.
+- pdsx reads phi's own repo when a call passes `repo: null`; DeepSeek sent
+  that nine times in one run and lost exact counts for four collections.
+- encounter recovery completes once it reaches what the last completed scan
+  stored. phi's history passed its twenty-page bound on 2026-10-20 and every
+  scan since had failed, though only 77 events were new.
 
 ## 2026-11-01 — pydantic-ai 2, FastMCP 4.2, and skills over MCP
 

@@ -146,6 +146,9 @@ def build_toolsets(run_label: str = "") -> list[AbstractToolset[PhiDeps]]:
                 headers={
                     "x-atproto-handle": settings.bluesky_handle,
                     "x-atproto-password": settings.bluesky_password,
+                    # list_records and get_record read this repo when the
+                    # model passes `repo: null`
+                    "x-atproto-repo": settings.bluesky_handle,
                 },
             ),
         ),
