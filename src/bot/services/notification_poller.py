@@ -310,7 +310,7 @@ class NotificationPoller:
                 handle = profile.handle or handle
             except Exception as e:
                 logger.debug(f"commenter handle lookup failed: {e}")
-            material = pull_comment_material(comment["record"], handle)
+            material = pull_comment_material(comment["record"], handle, comment["pull"])
             logger.info(f"review poll: waking for {comment['uri']}")
             task = asyncio.create_task(self.handler.pull_comment(material))
             self._background_tasks.add(task)

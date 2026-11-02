@@ -293,6 +293,13 @@ class Settings(BaseSettings):
             "is logged in (2026-08-21: a review left as zat.dev went nowhere)."
         ),
     )
+    review_repo_dids: tuple[Did, ...] = Field(
+        default=("did:plc:ebajxjsw7iuwstddnxt6lt3m",),  # zzstoatzz.io/bot
+        description=(
+            "Tangled repository DIDs whose comments the review poll reads. "
+            "Comments live on the repository's own account on its knot."
+        ),
+    )
 
     # Relay fleet monitoring — phi polls relay-eval on a schedule and
     # reports status transitions. The service is the source of truth;

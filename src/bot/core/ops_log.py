@@ -305,10 +305,12 @@ def comment_text(record: dict[str, Any]) -> str:
     return str(body or "").strip()
 
 
-def pull_comment_material(record: dict[str, Any], commenter: str) -> str:
+def pull_comment_material(
+    record: dict[str, Any], commenter: str, pull: str | None = None
+) -> str:
     """The event content a pull-request comment wakes phi with."""
     return (
-        f"@{commenter} commented on your pull request {comment_target(record)}:"
+        f"@{commenter} commented on your pull request {pull or comment_target(record)}:"
         f"\n\n{comment_text(record)}"
     )
 
