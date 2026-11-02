@@ -13,7 +13,7 @@ from pydantic_ai.toolsets import DeferredLoadingToolset, FunctionToolset
 
 from bot import agent as agent_module
 from bot.agent import PhiAgent
-from bot.core.mcp_tools import MCP_DROPPED, MCP_KEPT, _mcp_origin, _mcp_url
+from bot.core.mcp_tools import MCP_DROPPED, MCP_KEPT, Attributed, _mcp_origin, _mcp_url
 from bot.tools._helpers import PhiDeps
 
 
@@ -49,8 +49,8 @@ def test_denylisted_servers_lose_only_the_named_tools():
     servers = _by_origin()
     assert not _offers(servers["tangled"], "tangled_delete_issue")
     assert _offers(servers["tangled"], "tangled_read_file")
-    assert not _offers(servers["pdsx-by-zzstoatzz"], "whoami")
-    assert _offers(servers["pdsx-by-zzstoatzz"], "create_record")
+    assert not _offers(servers["pdsx"], "whoami")
+    assert _offers(servers["pdsx"], "create_record")
 
 
 def test_tools_named_in_a_prompt_or_skill_stay_offered():
@@ -158,3 +158,11 @@ async def test_the_context_budget_counts_what_is_sent(monkeypatch):
     assert [tool.name for _, tool in await phi.list_tool_definitions()] == [
         "search_tools"
     ]
+
+
+def test_every_server_is_named_for_logs():
+    """A dropped server was logged as `Attributed(FilteredToolset(...))`."""
+    names = {
+        _mcp_origin(Attributed(ts)) for ts in PhiAgent.__new__(PhiAgent)._mcp_toolsets()
+    }
+    assert {"pdsx", "pub", "semble", "tangled", "atproto-docs", "prefect"} <= names

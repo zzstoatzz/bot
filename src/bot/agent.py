@@ -32,7 +32,13 @@ from bot.core.discovery_pool import get_discovery_pool_block
 from bot.core.goals import list_goals as list_goal_records
 from bot.core.graze_client import GrazeClient
 from bot.core.mcp_skills import MCPSkillsRegistry
-from bot.core.mcp_tools import Attributed, MCPServerFailed, _mcp_url, build_toolsets
+from bot.core.mcp_tools import (
+    Attributed,
+    MCPServerFailed,
+    _mcp_origin,
+    _mcp_url,
+    build_toolsets,
+)
 from bot.core.operator import get_operator_guidance_block, get_operator_profile
 from bot.core.operator_notes import get_operator_notes_block
 from bot.core.owned_feeds import get_owned_feeds_block
@@ -841,8 +847,8 @@ class PhiAgent:
         )
 
         logger.info(
-            "phi agent initialized with pdsx, pub-search, semble, and tangled MCP tools "
-            "(prefect included when configured)"
+            "phi agent initialized with MCP servers: "
+            + ", ".join(_mcp_origin(ts) for ts in build_toolsets())
         )
 
     def get_capabilities(self) -> list[dict]:
@@ -878,7 +884,7 @@ class PhiAgent:
                             await stack.enter_async_context(ts)
                         except Exception as e:
                             logger.warning(
-                                f"mcp toolset {ts.label} unavailable for {label}, "
+                                f"mcp server {_mcp_origin(ts)} unavailable for {label}, "
                                 f"running without it: {type(e).__name__}: {str(e)[:200]}"
                             )
                             continue

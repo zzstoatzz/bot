@@ -80,7 +80,7 @@ def _mcp_url(toolset: AbstractToolset[Any]) -> str | None:
 
 def _mcp_origin(ts: AbstractToolset[Any]) -> str:
     """a short name for where a tool came from: the tool prefix when the
-    server has one, else the host's first label or the toolset id."""
+    server has one, else the server's name (`_server` sets it as the id)."""
     while True:
         if prefix := getattr(ts, "prefix", None):
             return str(prefix)
@@ -88,9 +88,7 @@ def _mcp_origin(ts: AbstractToolset[Any]) -> str:
         if wrapped is None:
             break
         ts = wrapped
-    if url := _mcp_url(ts):
-        return url.split("//", 1)[-1].split("/", 1)[0].split(".", 1)[0]
-    return ts.id or ts.label
+    return getattr(ts, "id", None) or ts.label
 
 
 class MCPServerFailed(Exception):
@@ -122,6 +120,7 @@ def _server(source: Any, name: str, run_label: str, **kwargs: Any) -> MCPToolset
     """One MCP server for one run, behind phi's guard."""
     return MCPToolset(
         source,
+        id=name,
         # the connect limit covers the server/discover probe and the legacy
         # initialize fallback; a cold hosted server can take 5s on the probe
         # alone, and the default 5s dropped prefect from runs.
@@ -214,7 +213,6 @@ def build_toolsets(run_label: str = "") -> list[AbstractToolset[PhiDeps]]:
                     ),
                     "lexidraw",
                     run_label,
-                    id="lexidraw",
                 ),
                 run_label,
             )
