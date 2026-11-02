@@ -15,6 +15,10 @@ back told her pdsx was down. Each fix below came from that run's trace.
 - `query_traces` types its window as datetimes. a `>` leaked into `end`
   twice and Logfire answered 422 after the request went out; the tool now
   returns the validation error to the model before any request.
+- MCP servers get 15s to connect. FastMCP 4's client probes
+  `server/discover` before falling back to `initialize`, and both count
+  against the connect limit; a cold hosted server spent the default 5s on
+  the probe alone, which dropped prefect and atproto-docs from eight runs.
 
 ## 2026-11-01 — pydantic-ai 2, FastMCP 4.2, and skills over MCP
 

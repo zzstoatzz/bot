@@ -264,3 +264,14 @@ async def test_filtered_mcp_server_is_still_retried(no_retry_pause):
 
     assert out == "success (no tool calls)"
     assert [len(ts) for ts in offered] == [1, 1]
+
+
+def test_mcp_servers_allow_a_slow_discover_probe():
+    """2026-11-02: server/discover took 5s on cold prefect and docs servers,
+    which spent the whole default connect budget and dropped them from runs."""
+    from bot.core.mcp_tools import _server
+
+    toolset = _server("https://example.test/mcp", "pdsx", "test")
+    options = toolset._client_options
+    assert options is not None
+    assert (options["init_timeout"] or 0) >= 15

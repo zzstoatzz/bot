@@ -122,6 +122,10 @@ def _server(source: Any, name: str, run_label: str, **kwargs: Any) -> MCPToolset
     """One MCP server for one run, behind phi's guard."""
     return MCPToolset(
         source,
+        # the connect limit covers the server/discover probe and the legacy
+        # initialize fallback; a cold hosted server can take 5s on the probe
+        # alone, and the default 5s dropped prefect from runs.
+        init_timeout=15,
         read_timeout=30,
         process_tool_call=make_mcp_guard(name, run_label),
         **kwargs,
