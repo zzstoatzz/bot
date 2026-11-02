@@ -24,6 +24,16 @@ back told her pdsx was down. Each fix below came from that run's trace.
 - encounter recovery completes once it reaches what the last completed scan
   stored. phi's history passed its twenty-page bound on 2026-10-20 and every
   scan since had failed, though only 77 events were new.
+- tangled replaced its `sh.tangled.*` API with `org.tangled.*` on 2026-10-30,
+  so every tangled read 404'd and `own-source` could not read this repo.
+  tangled-mcp now reads bobbin's index and the repo's knot, and writes
+  tickets and comments through the knot. pulls are opened from a pushed
+  branch now, and phi has no repository or git push on tangled, so
+  `own-source` routes code changes through issues and her pull tools refuse.
+- hosted pdsx runs the operator's atproto fork (`build/exclude-unset`).
+  atproto 0.0.72 began dumping records in unknown fields without
+  `exclude_unset`, so `get_record` padded records with nulls for fields they
+  never set, and 0.0.73 could not read a `social.grain.gallery`.
 
 ## 2026-11-01 — pydantic-ai 2, FastMCP 4.2, and skills over MCP
 

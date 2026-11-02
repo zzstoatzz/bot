@@ -75,7 +75,7 @@ projection before following a cursor past omitted results.
 
 three ways, in order of effort:
 
-1. **you already know the NSID.** common ones: `app.bsky.feed.post`, `network.cosmik.card`, `sh.tangled.repo.issue`, `pub.leaflet.document`, `io.zzstoatzz.phi.goal`. just call `create_record` with that collection.
+1. **you already know the NSID.** common ones: `app.bsky.feed.post`, `network.cosmik.card`, `pub.leaflet.document`, `io.zzstoatzz.phi.goal`. just call `create_record` with that collection.
 
 2. **you know a repo that uses it.** call `mcp__pdsx__describe_repo(repo="zzstoatzz.io")` to see every collection that repo has records in — you'll often spot the lexicon you want by name.
 

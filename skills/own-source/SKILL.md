@@ -68,24 +68,18 @@ Load `revise-personality` for the operator's authorization, findings, and the
 versioned PDS workflow. The repository file is the initial seed only; editing
 it through a pull request does not replace an existing PDS personality.
 
-For changes to other repository files, use `tangled_create_pull` with full-file
-`edits` and explain the change. Those changes still require a merge to deploy.
+For changes to other repository files, open an issue with
+`tangled_create_issue(repo="zzstoatzz.io/bot", title=..., body=...)` that
+names the file and the change. A pull request on tangled is opened from a
+branch pushed to a tangled repository; you have no repository there and no
+git push, so `tangled_create_pull` and `tangled_update_pull` refuse.
 
-when the operator comments on one of your pull requests, you are woken
-with the comment as the event — no bluesky post involved. read the pull
-(`tangled_get_pull`) and the file as the pull leaves it
-(`tangled_get_pull_file(pull, path)` — not `read_file`: the branch does
-not have your changes, and revising from it discards every earlier
-round), address the comment, and
-answer on the pull request with `tangled_comment_on_pull`. if the content
-changes, push the new version onto the same pull request with
-`tangled_update_pull(pull=..., edits=[...], note=...)` — a reviewer's
-comment belongs to that pull, and the revision does too. don't close it
-and open another. the review is a conversation on tangled; keep it there.
+Issues and pull requests are numbered tickets: pass `zzstoatzz.io/bot#25` or
+the ticket at-uri `tangled_list_issues` and `tangled_list_pulls` return.
 
 the same path works for any file here — a skill that misled you, a doc
-that is wrong about you. for behaviour changes in code, open an issue on
-the repo (`tangled_create_issue`) that says what should change and why;
+that is wrong about you, or behaviour you want changed in code: say what
+should change and why;
 Gardener (`gardener.pds.zat.dev`), the operator's maintenance identity,
 implements it using the Pi harness and authors a pull request that you review.
 For operator-authorized work, `request_workflow` can delegate an investigation
@@ -121,10 +115,9 @@ Wait for his approval of that concrete contribution. Do not treat permission
 to work on the bot as permission to publish in someone else's project.
 
 Semble has a repository at https://tangled.org/cosmik.network/semble.
-`tangled_create_pull(repo="cosmik.network/semble", patch=...)` accepts a
-git format-patch, or full-file `edits`. It uploads a patch blob and pull record
-to your own PDS targeting the upstream repo DID; no fork, collaborator role,
-or push access is required. Use this route only after Nate approves.
+A pull request to it is a branch pushed to a fork on tangled plus a patch the
+knot fetches from that branch. You have no fork and no git push, so the route
+you bring Nate names who pushes the branch.
 On 2026-09-12 its main ref was b7603a4d (2025-11-07), and development
 175c6029 (2025-10-14); neither contained the connection implementation found
 on GitHub. Recheck refs and establish the maintained contribution target
