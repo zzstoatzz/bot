@@ -117,8 +117,23 @@ Not for: changing phi's behavior (edit code/personality), inspecting phi
 
 ## follow through after posting
 
-Monitor for Phi’s reply after sending a devlog message; posting the link is not
-the end of the exchange. Read the reply in thread context and check material
-claims against evidence before reporting back. If the reply has not arrived
-before the turn ends, arrange a quiet, bounded follow-up when scheduling is
-available. Notify Nate about substantive replies or blockers, not unchanged polls.
+Wait for Phi’s reply after sending a devlog message; posting the link is not
+the end of the exchange. Start the waiter on the root uri right after posting,
+in the background so its exit notifies you:
+
+```
+uv run python scripts/wait_for_phi.py <root_uri>
+```
+
+It prints replies already in the thread, then streams new ones from spacedust
+(`app.bsky.feed.post:reply.root.uri`, filtered to the root server-side), one
+`rkey<TAB>text` line each. It exits 0 once `--quiet` (180s) passes after her last
+reply and 1 if she has not replied by `--timeout` (1800s). Do not hand-roll an
+AppView polling loop or filter by timestamp: a cutoff later than her first post
+silently drops it. Phi writes a long answer as a burst of posts in one run, so
+the quiet window ends the wait; an answer that stops partway is a run that
+ended, and Logfire says why.
+
+Read the reply in thread context and check material claims against evidence
+before reporting back. Notify Nate about substantive replies or blockers, not
+unchanged waits.
