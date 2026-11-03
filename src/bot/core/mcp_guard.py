@@ -269,6 +269,16 @@ def make_mcp_guard(server: str, run_label: str = ""):
         name: str,
         tool_args: dict[str, Any],
     ) -> Any:
+        if server == "pdsx" and name in ("query", "list_records"):
+            select = tool_args.get("select")
+            if isinstance(select, str) and select.lstrip().startswith('"'):
+                try:
+                    projection = json.loads(select)
+                except ValueError:
+                    projection = None
+                if isinstance(projection, str) and projection.lstrip().startswith("."):
+                    tool_args = {**tool_args, "select": projection}
+
         if refusal := _structural_refusal(server, name, tool_args):
             return refusal
 

@@ -130,3 +130,16 @@ async def test_local_dispatch_bug_does_not_imply_outage():
     result = await make_mcp_guard("pdsx")(None, broken_dispatch, "get_record", {})
     assert "failed during dispatch (TypeError)" in result
     assert "unavailable" not in result
+
+
+async def test_quoted_pdsx_projection_reaches_server_as_a_filter():
+    server = FastMCP("pdsx")
+    projection = ".posts[] | {handle: .author.handle, text: .record.text}"
+
+    @server.tool
+    def query(select: str) -> str:
+        assert select == projection
+        return "projected post"
+
+    result = await _call(server, "query", {"select": f'"{projection}"'})
+    assert "projected post" in result
