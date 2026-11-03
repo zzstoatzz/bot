@@ -637,11 +637,11 @@ class PhiAgent:
             return await get_state_block(bot_client, self.memory)
 
         @_run_scoped
-        async def inject_chronicle(ctx: RunContext[PhiDeps]) -> str:
+        async def inject_chronicle() -> str:
             """[CHRONICLE] — all recorded history, coarser with age. See memory/chronicle.py."""
-            if not ctx.deps.memory:
+            if not self.memory:
                 return ""
-            return await get_chronicle_block(ctx.deps.memory.client)
+            return await get_chronicle_block(self.memory.client)
 
         @_run_scoped
         async def inject_recent_operations() -> str:

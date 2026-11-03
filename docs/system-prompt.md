@@ -43,7 +43,7 @@ of what any historical request received.
 | `inject_pause_history` | `[OPERATIONAL HISTORY]`: last pause/resume | Only during the 24 hours after resume |
 | `inject_known_relays` | `[KNOWN RELAYS]`: valid names for `check_infra` | Five-minute cache |
 | `inject_goals` | `[GOALS]`: PDS goals/interests with dated progress | Five-minute cache, invalidated by writes; last-step notes show their recorded timestamp, including context for relative dates in authored text |
-| `inject_chronicle` | `[CHRONICLE]`: every episodic record since the first, summarized into dated entries that grow coarser with age (`memory/chronicle.py`) | Five-minute cache, invalidated by compaction and corrections; the newest records wait for the next flush; corrections render under their entry |
+| `inject_chronicle` | `[CHRONICLE]`: every episodic record since the first, summarized into dated entries that grow coarser with age (`memory/chronicle.py`); private runs can read this shared history without receiving a shared memory writer | Five-minute cache, invalidated by compaction and corrections; the newest records wait for the next flush; corrections render under their entry |
 | `inject_recent_operations` | `[RECENT OPERATIONS]`: local Jetstream tail plus PDS gap recovery | 48-hour window; five-minute cache; routine tallies, topic labels, edit/delete provenance |
 | `inject_alert_watch` | `[ALERT WATCH]`: open/recently quieted incidents | Local status per run; firing history does not prove current workload failure |
 | `inject_discovery_pool` | `[DISCOVERY POOL]`: operator-liked writing from unfamiliar people | Batch-ranked top three; broader cached pool on scheduled paths; parent context for reply samples |

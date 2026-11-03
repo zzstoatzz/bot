@@ -1,5 +1,15 @@
 # changelog
 
+## 2026-11-03 — private runs can read the public-work chronicle
+
+Private operator conversations deliberately receive no shared memory writer,
+but the chronicle reader used that same dependency and silently disappeared.
+It now reads through the agent's memory service, so a private run can orient
+itself against the same public-work history as a batch or scheduled pass.
+The private run's dependencies and summary exclusion remain unchanged: no
+DM contents enter episodic memory or the chronicle. This supplies historical
+orientation, not long-term retention of private decisions.
+
 ## 2026-11-03 — notification runs enter the chronicle's source stream
 
 Notification batches were excluded from automatic episodic summaries on the
