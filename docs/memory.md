@@ -176,3 +176,67 @@ stored `supersedes` references, clearly labelled historical. Full revision histo
 remains in memory. Public records retain their source URIs. The cockpit displays
 record dates and translates promotion labels into their actual cluster meaning;
 nearby public material is not proof of verification or publication.
+
+### Long-horizon coherence investigation, November 3
+
+The chronicle supplies orientation; receiving it does not establish that Phi
+uses prior decisions correctly. The target applies to every interaction:
+public conversations, private operator turns and scheduled work. Evaluate
+whether she retains who did what, applies corrections, distinguishes a past
+state from current evidence, and returns to useful questions without reopening
+settled ones. Merely mentioning an older event is insufficient.
+
+Observed before deploying the follow-up changes:
+
+- The completed initial backfill had nine active entries covering 1,980
+  episodic records through November 2 15:09 UTC, with 22 newer eligible rows
+  waiting below the flush threshold. The rendered block was 10,096 characters.
+  No main-agent run after the chronicle deployment was available in the
+  inspected Logfire window; actual delivery remained unverified.
+- The [November 2 cycle](https://logfire-us.pydantic.dev/waow/phi/?q=trace_id%3D%2701a19da209842b303d40bc9e64cf3cac%27)
+  followed its November 1 delve investigation, fetched fresh records, saved
+  the changed finding and declined to repeat the old post. This is a useful
+  positive baseline that predates the chronicle.
+- A [November 1 private run](https://logfire-us.pydantic.dev/waow/phi/?q=trace_id%3D%2701a199562e7abc8ee584bb9b6d4bbcd0%27)
+  attempted to repeat an operator decision request already answered in its
+  supplied conversation. The judge withheld it. Evaluate the attempted
+  decision as well as the delivery: a blocked mistake is not coherent choice.
+- The November 2 13:15 UTC docket, record CID
+  `bafyreidyu5ypx3w657svfsfhutnahol4rhlbhstiblsvgnfuf3oezqucre`, says
+  “phi has assembled” the Lake Michigan webcam collection in candidate
+  `cand-16243088cbe0`. All eight cited observations resolve in that atlas to
+  `phi-users-lake_michigan_live`, with `refs.handle=lake.michigan.live`.
+  Their dates include May and June. The builder is another account; a fresh
+  docket generation date does not make those source events recent.
+- The producer in `my-prefect-server/flows/docket.py` reduces evidence to
+  point ID, kind and a 240-character snippet. Structured subject references
+  and record dates do not reach `EvidenceRef` or the synthesis prompt. Its
+  synthesis cache hashes evidence IDs rather than snippets or source dates.
+  Fix this at the producer; injecting the docket more broadly would spread
+  the existing attribution error.
+
+The first follow-up removes chronicle input clipping, retains public batch
+summaries and allows private runs to read shared history without granting
+them a shared memory writer. It does not rebuild existing entries or retain
+private decisions beyond the supplied conversation window. Daily reflection
+also remains: it is currently the only caller of conversation extraction.
+
+The source-derived probes in `evals/chronicle.py` compare clipped and complete
+input through three consolidation levels using the production summarizer.
+In the first paired sample, the clipped stake correction remained unresolved
+at $226.50 through L3; complete input retained $22.65 through L3. Webcam
+attribution survived when the subject was supplied explicitly. Critical-string
+checks are only retention checks: one L3 output also inferred that a record
+had been corrected, which the fixture did not establish. Read every output.
+
+The next behavioral comparison should freeze historical tasks and their
+then-available evidence, and run the same production agent/tool schemas with
+and without the candidate memory. Hold public writes, trades and dispatches
+at execution; retain proposed actions, requested reads and their results.
+Use cases held out from prompt tuning, repeat each arm, and report each
+interaction class separately. Score correct attribution, correction survival,
+resolved-question handling and justified change after new evidence. Check
+unrelated-memory distraction and private-to-public leakage as regressions.
+Do not substitute summaries for tool receipts or feed later outcomes into an
+earlier task. Controlled replay establishes a bounded effect; later production
+traces must establish that the same behavior persists across weeks.
