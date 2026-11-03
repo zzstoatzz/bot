@@ -78,3 +78,32 @@ async def test_a_transport_failure_is_an_outage():
     result = await guard(None, unreachable, "search", {})
     assert "unavailable right now" in result
     assert "skip that call" in result
+
+
+async def test_rejected_read_reaches_server_again_only_with_corrected_arguments():
+    server = FastMCP("pdsx")
+    calls = []
+
+    @server.tool
+    def list_records(repo: str) -> str:
+        calls.append(repo)
+        if repo == "malformed":
+            raise ToolError("URL too long")
+        return "records found"
+
+    toolset = MCPToolset(server, process_tool_call=make_mcp_guard("pdsx", "test run"))
+    ctx = _ctx()
+    async with toolset:
+        tool = (await toolset.get_tools(ctx))["list_records"]
+        first = await toolset.call_tool(
+            "list_records", {"repo": "malformed"}, ctx, tool
+        )
+        repeat = await toolset.call_tool(
+            "list_records", {"repo": "malformed"}, ctx, tool
+        )
+        fixed = await toolset.call_tool("list_records", {"repo": "phi.test"}, ctx, tool)
+
+    assert "URL too long" in str(first)
+    assert "No request sent" in str(repeat)
+    assert "records found" in str(fixed)
+    assert calls == ["malformed", "phi.test"]

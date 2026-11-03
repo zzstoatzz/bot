@@ -260,6 +260,8 @@ def make_mcp_guard(server: str, run_label: str = ""):
     action the operator asked not to happen.
     """
 
+    rejected_reads: set[tuple[str, str]] = set()
+
     async def process(
         ctx: Any,
         call_tool: Any,
@@ -395,7 +397,14 @@ def make_mcp_guard(server: str, run_label: str = ""):
                     if deps is not None:
                         deps.library_revision = ops_log.library_revision
         else:
-            result = await _invoke(call_tool, server, name, tool_args, run_label)
+            result = await _invoke(
+                call_tool,
+                server,
+                name,
+                tool_args,
+                run_label,
+                rejected_reads=None if changes else rejected_reads,
+            )
         if warn_note and isinstance(result, str):
             result += warn_note
         return await _with_coverage(ctx, result)
@@ -632,20 +641,47 @@ async def _with_coverage(ctx: Any, result: Any) -> Any:
 
 
 async def _invoke(
-    call_tool: Any, server: str, name: str, tool_args: dict[str, Any], run_label: str
+    call_tool: Any,
+    server: str,
+    name: str,
+    tool_args: dict[str, Any],
+    run_label: str,
+    *,
+    rejected_reads: set[tuple[str, str]] | None = None,
 ) -> Any:
     """Call the tool, turning failures into something phi can act on."""
+    key = (
+        (name, json.dumps(tool_args, sort_keys=True))
+        if rejected_reads is not None
+        else None
+    )
+    if rejected_reads is not None and key in rejected_reads:
+        logger.info("Skipped repeated rejected read %s.%s", server, name)
+        return (
+            f"{server} {name} already rejected these arguments in this run. "
+            "No request sent. Correct the rejected argument or use another source."
+        )
     try:
         return await call_tool(name, tool_args)
     except ModelRetry as e:
-        # MCPToolset raises ModelRetry when the server returns an error result,
-        # so the server is up and the arguments are what to change. "URL too
-        # long" from a malformed `repo` was once relabelled an outage and phi
-        # abandoned the task (2026-11-02).
         detail = str(e)
+        if (
+            rejected_reads is not None
+            and key is not None
+            and any(
+                error in detail.lower()
+                for error in ("url too long", "repo parameter is required")
+            )
+        ):
+            rejected_reads.add(key)
         logger.warning(
             f"{server} {name} returned an error during {run_label}: {detail}"
         )
+        if _mutations(server, name, tool_args):
+            return (
+                f"{server} {name} returned an error: {detail[:400]}. "
+                "Verify the resulting state before attempting another write."
+            )
         if any(
             signature in detail.lower()
             for signature in (
@@ -662,9 +698,8 @@ async def _invoke(
             )
         return (
             f"{server} {name} returned an error: {detail[:400]}. the server "
-            "answered, so it is up: check the arguments you passed and call it "
-            "again. if the corrected call fails the same way, leave it and say "
-            "so in your summary."
+            "answered. If the error identifies an invalid argument, check the arguments "
+            "and retry with a correction. Otherwise use another source or report the gap."
         )
     except Exception as e:
         logger.warning(f"{server} {name} failed during {run_label}: {e}")

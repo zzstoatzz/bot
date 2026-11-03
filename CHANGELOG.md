@@ -1,5 +1,19 @@
 # changelog
 
+## 2026-11-03 — Stop replaying rejected MCP reads
+
+During the PDS tour one trace sent the same rejected `list_records`
+arguments nine times. The repository default addresses the missing
+repository. The MCP guard now also remembers exact read arguments that
+the server rejected as missing a repository or making an oversized URL.
+For the rest of that run, an identical read returns a local correction
+message. Changed arguments still reach the server. Transient failures
+are not remembered.
+
+A server error no longer prompts an unconditional retry. When a write
+returns an error, Phi is directed to check the resulting state before
+attempting another write because the server may have partially applied it.
+
 ## 2026-11-03 — private runs can read the public-work chronicle
 
 Private operator conversations deliberately receive no shared memory writer,
