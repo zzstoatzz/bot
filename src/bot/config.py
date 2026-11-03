@@ -121,6 +121,10 @@ class Settings(BaseSettings):
         default="openai-responses:gpt-5.6-luna",
         description="Model for the extraction/synth sub-agents",
     )
+    chronicle_model: str = Field(
+        default="openrouter:deepseek/deepseek-v4.1-flash",
+        description="Model that compiles and merges chronicle entries (bot.memory.chronicle)",
+    )
     policy_model: str = Field(
         default="openai-responses:gpt-5.6-terra",
         description="Model for the pre-action policy judge (bot.core.policy)",
@@ -253,6 +257,10 @@ class Settings(BaseSettings):
     owner_handle: Handle | Did = Field(
         default="zzstoatzz.io",
         description="Handle or DID of the bot's owner (permission-gated tools)",
+    )
+    chronicle_interval: int = Field(
+        default=600,
+        description="Seconds between chronicle compaction checks; 0 disables",
     )
     review_poll_interval: int = Field(
         default=60,
