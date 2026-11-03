@@ -78,6 +78,8 @@ recent activity. Use the returned IDs to read `/election/races/<id>` and its
 `/entity-graph`, `/stats`, `/history/top?range=day`, or
 `/history/topics?range=day` views. Graphs use the tool's query, limit and
 offset arguments. Choose races based on the catalog and the evidence.
+Pass Bluesky source URIs from the race detail to `read_posts` to read their
+authors, text, and timestamps together.
 If the catalog is unavailable, use the broader `/election/entity-graph`
 and current sources, and disclose the gap.
 

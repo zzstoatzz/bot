@@ -146,6 +146,10 @@ RISK: dict[str, Risk] = {
         "magnitude": "none",
         "reason": "searches the network; finding a post is not an invitation to reply to it.",
     },
+    "read_posts": {
+        "magnitude": "none",
+        "reason": "reads known public Bluesky posts in a batch.",
+    },
     "read_web_page": {
         "magnitude": "none",
         "reason": "reads extracted public page text through tavily; costs a metered request and changes no records.",

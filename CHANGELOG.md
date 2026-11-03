@@ -1,5 +1,12 @@
 # changelog
 
+## 2026-11-03 — Read known Bluesky posts in batches
+
+The election probe needed the authors, text and timestamps behind a Coral
+race. Phi now passes source URIs to `read_posts`, which returns those fields
+with record identity, quote references and explicit omissions. Both the
+editorial and PDSX skills point to this tool for batch post reads.
+
 ## 2026-11-03 — Stop replaying rejected MCP reads
 
 During the PDS tour one trace sent the same rejected `list_records`

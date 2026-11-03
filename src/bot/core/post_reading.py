@@ -27,6 +27,35 @@ def post_uri_from_url(url: str) -> str | None:
     return f"at://{actor}/app.bsky.feed.post/{rkey}"
 
 
+async def read_post_batch(uris: list[str]) -> dict:
+    """Read public AppView posts in requested order, with explicit omissions."""
+    async with httpx.AsyncClient(timeout=15) as client:
+        response = await client.get(
+            f"{APPVIEW}/xrpc/app.bsky.feed.getPosts",
+            params=[("uris", uri) for uri in uris],
+        )
+        response.raise_for_status()
+    by_uri = {}
+    for post in response.json()["posts"]:
+        record = post["record"]
+        embed = record.get("embed") or {}
+        quote = embed.get("record") or {}
+        if embed.get("$type") == "app.bsky.embed.recordWithMedia":
+            quote = quote.get("record") or {}
+        by_uri[post["uri"]] = {
+            "uri": post["uri"],
+            "cid": post["cid"],
+            "author": post["author"]["handle"],
+            "text": record["text"],
+            "created_at": record["createdAt"],
+            "quoted_uri": quote.get("uri"),
+        }
+    return {
+        "posts": [by_uri[uri] for uri in uris if uri in by_uri],
+        "missing_uris": [uri for uri in uris if uri not in by_uri],
+    }
+
+
 async def _replies_below(uri: str) -> str:
     """The post and the replies under it, nested, with cut markers."""
     async with httpx.AsyncClient(timeout=15) as client:

@@ -17,7 +17,7 @@ def context():
     return SimpleNamespace(deps=PhiDeps(author_handle="test.bsky.social"))
 
 
-def reader(monkeypatch, handler):
+def reader(monkeypatch, handler, name="read_web_page"):
     constructor = httpx.AsyncClient
     monkeypatch.setattr(search.settings, "tavily_api_key", "test-key")
     monkeypatch.setattr(
@@ -32,7 +32,7 @@ def reader(monkeypatch, handler):
         return tool
 
     search.register(SimpleNamespace(tool=register))
-    return tools["read_web_page"]
+    return tools[name]
 
 
 async def test_read_all_pages_without_loss(monkeypatch):
@@ -164,3 +164,29 @@ async def test_bluesky_uses_native_reader_without_tavily(monkeypatch):
     native.assert_awaited_once_with(
         url, "at://gracekind.net/app.bsky.feed.post/3lktq6zw5ec2y"
     )
+
+
+async def test_read_posts_batches_sources_and_reports_missing(monkeypatch):
+    prefix = "at://did:plc:example/app.bsky.feed.post/"
+    a, b, missing = (prefix + key for key in ("a", "b", "missing"))
+
+    def post(uri):
+        return {
+            "uri": uri,
+            "cid": "test-cid",
+            "author": {"handle": "author.bsky.social"},
+            "record": {"text": "Election source", "createdAt": "2026-11-03T12:00:00Z"},
+        }
+
+    def handler(request):
+        assert request.url.path == "/xrpc/app.bsky.feed.getPosts"
+        assert request.url.params.get_list("uris") == [a, missing, b]
+        return httpx.Response(200, json={"posts": [post(b), post(a)]})
+
+    tool = reader(monkeypatch, handler, name="read_posts")
+    result = json.loads(await tool(context(), [a, missing, b, a]))
+    assert result["missing_uris"] == [missing]
+    assert [post["uri"] for post in result["posts"]] == [a, b]
+    assert result["posts"][0]["author"] == "author.bsky.social"
+    assert result["posts"][0]["text"] == "Election source"
+    assert result["posts"][0]["created_at"] == "2026-11-03T12:00:00Z"

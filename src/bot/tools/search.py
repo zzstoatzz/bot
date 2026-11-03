@@ -17,7 +17,7 @@ from pydantic_ai import BinaryContent, RunContext
 
 from bot.config import settings
 from bot.core.atproto_client import bot_client
-from bot.core.post_reading import post_uri_from_url, read_post_url
+from bot.core.post_reading import post_uri_from_url, read_post_batch, read_post_url
 from bot.core.prior_coverage import coverage_note
 from bot.tools._helpers import PhiDeps, WebSourceCapture, _relative_age
 from bot.tools.coral import entity_page
@@ -177,6 +177,45 @@ def register(agent):
         if note := await coverage_note(ctx.deps.memory, result):
             result += f"\n\n{note}"
         return result
+
+    @agent.tool
+    async def read_posts(
+        ctx: RunContext[PhiDeps],
+        uris: Annotated[
+            list[str],
+            Field(
+                min_length=1, max_length=25, description="Bluesky post AT URIs to read."
+            ),
+        ],
+    ) -> str:
+        """Read up to 25 known Bluesky posts in one call, such as Coral race source URIs.
+
+        Returns each post's author, text, creation time, URI, CID and quoted URI in requested
+        order, plus any URIs missing from AppView. For thread context or images,
+        read the post URL with read_web_page.
+        """
+        if not 1 <= len(uris) <= 25:
+            return "Provide 1–25 Bluesky post AT URIs per call."
+        if any(
+            not re.fullmatch(
+                r"at://[^/?#]+/app\.bsky\.feed\.post/[a-zA-Z0-9_~.:-]+", uri
+            )
+            for uri in uris
+        ):
+            return "Use the original at://…/app.bsky.feed.post/… URIs from the source."
+        try:
+            result = await read_post_batch(list(dict.fromkeys(uris)))
+        except httpx.HTTPStatusError as error:
+            return (
+                f"Bluesky AppView returned HTTP {error.response.status_code}. "
+                "Try reading a specific post by URL with read_web_page."
+            )
+        except (httpx.RequestError, ValueError, KeyError, TypeError):
+            return (
+                "Bluesky AppView did not return readable posts. "
+                "Try reading a specific post by URL with read_web_page."
+            )
+        return json.dumps(result, ensure_ascii=False)
 
     @agent.tool
     async def read_web_page(

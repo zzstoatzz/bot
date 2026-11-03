@@ -33,28 +33,21 @@ note on direction: `resolveHandle` only goes handle→DID. to go the other way (
 
 ## reading many references at once
 
-records that point at posts — likes, reposts, bookmarks, list items,
-notification subjects — carry a `subject.uri`, not the text. do not fetch
-them one `get_record` at a time, and do not pull whole post views: both
-read tools take a jq `select` that returns only what you name, and
-large responses exceed the 30k character limit, so project before you page.
+Records that point at posts carry a subject URI. Pass those URIs to
+`read_posts` in batches of up to 25 for authors, text, timestamps and quoted
+URIs. It reports missing posts explicitly. For a specific conversation or
+image, read the post URL with `read_web_page`.
+
+For a repository inventory, page `list_records` with a small limit and follow
+the cursor. A projection can reduce the size of custom record reads:
 
 ```
 mcp__pdsx__list_records("app.bsky.feed.like", repo="zzstoatzz.io", limit=100,
     select=".[] | {u: .value.subject.uri, t: .value.createdAt}")
-  -> {"results": [...100 of those...], "cursor": "..."}        (~11k chars)
-mcp__pdsx__query("app.bsky.feed.getPosts", params={"uris": [25 of the u's]},
-    select=".posts[] | {uri, handle: .author.handle, text: .record.text[0:200], quotes: .embed.record.uri?}")
-  -> [...25 lean posts...]                                       (~6k chars)
 ```
 
-so "what did nate like two weeks ago that said X" is a loop: page his likes
-100 at a time (about 80 a day), hydrate each page in four getPosts calls,
-filter the text, or count `quotes` when the memory is "everyone quote-posting
-one post". two weeks measured 2026-09-03: 1,400 likes, 14 list pages, 56
-hydration calls, zero errors, ~7k chars a call. narrow first when you can:
-`search_posts` takes `author`, `since`, `until`, `sort=latest` and a
-`cursor`, and often finds the post before the walk does.
+Narrow first when possible. `search_posts` accepts author and time bounds
+and can often find the post without walking a likes collection.
 
 For reply searches, these read tools simplify `.value.reply.parent` and
 `.value.reply.root` to URI strings. Use the returned shape, for example:
