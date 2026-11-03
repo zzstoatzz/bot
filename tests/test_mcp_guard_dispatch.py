@@ -107,3 +107,26 @@ async def test_rejected_read_reaches_server_again_only_with_corrected_arguments(
     assert "No request sent" in str(repeat)
     assert "records found" in str(fixed)
     assert calls == ["malformed", "phi.test"]
+
+
+async def test_unsupported_pdsx_decoder_points_to_raw_records():
+    server = FastMCP("pdsx")
+
+    @server.tool
+    def list_records(collection: str) -> str:
+        raise ToolError(
+            "module 'atproto_client.models.social.grain.gallery' has no attribute 'Record'"
+        )
+
+    result = await _call(server, "list_records", {"collection": "social.grain.gallery"})
+    assert "com.atproto.repo.listRecords" in result
+    assert "cannot decode this collection" in result
+
+
+async def test_local_dispatch_bug_does_not_imply_outage():
+    async def broken_dispatch(name, args):
+        raise TypeError("unexpected positional argument")
+
+    result = await make_mcp_guard("pdsx")(None, broken_dispatch, "get_record", {})
+    assert "failed during dispatch (TypeError)" in result
+    assert "unavailable" not in result

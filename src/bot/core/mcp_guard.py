@@ -13,6 +13,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
+import httpx
 import logfire
 from pydantic_ai import ModelRetry
 
@@ -682,6 +683,21 @@ async def _invoke(
                 f"{server} {name} returned an error: {detail[:400]}. "
                 "Verify the resulting state before attempting another write."
             )
+        if (
+            server == "pdsx"
+            and name in ("list_records", "get_record")
+            and "has no attribute 'Record'" in detail
+        ):
+            nsid = (
+                "com.atproto.repo.listRecords"
+                if name == "list_records"
+                else "com.atproto.repo.getRecord"
+            )
+            return (
+                f"pdsx {name} cannot decode this collection with its SDK. "
+                f"Use pdsx query with {nsid} on the repository's PDS "
+                "to read raw records. This error does not establish an empty collection."
+            )
         if any(
             signature in detail.lower()
             for signature in (
@@ -697,12 +713,22 @@ async def _invoke(
                 "establish a service outage."
             )
         return (
-            f"{server} {name} returned an error: {detail[:400]}. the server "
+            f"{server} {name} returned an error: {detail[:400]}. The server "
             "answered. If the error identifies an invalid argument, check the arguments "
             "and retry with a correction. Otherwise use another source or report the gap."
         )
     except Exception as e:
         logger.warning(f"{server} {name} failed during {run_label}: {e}")
+        if not isinstance(e, httpx.TransportError):
+            return (
+                f"{server} {name} failed during dispatch ({type(e).__name__}). "
+                "Use another tool for this task. This failure does not establish a service outage."
+            )
+        if _mutations(server, name, tool_args):
+            return (
+                f"{server} {name} lost its connection ({type(e).__name__}). "
+                "The write outcome is unknown. Verify the resulting state before retrying."
+            )
         return (
             f"{server} is unavailable right now ({type(e).__name__}: "
             f"{str(e)[:300]}). skip that call this run and continue with the "
