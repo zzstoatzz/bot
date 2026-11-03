@@ -155,6 +155,10 @@ RISK: dict[str, Risk] = {
         "reason": "searches the open web via tavily; costs a metered request but changes nothing.",
     },
     # --- low: her own private state ---------------------------------------
+    "correct_chronicle": {
+        "magnitude": "low",
+        "reason": "attaches a correction to a private chronicle entry; a wrong correction overrides true history in every later merge and has no undo tool.",
+    },
     "retire_memory": {
         "magnitude": "low",
         "reason": "removes a private note from ordinary recall while preserving its text and citations; restore_memory reverses it.",

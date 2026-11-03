@@ -54,6 +54,7 @@ from bot.core.self_record import get_self_block
 from bot.core.self_state import get_inventory_block, get_state_block
 from bot.core.tool_usage import ToolUsage
 from bot.core.workflow_state import get_workflow_state_block
+from bot.memory.chronicle import get_chronicle_block
 from bot.memory.encounters import (
     ENCOUNTER_NAMESPACE,
     encounter_thread_states,
@@ -634,6 +635,13 @@ class PhiAgent:
         async def inject_goals() -> str:
             """[GOALS] — phi's compass, from her PDS goal records."""
             return await get_state_block(bot_client, self.memory)
+
+        @_run_scoped
+        async def inject_chronicle(ctx: RunContext[PhiDeps]) -> str:
+            """[CHRONICLE] — all recorded history, coarser with age. See memory/chronicle.py."""
+            if not ctx.deps.memory:
+                return ""
+            return await get_chronicle_block(ctx.deps.memory.client)
 
         @_run_scoped
         async def inject_recent_operations() -> str:

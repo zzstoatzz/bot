@@ -1,11 +1,13 @@
 """Memory tools — private search_memory (read) and save_memory (write)."""
 
 import json
+from datetime import UTC, datetime
 from typing import Annotated
 
 from pydantic import Field
 from pydantic_ai import RunContext
 
+from bot.memory.chronicle import correct_entry
 from bot.memory.encounter_search import read_encounter as read_source_encounter
 from bot.memory.encounter_search import read_encounter_activity
 from bot.memory.encounter_search import search_encounters as search_source_encounters
@@ -212,6 +214,26 @@ def register(agent):
         Superseded versions cannot be restored over their corrections.
         """
         return await _set_retired(ctx, note_id, False)
+
+    @agent.tool
+    async def correct_chronicle(
+        ctx: RunContext[PhiDeps],
+        entry_id: Annotated[str, Field(description="Entry ID shown in [CHRONICLE]")],
+        correction: Annotated[
+            str, Field(description="What the entry gets wrong and what is true")
+        ],
+    ) -> str:
+        """Attach a correction to a chronicle entry that misstates your history.
+
+        The entry text stays as written; the correction renders beside it and
+        overrides it when the entry is later merged into a coarser one.
+        """
+        if not ctx.deps.memory:
+            return "Chronicle storage unavailable; nothing written."
+        result = await correct_entry(
+            ctx.deps.memory.client, entry_id, correction, datetime.now(UTC)
+        )
+        return json.dumps(result, ensure_ascii=False)
 
     @agent.tool
     async def save_memory(
