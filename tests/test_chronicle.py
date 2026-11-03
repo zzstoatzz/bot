@@ -178,3 +178,21 @@ async def test_an_empty_summary_writes_nothing():
     except ValueError:
         pass
     assert client.entries == []
+
+
+async def test_flush_receives_a_correction_at_the_end_of_a_long_run():
+    raw = records(1)
+    raw[0]["content"] = (
+        "Initial stake calculation: $226.50.\n"
+        + "Checked the fills and settlement. " * 80
+        + "\nCorrection: the actual stake was $22.65, a tenfold error."
+    )
+    client = FakeClient(raw)
+    prompts = []
+
+    async def capture(op):
+        prompts.append(chronicle.operation_prompt(op))
+        return "The stake was corrected to $22.65."
+
+    assert await compact(tp(client), now=T0 + timedelta(days=3), summarize=capture) == 1
+    assert raw[0]["content"] in prompts[0]

@@ -36,7 +36,6 @@ EPISODIC_NAMESPACE = "phi-episodic"
 FLUSH_ITEMS = 30
 FLUSH_AGE = timedelta(days=2)
 FANOUT = 4
-ITEM_CHARS = 1500
 RENDER_TTL_S = 300
 
 CHRONICLE_SCHEMA: dict[str, str | AttributeSchemaConfigParam] = {
@@ -114,10 +113,6 @@ def build_entry(op: Flush | Merge, text: str, now: datetime) -> dict:
     }
 
 
-def _clip(text: str, cap: int) -> str:
-    return text if len(text) <= cap else text[: cap - 1] + "…"
-
-
 def operation_prompt(op: Flush | Merge) -> str:
     if isinstance(op, Flush):
         lines = [
@@ -131,7 +126,7 @@ def operation_prompt(op: Flush | Merge) -> str:
             marker = " [superseded by a later version]" if state == "superseded" else ""
             lines.append(
                 f"\n[{record['created_at'][:16]}] {record.get('source', '')}{marker}\n"
-                + _clip(record.get("content") or "", ITEM_CHARS)
+                + (record.get("content") or "")
             )
         return "\n".join(lines)
     lines = [

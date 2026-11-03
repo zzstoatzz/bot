@@ -47,6 +47,17 @@ are supposed to shape. tool routing, owner-gating, and write-path policy
 specifics in the tests themselves, not here; this file describes the
 approach, and docs that list test files rot the moment tests change.
 
+## Chronicle consolidation
+
+`uv run python evals/chronicle.py --repetitions 3` compares the original
+1,500-character clipping with complete input through L1, L2 and L3, using
+the configured production `chronicle_model` and its OpenRouter credential.
+It prints every summary alongside critical-string retention checks. Cases
+are controlled fixtures derived from the Season 18 stake correction and the
+November 2 docket's webcam attribution error. No storage or public tools run.
+Review the prose: retaining a name or number does not establish correct
+attribution, and these probes do not measure downstream interaction behavior.
+
 ## bounded jev research
 
 [Operational microcosms](jev/README.md) compare three narrow jev judgments with

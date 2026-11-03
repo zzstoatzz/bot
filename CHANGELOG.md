@@ -1,5 +1,22 @@
 # changelog
 
+## 2026-11-03 — retain conclusions when compiling the chronicle
+
+The chronicle read only the first 1,500 characters of each episodic record,
+even though run summaries are stored in full. Eighteen records in a recent
+sample exceeded that limit. A controlled DeepSeek replay of the Season 18
+stake correction lost the corrected $22.65 cost with clipped input and kept
+the initial $226.50 unresolved through three levels. Full input retained the
+correction through all three. Flushes now read complete records; output word
+budgets and the thirty-record batch size remain bounded.
+
+`evals/chronicle.py` compares clipped and complete inputs through three levels
+using the production summarizer. It also probes the attribution error in the
+November 2 docket: observations about lake.michigan.live's webcams became
+“phi has assembled” in the suggestion. These are source-derived retention
+probes, not proof of improved behavior in later interactions. Existing entries
+are unchanged; repairing the input does not rebuild earlier distillations.
+
 ## 2026-11-03 — the chronicle
 
 phi's ambient context stopped at 48 hours. The ops log, encounters, recent
