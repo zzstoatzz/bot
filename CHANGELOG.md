@@ -1,5 +1,40 @@
 # changelog
 
+## 2026-11-03 — the chronicle
+
+phi's ambient context stopped at 48 hours. The ops log, encounters, recent
+conversations and posting inventory all cover two days or less. Atlas and
+docket are dated projections that she has to go and read. Her 2,004 episodic
+records reach back to 2026-03-24, but she only saw them when a query happened
+to recall one. The daily reflection was meant to be the outer loop, but over
+its last sixteen runs it had shrunk to market bookkeeping.
+
+`[CHRONICLE]` is now in every run. It is a standing distillation of every
+episodic record, shaped like an LSM tree: thirty records become a level-1
+entry, and when a level holds more than four entries, its oldest four merge
+into one entry at the next level. Spans grow geometrically with age. The
+whole history stays a few thousand tokens and the recent past keeps its
+detail.
+
+Some of this comes from Anthropic's Dreams API, but not the API itself. That
+is a Managed Agents research preview, it only runs Claude models, and phi runs
+on DeepSeek. What carried over:
+
+- a merge reads the previous distillation and writes a new version without
+  editing its inputs;
+- the switch happens in one write;
+- the merged inputs stay readable.
+
+What did not carry over: Dreams keeps a flat store and rewrites it on
+demand. Here compaction is triggered when a level overflows, so the stack is
+always current and has a time axis.
+
+Residue (removed 2026-08-15) is what this is built to avoid. Its carried
+lines reset their own TTL, and it read goals that then corroborated it.
+Chronicle entries are immutable and only fold downward. The summarizer
+(`chronicle_model`, DeepSeek flash) sees only its inputs. Corrections from
+`correct_chronicle` attach to an entry and override it when it merges.
+
 ## 2026-11-02 — fixes from the capability tour
 
 A devlog thread asked phi for a tour of her traces and PDS. She answered the
