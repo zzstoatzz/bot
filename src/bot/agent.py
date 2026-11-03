@@ -954,13 +954,7 @@ class PhiAgent:
             await run_status(evidence, "completed")
         summary = result.output or ""
         logger.info(f"{label} finished: {summary[:200]}")
-        # Scheduled runs relied on phi voluntarily calling save_memory to
-        # record what they did, which never happened — the 08-10 plyr dig
-        # left no episodic trace and got re-discovered on 08-11. The run
-        # summary is written unconditionally so "have I done this" has an
-        # answer. Batch runs are excluded: their material flows through
-        # the extraction pipeline already.
-        if summary and deps and deps.memory and not notification_input(deps):
+        if summary and deps and deps.memory and not deps.private_message_context:
             try:
                 await deps.memory.store_episodic_memory(
                     f"{label}: {summary}",

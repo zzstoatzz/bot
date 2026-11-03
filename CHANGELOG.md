@@ -1,5 +1,16 @@
 # changelog
 
+## 2026-11-03 — notification runs enter the chronicle's source stream
+
+Notification batches were excluded from automatic episodic summaries on the
+assumption that conversation extraction covered them. Extraction writes
+per-person observations, not an episodic account of Phi's decisions and actions.
+Public batches now retain their complete run summary just like scheduled runs,
+so later recall and chronicle compaction do not depend on a voluntary
+`save_memory` call. Private conversations remain excluded even if a caller
+accidentally supplies shared memory. A summary remains Phi's account, not an
+execution receipt; this does not backfill historical batches.
+
 ## 2026-11-03 — retain conclusions when compiling the chronicle
 
 The chronicle read only the first 1,500 characters of each episodic record,

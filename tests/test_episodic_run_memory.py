@@ -1,4 +1,4 @@
-"""Regression tests: scheduled runs must leave and consult episodic memory.
+"""Regression tests: public runs must leave and consult episodic memory.
 
 2026-08-10/11: three musings "discovered" the fm.plyr.track catalog in a row.
 The 08-10 dig never called save_memory (episodic writes were voluntary and
@@ -6,8 +6,7 @@ scheduled runs never volunteered), and inject_episodic returned "" for any
 run without a notification batch, so the 08-11 run had no way to know the
 exploration had already happened. Two invariants now:
 
-- _run_agent stores the run summary as an episodic memory for scheduled
-  runs (no notifications_context), unconditionally.
+- _run_agent stores complete public run summaries, including batches.
 - inject_episodic seeds recall from the run's own prompt on scheduled runs
   instead of going silent.
 """
@@ -61,13 +60,27 @@ async def test_scheduled_run_stores_episodic_summary():
     )
 
 
-async def test_batch_run_does_not_double_store():
+async def test_batch_run_leaves_an_episodic_account_even_without_save_memory():
     phi = _phi_with_fake_run()
     deps = _deps(notifications_context={"at://x": {"post_text": "hello"}})
     with (
         patch.object(PhiAgent, "_mcp_toolsets", return_value=[]),
     ):
         await phi._run_agent(label="notification batch", prompt="hi", deps=deps)
+
+    deps.memory.store_episodic_memory.assert_awaited_once_with(
+        f"notification batch: {_FakeResult.output}",
+        tags=["run-summary", "notification batch"],
+        source="run:notification batch",
+    )
+
+
+async def test_private_summary_never_enters_shared_memory_even_if_supplied():
+    phi = _phi_with_fake_run()
+    deps = _deps()
+    deps.private_message_context = "Private operator decision."
+    with patch.object(PhiAgent, "_mcp_toolsets", return_value=[]):
+        await phi._run_agent(label="operator-dm", prompt="hi", deps=deps)
 
     deps.memory.store_episodic_memory.assert_not_awaited()
 
