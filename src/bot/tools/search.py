@@ -245,14 +245,12 @@ def register(agent):
                 )
                 response.raise_for_status()
                 results = response.json().get("results", [])
-                if not results or not isinstance(results[0].get("raw_content"), str):
+                content = results[0].get("raw_content") if results else None
+                if not isinstance(content, str) or not content.strip():
                     return (
-                        "Page extraction unavailable; no readable source text returned."
-                    )
-                content = results[0]["raw_content"]
-                if not content.strip():
-                    return (
-                        "Page extraction unavailable; no readable source text returned."
+                        "Page extraction returned no readable text. Use web_search "
+                        "to find another primary copy, or use the native record reader "
+                        "for AT Protocol material."
                     )
                 source_id = uuid4().hex
                 source = WebSourceCapture(
@@ -264,6 +262,11 @@ def register(agent):
                 )
                 ctx.deps.web_sources[source_id] = source
                 return captured_page_slice(source_id, source, offset)
+        except httpx.HTTPStatusError as e:
+            return (
+                f"Page extraction service returned HTTP {e.response.status_code}. "
+                "Check the status before retrying. For publications, try pub_search. The status describes the extractor, not the source page."
+            )
         except (
             httpx.HTTPError,
             httpx.InvalidURL,

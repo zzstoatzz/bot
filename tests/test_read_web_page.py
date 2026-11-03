@@ -131,7 +131,13 @@ async def test_invalid_capture_never_silently_fetches(monkeypatch):
 )
 async def test_failure_is_not_source_absence(monkeypatch, status, payload):
     tool = reader(monkeypatch, lambda r: httpx.Response(status, json=payload))
-    assert "unavailable" in await tool(None, "https://example.org/story")
+    result = await tool(None, "https://example.org/story")
+    if status == 200:
+        assert "no readable text" in result
+        assert "web_search" in result
+    else:
+        assert f"extraction service returned HTTP {status}" in result
+        assert "pub_search" in result
 
 
 @pytest.mark.parametrize(
