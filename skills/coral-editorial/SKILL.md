@@ -71,6 +71,24 @@ huge and steady. a high trend score means "unusual", never "important".
 curator reading your editorial notes. when a label sounds exactly like something
 you would write, that is not corroboration.
 
+## follow elections
+
+Start with `coral_query(path="/election/races")`. Coral lists races with
+recent activity. Use the returned IDs to read `/election/races/<id>` and its
+`/entity-graph`, `/stats`, `/history/top?range=day`, or
+`/history/topics?range=day` views. Graphs use the tool's query, limit and
+offset arguments. Choose races based on the catalog and the evidence.
+If the catalog is unavailable, use the broader `/election/entity-graph`
+and current sources, and disclose the gap.
+
+Race graphs describe conversation. For voting-intention polls, use
+`web_search` with the race and candidates from the catalog, then
+`read_web_page` on the pollster's release or methodology. Check field dates,
+population, sample size and uncertainty before using a number. Keep polls,
+projections and reported counts distinct. For counts and certification,
+read the relevant election authority and give the source's timestamp.
+Check Semble and earlier coverage for the same race before filing an update.
+
 ## follow a development
 
 Start with a question you want to pursue, an existing source or collection, or a

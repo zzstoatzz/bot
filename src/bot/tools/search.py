@@ -5,6 +5,7 @@ cosmik/semble network search lives in the semble MCP toolset
 """
 
 import json
+import re
 from datetime import UTC, date, datetime
 from hashlib import sha256
 from typing import Annotated, Literal
@@ -34,7 +35,9 @@ CORAL_SCOPES: dict[str, tuple[str, str]] = {
     "simcluster": ("/simcluster", "a ~600-account cohort"),
     "delve": ("/delve", "native delve.town posts"),
 }
-GRAPH_PATHS = {f"{prefix}/entity-graph" for prefix, _ in CORAL_SCOPES.values()}
+GRAPH_PATHS = {"/election/entity-graph"} | {
+    f"{prefix}/entity-graph" for prefix, _ in CORAL_SCOPES.values()
+}
 
 
 def _day_bound(day: str) -> str:
@@ -467,7 +470,7 @@ def register(agent):
                     "coral API path, e.g. '/groups/history?limit=20', "
                     "'/entity-graph', '/history/topics?range=day', '/stats', "
                     "or the same routes under '/simcluster/...' or "
-                    "'/delve/...'. GET '/' for the global endpoint list."
+                    "'/delve/...'. Use '/election/races' to discover active race IDs. GET '/' for the global endpoint list."
                 )
             ),
         ],
@@ -492,7 +495,9 @@ def register(agent):
         if not path.startswith("/"):
             path = "/" + path
         graph_path = path.split("?", 1)[0]
-        is_graph = graph_path in GRAPH_PATHS
+        is_graph = graph_path in GRAPH_PATHS or bool(
+            re.fullmatch(r"/election/races/[a-z0-9-]{1,16}/entity-graph", graph_path)
+        )
         if is_graph and "?" in path:
             return "Use query, limit, and offset tool arguments for graph pages; remove URL parameters."
         if not 1 <= limit <= 20 or offset < 0:
