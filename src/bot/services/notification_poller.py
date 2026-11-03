@@ -16,6 +16,7 @@ from bot.core.fork_appview import ForkAppView, app_for_uri, fork_views
 from bot.core.override import get_override
 from bot.core.provider_watch import check_provider_watch
 from bot.core.relay_watch import fetch_relay_states, is_relay_key, wake_material
+from bot.memory.chronicle import compact as compact_chronicle
 from bot.memory.encounters import ENCOUNTER_NAMESPACE
 from bot.services.encounter_recovery import recover_encounters
 from bot.services.message_handler import MessageHandler
@@ -72,6 +73,8 @@ class NotificationPoller:
         self._dm_task: asyncio.Task | None = None
         self._bio_task: asyncio.Task | None = None
         self._next_bio_refresh = 0.0
+        self._chronicle_task: asyncio.Task | None = None
+        self._next_chronicle = 0.0
 
     async def start(self) -> asyncio.Task:
         """Start polling for notifications."""
@@ -156,6 +159,7 @@ class NotificationPoller:
                 continue
             bot_status.record_tick()
             self._schedule_bio_refresh()
+            self._schedule_chronicle()
 
             if time.monotonic() >= self._next_dm_poll:
                 self._next_dm_poll = time.monotonic() + 30
@@ -240,6 +244,28 @@ class NotificationPoller:
         self._bio_task = asyncio.create_task(self._refresh_bio(), name="bio-refresh")
         self._background_tasks.add(self._bio_task)
         self._bio_task.add_done_callback(self._background_tasks.discard)
+
+    def _schedule_chronicle(self):
+        memory = self.handler.agent.memory
+        if not memory or settings.chronicle_interval <= 0:
+            return
+        if time.monotonic() < self._next_chronicle:
+            return
+        if self._chronicle_task and not self._chronicle_task.done():
+            return
+        self._next_chronicle = time.monotonic() + settings.chronicle_interval
+        self._chronicle_task = asyncio.create_task(
+            self._compact_chronicle(memory.client), name="chronicle"
+        )
+        self._background_tasks.add(self._chronicle_task)
+        self._chronicle_task.add_done_callback(self._background_tasks.discard)
+
+    async def _compact_chronicle(self, client):
+        try:
+            if done := await compact_chronicle(client):
+                logger.info(f"chronicle: applied {done} flushes/merges")
+        except Exception as e:
+            logger.error(f"chronicle compaction error: {e}", exc_info=True)
 
     async def _refresh_bio(self):
         try:

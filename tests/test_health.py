@@ -39,6 +39,7 @@ def _poller() -> NotificationPoller:
     poller._next_review_poll = float("inf")
     poller._next_dm_poll = float("inf")
     poller._next_bio_refresh = float("inf")
+    poller._next_chronicle = float("inf")
     poller._should_do_daily_post = Mock(return_value=False)
     poller._should_run_cycle = Mock(return_value=False)
     return poller
