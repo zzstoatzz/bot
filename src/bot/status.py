@@ -43,6 +43,7 @@ class BotStatus:
     # last_run cursor that keeps a re-observed firing from counting twice.
     alert_incidents: dict = field(default_factory=dict)
     alert_watch_cursor: dict = field(default_factory=dict)
+    last_network_activity_id: str = ""
 
     @property
     def uptime_seconds(self) -> float:
@@ -180,6 +181,7 @@ class BotStatus:
                 else None,
                 "alert_incidents": self.alert_incidents,
                 "alert_watch_cursor": self.alert_watch_cursor,
+                "last_network_activity_id": self.last_network_activity_id,
             }
             STATUS_FILE.write_text(json.dumps(data))
         except Exception as e:
@@ -223,6 +225,9 @@ class BotStatus:
                 self.last_cycle_at = datetime.fromisoformat(data["last_cycle_at"])
             self.alert_incidents = dict(data.get("alert_incidents") or {})
             self.alert_watch_cursor = dict(data.get("alert_watch_cursor") or {})
+            self.last_network_activity_id = str(
+                data.get("last_network_activity_id") or ""
+            )
             logger.info(
                 f"restored status: {self.mentions_received} mentions, {self.responses_sent} responses"
             )

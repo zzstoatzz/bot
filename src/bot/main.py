@@ -273,11 +273,12 @@ _TRIGGER_SLOTS = {
     "likes-review": lambda handler: handler.likes_review,
     "pull-review": lambda handler: handler.pull_review,
     "fastmcp-watch": lambda handler: handler.fastmcp_watch,
+    "network-activity": lambda handler: handler.network_activity,
 }
 
 # slots that are about a specific thing rather than a clock: the JSON body's
 # `material` is what woke phi, and it is required
-_MATERIAL_SLOTS = {"pull-review"}
+_MATERIAL_SLOTS = {"pull-review", "network-activity"}
 
 
 @app.post("/api/control/trigger/{slot}")
@@ -294,9 +295,12 @@ async def trigger_slot(slot: str, request: Request, background_tasks: Background
             status_code=404,
         )
     material = ""
+    event_id = ""
     if slot in _MATERIAL_SLOTS:
         try:
-            material = str((await request.json()).get("material") or "")
+            body = await request.json()
+            material = str(body.get("material") or "")
+            event_id = str(body.get("event_id") or "")
         except Exception:
             material = ""
         if not material:
@@ -307,6 +311,17 @@ async def trigger_slot(slot: str, request: Request, background_tasks: Background
     poller: NotificationPoller | None = getattr(app.state, "poller", None)
     if not poller:
         return JSONResponse({"error": "poller not available"}, status_code=503)
+    if slot == "network-activity":
+        if not event_id or len(event_id) > 200 or len(material) > 12000:
+            return JSONResponse(
+                {"error": "invalid network activity event"}, status_code=400
+            )
+        if event_id == bot_status.last_network_activity_id:
+            return {"triggered": slot, "duplicate": True}
+        if bot_status.paused:
+            return JSONResponse({"error": "Phi is paused"}, status_code=409)
+        bot_status.last_network_activity_id = event_id
+        bot_status._save()
     if material:
         background_tasks.add_task(slot_fn(poller.handler), material)
     else:

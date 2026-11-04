@@ -115,3 +115,8 @@ With `VOICE_RESET=true`, normal runs and diagnostic composition stop before
 instruction callbacks and tool connections. Polling stays paused across restarts;
 external triggers/resume are refused. No normal identity or memory context is
 assembled behind the reset.
+
+The external `network-activity` pass supplies `[NETWORK ACTIVITY]` in its immediate
+prompt, with public stream measurements, relay checks and source links. This is
+an observation with an unknown cause; it is separate from `[ALERT WATCH]` and
+its operational escalation doctrine. Event material also seeds episodic recall.

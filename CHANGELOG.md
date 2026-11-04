@@ -1,5 +1,14 @@
 # changelog
 
+## 2026-11-04 — investigate unusual network activity
+
+A scheduled Prefect watcher compares stream sequence advancement with relay-eval’s
+hourly baseline and screens reconnects, stale events and coverage failures. It
+pushes sustained high activity to a dedicated control pass, with a persisted
+event ID to suppress delivery retries. Phi receives measurements with an unknown
+cause, separately from operational incident escalation, and can investigate
+without publishing. The trigger acknowledges scheduling, not completed research.
+
 ## 2026-11-03 — Read known Bluesky posts in batches
 
 The election probe needed the authors, text and timestamps behind a Coral

@@ -1164,6 +1164,24 @@ class PhiAgent:
             context_blocks=context_blocks,
         )
 
+    async def process_network_activity(self, material: str) -> str:
+        """A scheduled detector observed unusually high firehose activity."""
+        return await self._run_agent(
+            label="network activity",
+            prompt=(
+                "Investigate unusual network activity.\n\n"
+                "[NETWORK ACTIVITY — measurements from the scheduled stream watcher. "
+                "Rates measure upstream sequence advancement, not unique posts or people. "
+                "Infrastructure checks reduce catch-up artifacts but do not establish "
+                "a cause. Research may end without a public post.]\n" + material
+            ),
+            deps=PhiDeps(
+                author_handle="",
+                memory=self.memory,
+                event_material=material,
+            ),
+        )
+
     async def process_alerts(self, material: str = "") -> str:
         """Wake phi because an incident opened — a logfire alert fired, or
         a watched relay went behind the network.

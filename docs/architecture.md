@@ -20,6 +20,7 @@ in `.agents/skills/`, with a `.claude/skills` discovery symlink for Claude Code.
 | People | A subset of thought slots | Read people and their work |
 | Daily reflection | Configured operator-local reflection hour | Reflect on the day and update changed goal state |
 | Bio | First unpaused tick when due, then every 24 hours | Review profile description; include avatar/header review weekly |
+| Network activity | Five-minute external Prefect watcher | Investigate sustained activity above twice the hourly baseline; one wake per episode |
 | Alert | Logfire webhook or watched relay incident; hourly alert reconciliation | Inspect the incident with fresh workload context |
 | Pull comment/review | Forge events and review trigger | Read and review the identified patch or respond to review material |
 | Chicken scout/precheck | External Prefect schedules/control triggers | Assess the current play-money market and act within trade restrictions |

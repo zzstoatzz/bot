@@ -447,6 +447,12 @@ class MessageHandler:
         """A scheduled pass pointed at people rather than systems."""
         await self._run_scheduled("people", lambda: self.agent.process_people())
 
+    async def network_activity(self, material: str):
+        """Investigate an externally detected network activity anomaly."""
+        await self._run_scheduled(
+            "network activity", lambda: self.agent.process_network_activity(material)
+        )
+
     async def alerts(self, material: str = ""):
         """Wake phi because an incident opened — see agent.process_alerts.
 
