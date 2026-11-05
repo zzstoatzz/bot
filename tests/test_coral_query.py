@@ -9,11 +9,11 @@ import pytest
 from bot.tools import search
 
 
-def graph_tool(monkeypatch, payload, paths=search.GRAPH_PATHS):
+def graph_tool(monkeypatch, payload):
     constructor = httpx.AsyncClient
 
     def handler(request):
-        assert request.url.path in paths
+        assert request.url.path in search.GRAPH_PATHS
         assert not request.url.query
         return httpx.Response(200, json=payload)
 
@@ -150,19 +150,3 @@ async def test_delve_graph_is_paged_like_the_others(monkeypatch):
     tool = graph_tool(monkeypatch, {"entities": [{"id": 1, "text": "Akai"}]})
     page = json.loads(await tool(None, "/delve/entity-graph"))
     assert page["returned"] == 1
-
-
-async def test_discovered_race_graph_supports_search_and_pagination(monkeypatch):
-    path = "/election/races/example-7/entity-graph"
-    tool = graph_tool(
-        monkeypatch,
-        {"entities": [{"id": 1, "text": "Jane Doe"}, {"id": 2, "text": "John Doe"}]},
-        paths={path},
-    )
-    first = json.loads(await tool(None, path, query="doe", limit=1))
-    second = json.loads(
-        await tool(None, path, query="doe", limit=1, offset=first["next_offset"])
-    )
-    assert first["matching_entities"] == 2
-    assert second["entities"][0]["text"] == "John Doe"
-    assert second["next_offset"] is None

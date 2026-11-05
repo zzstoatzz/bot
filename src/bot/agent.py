@@ -1379,9 +1379,7 @@ class PhiAgent:
         The runtime skill owns the reading, publishing, and curator-note guidance.
         """
         task = (
-            "Editorial pass. Load coral-editorial. Check Coral's race catalog for "
-            "active elections and prioritize consequential developments in those "
-            "races. Look at what is developing, "
+            "Editorial pass. Load coral-editorial. Look at what is developing, "
             "including how it has changed over time, and choose what merits "
             "investigation. Follow the sources and your earlier coverage. "
             "Preserve useful findings for readers and future revisits; decide "

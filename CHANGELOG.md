@@ -1,5 +1,13 @@
 # changelog
 
+## 2026-11-05 — retire election-specific editorial guidance
+
+Coral’s election routes were intentionally removed after the election, but
+Phi’s scheduled editorial task, runtime skill, and tool description still sent
+her to them. Remove that stale priority and the election graph special cases.
+Editorial passes again choose developments through the general Coral scopes
+and primary sources, without treating retired election views as an outage.
+
 ## 2026-11-04 — investigate unusual network activity
 
 A scheduled Prefect watcher compares stream sequence advancement with relay-eval’s

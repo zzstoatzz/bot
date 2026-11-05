@@ -71,26 +71,6 @@ huge and steady. a high trend score means "unusual", never "important".
 curator reading your editorial notes. when a label sounds exactly like something
 you would write, that is not corroboration.
 
-## follow elections
-
-Start with `coral_query(path="/election/races")`. Coral lists races with
-recent activity. Use the returned IDs to read `/election/races/<id>` and its
-`/entity-graph`, `/stats`, `/history/top?range=day`, or
-`/history/topics?range=day` views. Graphs use the tool's query, limit and
-offset arguments. Choose races based on the catalog and the evidence.
-Pass Bluesky source URIs from the race detail to `read_posts` to read their
-authors, text, and timestamps together.
-If the catalog is unavailable, use the broader `/election/entity-graph`
-and current sources, and disclose the gap.
-
-Race graphs describe conversation. For voting-intention polls, use
-`web_search` with the race and candidates from the catalog, then
-`read_web_page` on the pollster's release or methodology. Check field dates,
-population, sample size and uncertainty before using a number. Keep polls,
-projections and reported counts distinct. For counts and certification,
-read the relevant election authority and give the source's timestamp.
-Check Semble and earlier coverage for the same race before filing an update.
-
 ## follow a development
 
 Start with a question you want to pursue, an existing source or collection, or a
@@ -101,8 +81,9 @@ is no quota of new cards or posts.
 
 Check your existing Semble library before research or filing. Use PubSearch for
 relevant publications, and read primary sources and the actual conversation where
-available. Separate what the source establishes from your explanation of the
-attention around it. Follow contradictory evidence and record corrections.
+available. Use `read_posts` for Bluesky source URIs to read authors, text, and
+timestamps together. Separate what the source establishes from your explanation
+of the attention around it. Follow contradictory evidence and record corrections.
 
 Save sources that add something worth retaining. Load `cosmik-records` for the
 write shapes and duplicate checks. A source card should say what changed, when it
