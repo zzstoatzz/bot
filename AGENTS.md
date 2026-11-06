@@ -60,6 +60,11 @@ sandbox/                   # experiments (graduate to scripts/ once proven)
 
 ## skills
 
+`skills/find-remembered-post` is a runtime skill for vague post recall: establish
+index freshness, narrow through the requester's likes, then verify post and
+thread context. It uses existing public record tools; it does not add Pensieve
+authentication or rebuild indexes.
+
 `skills/humanizer` is Phi's optional editing reference, pinned to upstream
 Humanizer 3.1.0 with an explicit Phi-specific scope. The policy judge does not
 enforce phrasing or form. Review upstream updates; preserve attribution and license.

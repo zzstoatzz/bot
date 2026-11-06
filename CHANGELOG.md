@@ -1,5 +1,14 @@
 # changelog
 
+## 2026-11-06 — find barely remembered posts through likes
+
+Add the runtime `find-remembered-post` skill. A vague Norvid search kept finding
+older lookalikes because Pensieve's index ended before the actual post; Nate's
+likes supplied the confirmed match. Phi now checks index coverage first, uses
+the requester's likes to narrow candidates, and verifies quoted and reply
+context through existing read tools. The skill distinguishes encounter time
+from publication time and makes Phi's missing Pensieve integration explicit.
+
 ## 2026-11-05 — retire election-specific editorial guidance
 
 Coral’s election routes were intentionally removed after the election, but
