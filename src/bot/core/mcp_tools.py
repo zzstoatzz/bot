@@ -209,6 +209,7 @@ def build_toolsets(run_label: str = "") -> list[AbstractToolset[PhiDeps]]:
                     StdioTransport(
                         command="node",
                         args=[settings.lexidraw_mcp_path],
+                        keep_alive=False,
                         env={
                             "LEXIDRAW_HANDLE": settings.bluesky_handle,
                             "LEXIDRAW_APP_PASSWORD": settings.bluesky_password,

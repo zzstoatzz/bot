@@ -1,5 +1,15 @@
 # changelog
 
+## 2026-11-06 — release Lexidraw subprocesses after each run
+
+The cockpit's half-hourly context budget and agent runs construct fresh MCP
+toolsets. FastMCP's stdio transport kept each Lexidraw Node subprocess alive
+after its connection closed, accumulating children until the 1 GiB Fly machine
+ran out of available memory and stopped responding. The transport now disables
+keep-alive so ending a run also releases its subprocess. A real subprocess test
+covers repeated toolsets on both successful and exceptional exits. See
+`docs/internal/lexidraw-process-leak-2026-11-06.md` for the incident evidence.
+
 ## 2026-11-06 — find barely remembered posts through likes
 
 Add the runtime `find-remembered-post` skill. A vague Norvid search kept finding
