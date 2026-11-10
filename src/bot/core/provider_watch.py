@@ -6,7 +6,7 @@ the operator that the outage was Fly's and not theirs. Evergreen's /providers
 already reads Fly's status page and lists the operator's checks each event
 reaches; this watch turns each such event into one private DM.
 
-Unlike the alert and relay watches, this one does not wake phi to judge. The
+Unlike the alert watch, this one does not wake phi to judge. The
 operator asked to be told about every provider event that touches their
 services, so the notice is a courier message: one per event, keyed in the
 operator-reports journal, which never sends the same key twice. A scheduled

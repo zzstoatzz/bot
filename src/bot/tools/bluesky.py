@@ -4,7 +4,6 @@ import asyncio
 import ipaddress
 import logging
 import socket
-import time
 from datetime import date
 from typing import Annotated, Literal
 from urllib.parse import urlparse
@@ -38,32 +37,6 @@ def _is_github_rate_limit(exc: Exception) -> bool:
 # crowd out everything else in her context.
 COMMIT_BODY_LIMIT = 1400
 CHANGELOG_CHAR_BUDGET = 24000
-
-# cached relay names, refreshed from the snapshot endpoint. surfaced to
-# the LLM via a dynamic system prompt so it picks from real values when
-# calling check_infra(aspect="relays", name=...).
-_RELAY_NAMES_TTL = 300  # 5 minutes
-_relay_names_cache: dict = {"names": [], "fetched_at": 0.0}
-
-
-async def fetch_relay_names() -> list[str]:
-    now = time.time()
-    if (
-        now - _relay_names_cache["fetched_at"] < _RELAY_NAMES_TTL
-        and _relay_names_cache["names"]
-    ):
-        return _relay_names_cache["names"]
-    try:
-        async with httpx.AsyncClient(timeout=10) as http:
-            r = await http.get(settings.relays_url)
-            r.raise_for_status()
-            names = sorted({m.get("name", "") for m in r.json() if m.get("name")})
-            _relay_names_cache["names"] = names
-            _relay_names_cache["fetched_at"] = now
-            return names
-    except Exception:
-        return _relay_names_cache["names"]  # fall back to last known
-
 
 def register(agent):
     @agent.tool
@@ -258,7 +231,7 @@ def register(agent):
                 description=(
                     "Relay hostname (e.g. 'zlay.waow.tech'). In history "
                     "mode, required. In transitions mode, optional filter. "
-                    "Valid hostnames are in [KNOWN RELAYS]."
+                    "The snapshot (no name) lists every valid hostname."
                 )
             ),
         ] = None,

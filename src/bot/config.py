@@ -144,7 +144,7 @@ class Settings(BaseSettings):
             "Seconds without a completed notification poll before /health "
             "reports 503 and fly restarts the machine. Defaults to 30x "
             "notification_poll_interval: the poll loop awaits agent runs "
-            "inline (relay alerts), so a few intervals would flap on a "
+            "inline (alert wakes), so a few intervals would flap on a "
             "long run rather than catch a wedge."
         ),
     )
@@ -329,7 +329,7 @@ class Settings(BaseSettings):
 
     # Prefect flow monitoring — phi polls the prefect-server via the prefect
     # MCP to notice failed/crashed flows (ingest, brief, compact, etc.) and
-    # flag persistent failures to the operator. Same pattern as relays.
+    # flag persistent failures to the operator.
     workflow_request_url: str = Field(
         default="https://heavypad.tailb660b6.ts.net:8443/workflows/request",
         description="Scoped endpoint for requesting approved agent workflows",

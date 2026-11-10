@@ -67,7 +67,6 @@ from bot.memory.run_evidence import RunEvidence, current_run, run_status
 from bot.status import bot_status
 from bot.tools import PhiDeps, _check_services_impl, register_all
 from bot.tools._helpers import notification_input, notification_recall
-from bot.tools.bluesky import fetch_relay_names
 from bot.utils.time import humanize_duration
 
 # a tool-mode output makes pydantic-ai send tool_choice "any", which Claude
@@ -624,14 +623,6 @@ class PhiAgent:
             )
 
         @_run_scoped
-        async def inject_known_relays() -> str:
-            """List the valid relay hostnames for check_infra(aspect='relays', name=...)."""
-            names = await fetch_relay_names()
-            if not names:
-                return ""
-            return "[KNOWN RELAYS]: " + ", ".join(names)
-
-        @_run_scoped
         async def inject_goals() -> str:
             """[GOALS] — phi's compass, from her PDS goal records."""
             return await get_state_block(bot_client, self.memory)
@@ -754,8 +745,8 @@ class PhiAgent:
             material = " ".join(
                 e.get("post_text", "") for e in notifs.values() if e.get("post_text")
             )
-            # an event wake has material too — a relay regression's host and
-            # numbers pull up her own past posts about that host. The task
+            # an event wake has material too — an alert's name and first
+            # matched row pull up her own past posts about it. The task
             # prose of a plain clock slot deliberately does not: querying
             # coverage with instructions would surface noise.
             return await coverage_note(
@@ -1183,12 +1174,11 @@ class PhiAgent:
         )
 
     async def process_alerts(self, material: str = "") -> str:
-        """Wake phi because an incident opened — a logfire alert fired, or
-        a watched relay went behind the network.
+        """Wake phi because an incident opened — a logfire alert fired.
 
         The facts ride in [ALERT WATCH] like every other signal; the prompt
         only says something fired. ``material`` is the event's content
-        (alert name + first matched row, or host + coverage numbers): it
+        (alert name + first matched row): it
         goes into deps so recall keys on what actually happened, exactly as
         a notification run's recall keys on the posts in the batch. Most
         firings need nothing — the block's own doctrine carries the

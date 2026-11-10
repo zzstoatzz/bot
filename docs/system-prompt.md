@@ -41,7 +41,6 @@ of what any historical request received.
 | `inject_operator_guidance` | `[OPERATOR WORKING GUIDANCE]`: deployed file | Per run; missing/empty file reports unavailability |
 | `inject_today` | `[NOW]`, `[WHERE]`, operator-local time | Per run; location only when supplied by the environment |
 | `inject_pause_history` | `[OPERATIONAL HISTORY]`: last pause/resume | Only during the 24 hours after resume |
-| `inject_known_relays` | `[KNOWN RELAYS]`: valid names for `check_infra` | Five-minute cache |
 | `inject_goals` | `[GOALS]`: PDS goals/interests with dated progress | Five-minute cache, invalidated by writes; last-step notes show their recorded timestamp, including context for relative dates in authored text |
 | `inject_chronicle` | `[CHRONICLE]`: every episodic record since the first, summarized into dated entries that grow coarser with age (`memory/chronicle.py`); private runs can read this shared history without receiving a shared memory writer | Five-minute cache, invalidated by compaction and corrections; the newest records wait for the next flush; corrections render under their entry |
 | `inject_recent_operations` | `[RECENT OPERATIONS]`: local Jetstream tail plus PDS gap recovery | 48-hour window; five-minute cache; routine tallies, topic labels, edit/delete provenance |

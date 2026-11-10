@@ -55,8 +55,7 @@ class PhiDeps:
     # nothing else — the task cues the memory, the way a person's does.
     run_prompt: str = ""
     # the content of the event that woke this run, when something happened
-    # rather than a clock firing — a relay coverage regression, an alert's
-    # first matched row. It is to an event wake what a notification's post
+    # rather than a clock firing — an alert's first matched row. It is to an event wake what a notification's post
     # text is to a batch: the material recall keys on (episodic memory,
     # prior coverage), so the run starts as rich as a notification run.
     event_material: str = ""
