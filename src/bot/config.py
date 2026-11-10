@@ -309,20 +309,12 @@ class Settings(BaseSettings):
         ),
     )
 
-    # Relay fleet monitoring — phi polls relay-eval on a schedule and
-    # reports status transitions. The service is the source of truth;
-    # phi is the courier. This is the base URL; /history and /events
-    # are derived from it.
+    # Relay fleet lookups for check_infra. Alerting on the operator's relays
+    # is my-prefect-server's relay-health flow, not phi. This is the base
+    # URL; /history, /events and /status are derived from it.
     relays_url: str = Field(
         default="https://relay-eval.waow.tech/api/relays",
         description="Base URL for relay-eval's relay API (snapshot endpoint)",
-    )
-    relay_watch_interval: int = Field(
-        default=900,
-        description="Seconds between relay-eval behind-the-network checks; "
-        "0 disables. relay-eval evaluates the fleet roughly every 30 "
-        "minutes, so 15 minutes bounds detection latency at about one "
-        "eval run",
     )
     provider_status_url: str = Field(
         default="https://evergreen-proxy.n8-3e9.workers.dev/providers",
@@ -333,17 +325,6 @@ class Settings(BaseSettings):
         default=300,
         description="Seconds between provider status checks; 0 disables. "
         "Evergreen caches Fly's status page for 60 seconds",
-    )
-    relay_watch_hosts: list[str] = Field(
-        default=[
-            "zlay.waow.tech",
-            "relay.waow.tech",
-            "stream.waow.tech",
-            "jetstream.waow.tech",
-        ],
-        description="Relay hosts whose behind-the-network regressions open "
-        "incidents — the operator's own relays, not the whole fleet "
-        "(chronically-behind third-party relays would be permanent noise)",
     )
 
     # Prefect flow monitoring — phi polls the prefect-server via the prefect

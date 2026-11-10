@@ -35,7 +35,6 @@ def _poller() -> NotificationPoller:
     poller._running = True
     poller._background_tasks = set()
     poller._next_alert_watch_poll = float("inf")
-    poller._next_relay_watch_poll = float("inf")
     poller._next_review_poll = float("inf")
     poller._next_dm_poll = float("inf")
     poller._next_bio_refresh = float("inf")
