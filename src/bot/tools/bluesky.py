@@ -202,13 +202,11 @@ def register(agent):
     async def check_infra(
         ctx: RunContext[PhiDeps],
         aspect: Annotated[
-            Literal["services", "relays", "changelog"],
+            Literal["services", "changelog"],
             Field(
                 description=(
                     "services: health of the operator's apps (plyr, PDS, "
-                    "prefect, ...). relays: the atproto relay fleet via "
-                    "relay-eval (snapshot/history/transitions — see the "
-                    "relay params). changelog: your own development "
+                    "prefect, ...). changelog: your own development "
                     "history — commits with their full messages, which is "
                     "where the reasoning for a change lives, not just what "
                     "changed. windowable with since/until and count."
@@ -225,23 +223,13 @@ def register(agent):
                 )
             ),
         ] = 10,
-        name: Annotated[
-            str | None,
-            Field(
-                description=(
-                    "Relay hostname (e.g. 'zlay.waow.tech'). In history "
-                    "mode, required. In transitions mode, optional filter. "
-                    "The snapshot (no name) lists every valid hostname."
-                )
-            ),
-        ] = None,
         since: Annotated[
             str | None,
             Field(
                 description=(
-                    "Start of window, ISO 8601 UTC (e.g. '2026-04-16T00:00:00Z'). "
-                    "Use with relay history/transitions, or with changelog to "
-                    "read an earlier period of your own development."
+                    "[changelog] start of window, ISO 8601 UTC (e.g. "
+                    "'2026-04-16T00:00:00Z'), to read an earlier period of "
+                    "your own development."
                 )
             ),
         ] = None,
@@ -249,38 +237,12 @@ def register(agent):
             str | None,
             Field(description="End of window, ISO 8601 UTC. Pairs with since."),
         ] = None,
-        transitions: Annotated[
-            bool,
-            Field(
-                description=(
-                    "If True, return status-change events instead of coverage "
-                    "points. Best for 'when did X happen' questions."
-                )
-            ),
-        ] = False,
-        limit: Annotated[
-            int | None,
-            Field(
-                description=(
-                    "Recent-N fallback for history mode when since/until "
-                    "aren't set. Default ~288 = one day at 5-min cadence."
-                )
-            ),
-        ] = None,
     ) -> str:
-        """Read app health, bot commits, or relay coverage.
+        """Read app health or bot commits. Relay coverage is the relay_eval tool.
 
         services: health of the operator's apps; this does not check Phi's status.
         changelog: bot commits and full messages from the GitHub mirror. Bound
         the result with count and since/until.
-        relays: fleet snapshot by default; name selects one relay's history;
-        transitions=True returns status changes, optionally filtered by name.
-        Use since/until or limit to bound history.
-
-        Relay timestamps record observations in a shared polling run, not exact
-        failure times. Matching transition timestamps do not prove simultaneous
-        failures; compare coverage histories. Use the service's relay headlines
-        verbatim: relay-eval owns the behind-lately interpretation.
         """
         if aspect == "services":
             return await _check_services_impl()
@@ -353,168 +315,5 @@ def register(agent):
                 total += len(entry)
             return "\n\n".join(entries)
 
-        base = settings.relays_url
+        raise AssertionError(f"unhandled aspect {aspect}")
 
-        if transitions:
-            params: dict[str, str | int] = {}
-            if name:
-                params["name"] = name
-            if since:
-                params["since"] = since
-            if until:
-                params["until"] = until
-            try:
-                async with httpx.AsyncClient(timeout=15) as http:
-                    r = await http.get(f"{base}/events", params=params)
-                    r.raise_for_status()
-                    events = r.json()
-            except Exception as e:
-                return f"events endpoint unreachable: {e}"
-
-            if not events:
-                window = f"{since} → {until}" if since or until else "last 24h"
-                scope = f" for {name}" if name else ""
-                return f"no transitions{scope} in {window}"
-
-            scope = f" for {name}" if name else " (fleet)"
-            lines = [f"transitions{scope}: {len(events)}"]
-            for e in events:
-                ts = e.get("ts", "")[:16].replace("T", " ")
-                n = e.get("name", "?")
-                from_s = e.get("from_status", "?")
-                to_s = e.get("to_status", "?")
-                headline = e.get("headline", "")
-                lines.append(f"  {ts}  {n}  {from_s} → {to_s}")
-                if headline:
-                    lines.append(f'    "{headline}"')
-            return "\n".join(lines)
-
-        if name:
-            params = {"name": name}
-            if since:
-                params["since"] = since
-            if until:
-                params["until"] = until
-            if limit:
-                params["limit"] = limit
-            try:
-                async with httpx.AsyncClient(timeout=15) as http:
-                    r = await http.get(f"{base}/history", params=params)
-                    r.raise_for_status()
-                    data = r.json()
-            except Exception as e:
-                return f"history endpoint unreachable: {e}"
-
-            points = data.get("points", [])
-            summary = data.get("summary", {})
-            if not points:
-                return f"no history found for '{name}'"
-
-            mean = summary.get("mean_coverage_pct", 0)
-            lo = summary.get("min_coverage_pct", 0)
-            hi = summary.get("max_coverage_pct", 0)
-            connected = summary.get("connected_runs", 0)
-            total = summary.get("total_runs", 0)
-
-            first_ts = (points[0].get("ts", "") or "")[:16].replace("T", " ")
-            last_ts = (points[-1].get("ts", "") or "")[:16].replace("T", " ")
-
-            # downsample if the series is large; phi can narrow the window
-            # with since/until for finer detail.
-            max_display = 200
-            if len(points) <= max_display:
-                display = points
-                downsample_note = ""
-            else:
-                step = max(1, len(points) // max_display)
-                display = points[::step]
-                downsample_note = f"  (downsampled: 1 in {step})"
-
-            lines = [
-                f"history for {name}",
-                f"  window: {first_ts} → {last_ts} ({total} points)",
-                f"  mean {mean:.2f}% | min {lo:.2f}% | max {hi:.2f}% | "
-                f"connected {connected}/{total}",
-                "",
-                f"  series ({len(display)} shown){downsample_note}:",
-            ]
-            for p in display:
-                ts = (p.get("ts", "") or "")[:16].replace("T", " ")
-                pct = p.get("coverage_pct", 0)
-                conn = "ok" if p.get("connected") else "DISCONNECTED"
-                lines.append(f"    {ts}  {pct:5.2f}%  {conn}")
-            return "\n".join(lines)
-
-        # snapshot mode
-        return await _relay_snapshot_impl(base)
-
-
-async def _relay_snapshot_impl(base: str) -> str:
-    try:
-        async with httpx.AsyncClient(timeout=15) as http:
-            r = await http.get(base)
-            r.raise_for_status()
-            monitors = r.json()
-    except Exception as e:
-        return f"relay endpoint unreachable: {e}"
-
-    if not isinstance(monitors, list) or not monitors:
-        return "no monitors reported"
-
-    by_status: dict[str, list[dict]] = {
-        "critical": [],
-        "degraded": [],
-        "nominal": [],
-    }
-    for m in monitors:
-        status = m.get("status", "unknown")
-        by_status.setdefault(status, []).append(m)
-
-    today = date.today()
-    lines = []
-    for status in ("critical", "degraded", "nominal"):
-        items = by_status.get(status, [])
-        if not items:
-            continue
-        lines.append(f"[{status}] ({len(items)})")
-        for m in items:
-            headline = m.get("headline", m.get("name", "?"))
-            last_changed = m.get("last_changed", "")
-            age = _relative_age(last_changed, today) if last_changed else ""
-            age_str = f" (changed {age})" if age else ""
-            lines.append(f"  - {headline}{age_str}")
-        lines.append("")
-
-    # the self-relative statuses above say "unusual for this relay";
-    # /api/status says "behind the network" in absolute terms. both
-    # matter: a relay can be nominal against its own baseline while
-    # carrying a fraction of what the rest of the fleet sees.
-    status_url = base.removesuffix("/relays") + "/status"
-    try:
-        async with httpx.AsyncClient(timeout=15) as http:
-            r = await http.get(status_url)
-            r.raise_for_status()
-            verdict = r.json()
-    except Exception as e:
-        lines.append(f"(behind-lately verdict unavailable: {e})")
-        return "\n".join(lines).rstrip()
-
-    behind = [x for x in verdict.get("relays", []) if x.get("behind_lately")]
-    window = verdict.get("window", {})
-    lines.append(
-        f"behind the network lately ({len(behind)} of "
-        f"{len(verdict.get('relays', []))}, last {window.get('runs', '?')} runs):"
-    )
-    if behind:
-        for x in behind:
-            latest = x.get("latest", {})
-            lines.append(
-                f"  - {x.get('host', '?')}: behind in {x.get('behind_runs', '?')}"
-                f"/{x.get('runs', '?')} runs, avg coverage "
-                f"{x.get('avg_coverage_pct', 0):.1f}% "
-                f"(now {latest.get('coverage_pct', 0):.1f}%)"
-            )
-    else:
-        lines.append("  (none)")
-
-    return "\n".join(lines).rstrip()

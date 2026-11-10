@@ -20,6 +20,7 @@ def register_all(agent):
         operator_reports,
         personality,
         posting,
+        relay_eval,
         search,
         self_record,
         topchicken,
@@ -34,6 +35,7 @@ def register_all(agent):
     search.register(agent)
     feeds.register(agent)
     bluesky.register(agent)
+    relay_eval.register(agent)
     bio.register(agent)
     self_record.register(agent)
     personality.register(agent)

@@ -309,12 +309,11 @@ class Settings(BaseSettings):
         ),
     )
 
-    # Relay fleet lookups for check_infra. Alerting on the operator's relays
-    # is my-prefect-server's relay-health flow, not phi. This is the base
-    # URL; /history, /events and /status are derived from it.
-    relays_url: str = Field(
-        default="https://relay-eval.waow.tech/api/relays",
-        description="Base URL for relay-eval's relay API (snapshot endpoint)",
+    # relay-eval, read by the relay_eval tool. Alerting on the operator's
+    # relays is my-prefect-server's relay-health flow, not phi.
+    relay_eval_url: str = Field(
+        default="https://relay-eval.waow.tech",
+        description="relay-eval origin; its GET /api lists every endpoint",
     )
     provider_status_url: str = Field(
         default="https://evergreen-proxy.n8-3e9.workers.dev/providers",
