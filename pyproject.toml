@@ -53,6 +53,7 @@ filterwarnings = [
 [dependency-groups]
 dev = [
     "pytest-asyncio",
+    "pytest-rerunfailures>=16.7",
     "pytest-sugar",
     "ruff",
     "ty",

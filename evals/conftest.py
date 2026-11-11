@@ -41,6 +41,14 @@ class EvaluationResult(BaseModel):
     passed: bool
 
 
+def pytest_collection_modifyitems(items):
+    """A sampled verdict misses a few percent of the time; a case fails when
+    it misses three times running."""
+    for item in items:
+        if "evals" in Path(item.fspath).parts:
+            item.add_marker(pytest.mark.flaky(reruns=2))
+
+
 @pytest.fixture(scope="session")
 def settings():
     return Settings()

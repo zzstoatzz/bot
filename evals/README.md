@@ -5,7 +5,8 @@ right tool, route the write to the right place, respect its gates? cheap
 model, spied tools, LLM-as-judge where quality matters.
 
 these are not unit tests. they call real models, cost real money, and can
-flake on model temperament. they run manually (`just evals`), not in CI.
+flake on model temperament, so a case is retried twice before it fails. they
+run manually (`just evals`), not in CI.
 
 ## running
 
