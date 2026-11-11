@@ -158,11 +158,9 @@ def skills_agent(settings):
                         getattr(part, "part_kind", None) == "tool-call"
                         and getattr(part, "tool_name", None) == "load_capability"
                     ):
-                        args = getattr(part, "args", {})
-                        if isinstance(args, dict):
-                            name = args.get("id")
-                            if name:
-                                loaded.append(name)
+                        name = part.args_as_dict().get("id")
+                        if name:
+                            loaded.append(name)
             return loaded
 
     return SkillsTestAgent()
