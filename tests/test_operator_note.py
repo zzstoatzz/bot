@@ -64,6 +64,30 @@ async def test_a_note_key_sends_without_an_alert_incident(report):
     ]
 
 
+async def test_a_report_longer_than_a_post_is_refused_before_the_judge(report):
+    """2026-11-11. A cycle run planned "one short DM" about a 530 and sent 817
+    characters: the reading, what it cost her, what she had guessed, and the
+    ask. The only bound was a 1000-character field, and the judge passed the
+    result as proportionate.
+    """
+    registered, sent, judge = report
+    result = await registered["report_operator"](
+        "note:prefect-public-530", "x" * (tool_module.REPORT_CAP + 1)
+    )
+    assert "compress first" in result["error"]
+    assert str(tool_module.REPORT_CAP) in result["error"]
+    assert sent == []
+    judge.assert_not_awaited()
+
+
+async def test_a_report_at_the_cap_sends(report):
+    registered, sent, _ = report
+    text = "x" * tool_module.REPORT_CAP
+    result = await registered["report_operator"]("note:prefect-public-530", text)
+    assert result["state"] == "sent"
+    assert sent == [("note:prefect-public-530", text)]
+
+
 async def test_a_note_is_judged_like_any_private_report(report):
     registered, sent, judge = report
     judge.return_value = {"verdict": "block", "reason": "x"}

@@ -12,6 +12,8 @@ from bot.core.policy import check_action
 from bot.status import bot_status
 from bot.tools._helpers import PhiDeps
 
+REPORT_CAP = 300
+
 
 def register(agent):
     @agent.tool_plain
@@ -28,20 +30,22 @@ def register(agent):
         text: Annotated[
             str,
             Field(
-                max_length=1000,
-                description="Brief plain-language decision or action needed; omit to check delivery",
+                description=(
+                    "What you need from the operator and the observed fact behind "
+                    f"it, at most {REPORT_CAP} characters; omit to check delivery"
+                ),
             ),
         ] = "",
     ) -> dict:
         """Send one private message to the operator by DM, or check its delivery.
 
-        Explain what is affected and what you need the operator to decide or do.
-        A simple permission request needs one question and any material scope or
-        risk. Do not repeat that permission is needed, nothing has started, or
-        you are waiting; do not prescribe approve/decline reply wording.
-        Keep routine diagnostics, tool names, record IDs, and approval mechanics
-        in logs. Do not narrate your attempts. Technical detail belongs here only
-        when requested or necessary for the decision. Reuse the same key for the
+        The operator reads this on a phone between other things, so it is the
+        size of a post: what you need from them, and the one observed fact that
+        makes it worth the interruption. They will ask for the rest. How you
+        found it, what you tried, what it might mean, and what you are unsure
+        of stay in memory and logs, with tool names, record IDs, and approval
+        mechanics. A permission request is one question plus any material scope
+        or risk; do not prescribe reply wording. Reuse the same key for the
         same work; a new key does not justify repeating an unchanged request.
         Report only issues needing their hands. An alert incident is keyed
         by its opening; anything else takes a note: key you choose, sent
@@ -61,6 +65,13 @@ def register(agent):
                     "For something without an alert, use a note:<slug> key."
                 }
             key = f"{incident_key}:{incident['opened_ts']}"
+        if len(text) > REPORT_CAP:
+            return {
+                "error": f"not sent — compress first: text is {len(text)} chars "
+                f"(max {REPORT_CAP}). keep the ask and the one fact behind it; "
+                "the reasoning goes in a memory, and the operator will ask if "
+                "they want it."
+            }
         try:
             report = await operator_reports.report_state(key)
             if text.strip() and report["state"] == "not-sent":
@@ -107,10 +118,11 @@ def register(agent):
 
         Silence is valid. One reply per incoming batch; an uncertain delivery is
         held for inspection rather than sent again. Private context stays private.
-        Answer the operator's actual message concisely. For operational decisions,
-        explain the impact and what you need from them in ordinary language.
-        Do not dump tool names, request keys, IDs, or approval mechanics; include
-        technical detail when the operator asks for it or needs it to act.
+        The answer to what they asked is the first sentence, and usually the
+        whole reply. Go past a sentence or two only when they asked for an
+        explanation, and then only as far as the question reaches. Tool names,
+        request keys, IDs, and approval mechanics stay out unless they asked
+        for them or need them to act.
         """
         if not ctx.deps.private_message_id:
             return {

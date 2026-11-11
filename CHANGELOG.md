@@ -1,5 +1,23 @@
 # changelog
 
+## 2026-11-11 — operator reports are the size of a post
+
+Phi's unsolicited DMs to the operator ran long: the seven sent since 2026-11-01
+had a median of 495 characters, and the 2026-11-11 report of a 530 was 817.
+In that run she planned "one short DM", then sent the reading, what it cost
+her, what she had guessed, and the request. Nothing defined short. The
+`report_operator` docstring asked her to explain what was affected and listed
+what to leave out, the field allowed 1000 characters, and her drafts filled it
+(874 to 1451 before a block or the field's limit). The judge was the only
+check on length and allowed 817 as proportionate.
+
+`report_operator` now refuses text over 300 characters before the judge runs
+and says what to keep, the way `update_goal_progress` already does for goal
+fields. Its docstring describes the message instead of listing prohibitions:
+the request and the one observed fact behind it. `reply_operator_dm` keeps its
+1000-character field, since the operator may have asked for an explanation,
+but its docstring now puts the answer in the first sentence.
+
 ## 2026-11-06 — release Lexidraw subprocesses after each run
 
 The cockpit's half-hourly context budget and agent runs construct fresh MCP
