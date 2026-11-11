@@ -241,6 +241,13 @@ def register(agent):
         """Read app health or bot commits. Relay coverage is the relay_eval tool.
 
         services: health of the operator's apps; this does not check Phi's status.
+        It is a read from outside, through each app's public address, at one
+        moment. You cannot restart, deploy, or log in to anything it checks;
+        what you can do is tell the operator what you read and when. prefect,
+        grafana and the hub routes share one tunnel from the operator's home
+        machine: a 530 on them together means that tunnel is disconnected, and
+        they return together when it reconnects. A duration needs readings
+        that span it; two failed reads days apart are two failed reads.
         changelog: bot commits and full messages from the GitHub mirror. Bound
         the result with count and since/until.
         """
