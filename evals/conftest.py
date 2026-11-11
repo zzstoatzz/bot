@@ -52,6 +52,8 @@ def model_keys(settings):
         os.environ["ANTHROPIC_API_KEY"] = settings.anthropic_api_key
     if settings.openai_api_key and not os.environ.get("OPENAI_API_KEY"):
         os.environ["OPENAI_API_KEY"] = settings.openai_api_key
+    if settings.openrouter_api_key and not os.environ.get("OPENROUTER_API_KEY"):
+        os.environ["OPENROUTER_API_KEY"] = settings.openrouter_api_key
 
 
 @pytest.fixture(scope="session")

@@ -14,15 +14,16 @@ from bot.tools._helpers import PhiDeps
         ("Read my own custom feed with slug jazz-vibes.", "jazz-vibes"),
     ],
 )
-async def test_selects_current_feed_reader(settings, monkeypatch, prompt, name):
-    if not settings.anthropic_api_key and not settings.openai_api_key:
-        raise pytest.skip.Exception("Requires a model API key")
-    for variable, value in (
-        ("ANTHROPIC_API_KEY", settings.anthropic_api_key),
-        ("OPENAI_API_KEY", settings.openai_api_key),
-    ):
-        if value:
-            monkeypatch.setenv(variable, value)
+async def test_selects_current_feed_reader(settings, prompt, name):
+    provider = settings.agent_model.split(":")[0]
+    key = {
+        "anthropic": settings.anthropic_api_key,
+        "openai": settings.openai_api_key,
+        "openai-responses": settings.openai_api_key,
+        "openrouter": settings.openrouter_api_key,
+    }.get(provider)
+    if not key:
+        raise pytest.skip.Exception(f"Requires the {provider} key for the agent model")
     agent = Agent[PhiDeps, str | DeferredToolRequests](
         settings.agent_model, deps_type=PhiDeps, output_type=[str, DeferredToolRequests]
     )
