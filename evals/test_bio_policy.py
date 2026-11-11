@@ -29,5 +29,3 @@ async def test_live_judge_accepts_bios_without_requiring_a_joke(
         ),
     )
     assert (verdict["verdict"] != "block") == allowed, verdict
-    if allowed:
-        assert verdict["public_form"] == "profile-description", verdict

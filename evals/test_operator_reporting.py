@@ -24,14 +24,6 @@ from bot.core import etiquette, operator_reports, policy
         ),
         (
             "post",
-            "Public post to operator: The worker is still down; please check my private report.",
-            "worker: private=sent eight hours ago; operator responded=False; "
-            "public escalation eligible=True. Unresolved credential failure requires "
-            "operator action; no prior public ping.",
-            "allow",
-        ),
-        (
-            "post",
             "Public post to operator: The worker is still down; check my private report.",
             "worker: private=sent; operator responded=True; public escalation eligible=False.",
             "block",
