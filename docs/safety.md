@@ -132,9 +132,9 @@ network call; uncertain delivery is held for investigation, never blindly retrie
 A reopened incident has a distinct identity. Private message bodies are not stored
 in this journal or included in public-action evidence.
 
-An unsolicited report is at most 300 characters, enforced by the tool before the
-judge runs: the request and the observed fact behind it. Until 2026-11-11 the
-only bound was a 1000-character field, which Phi's drafts filled.
+An unsolicited report is two or three sentences: what Phi observed and when, and
+what she needs. Its tool description says so and the judge blocks a longer one.
+The limit is written guidance, not a character count in code.
 
 Both private-message tools require concise, plain-language communication about
 the affected work and the operator's decision. The judge rejects diagnostic

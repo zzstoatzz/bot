@@ -1,22 +1,32 @@
 # changelog
 
-## 2026-11-11 — operator reports are the size of a post
+## 2026-11-11 — operator reports are a few sentences
 
-Phi's unsolicited DMs to the operator ran long: the seven sent since 2026-11-01
-had a median of 495 characters, and the 2026-11-11 report of a 530 was 817.
-In that run she planned "one short DM", then sent the reading, what it cost
-her, what she had guessed, and the request. Nothing defined short. The
-`report_operator` docstring asked her to explain what was affected and listed
-what to leave out, the field allowed 1000 characters, and her drafts filled it
-(874 to 1451 before a block or the field's limit). The judge was the only
-check on length and allowed 817 as proportionate.
+Phi reports infrastructure trouble to the operator, and that is wanted. The
+reports ran long: the seven sent since 2026-11-01 had a median of 495
+characters, and the 2026-11-11 report of a 530 was 817. In that run she planned
+"one short DM", then sent the reading, what it cost her, what she had guessed,
+and the request. She also described two failed reads five days apart as a
+five-day outage, and treated a tunnel she cannot restart as her own blocker.
 
-`report_operator` now refuses text over 300 characters before the judge runs
-and says what to keep, the way `update_goal_progress` already does for goal
-fields. Its docstring describes the message instead of listing prohibitions:
-the request and the one observed fact behind it. `reply_operator_dm` keeps its
-1000-character field, since the operator may have asked for an explanation,
-but its docstring now puts the answer in the first sentence.
+Nothing in her context defined short or said what she can do about a failed
+health read. The `report_operator` description asked her to explain what was
+affected, and the judge allowed 817 characters as proportionate.
+
+The fix is in the prompts. `report_operator` describes a report as two or three
+sentences, what she observed and when and what she needs, with one example.
+`reply_operator_dm` puts the answer in the first sentence. `check_infra` says
+the read is from outside at one moment, that she cannot restart or deploy what
+it checks, that prefect, grafana and the hub routes share the home tunnel and
+fail together with a 530, and that a duration needs readings that span it. The
+`operator-reporting` policy tells the judge to block a longer unsolicited
+report; with that wording it blocks the 817-character report and allows a
+174-character one, three runs each, and both are now eval cases.
+
+A 300-character limit in code shipped earlier the same day and is removed: the
+operator wanted the behavior changed through the prompts. Evals that call the
+judge without the `phi_agent` fixture failed for a missing `OPENAI_API_KEY`;
+the key export is now a session fixture.
 
 ## 2026-11-06 — release Lexidraw subprocesses after each run
 

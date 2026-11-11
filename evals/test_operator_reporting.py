@@ -47,3 +47,45 @@ async def test_reporting_channel(tool, action, context, expected, tmp_path, monk
         action, "Operational incident requiring operator credential rotation.", tool=tool
     )
     assert verdict["verdict"] == expected, verdict
+
+
+LONG_REPORT = (
+    "Your public routes for prefect-server and grafana have been returning 530 to me "
+    "since at least 06 Nov. Confirmed twice just now, plus a second health path: 4 of "
+    "13 services down, the same four as five days ago.\n\nWhat it costs me: I can't "
+    "read workflow state at all, so I can't tell whether my scheduled checks are "
+    "running or merely unobservable. Runs still seem to land roughly hourly, which "
+    "suggests the scheduler is alive behind a broken ingress, but that's a guess, and "
+    "I've been guessing for five days. It also means I can't schedule anything around "
+    "a market lock; the next one I care about is 06:00Z tomorrow.\n\nWhat I need: a "
+    "yes/no on whether that ingress is down on purpose. If not, it needs a restart on "
+    "your side. If it is, I'll stop treating it as a fault."
+)
+SHORT_REPORT = (
+    "prefect, grafana and both hub routes returned 530 to my health check at 09:43Z "
+    "and 15:04Z today. Is that tunnel down on purpose? If not, it needs a restart on "
+    "your side."
+)
+
+
+@pytest.mark.parametrize(
+    "text,expected", [(LONG_REPORT, "block"), (SHORT_REPORT, "allow")]
+)
+async def test_an_outage_report_is_a_few_sentences(
+    text, expected, tmp_path, monkeypatch
+):
+    """2026-11-11: the judge allowed the long form as proportionate."""
+    monkeypatch.setattr(etiquette, "JOURNAL", tmp_path / "attempts.sqlite3")
+    monkeypatch.setattr(
+        operator_reports,
+        "delivery_context",
+        AsyncMock(return_value="No open alert incidents."),
+    )
+    verdict = await policy.check_action(
+        f"Private Bluesky DM to operator: {text}",
+        "Operator authorized private-first incident reporting. Incident: "
+        "{'note': 'note:prefect-public-530'}. No prior receipt for this key. "
+        "Recent private conversation: No existing private conversation.",
+        tool="report_operator",
+    )
+    assert verdict["verdict"] == expected, verdict

@@ -12,8 +12,6 @@ from bot.core.policy import check_action
 from bot.status import bot_status
 from bot.tools._helpers import PhiDeps
 
-REPORT_CAP = 300
-
 
 def register(agent):
     @agent.tool_plain
@@ -30,22 +28,26 @@ def register(agent):
         text: Annotated[
             str,
             Field(
+                max_length=1000,
                 description=(
-                    "What you need from the operator and the observed fact behind "
-                    f"it, at most {REPORT_CAP} characters; omit to check delivery"
+                    "Two or three sentences: what you observed and when, and what "
+                    "you need; omit to check delivery"
                 ),
             ),
         ] = "",
     ) -> dict:
         """Send one private message to the operator by DM, or check its delivery.
 
-        The operator reads this on a phone between other things, so it is the
-        size of a post: what you need from them, and the one observed fact that
-        makes it worth the interruption. They will ask for the rest. How you
-        found it, what you tried, what it might mean, and what you are unsure
-        of stay in memory and logs, with tool names, record IDs, and approval
-        mechanics. A permission request is one question plus any material scope
-        or risk; do not prescribe reply wording. Reuse the same key for the
+        The operator reads this on a phone between other things. Write two or
+        three sentences, the size of a post: what you observed and when you
+        observed it, then what you need from them, if anything. "prefect,
+        grafana and hub have returned 530 to my health check since 09:43Z.
+        Nothing I can do from here." is a complete report. They will ask for
+        the rest. What it means for your own work, how you found it, what you
+        tried, what it might mean, and what you are unsure of stay in memory
+        and logs, with tool names, record IDs, and approval mechanics. A
+        permission request is one question plus any material scope or risk; do
+        not prescribe reply wording. Reuse the same key for the
         same work; a new key does not justify repeating an unchanged request.
         Report only issues needing their hands. An alert incident is keyed
         by its opening; anything else takes a note: key you choose, sent
@@ -65,13 +67,6 @@ def register(agent):
                     "For something without an alert, use a note:<slug> key."
                 }
             key = f"{incident_key}:{incident['opened_ts']}"
-        if len(text) > REPORT_CAP:
-            return {
-                "error": f"not sent — compress first: text is {len(text)} chars "
-                f"(max {REPORT_CAP}). keep the ask and the one fact behind it; "
-                "the reasoning goes in a memory, and the operator will ask if "
-                "they want it."
-            }
         try:
             report = await operator_reports.report_state(key)
             if text.strip() and report["state"] == "not-sent":
