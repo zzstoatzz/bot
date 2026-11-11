@@ -46,16 +46,19 @@ def settings():
     return Settings()
 
 
+@pytest.fixture(scope="session", autouse=True)
+def model_keys(settings):
+    if settings.anthropic_api_key and not os.environ.get("ANTHROPIC_API_KEY"):
+        os.environ["ANTHROPIC_API_KEY"] = settings.anthropic_api_key
+    if settings.openai_api_key and not os.environ.get("OPENAI_API_KEY"):
+        os.environ["OPENAI_API_KEY"] = settings.openai_api_key
+
+
 @pytest.fixture(scope="session")
 def phi_agent(settings):
     """Test agent without MCP tools to prevent posting."""
     if not settings.anthropic_api_key:
         raise pytest.skip.Exception("Requires ANTHROPIC_API_KEY")
-
-    if settings.anthropic_api_key and not os.environ.get("ANTHROPIC_API_KEY"):
-        os.environ["ANTHROPIC_API_KEY"] = settings.anthropic_api_key
-    if settings.openai_api_key and not os.environ.get("OPENAI_API_KEY"):
-        os.environ["OPENAI_API_KEY"] = settings.openai_api_key
 
     personality = Path(settings.personality_file).read_text()
 
