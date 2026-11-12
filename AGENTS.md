@@ -17,6 +17,9 @@ Read [safety boundaries](docs/safety.md) before changing tools, permissions or
 public delivery, and [context ownership](docs/memory.md) before changing prompts
 or memory. Signals are evidence for Phi to judge; actions happen through tools.
 Keep personality separate from operational rules and per-tool guidance.
+Before changing scheduling, entry points or seemingly accidental behavior, read
+[design lessons](docs/patterns.md) and [entry-point contracts](docs/architecture.md#entry-points).
+A broken action needs its boundary repaired without silently removing its trigger.
 
 Operator automation must never post, like, repost or approve work as Nate's main
 account (`did:plc:xbtmt2zjwlrfegqvch7fboei`). Devlog communication uses only
@@ -31,7 +34,8 @@ its review date does not automatically remove its contents.
 ## skills and integration
 
 `skills/` belongs to Phi at runtime; `.agents/skills/` is for contributors and
-operators. Put new capabilities in the appropriate namespace. Preserve the
+operators. Put new capabilities in the appropriate namespace. When editing vendored
+runtime skills, preserve their upstream attribution and license files. Preserve the
 `.claude/skills` compatibility link. Use the PDSX MCP for AT Protocol writes.
 
 For MCP or skill integration, read [MCP contracts](docs/mcp.md). A tool named by
