@@ -1,152 +1,50 @@
-phi — a bluesky bot. python + pydantic-ai + atproto + turbopuffer + cosmik/semble. fastapi for the small web surface (status pages, memory graph).
+# phi
+
+Python bot with a FastAPI web surface. Work from the repository root.
 
 ## development
 
-- `just run` / `just dev` (hot-reload) / `just deploy` (manual fly.io deploy — CI deploys on push to main, see deployment)
-- `just check` — lint + typecheck + test
-- `just evals` — behavioral tests (llm-as-judge)
-- `just loq-relax <file>` — relax line limit for a file. never edit loq.toml manually or compress code to fit
-- work from repo root
+- `just run` starts the app; `just dev` enables hot reload.
+- `just check` runs lint, typechecking and tests; `just evals` runs behavioral evaluations.
+- Use `just loq-relax <file>` for justified line-limit changes; do not edit
+  `loq.toml` manually or compress code to satisfy it.
+- Imports belong at the top except for circular dependencies. Tests do not use
+  `pytest.mark.asyncio`. Tool parameters use `Annotated[T, Field(description=...)]`.
 
-## python style
+## behavior and authority
 
-- 3.10+ typing (`T | None`, `list[T]`)
-- prefer functional over OOP
-- imports at the top — no deferred imports unless circular
-- never use `pytest.mark.asyncio`
-- tool params: `Annotated[T, Field(description=...)]` so the LLM sees what each param does
+Read [safety boundaries](docs/safety.md) before changing tools, permissions or
+public delivery, and [context ownership](docs/memory.md) before changing prompts
+or memory. Signals are evidence for Phi to judge; actions happen through tools.
+Keep personality separate from operational rules and per-tool guidance.
 
-## project structure
+Operator automation must never post, like, repost or approve work as Nate's main
+account (`did:plc:xbtmt2zjwlrfegqvch7fboei`). Devlog communication uses only
+`did:plc:o53crari67ge7bvbv273lxln`; verify the actual client's `whoami` before
+writing. Credentials from another project grant no authority. Do not manufacture
+operator approval to complete a test. Preserve the independent policy judge,
+MCP mutation guard and operator override.
 
-```
-src/bot/
-├── agent.py               # pydantic-ai agent + dynamic system prompts
-├── config.py              # settings (env vars)
-├── main.py                # fastapi app, status pages, memory graph
-├── status.py              # runtime metrics
-├── core/                  # atproto client, profile, mentionable, goals, self_state
-├── memory/                # turbopuffer namespaces + extraction/reconciliation/review pipelines
-├── services/              # notification polling + message handler
-├── tools/                 # native pydantic-ai tools (posting, search, memory, goals, blog, etc.)
-└── utils/                 # thread context, text formatting
+Changes to `operator-guidance.md` require operator approval before deployment;
+its review date does not automatically remove its contents.
 
-web/                       # sveltekit cockpit at phi.zzstoatzz.io (internal — docs/internal/cockpit.md)
-lexicons/                  # custom io.zzstoatzz.phi.* lexicon definitions (published to phi's PDS — docs/lexicons.md)
-docs/                      # deeper reference (docs/README.md has the reading order)
-personalities/             # personality definitions (public; phi.md is the live one)
-skills/                    # phi's runtime skills (loaded by the agent at run time)
-.agents/skills/             # operator-facing skills for coding agents working on phi
-evals/                     # behavioral tests
-scripts/                   # proven utility scripts
-sandbox/                   # experiments (graduate to scripts/ once proven)
-.eggs/                     # cloned reference projects
-```
+## skills and integration
 
-## key architecture
+`skills/` belongs to Phi at runtime; `.agents/skills/` is for contributors and
+operators. Put new capabilities in the appropriate namespace. Preserve the
+`.claude/skills` compatibility link. Use the PDSX MCP for AT Protocol writes.
 
-- one agent loop, many entry points (notifications batch, cycle, people pass, daily reflection, market/curation/editorial passes, workflow alert). all end in `agent.run()` with different `PhiDeps`.
-- **signals reach phi as context, not as commands.** a `process_*` task says what she's doing right now; the facts arrive as `[BLOCK]`s she judges. entry-point task prose is not drift-checked and is where over-prescription collects (docs/patterns.md).
-- actions happen as tool calls inside the run, not via structured output. the agent's return value is a brief summary string for logging.
-- public actions are gated (docs/safety.md). three layers: written policies plus an independent judge before every `post` (`core/policy.py`); one `process_tool_call` guard on every MCP server (`core/mcp_guard.py`) that routes protected writes to trusted tools, governs reactions and own-record retractions, applies the operator override to every MCP mutation, and logs provenance while letting reads pass; and the operator override itself (`core/override.py`) — an `io.zzstoatzz.phi.override` record on the *operator's* repo, editable at the cockpit's `/operator`, that makes phi refuse to act while it is set.
-- personality is separate from operational rules. tool docstrings carry per-tool guidance, not the system prompt; a block's semantics live in that block's header, next to the labels they define.
-- external `network-activity` runs receive public stream-rate anomalies from the five-minute Prefect `watch-stream` flow. Detection and episode state live in `my-prefect-server`; the material-bearing control slot wakes Phi to investigate, separately from operational alert escalation.
-- relay coverage alerts are not Phi's: `my-prefect-server`'s `relay-health` flow emits `relay-eval.*` events on relay-eval's network-absolute verdict and its automation opens and resolves alert incidents. Phi reads relay-eval on demand with the `relay_eval` tool, whose menu is relay-eval's own generated `/api` index.
-- scheduled attention is deliberate: `thought_post_hours` fires 4 cycles/day in operator-local waking hours, and `people_pass_hours` routes one of those slots to the people pass. what phi is woken up to look at is what she writes about (docs/patterns.md).
-- memory: turbopuffer namespaces (`phi-users-{handle}`, `phi-episodic`). intent state on PDS under `io.zzstoatzz.phi.*` (goals, mention consent, override, atlas, docket).
-- `docs/memory.md` maps context surfaces to their purpose, introducing changes and current writers. Semble is the public reference library; atlas is a dated projection; docket suggests optional investigations. Atlas/docket are read on demand, not injected. SELF is explicit or monthly-review context; the separate posting inventory remains ambient.
-- owner-gated mutations (`follow_user`, `propose_goal_change`, `write_self`, `request_workflow`, and the mention-consent branch of `manage_account`) use `_is_owner`. A private operator request authorizes the specific action in its own run; ask privately with `report_operator` when approval is missing. Existing public approval by an owner like remains supported in an unmixed batch. contact with a third party is a separate gate: the DM conversation is evidence the judge reads, not a pass.
-- MCP servers: pdsx (atproto record CRUD, feed-writes guarded), pub-search (publication search), semble (public knowledge graph; jev-ranked search_tools + call_tool), atproto-docs (atproto.com search, unprefixed), prefect (workflow state; only when auth configured). connected via pydantic-ai's `MCPToolset`, fresh per `agent.run()`. phi carries a subset of prefect, pub-search, tangled and pdsx: the tables are `MCP_KEPT` and `MCP_DROPPED` in `core/mcp_tools.py`, and a tool named by a prompt or skill must survive filtering and be available where the guidance expects it. tangled and lexidraw are deferred behind `search_tools` (`MCP_DEFERRED`) except in runs whose prompt names their tools (docs/mcp.md).
-- atproto apps beyond Bluesky: `describe_lexicon` reads any published lexicon; `call_xrpc` calls a query or procedure as phi through her PDS's service proxy, only for the NSIDs in `settings.xrpc_methods` (each a deliberate addition, grouped by service DID). records in a Bluesky-shaped app (`*.feed.post`, `*.feed.like`, `*.feed.repost`, `*.actor.profile` outside `app.bsky`) are pdsx writes the guard judges like their Bluesky twins (`core/app_records.py`). forks in `settings.notification_apps` (delve.town today) also feed the notification batch: `core/fork_appview.py` reads their AppView through the proxy, the block labels each item with its app, and `post(in_reply_to=...)` writes the reply back into that app.
-- web grounding via tavily: `web_search` discovers sources; `read_web_page` reads extracted Markdown with explicit pagination. The runtime `choose-influences` skill uses this reading capability; background influence reading is still unconnected.
-
-## skills
-
-`skills/find-remembered-post` is a runtime skill for vague post recall: establish
-index freshness, narrow through the requester's likes, then verify post and
-thread context. It uses existing public record tools; it does not add Pensieve
-authentication or rebuild indexes.
-
-`skills/humanizer` is Phi's optional editing reference, pinned to upstream
-Humanizer 3.1.0 with an explicit Phi-specific scope. The policy judge does not
-enforce phrasing or form. Review upstream updates; preserve attribution and license.
-
-skills can also come from MCP servers: `core/mcp_skills.py` lists the skills each server in `settings.skill_mcp_urls` publishes through the MCP Skills extension, fetches each with FastMCP's verified `read_skill`, and adds them to phi's `SkillsCapability` catalog at startup (atproto-docs today). a local skill with the same name wins. these are runtime skills owned by the serving repo, not this one. phi loads any skill with `load_capability`.
-
-two distinct namespaces — don't confuse them:
-
-- `.tangled/workflows/deploy.yml` — CI: tests, then `flyctl deploy` on every push to main (`FLY_API_TOKEN` is a tangled repo secret). a merged pull request deploys phi, including the ones she opens against `personalities/phi.md`.
-- `skills/` — **phi's runtime skills.** loaded by the agent during `agent.run()`. `choose-influences` manages Phi-owned author/work choices on PDS; the background reader is not yet connected to runs. these are things *phi* does: `publish-blog`, `cosmik-records`, `pdsx-fundamentals`, `self-traces` (execution evidence from Logfire and bounded public history from Jetstream V2), `own-source` (what she is, from this repo via the tangled tools), `read-thread` (a whole Bluesky conversation, sized first, before she joins it or answers about it).
-- `.agents/skills/` — **operator-facing skills.** for the human and coding agents working *on* phi, not phi itself. these are things *you* do to inspect or talk to phi:
-  - `phi-check` — inspect phi's health/activity via logfire, bsky, fly, PDS.
-  - `devlog-to-phi` — post a message to phi from the operator's devlog account (the pdsx MCP is already authed as devlog; it's a thin record-create recipe, no script).
-  - `toolset-audit` — inspect tool and skill weight, use, and ownership.
-  - `hone-prompts` — review prompt/context boundaries against captured runs.
-
-Pi and Codex discover `.agents/skills/` directly. Keep `.claude/skills`
-symlinked to `../.agents/skills` for Claude Code, including future additions.
-
-when you add a capability, decide which namespace it belongs to and document it here. prefer the pdsx MCP over hand-rolled scripts for any atproto write.
-
-Operator-facing automation must never post, like, repost, or approve work from Nate's main account (`zzstoatzz.io`, `did:plc:xbtmt2zjwlrfegqvch7fboei`). Devlog communication uses only `did:plc:o53crari67ge7bvbv273lxln`; verify `whoami` on the actual client before writing. Credentials from another project are not authorization. If Phi requires an operator decision, do not manufacture it through Nate's account to complete a test.
-
-## documentation
-
-deeper reference in `docs/`:
-- `architecture.md` — entry points, scheduling, which model runs which agent, why this shape
-- `memory.md` — the four kinds of state and how they compose
-- `system-prompt.md` — block-by-block reference for what's in phi's context
-- `mcp.md` — MCP integration
-- `safety.md` — the policy judge, the pdsx feed-write guard, the operator override, and the incident that shaped them
-- `testing.md` — testing philosophy
-- `patterns.md` — recurring lessons; read before "fixing" anything that looks accidental
-- `observability.md` — logfire integration and its sharp edges
-- `internal/cockpit.md` — the web UI (internal, operator-facing)
-
-`CHANGELOG.md` (repo root) records what shipped and why — the reasoning that
-isn't in the diff. Docs describe how things *are*; the changelog describes how
-they got that way. Neither should be a status report.
-
-`docs/system-prompt.md` is drift-checked: `tests/test_docs_sync.py` fails if an `inject_*` prompt function or a policy slug isn't mentioned there. add the row, don't weaken the test.
+For MCP or skill integration, read [MCP contracts](docs/mcp.md). A tool named by
+prompts or skills must survive tool filtering and be available in that run.
+For prompt changes, update `docs/system-prompt.md`; `tests/test_docs_sync.py`
+checks prompt functions and policy slugs. Use [architecture](docs/architecture.md)
+and [the docs index](docs/README.md) for the relevant subsystem.
 
 ## deployment
 
-this repo lives at `tangled.org/zzstoatzz.io/bot`. phi reads her own source
-through the tangled MCP, so update any hardcoded repo references if it moves.
-
-fly.io app `zzstoatzz-phi`. CI deploys on every push to main
-(`.tangled/workflows/deploy.yml`: tests, then `flyctl deploy`). `just deploy` is
-the manual fallback when CI is unavailable. push to both `origin` (tangled) and
-the `github` mirror; the mirror is what phi's `changelog` tool reads.
-
-`/health` returns 503 when the poller is stopped without being paused or when
-no poll iteration has completed in `health_stale_after` seconds (default 30x
-`notification_poll_interval`). fly's http check (30s) only stops routing to a
-failing machine; fly restarts a machine when its process exits (`[[restart]]`
-policy `always`, so an upstream outage cannot exhaust a finite restart budget). so `core/watchdog.py` applies the same decision every 15s
-and exits the process non-zero. the check's `grace_period` covers startup (auth,
-schedule seeding — 60s is Fly's cap; bio refresh runs in the background) so a booting machine
-is not marked failing.
-
-Bio authoring runs on the first unpaused poll tick and every 24 hours through
-`process_bio` and the classified `write_bio` tool. It does not block startup.
-The same pass reviews avatar/header images weekly through `self-presentation`
-and `inspect_record_media`; keeping them unchanged is valid. Its last completed
-review pass persists in status, and failed runs remain due for the next bio pass.
-Profile descriptions are checked for factual integrity, not editorial form. Failed writes preserve the existing bio and report failure.
-
-secrets via `fly secrets set` or `fly secrets import` (pipe `grep ^KEY .env` into it to keep values off the terminal).
-
-Runtime skill `revise-personality` explains direct `write_personality` authorship.
-Live personality revisions are on Phi’s PDS under `io.zzstoatzz.phi.personality`;
-the repo personality file seeds an empty collection. Revisions take effect next
-run and remain available for restoration. Operational rules remain separate.
-
-The architecture cockpit at `/architecture` uses a reviewed component manifest
-and an AST-derived source inventory. See `docs/architecture-map.md`. The existing
-runtime `own-source` skill explains inspecting and proposing updates to this model.
-
-`operator-guidance.md` contains short operator-owned working nudges and a review
-date. It is deployed into a separate prompt block; Phi may propose changes but
-operator approval is required before deployment. It does not belong in the live
-personality, SELF, or runtime skill instructions. Review or retire temporary
-notes at their stated review date; the date does not automatically remove them.
+CI deploys every push to main through `.tangled/workflows/deploy.yml`.
+`just deploy` is the fallback when CI is unavailable. Push both Tangled `origin`
+and the `github` mirror, which Phi's changelog tool reads. Keep self-source
+references aligned if the repository moves. Read [runtime health](docs/runtime-health.md)
+when changing startup, polling or restart behavior. Keep secrets out of terminal
+output and Git. Record shipped rationale in `CHANGELOG.md`; keep current design in docs.
