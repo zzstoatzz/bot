@@ -1,6 +1,7 @@
 import json
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from threading import Thread
+from unittest.mock import AsyncMock
 from urllib.parse import parse_qs, urlparse
 
 import pytest
@@ -9,7 +10,7 @@ from pydantic_ai import Agent, RunContext, RunUsage
 from pydantic_ai.models.test import TestModel
 
 from bot.config import settings
-from bot.core import override
+from bot.core import identity, override
 from bot.core.atproto_client import BotClient
 from bot.tools import feeds
 from bot.tools._helpers import PhiDeps
@@ -64,7 +65,7 @@ def pds(monkeypatch):
     )
     bot._authenticated = True
     monkeypatch.setattr(feeds, "bot_client", bot)
-    monkeypatch.setattr(override, "_pds_cache", url)
+    monkeypatch.setattr(identity, "pds_for", AsyncMock(return_value=url))
     monkeypatch.setattr(override, "_cache", {"override": None, "fetched_at": 0.0})
     monkeypatch.setattr(settings, "saved_feeds", {})
     yield requests

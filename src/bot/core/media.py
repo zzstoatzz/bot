@@ -11,27 +11,10 @@ from dataclasses import dataclass
 from typing import Any
 
 import httpx
-from atproto import AsyncIdResolver, AtUri
+from atproto import AtUri
 from atproto_client.models.utils import get_model_as_dict
 
-_id_resolver = AsyncIdResolver()
-
-
-async def _resolve_pds(did: str) -> str:
-    """Resolve a DID to its PDS service endpoint via the DID doc."""
-    doc = await _id_resolver.did.resolve(did)
-    if not doc:
-        msg = f"could not resolve DID doc for {did}"
-        raise ValueError(msg)
-    for svc in getattr(doc, "service", None) or []:
-        sid = getattr(svc, "id", "") or ""
-        if sid.endswith("#atproto_pds"):
-            endpoint = getattr(svc, "service_endpoint", "") or ""
-            if endpoint:
-                return endpoint.rstrip("/")
-    msg = f"no #atproto_pds service entry in DID doc for {did}"
-    raise ValueError(msg)
-
+from bot.core import identity
 
 ALLOWED_TEXT_MIME_TYPES = {
     "application/json",
@@ -157,12 +140,9 @@ async def fetch_record(uri: str, *, timeout: float = 30) -> dict[str, Any]:
     if parsed.host.startswith("did:"):
         did = parsed.host
     else:
-        did = await _id_resolver.handle.resolve(parsed.host)
-        if not did:
-            msg = f"could not resolve handle {parsed.host}"
-            raise ValueError(msg)
+        did = await identity.did_for_handle(parsed.host)
 
-    pds = await _resolve_pds(did)
+    pds = await identity.pds_for(did)
     async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
         resp = await client.get(
             f"{pds}/xrpc/com.atproto.repo.getRecord",
@@ -185,7 +165,7 @@ async def fetch_blob_bytes(
     max_bytes: int | None = None,
 ) -> bytes:
     """Fetch raw blob bytes through com.atproto.sync.getBlob on the DID's PDS."""
-    pds = await _resolve_pds(did)
+    pds = await identity.pds_for(did)
     async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
         async with client.stream(
             "GET",

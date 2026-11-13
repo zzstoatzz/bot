@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from bot.core import identity
 from bot.core import override as override_mod
 from bot.core.mcp_guard import make_mcp_guard
 from bot.core.override import (
@@ -21,7 +22,6 @@ from bot.core.override import (
 @pytest.fixture(autouse=True)
 def _reset_override_cache():
     override_mod._cache = {"override": None, "fetched_at": 0.0}
-    override_mod._pds_cache = None
     yield
 
 
@@ -63,7 +63,7 @@ async def test_banner_block_empty_when_inactive():
 async def test_fetch_failure_holds_last_known_state():
     override_mod._cache = {"override": _active(), "fetched_at": -9999.0}
     with patch.object(
-        override_mod, "_resolve_operator_pds", AsyncMock(return_value=None)
+        identity, "pds_for", AsyncMock(side_effect=ValueError("no PDS found"))
     ):
         result = await override_mod.get_override()
     assert result["active"] is True  # stale-but-held, not flapped to off
@@ -71,7 +71,7 @@ async def test_fetch_failure_holds_last_known_state():
 
 async def test_never_fetched_defaults_inactive():
     with patch.object(
-        override_mod, "_resolve_operator_pds", AsyncMock(return_value=None)
+        identity, "pds_for", AsyncMock(side_effect=ValueError("no PDS found"))
     ):
         result = await override_mod.get_override()
     assert result["active"] is False

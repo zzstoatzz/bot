@@ -15,8 +15,13 @@ import sys
 import urllib.parse
 import urllib.request
 
-PDS = "https://psathyrella.us-west.host.bsky.network"
 DID = "did:plc:65sucjiel52gefhcdcypynsr"
+
+
+def pds() -> str:
+    with urllib.request.urlopen(f"https://plc.directory/{DID}", timeout=30) as response:
+        services = json.load(response)["service"]
+    return next(s["serviceEndpoint"] for s in services if s["id"] == "#atproto_pds")
 
 ALERT = re.compile(r"CRASHED|FAILED|RUNNING|run_id=")
 HABITS = {
@@ -41,11 +46,12 @@ HABITS = {
 
 def fetch() -> list[dict]:
     records, cursor = [], None
+    host = pds()
     while True:
         query = {"repo": DID, "collection": "app.bsky.feed.post", "limit": 100}
         if cursor:
             query["cursor"] = cursor
-        url = f"{PDS}/xrpc/com.atproto.repo.listRecords?{urllib.parse.urlencode(query)}"
+        url = f"{host}/xrpc/com.atproto.repo.listRecords?{urllib.parse.urlencode(query)}"
         with urllib.request.urlopen(url, timeout=30) as response:
             page = json.load(response)
         records += page["records"]

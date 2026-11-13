@@ -17,8 +17,8 @@ from atproto_client.exceptions import RequestErrorBase
 from atproto_client.models.dot_dict import DotDict
 
 from bot.config import settings
+from bot.core import identity
 from bot.core.atproto_client import bot_client
-from bot.core.media import _resolve_pds
 
 NSID = re.compile(r"^[a-zA-Z][a-zA-Z0-9-]*(\.[a-zA-Z][a-zA-Z0-9-]*){2,}$")
 
@@ -65,7 +65,7 @@ async def lexicon_authority(nsid: str) -> str:
 async def fetch_lexicon(nsid: str) -> dict[str, Any]:
     """The published lexicon document for an NSID, with where it came from."""
     did = await lexicon_authority(nsid)
-    pds = await _resolve_pds(did)
+    pds = await identity.pds_for(did)
     async with httpx.AsyncClient(timeout=10) as http:
         response = await http.get(
             f"{pds}/xrpc/com.atproto.repo.getRecord",

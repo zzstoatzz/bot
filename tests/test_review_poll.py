@@ -12,7 +12,7 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from bot.core import review_poll
+from bot.core import identity, review_poll
 
 PHI = "did:plc:phi"
 OWNER = "did:plc:owner"
@@ -45,7 +45,7 @@ def _record(uri_rkey, subject, created="2099-01-01T00:00:00Z", editor=OWNER):
 @pytest.fixture
 def handled_file(tmp_path, monkeypatch):
     monkeypatch.setattr(review_poll, "HANDLED_FILE", tmp_path / "h.json")
-    monkeypatch.setattr(review_poll, "_pds_cache", {REPO: KNOT})
+    monkeypatch.setattr(identity, "pds_for", AsyncMock(return_value=KNOT))
     monkeypatch.setattr(review_poll, "_ticket_authors", {})
     from bot.core import ops_log
 

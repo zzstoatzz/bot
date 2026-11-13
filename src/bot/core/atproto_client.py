@@ -8,6 +8,7 @@ from atproto_client import exceptions as atproto_exceptions
 from atproto_client import models
 
 from bot.config import settings
+from bot.core import identity
 from bot.core.ops_log import record_local_write
 from bot.core.rich_text import create_facets
 
@@ -27,6 +28,16 @@ def _get_session_string() -> str | None:
     except Exception as e:
         logger.warning(f"failed to load session: {e}")
     return None
+
+
+def _session_pds(session_string: str | None) -> str | None:
+    """The host a saved session was issued by, when the string says."""
+    if not session_string:
+        return None
+    try:
+        return Session.decode(session_string).pds_endpoint
+    except ValueError:
+        return None
 
 
 def _save_session_string(session_string: str) -> None:
@@ -96,7 +107,7 @@ def _split_text(text: str, max_len: int = MAX_GRAPHEMES) -> list[str]:
 
 class BotClient:
     def __init__(self):
-        self.client = Client(base_url=settings.bluesky_service)
+        self.client = Client()
         self.client.on_session_change(_on_session_change)
         self._authenticated = False
 
@@ -124,12 +135,30 @@ class BotClient:
                 await asyncio.sleep(delay)
 
     async def authenticate(self):
-        """Authenticate with Bluesky, reusing session if available."""
+        """Sign in at her PDS, reusing the saved session if it was issued there.
+
+        The PDS comes from her DID document. A session saved before an account
+        move still authenticates at the old host, where the repository is
+        deactivated, so it is discarded.
+        """
         if self._authenticated:
             return
 
-        # Try to reuse existing session first
         session_string = _get_session_string()
+        try:
+            pds = await identity.pds_for_handle(settings.bluesky_handle)
+        except Exception as e:
+            if not session_string:
+                raise
+            logger.warning(f"could not resolve the PDS, trusting the saved session: {e}")
+        else:
+            self.client.update_base_url(pds)
+            saved = _session_pds(session_string)
+            if saved and saved.rstrip("/") != pds:
+                logger.warning(f"saved session is for {saved}, the account is on {pds}")
+                SESSION_FILE.unlink(missing_ok=True)
+                session_string = None
+
         if session_string:
             try:
                 logger.info("reusing saved session")
@@ -402,11 +431,9 @@ class BotClient:
         if subscribe_posts:
             # not in this atproto SDK version yet — raw XRPC procedure with
             # the session JWT, sent to our PDS (it proxies to the AppView)
-            import httpx
-
             session = getattr(self.client, "_session", None)
             jwt = getattr(session, "access_jwt", None)
-            pds = getattr(session, "pds_endpoint", None) or "https://bsky.social"
+            pds = await identity.pds_for_handle(settings.bluesky_handle)
             if not jwt:
                 raise RuntimeError("no session JWT for activity subscription")
             async with httpx.AsyncClient(timeout=15) as http:
@@ -463,16 +490,9 @@ async def get_identity_block() -> str:
     pds: str | None = None
     if did != "unknown":
         try:
-            async with httpx.AsyncClient(timeout=10) as http:
-                r = await http.get(f"https://plc.directory/{did}")
-                r.raise_for_status()
-                doc = r.json()
-                for svc in doc.get("service", []):
-                    if svc.get("type") == "AtprotoPersonalDataServer":
-                        pds = svc.get("serviceEndpoint")
-                        break
-        except Exception as e:
-            logger.warning(f"failed to resolve pds endpoint for {did}: {e}")
+            pds = await identity.pds_for(did)
+        except ValueError as e:
+            logger.warning(f"failed to resolve pds endpoint: {e}")
 
     lines = [
         "[YOUR INFRASTRUCTURE]",

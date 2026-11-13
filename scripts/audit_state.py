@@ -9,6 +9,7 @@ Read-only. Touches no records. Run from the bot/ directory:
     uv run python scripts/audit_state.py
 """
 
+import asyncio
 from collections import Counter
 
 import turbopuffer
@@ -16,11 +17,14 @@ from atproto import Client
 from atproto_client.models.utils import get_model_as_dict
 
 from bot.config import settings
+from bot.core import identity
 
 
 def audit_pds() -> dict:
     """Walk phi's PDS collections, returning per-collection summaries."""
-    client = Client(base_url=settings.bluesky_service)
+    client = Client(
+        base_url=asyncio.run(identity.pds_for_handle(settings.bluesky_handle))
+    )
     client.login(settings.bluesky_handle, settings.bluesky_password)
     did = client.me.did
 

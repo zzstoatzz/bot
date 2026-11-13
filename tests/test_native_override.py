@@ -2,6 +2,7 @@ import json
 from datetime import datetime, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from threading import Thread
+from unittest.mock import AsyncMock
 from urllib.parse import parse_qs, urlparse
 
 import pytest
@@ -10,7 +11,7 @@ from pydantic_ai import Agent, RunContext, RunUsage
 from pydantic_ai.models.test import TestModel
 
 from bot.config import settings
-from bot.core import mentionable, override, self_record
+from bot.core import identity, mentionable, override, self_record
 from bot.core.atproto_client import BotClient
 from bot.tools import bluesky, feeds, goals
 from bot.tools import self_record as self_tools
@@ -69,7 +70,7 @@ def pds(monkeypatch):
     thread = Thread(target=server.serve_forever, daemon=True)
     thread.start()
     url = f"http://127.0.0.1:{server.server_port}"
-    monkeypatch.setattr(override, "_pds_cache", url)
+    monkeypatch.setattr(identity, "pds_for", AsyncMock(return_value=url))
     monkeypatch.setattr(override, "_cache", {"override": None, "fetched_at": 0.0})
     monkeypatch.setattr(self_record, "_cache", {"text": "", "fetched_at": 0.0})
     bot = BotClient.__new__(BotClient)

@@ -22,12 +22,12 @@ from typing import Any
 import httpx
 from atproto_client.models.utils import get_model_as_dict
 
+from bot.core import identity
 from bot.core.atproto_client import bot_client
 
 logger = logging.getLogger("bot.core.docket")
 
 PHI_DID = "did:plc:65sucjiel52gefhcdcypynsr"
-PDS_BASE = "https://bsky.social"
 DOCKET_COLLECTION = "io.zzstoatzz.phi.docket"
 DOCKET_RKEY = "self"
 
@@ -53,15 +53,11 @@ async def _fetch_record() -> dict[str, Any] | None:
 
 
 async def _fetch_blob(blob_cid: str) -> bytes:
-    """Fetch the docket blob via com.atproto.sync.getBlob.
-
-    bsky.social is the entryway; the call returns a 302 redirecting to
-    the actual PDS that holds the blob. follow_redirects=True handles
-    that without having to resolve phi's PDS host ourselves.
-    """
+    """The docket blob, from her PDS."""
+    pds = await identity.pds_for(PHI_DID)
     async with httpx.AsyncClient(timeout=60, follow_redirects=True) as client:
         resp = await client.get(
-            f"{PDS_BASE}/xrpc/com.atproto.sync.getBlob",
+            f"{pds}/xrpc/com.atproto.sync.getBlob",
             params={"did": PHI_DID, "cid": blob_cid},
         )
         resp.raise_for_status()

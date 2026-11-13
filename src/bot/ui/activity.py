@@ -16,6 +16,8 @@ import httpx
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
+from bot.core import identity
+
 logger = logging.getLogger("bot.ui.activity")
 
 PHI_DID = "did:plc:65sucjiel52gefhcdcypynsr"
@@ -94,6 +96,7 @@ def _card_to_item(rec: dict) -> dict:
 
 async def _fetch_items() -> list[dict]:
     items: list[dict] = []
+    pds = await identity.pds_for(PHI_DID)
     async with httpx.AsyncClient(timeout=10) as client:
         posts_resp, cards_resp = await asyncio.gather(
             client.get(
@@ -105,7 +108,7 @@ async def _fetch_items() -> list[dict]:
                 },
             ),
             client.get(
-                "https://bsky.social/xrpc/com.atproto.repo.listRecords",
+                f"{pds}/xrpc/com.atproto.repo.listRecords",
                 params={
                     "repo": PHI_DID,
                     "collection": "network.cosmik.card",

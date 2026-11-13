@@ -21,6 +21,7 @@ Usage (credentials are phi's own, already in .env):
 Idempotent: putRecord overwrites, so re-run after editing any lexicon.
 """
 
+import asyncio
 import json
 import pathlib
 import sys
@@ -29,6 +30,7 @@ import urllib.request
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "src"))
 
 from bot.config import settings  # noqa: E402
+from bot.core import identity  # noqa: E402
 
 LEXICON_DIR = pathlib.Path(__file__).parent.parent / "lexicons"
 COLLECTION = "com.atproto.lexicon.schema"
@@ -48,22 +50,9 @@ def xrpc(pds: str, path: str, body: dict, token: str | None = None) -> dict:
         return json.load(resp)
 
 
-def resolve_pds(did: str) -> str:
-    """phi's PDS from her DID document — never assume bsky.social."""
-    url = (
-        f"https://plc.directory/{did}"
-        if did.startswith("did:plc:")
-        else f"https://{did.removeprefix('did:web:')}/.well-known/did.json"
-    )
-    with urllib.request.urlopen(url, timeout=15) as resp:
-        doc = json.load(resp)
-    for service in doc.get("service", []):
-        if service.get("id", "").endswith("atproto_pds"):
-            return service["serviceEndpoint"].rstrip("/")
-    raise SystemExit(f"no atproto_pds service in {did}'s DID document")
-
-
 def main() -> None:
+    if unknown := set(sys.argv[1:]) - {"--dry-run"}:
+        raise SystemExit(f"unknown arguments {sorted(unknown)}; nothing published")
     dry_run = "--dry-run" in sys.argv
     handle = settings.bluesky_handle
     password = settings.bluesky_password
@@ -93,20 +82,13 @@ def main() -> None:
             print(f"  would publish {json.loads(path.read_text())['id']}")
         return
 
-    pds_guess = settings.bluesky_service.rstrip("/")
+    pds = asyncio.run(identity.pds_for_handle(handle))
     session = xrpc(
-        pds_guess,
+        pds,
         "com.atproto.server.createSession",
         {"identifier": handle, "password": password},
     )
     did = session["did"]
-    pds = resolve_pds(did)
-    if pds != pds_guess:
-        session = xrpc(
-            pds,
-            "com.atproto.server.createSession",
-            {"identifier": handle, "password": password},
-        )
     token = session["accessJwt"]
     print(f"authenticated as {did} on {pds}\n")
 

@@ -25,12 +25,12 @@ from typing import Any
 import httpx
 from atproto_client.models.utils import get_model_as_dict
 
+from bot.core import identity
 from bot.core.atproto_client import bot_client
 
 logger = logging.getLogger("bot.core.atlas")
 
 PHI_DID = "did:plc:65sucjiel52gefhcdcypynsr"
-PDS_BASE = "https://bsky.social"
 ATLAS_COLLECTION = "io.zzstoatzz.phi.atlas"
 ATLAS_RKEY = "self"
 
@@ -65,19 +65,11 @@ async def _fetch_record() -> dict[str, Any] | None:
 
 
 async def _fetch_blob(blob_cid: str) -> bytes:
-    """Fetch the atlas blob via com.atproto.sync.getBlob.
-
-    bsky.social is the entryway; com.atproto.sync.getBlob returns a 302
-    redirecting to the actual PDS that holds the blob. follow_redirects=True
-    handles that without us having to resolve phi's PDS host ourselves.
-
-    We hit the entryway directly with httpx (rather than the SDK's typed
-    wrapper) because raw bytes are simpler when we know we need to parse
-    them as JSON regardless of what the response content-type claims.
-    """
+    """The atlas blob, from her PDS."""
+    pds = await identity.pds_for(PHI_DID)
     async with httpx.AsyncClient(timeout=60, follow_redirects=True) as client:
         resp = await client.get(
-            f"{PDS_BASE}/xrpc/com.atproto.sync.getBlob",
+            f"{pds}/xrpc/com.atproto.sync.getBlob",
             params={"did": PHI_DID, "cid": blob_cid},
         )
         resp.raise_for_status()

@@ -1,5 +1,23 @@
 # changelog
 
+## 2026-11-13 — nothing assumes where an account is hosted
+
+Preparation for moving Phi to a PDS that supports permissioned spaces. Her
+PDS host was written into the atlas and docket readers, the activity page and
+one script as `bsky.social`, and sign-in went to a configured service URL.
+Four modules each had their own DID-document lookup, and the operator
+override cached the operator's PDS for the life of the process: after the
+operator's own move it would have kept reading the old host, failed, and held
+its last answer, so a newly set override would not have been seen until a
+restart.
+
+`core/identity.py` is now the one lookup, cached for ten minutes, with the
+last answer kept through a failed lookup. Sign-in resolves her PDS from her
+handle. A saved session issued by a different host is discarded, because the
+old host still accepts its own session after a move while the repository
+there is deactivated. `BLUESKY_SERVICE` is removed. `scripts/publish_lexicons.py`
+now refuses unknown arguments; it published on `--help`.
+
 ## 2026-11-12 — private operator conversations read her memory
 
 Since operator DMs first reached the agent on 2026-09-10 (`755e8b4`), those

@@ -19,6 +19,7 @@ from typing import Any
 import httpx
 
 from bot.config import settings
+from bot.core import identity
 from bot.core.ops_log import comment_target
 
 logger = logging.getLogger("bot.review_poll")
@@ -32,7 +33,6 @@ HANDLED_FILE = Path("/data/review_comments_handled.json")
 _HANDLED_KEEP = 200
 _LOOKBACK_SECONDS = 3 * 60 * 60
 
-_pds_cache: dict[str, str] = {}
 _started_at = time.time()
 
 
@@ -54,22 +54,6 @@ def mark_handled(uri: str) -> None:
         HANDLED_FILE.write_text(json.dumps({"handled": handled[-_HANDLED_KEEP:]}))
     except Exception as e:
         logger.warning(f"failed to persist handled review comments: {e}")
-
-
-async def resolve_pds(did: str, http: httpx.AsyncClient) -> str | None:
-    if did in _pds_cache:
-        return _pds_cache[did]
-    if not did.startswith("did:plc:"):
-        return None
-    try:
-        doc = (await http.get(f"https://plc.directory/{did}", timeout=10)).json()
-        for svc in doc.get("service") or []:
-            if svc.get("id") == "#atproto_pds":
-                _pds_cache[did] = str(svc["serviceEndpoint"])
-                return _pds_cache[did]
-    except Exception as e:
-        logger.debug(f"pds lookup failed for {did}: {e}")
-    return None
 
 
 def _fresh_enough(created_at: str) -> bool:
@@ -135,8 +119,10 @@ async def new_review_comments(
     first. Each carries `pull`, the ticket uri phi reads it from."""
     found: list[dict[str, Any]] = []
     for repo in repo_dids or settings.review_repo_dids:
-        knot = await resolve_pds(repo, http)
-        if not knot:
+        try:
+            knot = await identity.pds_for(repo)
+        except ValueError as e:
+            logger.debug(f"knot lookup failed: {e}")
             continue
         try:
             response = await http.get(

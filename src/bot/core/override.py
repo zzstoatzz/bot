@@ -29,6 +29,7 @@ from typing import TypedDict
 import httpx
 
 from bot.config import settings
+from bot.core import identity
 
 logger = logging.getLogger("bot.override")
 
@@ -44,37 +45,7 @@ class Override(TypedDict):
 
 _INACTIVE: Override = {"active": False, "message": ""}
 
-_pds_cache: str | None = None
 _cache: dict = {"override": None, "fetched_at": 0.0}
-
-
-async def _resolve_operator_pds() -> str | None:
-    """Operator DID -> PDS endpoint via the DID document. Cached for the
-    process lifetime (a PDS move is a redeploy-worthy event)."""
-    global _pds_cache
-    if _pds_cache:
-        return _pds_cache
-    did = settings.owner_did
-    try:
-        async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as http:
-            if did.startswith("did:plc:"):
-                r = await http.get(f"https://plc.directory/{did}")
-            elif did.startswith("did:web:"):
-                host = did.removeprefix("did:web:")
-                r = await http.get(f"https://{host}/.well-known/did.json")
-            else:
-                logger.warning(f"unsupported DID method for operator: {did}")
-                return None
-            r.raise_for_status()
-            doc = r.json()
-        for svc in doc.get("service", []):
-            if svc.get("type") == "AtprotoPersonalDataServer":
-                _pds_cache = svc.get("serviceEndpoint")
-                logger.info(f"operator pds resolved: {_pds_cache}")
-                return _pds_cache
-    except Exception as e:
-        logger.warning(f"operator pds resolution failed for {did}: {e}")
-    return None
 
 
 async def get_override() -> Override:
@@ -83,8 +54,10 @@ async def get_override() -> Override:
     if _cache["override"] is not None and now - _cache["fetched_at"] < _TTL_SECONDS:
         return _cache["override"]
 
-    pds = await _resolve_operator_pds()
-    if pds is None:
+    try:
+        pds = await identity.pds_for(settings.owner_did)
+    except ValueError as e:
+        logger.warning(f"operator pds resolution failed: {e}")
         return _cache["override"] or _INACTIVE
 
     try:

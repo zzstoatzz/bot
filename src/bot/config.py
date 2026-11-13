@@ -39,10 +39,6 @@ class Settings(BaseSettings):
     bluesky_password: str = Field(
         default=..., description="The password of the Bluesky account"
     )
-    bluesky_service: str = Field(
-        default="https://bsky.social",
-        description="The service URL of the Bluesky account",
-    )
 
     # Bot configuration
     bot_name: str = Field(default="Bot", description="The name of the bot")

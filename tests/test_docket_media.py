@@ -1,12 +1,13 @@
 import json
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from threading import Thread
+from unittest.mock import AsyncMock
 
 import pytest
 from pydantic_ai import Agent, RunContext, RunUsage
 from pydantic_ai.models.test import TestModel
 
-from bot.core import media
+from bot.core import identity, media
 from bot.tools import media as media_tool
 
 DOCKET = "io.zzstoatzz.phi.docket"
@@ -66,10 +67,11 @@ async def test_docket_reader_over_http(
     thread = Thread(target=server.serve_forever, daemon=True)
     thread.start()
 
-    async def resolve_pds(did):
-        return f"http://127.0.0.1:{server.server_port}"
-
-    monkeypatch.setattr(media, "_resolve_pds", resolve_pds)
+    monkeypatch.setattr(
+        identity,
+        "pds_for",
+        AsyncMock(return_value=f"http://127.0.0.1:{server.server_port}"),
+    )
     agent = Agent("test")
     media_tool.register(agent)
     tool = agent._function_toolset.tools["inspect_record_media"].function
