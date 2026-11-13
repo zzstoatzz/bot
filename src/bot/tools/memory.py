@@ -275,6 +275,14 @@ def register(agent):
         Tag corrections with 'correction' to retain their recall weight.
         Pass the original source URI when available so the account is checkable.
         """
+        if ctx.deps.private_message_context:
+            # The atlas flow publishes the opening of every episodic note.
+            return (
+                "Not saved. Notes are not stored from a private operator "
+                "conversation, because the opening of every note is published "
+                "in your atlas. Recall, search and read_memory work here; "
+                "nothing is down."
+            )
         if ctx.deps.memory:
             sources = [source_uri] if source_uri else None
             if supersedes_id:

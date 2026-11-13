@@ -259,3 +259,9 @@ def conversation_material(history: list[dict], new_ids: list[str]) -> str:
         },
         ensure_ascii=False,
     )
+
+
+def incoming_text(material: str) -> str:
+    """The operator's new messages in `conversation_material`: what recall keys on."""
+    messages = json.loads(material)["messages"]
+    return "\n".join(m["text"] for m in messages if m["new_incoming"])

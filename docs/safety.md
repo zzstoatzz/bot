@@ -161,6 +161,8 @@ conversation, starting when private reporting began. Incoming message IDs are
 persisted after a successful run; pause/override prevents dispatch. The run uses
 `process_operator_dm` and `reply_operator_dm`, with private context excluded from
 the public notification/extraction pipeline and automatic episodic summaries.
+The run reads her memory (recall, search, recent encounters) and writes none:
+`save_memory` declines there, because the atlas publishes note openings.
 Private conversations remain visible in authorized operational traces. Responses
 are limited to one idempotent send per incoming batch. No response is required.
 

@@ -1,5 +1,27 @@
 # changelog
 
+## 2026-11-12 — private operator conversations read her memory
+
+Since operator DMs first reached the agent on 2026-09-10 (`755e8b4`), those
+runs were built with no memory service at all. The aim was to keep DM contents
+out of shared memory; the effect was that she answered the operator with no
+recall of him or of her own notes, no recent encounters, and no search. The
+tools answered "memory not available" without a reason, and on 2026-11-13 she
+reported that to him as a storage outage. The 2026-11-03 change restored only
+the chronicle.
+
+A private run now has her memory for reading. Episodic recall and the
+operator's own memory are cued by his new messages; recent encounters,
+`search_memory` and `read_memory` work as in any run. The discovery pool is
+left out because it is not about the conversation.
+
+Writing is unchanged in effect and now explicit. The run summary is still not
+stored, and `save_memory` declines in a private run with the reason: the atlas
+flow publishes the opening of every episodic note in `io.zzstoatzz.phi.atlas`,
+so a note saved from a DM would publish part of it. Letting her keep what the
+operator tells her privately needs a store that the atlas, docket and
+chronicle do not read; that is not built.
+
 ## 2026-11-11 — operator reports are a few sentences
 
 Phi reports infrastructure trouble to the operator, and that is wanted. The

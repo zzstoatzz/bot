@@ -101,17 +101,18 @@ async def test_incoming_operator_messages_are_deduplicated(journal, monkeypatch)
     assert await reports.incoming_messages() == ([], [])
 
 
-async def test_private_entrypoint_does_not_supply_public_memory():
-    from unittest.mock import AsyncMock
+async def test_private_entrypoint_runs_with_memory_attached():
+    from unittest.mock import AsyncMock, Mock
 
     from bot.agent import PhiAgent
 
     agent = PhiAgent.__new__(PhiAgent)
+    agent.memory = Mock()
     agent._run_agent = AsyncMock(return_value="quietly completed")
     await agent.process_operator_dm("No reply needed.", "message")
     assert agent._run_agent.await_args is not None
     call = agent._run_agent.await_args.kwargs
-    assert call["deps"].memory is None
+    assert call["deps"].memory is agent.memory
     assert call["deps"].private_message_id == "message"
     assert "No reply needed." in call["prompt"]
 

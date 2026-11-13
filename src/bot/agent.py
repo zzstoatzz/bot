@@ -41,6 +41,7 @@ from bot.core.mcp_tools import (
 )
 from bot.core.operator import get_operator_guidance_block, get_operator_profile
 from bot.core.operator_notes import get_operator_notes_block
+from bot.core.operator_reports import incoming_text
 from bot.core.owned_feeds import get_owned_feeds_block
 from bot.core.persona import get_persona_block
 from bot.core.personality import read_personality
@@ -658,6 +659,8 @@ class PhiAgent:
             pool renders — see core/discovery_pool.py for why breadth
             belongs on the unprompted path.
             """
+            if ctx.deps.private_message_context:
+                return ""
             notifications = notification_input(ctx.deps)
             seed = " ".join(
                 (e.get("post_text") or "") for e in notifications.values()
@@ -707,15 +710,16 @@ class PhiAgent:
             memory block keyed on the union of their post texts in this batch
             (so semantic search returns memories relevant to what they're
             currently saying). The operator's accounts recall together; see
-            `memory_queries`.
+            `memory_queries`. A private conversation recalls the operator,
+            cued by the conversation.
             """
             if not ctx.deps.memory:
                 return ""
-            notifs = notification_input(ctx.deps)
-            if not notifs:
-                return ""
-
-            queries = memory_queries(notifs)
+            if private := ctx.deps.private_message_context:
+                cue = incoming_text(private)
+                queries = {h: cue or h for h in settings.operator_handles}
+            else:
+                queries = memory_queries(notification_input(ctx.deps))
             if not queries:
                 return ""
 
@@ -760,13 +764,16 @@ class PhiAgent:
             # Recall is keyed to what started the run and nothing else — the
             # task cues the memory. Batches seed from the posts phi is
             # reacting to; event wakes seed from the event's content; only a
-            # bare clock slot falls back to its own task prose. The
+            # bare clock slot falls back to its own task prose; a private
+            # conversation seeds from the conversation. The
             # residue-seeded variant (2026-08-12, briefly) retrieved more of
             # whatever was already lingering — months-old prefect logs, the
             # same catalog itch every slot — memory as amplifier, not cue.
             notifs = notification_input(ctx.deps)
             if notifs:
                 query = notification_recall(ctx.deps)
+            elif private := ctx.deps.private_message_context:
+                query = incoming_text(private)
             else:
                 query = ctx.deps.event_material or ctx.deps.run_prompt
             if not query.strip():
@@ -974,19 +981,27 @@ class PhiAgent:
         )
 
     async def process_operator_dm(self, material: str, message_id: str) -> str:
-        """A private conversation, excluded from public memory extraction."""
+        """A private conversation with her memory attached for reading.
+
+        She recalls and searches as in any run. Nothing from the conversation
+        is written: the run summary is not stored and save_memory declines.
+        Running these with no memory at all (September 10 to November 12)
+        left her unable to recall the operator, and she reported the missing
+        memory to him as an outage.
+        """
         return await self._run_agent(
             label="operator-dm",
             prompt=(
                 "You received private messages from the operator. Read the conversation "
                 "and decide what it needs, including silence. Use reply_operator_dm "
-                "if replying. Keep this conversation private; do not publish, forward, "
-                "or save its contents to public memory or PDS records without specific "
-                "authorization.\n[PRIVATE CONVERSATION]\n" + material
+                "if replying. You have your memory here: recall and search work. Keep this conversation private; do not publish, "
+                "forward, or save its contents to public memory or PDS records "
+                "without specific authorization."
+                "\n[PRIVATE CONVERSATION]\n" + material
             ),
             deps=PhiDeps(
                 author_handle=settings.owner_handle,
-                memory=None,
+                memory=self.memory,
                 private_message_id=message_id,
                 private_message_context=material,
             ),
