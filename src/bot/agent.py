@@ -29,6 +29,7 @@ from bot.core.cache_stability import (
     model_cache_settings,
 )
 from bot.core.discovery_pool import get_discovery_pool_block
+from bot.core.export_guard import ExportGuard, Permissioned
 from bot.core.goals import list_goals as list_goal_records
 from bot.core.graze_client import GrazeClient
 from bot.core.mcp_skills import MCPSkillsRegistry
@@ -485,7 +486,7 @@ class PhiAgent:
             model_settings=model_cache_settings(observed_model.system),
             output_type=str,
             deps_type=PhiDeps,
-            capabilities=[ToolUsage(), self.skills],
+            capabilities=[ToolUsage(), ExportGuard(), self.skills],
         )
 
         async def personality_instructions() -> str:
@@ -1004,6 +1005,13 @@ class PhiAgent:
                 memory=self.memory,
                 private_message_id=message_id,
                 private_message_context=material,
+                permissioned=[
+                    Permissioned(
+                        "private operator conversation",
+                        material,
+                        frozenset({settings.owner_did}),
+                    )
+                ],
             ),
         )
 

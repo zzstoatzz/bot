@@ -34,6 +34,31 @@ does not exempt those actions from their other checks. Retraction remains a
 capability: the August 19 change replaced a blanket raw-delete refusal with a
 governed path. A boundary must not leave Phi able to publish but unable to retract.
 
+## Permissioned material
+
+Access control decides who can fetch a record, not what Phi writes after
+reading one. `core/export_guard.py` handles the second part. The code that
+loads permissioned material appends it to `PhiDeps.permissioned` with its
+source and the DIDs allowed to read it; Phi does not maintain this list. A
+private operator conversation is the only source today. Records from a
+permissioned space are the intended next one.
+
+In a run with anything on that list, each write is compared against it before
+it runs: native tools through the `ExportGuard` capability, MCP mutations
+inside the MCP guard. A separate reviewer on the policy model answers one
+question, whether the write discloses the material, and a disclosing write
+returns a refusal. The write does not run when the reviewer is unavailable.
+
+| Write | Handling |
+|---|---|
+| `reply_operator_dm`, `report_operator` | Not reviewed against material the operator may read; the operator is the only reader |
+| `post`, `publish_blog_post`, `write_bio`, repository prose, record deletion | Their own policy gate, which also treats the conversation as authorization evidence |
+| `save_memory` | Declines in a private run: the atlas publishes note openings |
+| Every other native write and MCP mutation | Export review |
+
+Not covered: text that leaves through a read, such as a search query or a
+fetched URL. The reviewer is a model and can miss a loose paraphrase.
+
 ## MCP mutation guard
 
 `core/mcp_tools.py` attaches `make_mcp_guard` to every server. The guard in

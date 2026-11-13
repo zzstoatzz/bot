@@ -1,5 +1,22 @@
 # changelog
 
+## 2026-11-13 — writes are compared against permissioned material the run loaded
+
+In an operator DM run the policy judge saw the private conversation for four
+public tools and record deletion. Every other write went out unchecked
+against it: goal progress, the self and personality records, arbitrary PDS
+records through pdsx, Semble cards, Tangled issues and pulls, workflow
+requests and image prompts. Moving her notes into a permissioned space would
+not have changed that, since a space controls who can fetch a record and not
+what she writes after reading it.
+
+`core/export_guard.py` adds the missing comparison. The application records
+each permissioned item a run loads, with who may read it, and reviews every
+remaining write against that list. The list is kept by the loading code so
+that an uncited paraphrase is still compared. A model reviews it, so a loose
+paraphrase can get through; text that leaves through a search query or fetched
+URL is not covered.
+
 ## 2026-11-13 — nothing assumes where an account is hosted
 
 Preparation for moving Phi to a PDS that supports permissioned spaces. Her

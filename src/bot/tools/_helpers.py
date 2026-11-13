@@ -8,6 +8,7 @@ import httpx
 from pydantic_ai import RunContext
 
 from bot.config import settings
+from bot.core.export_guard import Permissioned
 from bot.memory import NamespaceMemory
 from bot.utils.thread import post_line
 
@@ -51,6 +52,9 @@ class PhiDeps:
     web_sources: dict[str, WebSourceCapture] = field(default_factory=dict)
     private_message_id: str = ""
     private_message_context: str = ""
+    # Everything this run loaded that only some people may read. Appended by
+    # the code that loads it; see core/export_guard.py.
+    permissioned: list[Permissioned] = field(default_factory=list)
     # the prompt that started this run. memory recall is keyed to this and
     # nothing else — the task cues the memory, the way a person's does.
     run_prompt: str = ""

@@ -17,7 +17,7 @@ import httpx
 import logfire
 from pydantic_ai import ModelRetry
 
-from bot.core import ops_log
+from bot.core import export_guard, ops_log
 from bot.core.app_records import govern_app_record, governed_shape
 from bot.core.atproto_client import bot_client
 from bot.core.override import get_override, refusal_text
@@ -294,6 +294,17 @@ def make_mcp_guard(server: str, run_label: str = ""):
                 run_label=run_label,
                 changes=changes,
             )
+            loaded = export_guard.needs_review(
+                name,
+                getattr(getattr(ctx, "deps", None), "permissioned", None) or [],
+                mutation=True,
+            )
+            if loaded and (
+                refusal := await export_guard.review(
+                    f"{server} {name}", tool_args, loaded
+                )
+            ):
+                return refusal
 
         warn_note = ""
         if (

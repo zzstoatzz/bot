@@ -3,6 +3,7 @@ from unittest.mock import Mock
 
 import pytest
 
+from bot.config import settings
 from bot.core import operator_reports as reports
 
 
@@ -113,6 +114,9 @@ async def test_private_entrypoint_runs_with_memory_attached():
     assert agent._run_agent.await_args is not None
     call = agent._run_agent.await_args.kwargs
     assert call["deps"].memory is agent.memory
+    (loaded,) = call["deps"].permissioned
+    assert loaded.text == "No reply needed."
+    assert loaded.readers == {settings.owner_did}
     assert call["deps"].private_message_id == "message"
     assert "No reply needed." in call["prompt"]
 
