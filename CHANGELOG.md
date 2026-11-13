@@ -58,7 +58,7 @@ after its connection closed, accumulating children until the 1 GiB Fly machine
 ran out of available memory and stopped responding. The transport now disables
 keep-alive so ending a run also releases its subprocess. A real subprocess test
 covers repeated toolsets on both successful and exceptional exits. See
-`docs/internal/lexidraw-process-leak-2026-11-06.md` for the incident evidence.
+`docs/archive/lexidraw-process-leak-2026-11-06.md` for the incident evidence.
 
 ## 2026-11-06 — find barely remembered posts through likes
 
@@ -707,7 +707,7 @@ the whole OAuth client.
 
 ## 2026-10-04 — Waypoint for the Spotlight Memory adoption
 
-`docs/spotlight-adoption-2026-10.md` reads each store against the post:
+`docs/archive/spotlight-adoption-2026-10.md` reads each store against the post:
 turbopuffer, the intent records on the PDS, and the cosmik library. The
 turbopuffer rows that kept stale values are closed for new writes except raw
 exchanges; the intent records already overwrite in place; the library has no
@@ -812,7 +812,7 @@ it.
 ## 2026-10-02 — Carry fewer tools
 
 Phi carried 110 tools and 36,573 tokens of definitions into every request; 38
-had not been called since 2026-09-06 (`docs/toolset-audit-2026-10.md`). Step 1
+had not been called since 2026-09-06 (`docs/archive/toolset-audit-2026-10.md`). Step 1
 of that audit is in: prefect is narrowed to four tools and pub-search to three,
 tangled loses seven issue and pull lifecycle and listing tools, pdsx loses
 `whoami`, the skills toolset loses `list_skills`, and `manage_feeds` is
@@ -1878,7 +1878,7 @@ what moved and what it cost to find out.
   and a bare domain must start a token — not the tail of a path, a handle,
   or a longer hostname. `tests/test_rich_text.py::TestLinkBoundaries`.
 
-- **docs**: `docs/internal/memory-simplification.md` — the plan for the
+- **docs**: `docs/archive/memory-simplification.md` — the plan for the
   three cuts in `docs/memory.md` plus one addition that comes first: the
   policy judge's exhaust (a ledger of every verdict with its reason, a
   seven-day tally in `[SELF]`, a `/judge` cockpit view pairing blocks with

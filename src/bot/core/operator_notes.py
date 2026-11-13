@@ -1,7 +1,7 @@
 """[OPERATOR NOTES] — the titles of the operator's working notes.
 
 The operator-notes skill has been in the catalog since it was written and
-went unloaded for 267 runs (docs/toolset-audit-2026-10.md): a one-line
+went unloaded for 267 runs (docs/archive/toolset-audit-2026-10.md): a one-line
 catalog entry names subjects, and a subject list does not tell phi that the
 thing in front of her has already been worked out. The titles do.
 

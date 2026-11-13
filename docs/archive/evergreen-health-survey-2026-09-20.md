@@ -181,7 +181,7 @@ changes were preserved. Bot became modified only by this survey document.
 | [zlay](/Users/nate/tangled.org/zzstoatzz.io/zlay) | `main` | `41b950c` | clean |
 | [coral](/Users/nate/tangled.org/zzstoatzz.io/coral) | `main` | `9ef7844` | clean |
 | [find-bufo](/Users/nate/tangled.org/zzstoatzz.io/find-bufo) | `main` | `9535a08` | clean |
-| [bot](/Users/nate/tangled.org/zzstoatzz.io/bot) | `main` | `f1f2f63` | modified |
+| [bot](../..) | `main` | `f1f2f63` | modified |
 | [my-prefect-server](/Users/nate/tangled.org/zzstoatzz.io/my-prefect-server) | `codex/operator-docs-cleanup` | `1c269fe` | clean |
 | [pds-infra](/Users/nate/tangled.org/zzstoatzz.io/pds-infra) | `main` | `f382132` | clean |
 | [pdsx](/Users/nate/github.com/zzstoatzz/pdsx) | `codex/record-page-cursors` | `6d0ca23` | clean |

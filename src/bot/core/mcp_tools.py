@@ -14,7 +14,7 @@ from bot.config import settings
 from bot.core.mcp_guard import make_mcp_guard
 from bot.tools._helpers import PhiDeps
 
-# What phi carries from each MCP server (docs/toolset-audit-2026-10.md).
+# What phi carries from each MCP server (docs/archive/toolset-audit-2026-10.md).
 # prefect and pub-search expose a surface built for people working on those
 # services, so she gets an allowlist. tangled and pdsx lose named tools.
 MCP_KEPT: dict[str, frozenset[str]] = {

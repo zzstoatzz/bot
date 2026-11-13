@@ -9,7 +9,7 @@ fix: identify the application veto instead of presenting the judge's positive
 description as a reason for refusal. Publication eligibility remains unchanged.
 
 This completes the bounded historical-example evaluation goal. It does not
-complete the wider [waow stewardship roadmap](waow-stewardship.md).
+complete the wider [waow stewardship roadmap](../internal/waow-stewardship.md).
 
 ## Method and evidence
 

@@ -2,7 +2,7 @@
 
 Status: deferred behind [operator interaction design](operator-interaction-design.md),
 per Nate’s 2026-09-19 direction. Retained implementation scope; not deployed or dispatched. Based on the
-[2026-09-19 inventory](plyr-stewardship-2026-09-19.md). This is the next small
+[2026-09-19 inventory](../archive/plyr-stewardship-2026-09-19.md). This is the next small
 Gardener/stewardship expansion: monitor an existing project more meaningfully.
 
 ## Outcome

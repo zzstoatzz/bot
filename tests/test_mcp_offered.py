@@ -1,4 +1,4 @@
-"""Which MCP tools phi carries (docs/toolset-audit-2026-10.md)."""
+"""Which MCP tools phi carries (docs/archive/toolset-audit-2026-10.md)."""
 
 from typing import Any, cast
 from unittest.mock import Mock, patch

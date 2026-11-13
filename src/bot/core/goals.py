@@ -84,7 +84,7 @@ async def upsert_goal(
     The measure (progress_signal) is phi-owned and lives with the
     operational fields — the operator gates what phi is FOR, never the
     scorekeeping (a hand-written operator measure went stale for three
-    months once; see docs/goals-metabolism.md).
+    months once; see docs/archive/goals-metabolism.md).
 
     On update, the fields written by update_goal_progress (current_state /
     next_step / last_step / last_step_at / blocked_by / progress_signal)

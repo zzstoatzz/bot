@@ -10,7 +10,7 @@ The cost dashboard provides a useful $70.37/month estimate with incomplete cover
 not a reconciled invoice. These distinctions should reach Phi before more autonomy.
 
 The selected small expansion is a dated plyr.fm evidence packet through the
-existing fleet-health path, specified in [the implementation brief](plyr-stewardship-next-step.md).
+existing fleet-health path, specified in [the implementation brief](../internal/plyr-stewardship-next-step.md).
 It adds service understanding without new repositories, providers, schedulers, or
 publication permissions. This inventory goal is complete; that implementation is
 separate work. No production state was changed or workflow dispatched.
@@ -180,7 +180,7 @@ remain source-backed rather than live-verified.
 
 ## Jev compaction relevance
 
-The [reviewed design](waow-stewardship.md#related-idea-jev-for-evidence-selection)
+The [reviewed design](../internal/waow-stewardship.md#related-idea-jev-for-evidence-selection)
 suggests selecting evidence separately from permissions. Here the full hub JSON
 was 16,329 bytes; deterministic `project == "plyr.fm"` selection retained all 15
 relevant lines in 3,725 bytes (about 77% less, measured with the same JSON encoder).

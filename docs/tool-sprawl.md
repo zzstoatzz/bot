@@ -14,7 +14,7 @@ Do not maintain a second list of names or tool counts here.
 - October 2 filtered 24 MCP tools and deferred Tangled/Lexidraw behind search.
   Pull-review paths load the Tangled tools their prompts explicitly name.
 
-See the [October audit](toolset-audit-2026-10.md#what-landed-2026-10-02) for measured
+See the [October audit](archive/toolset-audit-2026-10.md#what-landed-2026-10-02) for measured
 costs and the exact landed scope. Its opening numbers describe the pre-cut state.
 
 ## Current organization and disclosure decisions

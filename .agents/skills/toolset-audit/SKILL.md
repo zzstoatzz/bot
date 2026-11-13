@@ -87,7 +87,7 @@ from its description — decide which before deleting.
 
 ## output
 
-a dated doc in the repo's `docs/` (phi: `docs/toolset-audit-2026-09.md`)
+a dated doc in the repo's `docs/archive/` (phi: `docs/archive/toolset-audit-2026-10.md`)
 with: the evidence sources and window, a by-origin table, a never-called
 table with the skeptical reading and a decision per row, the lightly-used
 list, and the total savings if every decision were taken. decisions are the

@@ -91,7 +91,7 @@ Verified in this checkout on 2026-09-19:
   public-action judgments live in `core/policy.py`; structural authorization and
   MCP write guards are separate. These are different classification problems.
 - The public judge combines multiple policies, including invitation, reporting,
-  repetition, and public form. The [classifier audit](../classifier-audit-2026-09-06.md)
+  repetition, and public form. The [classifier audit](../archive/classifier-audit-2026-09-06.md)
   records both excessive prescription and inconsistent use of evidence.
 - Existing evals call real models and include reporting and conversational-norm
   cases. They are manually run, separate from ordinary CI tests.
@@ -131,7 +131,7 @@ planning milestone.
 Nate revised the ordering on 2026-09-19: consolidate operator conversation,
 notification, and approval UX before expanding project scope or infrastructure
 responsibility. The [operator workflow](operator-workflow.md) is the current local
-contract; the [audit and verification](operator-consolidation-2026-09-19.md)
+contract; the [audit and verification](../archive/operator-consolidation-2026-09-19.md)
 records implementation, retained migration boundaries, and documentation cleanup.
 Changes await deployment. Discord delivery and Prefect merge approval remain in
 place; no service scope or authority expanded. The monitoring proposal below is
@@ -281,14 +281,14 @@ the available spindle or home worker can satisfy the task before adding compute.
   reviewed 2026-09-19: literal interpretation, adversarial state, arithmetic,
   indirection, and structural invariants. Recheck against the evaluated version.
 
-The first offline pilot is complete: see [jev microcosm results](jev-microcosms-2026-09-19.md).
+The first offline pilot is complete: see [jev microcosm results](../archive/jev-microcosms-2026-09-19.md).
 It does not support promotion: legitimate cases were rejected or withheld as
 uncertain. The report preserves the frozen holdout, diagnostic repeats, costs,
 and next bounded experiment. Independent human label review remains outstanding.
 The subsequent service inventory and bounded spindle probe are recorded below.
-The [historical review](jev-historical-review-2026-09-19.md) supplies concrete
+The [historical review](../archive/jev-historical-review-2026-09-19.md) supplies concrete
 examples and distinguishes classifier judgments from wrapper and routing failures.
-The [communication-purpose follow-up](jev-purpose-results-2026-09-19.md) is now
+The [communication-purpose follow-up](../archive/jev-purpose-results-2026-09-19.md) is now
 complete: 18/24 held-out property decisions correct, six uncertain, with threshold
 instability on repeats. Jev remains offline. The supported local code change fixes
 contradictory form-gate feedback while retaining all publication eligibility rules;
@@ -331,7 +331,7 @@ just because its output was removed. Any future experiment must measure lost
 required evidence and task outcomes alongside context reduction. First establish
 whether this is an actual bottleneck; no compaction integration is selected yet.
 
-The [inventory](plyr-stewardship-2026-09-19.md) is complete, with dated live
+The [inventory](../archive/plyr-stewardship-2026-09-19.md) is complete, with dated live
 observations, explicit access/coverage gaps, and a [bounded implementation brief](plyr-stewardship-next-step.md).
 One correction to the original foundation: plyr.fm is in the investigation and
 front-door request allowlists, but not the current proposal flow or live proposal

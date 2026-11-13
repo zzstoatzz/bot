@@ -4,7 +4,7 @@ Percepta's [Spotlight Memory](https://www.percepta.ai/blog/spotlight-memory)
 is a model architecture: a memory that grows with use, a constant-size read
 and write per step, and addressing learned from the task. Phi runs on hosted
 models, so none of it is adopted literally. What transfers is the shape. Each
-store in [memory.md](memory.md) is read here as a memory with an address, a
+store in [memory.md](../memory.md) is read here as a memory with an address, a
 write rule and a read size, and judged on the property the post measures most
 sharply: after a value is rewritten, does the old one still come back
 (MQAR-forgetting: Spotlight 0.998, attention 0.748, because attention keeps

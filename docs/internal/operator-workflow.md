@@ -70,7 +70,7 @@ The merge flow's Resume approval remains in Prefect after tests/review; its
 credential stays with the trusted workflow. This consolidation does not move merge
 approval into a DM or expose a new cockpit approval button. Some live routes differ
 from configured routes, so verify the exact deployment before dispatch; see the
-[plyr inventory](plyr-stewardship-2026-09-19.md#forge-execution-and-authority-boundaries).
+[plyr inventory](../archive/plyr-stewardship-2026-09-19.md#forge-execution-and-authority-boundaries).
 
 Evergreen stays the public health/cost projection. It shares attributable service
 facts, not private operator correspondence or authority. The cockpit's public

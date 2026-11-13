@@ -1,7 +1,7 @@
 # Operator consolidation: 2026-09-19
 
 The bounded local consolidation is complete; deployment remains separate. The
-[operator workflow](operator-workflow.md) owns current instructions. This report
+[operator workflow](../internal/operator-workflow.md) owns current instructions. This report
 records evidence and the limits of what changed, not another operating guide.
 
 ## Evidence and decision

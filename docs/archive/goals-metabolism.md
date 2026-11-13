@@ -1,7 +1,7 @@
 # Goal design history
 
 This records the July 15 design decision. The current surface and ownership
-contract are in [memory.md](memory.md); the goal examples below describe that
+contract are in [memory.md](../memory.md); the goal examples below describe that
 incident, not a current inventory.
 
 ## the incident that forced this

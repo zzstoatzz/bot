@@ -1,61 +1,52 @@
 # documentation
 
-deeper dive into phi's design.
+References describe how Phi works now. Proposals describe work that is not
+built. The archive holds dated audits, experiments and incident records; each
+describes its own observation window and nothing later. Why things changed is
+in the [changelog](../CHANGELOG.md).
 
-## contents
+## references
 
-- [internal/operator-workflow.md](internal/operator-workflow.md) — current local operator path, private workflow receipts, and explicit migration boundaries
+Read in this order for the overall picture.
 
-- [lore.md](lore.md) — dated background about the account, with who supplied each account
+1. [architecture.md](architecture.md) — entry points, scheduling, which model runs which agent. [architecture-map.md](architecture-map.md) covers the reviewed component model served at `/architecture`.
+2. [memory.md](memory.md) — every context surface: purpose, when it was introduced, storage and recall.
+3. [system-prompt.md](system-prompt.md) — block by block, what reaches the model on a run.
+4. [mcp.md](mcp.md) — the MCP servers and how their tools are filtered and guarded.
+5. [safety.md](safety.md) — how public actions are bounded: policies and judge, the pdsx guard, the operator override, private operator delivery.
+6. [public-etiquette.md](public-etiquette.md) — what the judge reviews in a public post and what stays Phi's.
+7. [patterns.md](patterns.md) — recurring lessons from the history. Read before refactoring anything that looks accidental.
 
-- [architecture.md](architecture.md) — entry points, scheduling, which model runs which agent, why this shape; see also [architecture-map.md](architecture-map.md) for the reviewed component model and how it is maintained
-- [memory.md](memory.md) — every context surface: purpose, introduction history, storage and recall
-- [spotlight-adoption-2026-10.md](spotlight-adoption-2026-10.md) — waypoint: Percepta's Spotlight Memory read against each store, what shipped 10-03, what was checked in production, what is open
-- [system-prompt.md](system-prompt.md) — block-by-block reference for what's actually in phi's context per run
-- [mcp.md](mcp.md) — model context protocol integration
-- [safety.md](safety.md) — how public actions are bounded: policies + judge, the pdsx guard, the operator override
-- [testing.md](testing.md) — testing philosophy
-- [observability.md](observability.md) — logfire integration and its sharp edges
-- [skill-or-tool.md](skill-or-tool.md) — the principle for deciding when something is a tool vs a skill, with historically justified boundaries
-- [tool-sprawl.md](tool-sprawl.md) — remaining agent/tool consolidation after the October cuts
-- [patterns.md](patterns.md) — recurring lessons from the git history (deletion, feedback loops, DotDict, voice vs structure, silently-empty blocks, prescription in task prompts, attention shapes voice)
-- [lexicons.md](lexicons.md) — phi's custom `io.zzstoatzz.phi.*` schemas, how they're published, and the DNS authority record they need
-- [internal/cockpit.md](internal/cockpit.md) — the web UI (internal, operator-facing)
+By subsystem:
 
-- [internal/operator-consolidation-2026-09-19.md](internal/operator-consolidation-2026-09-19.md) — consolidation evidence, documentation audit, and verification
-- [internal/evergreen-health-survey-2026-09-20.md](internal/evergreen-health-survey-2026-09-20.md) — all 48 Evergreen entries, health-check meaning, and verified scheduled coverage gaps
+- [testing.md](testing.md) — what tests and evals each cover.
+- [observability.md](observability.md) — Logfire integration and its sharp edges.
+- [runtime-health.md](runtime-health.md) — `/health`, the watchdog and restarts.
+- [lexicons.md](lexicons.md) — the `io.zzstoatzz.phi.*` schemas, how they are published, and the DNS record they need.
+- [skill-or-tool.md](skill-or-tool.md) — how to decide whether a capability is a tool or a skill.
+- [tool-sprawl.md](tool-sprawl.md) — tool consolidation that remains.
+- [lore.md](lore.md) — dated background about the account, with who supplied each entry.
 
-## proposed work
+Operator-facing:
 
-- [inbound-messages.md](inbound-messages.md) — one platform-neutral shape for incoming messages and what rides along (shared posts, mentions, links, media); the DM adapter ships, the rest is proposed
+- [internal/operator-workflow.md](internal/operator-workflow.md) — how the operator works with Phi: the private conversation, workflow receipts, and what is not migrated.
+- [internal/cockpit.md](internal/cockpit.md) — the web UI.
 
-- [internal/waow-stewardship.md](internal/waow-stewardship.md) — waow.tech stewardship vision, gradual Gardener expansion, and the first offline jev evaluation milestone (2026-09-19; not deployed behavior)
+## proposals
 
-- [internal/operator-interaction-design.md](internal/operator-interaction-design.md) — consolidate conversation, evidence, and scoped decisions before broader stewardship
+- [inbound-messages.md](inbound-messages.md) — one shape for incoming messages and what rides along. The DM adapter ships; the rest is proposed.
+- [internal/operator-interaction-design.md](internal/operator-interaction-design.md) — consolidate conversation, evidence and scoped decisions before broader stewardship.
+- [internal/waow-stewardship.md](internal/waow-stewardship.md) — the waow.tech stewardship sequence. Not deployed.
+- [internal/plyr-stewardship-next-step.md](internal/plyr-stewardship-next-step.md) — a plyr.fm evidence packet, deferred behind operator interaction design.
 
-- [internal/plyr-stewardship-2026-09-19.md](internal/plyr-stewardship-2026-09-19.md) — verified service inventory, capability gaps, cost/health limits, and the selected next expansion
+## archive
 
-- [internal/jev-microcosms-2026-09-19.md](internal/jev-microcosms-2026-09-19.md) — first real-provider pilot: corpus, held-out results, limitations, and decision to keep jev offline
+[archive/](archive/) by subject:
 
-- [internal/jev-historical-review-2026-09-19.md](internal/jev-historical-review-2026-09-19.md) — real Logfire examples, wrapper failure, historical routing fixes, and next semantic distinctions
-
-- [internal/jev-purpose-results-2026-09-19.md](internal/jev-purpose-results-2026-09-19.md) — frozen historical-purpose evaluation and verified form-gate feedback fix
-
-## reading order
-
-1. **architecture.md** — overall shape
-2. **memory.md** — surface purposes, introduction history, storage and recall
-3. **system-prompt.md** — exactly what reaches the model on every run
-4. **mcp.md** — external capabilities
-5. **safety.md** — how public actions are bounded, and why structurally
-6. **testing.md** — how we verify behavior
-7. **skill-or-tool.md** — the design principle behind the tool/skill split
-8. **tool-sprawl.md** — remaining agent and tool-disclosure decisions
-9. **patterns.md** — recurring lessons; read before refactoring anything that looks accidental
-
-each doc is self-contained and can be read independently.
-
-The references describe current behavior; dated audits and proposals preserve
-their stated observation window. For how Phi came to work this way — the
-incidents, the reversals, the reasoning that isn't in any diff — see
-[../CHANGELOG.md](../CHANGELOG.md).
+- Toolset: [September audit](archive/toolset-audit-2026-09.md), [October audit](archive/toolset-audit-2026-10.md).
+- Memory: [Spotlight adoption](archive/spotlight-adoption-2026-10.md), [simplification plan](archive/memory-simplification.md), [goal design history](archive/goals-metabolism.md).
+- Voice and personality: [voice calibration](archive/voice-calibration.md), [personality notes](archive/personality-notes-2026-09.md), [classifier audit](archive/classifier-audit-2026-09-06.md).
+- State of the system: [status quo, September](archive/status-quo-2026-09.md), [closeout, September 5](archive/closeout-2026-09-05.md), [operator consolidation](archive/operator-consolidation-2026-09-19.md).
+- jev evaluation: [microcosms pilot](archive/jev-microcosms-2026-09-19.md), [historical review](archive/jev-historical-review-2026-09-19.md), [purpose results](archive/jev-purpose-results-2026-09-19.md).
+- Stewardship evidence: [plyr.fm inventory](archive/plyr-stewardship-2026-09-19.md), [Evergreen health survey](archive/evergreen-health-survey-2026-09-20.md).
+- Incidents: [lexidraw process leak](archive/lexidraw-process-leak-2026-11-06.md).

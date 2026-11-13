@@ -1,7 +1,7 @@
 # jev operational microcosms
 
 Offline research for [waow stewardship](../../docs/internal/waow-stewardship.md).
-[First results and decision](../../docs/internal/jev-microcosms-2026-09-19.md).
+[First results and decision](../../docs/archive/jev-microcosms-2026-09-19.md).
 No production decisions change. Run from the repository root with existing
 `uv` dependencies; no new runtime provider dependency is added.
 
@@ -90,7 +90,7 @@ private replay output into the tracked evidence directory without review.
 
 ## Historical communication-purpose follow-up
 
-[Results and decision](../../docs/internal/jev-purpose-results-2026-09-19.md)
+[Results and decision](../../docs/archive/jev-purpose-results-2026-09-19.md)
 cover a separate 20-case corpus in `purpose-cases.json`. `purpose.json` freezes
 two independent properties: answering a request and requesting intervention.
 This experiment calls only jev; it does not run the full policy judge.

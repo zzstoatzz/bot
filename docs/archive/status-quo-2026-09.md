@@ -34,7 +34,7 @@ where it comes from, as far as the evidence goes:
 - **the largest block she reads is her own last 48 hours.** `[RECENT
   OPERATIONS]` was 7,313 chars of that 30k, her posts quoted back to her so
   she does not repeat herself. it is also a style feedback loop:
-  `docs/personality-notes-2026-09.md` predicted this and `docs/system-prompt.md`
+  `docs/archive/personality-notes-2026-09.md` predicted this and `docs/system-prompt.md`
   names it as a known loop. it has not been broken.
 - **the model.** sonnet 5 produces this cadence readily. whether a different
   model under the same 30k of dash-heavy instructions would sound different is
@@ -47,7 +47,7 @@ read them cold; the ledger frame and the "x — not y, z" turn are in most.
 ## 2. what one run costs
 
 - static: 30 own tool definitions plus five MCP servers' tools, measured at
-  30,425 of a 40,600-token fixed prompt (`docs/toolset-audit-2026-09.md`);
+  30,425 of a 40,600-token fixed prompt (`docs/archive/toolset-audit-2026-09.md`);
   67 of 95 tools were called at all in 30 days.
 - dynamic: 23 registered instruction blocks (`agent.py:437-772`), each
   rendered once per run. the latest run's rendered instructions: 30,122 chars.
@@ -98,7 +98,7 @@ the same rule appears in several of them. six concrete cases:
   (`agent.py:1159`), `agent.py:634`, `core/prior_coverage.py:1`.
 
 a rule stated in five places is enforced in at most one and drifts in the
-other four. the 2026-09-02 cake incident (`docs/personality-notes-2026-09.md`,
+other four. the 2026-09-02 cake incident (`docs/archive/personality-notes-2026-09.md`,
 the devlog thread) was exactly this: a norm she "held" in prose and nothing
 checked.
 
@@ -122,7 +122,7 @@ like authorizes an action. only `write_self` is used. since then the policy
 judge, safe mode, issues-for-gardener, the merge ladder, and the
 `merge-approved` flow (operator's Resume is the merge, 2026-09-03) arrived.
 two consent models coexist; the older one is mostly dead weight
-(`docs/toolset-audit-2026-09.md` recommended removing four of the five;
+(`docs/archive/toolset-audit-2026-09.md` recommended removing four of the five;
 nothing was removed).
 
 ### 3d. docs that describe a system that is not there
@@ -135,9 +135,9 @@ nothing was removed).
   that became `@agent.instructions` + `memoize_per_run`, and names
   `inject_self_state`, which was renamed.
 - `docs/architecture.md:6` narrates a `like_post` call inside the run.
-- `docs/internal/memory-simplification.md` is a plan whose end state never
+- `docs/archive/memory-simplification.md` is a plan whose end state never
   landed; `namespace_memory.py` is still 1,233 lines and three namespaces.
-- `docs/toolset-audit-2026-09.md` says on line 5 "nothing here was removed",
+- `docs/archive/toolset-audit-2026-09.md` says on line 5 "nothing here was removed",
   and that is still true.
 
 ### 3e. surfaces she depends on
