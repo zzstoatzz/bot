@@ -9,6 +9,7 @@ from pydantic_ai import RunContext
 
 from bot.config import settings
 from bot.core.export_guard import Permissioned
+from bot.core.identity import pds_for
 from bot.memory import NamespaceMemory
 from bot.utils.thread import post_line
 
@@ -229,7 +230,6 @@ EVERGREEN_PROXY = "https://evergreen-proxy.n8-3e9.workers.dev"
 SERVICE_CHECKS = [
     {"url": "https://api.plyr.fm/health", "name": "plyr api"},
     {"url": "https://plyr.fm", "name": "plyr frontend"},
-    {"url": "https://pds.zzstoatzz.io/xrpc/_health", "name": "PDS"},
     {"url": "https://prefect-server.waow.tech/api/health", "name": "prefect"},
     {"url": "https://prefect-metrics.waow.tech/api/health", "name": "grafana"},
     {"url": "https://relay.waow.tech/xrpc/_health", "name": "indigo relay"},
@@ -264,6 +264,18 @@ SERVICE_CHECKS = [
 ]
 
 
+async def _service_checks() -> list[dict[str, str]]:
+    """SERVICE_CHECKS plus the operator's PDS, wherever the DID document says it is."""
+    checks = list(SERVICE_CHECKS)
+    try:
+        pds = await pds_for(settings.owner_did)
+    except ValueError as e:
+        logger.warning(f"operator PDS is unresolvable, so it goes unchecked: {e}")
+    else:
+        checks.append({"url": f"{pds}/xrpc/_health", "name": "operator PDS"})
+    return checks
+
+
 def _blocked_hosts(response: httpx.Response) -> list[str]:
     """URLs the proxy named in a 403, or [] if it wasn't that shape."""
     try:
@@ -291,8 +303,9 @@ async def _check_services_impl() -> str:
     so a monitor that stops monitoring is visible in telemetry.
     """
     unmonitored: list[str] = []
+    requested = await _service_checks()
     async with httpx.AsyncClient(timeout=30) as client:
-        checks = list(SERVICE_CHECKS)
+        checks = list(requested)
         try:
             r = await client.post(EVERGREEN_PROXY, json={"checks": checks})
             if r.status_code == 403 and (blocked := _blocked_hosts(r)):
@@ -314,7 +327,7 @@ async def _check_services_impl() -> str:
 
     checks = results if isinstance(results, list) else results.get("results", [])
     # build name lookup from our request
-    name_by_url = {c["url"]: c["name"] for c in SERVICE_CHECKS}
+    name_by_url = {c["url"]: c["name"] for c in requested}
 
     for check in checks:
         url = check.get("url", "")

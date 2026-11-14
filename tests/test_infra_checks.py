@@ -22,7 +22,17 @@ from bot.tools._helpers import _blocked_hosts, _check_services_impl
 from bot.tools.bluesky import _is_github_rate_limit
 
 
-def _response(status: int, json_body, url: str = "https://proxy.test") -> httpx.Response:
+@pytest.fixture(autouse=True)
+def _resolved_operator_pds():
+    with patch.object(
+        _helpers, "pds_for", AsyncMock(return_value="https://pds.test")
+    ) as resolve:
+        yield resolve
+
+
+def _response(
+    status: int, json_body, url: str = "https://proxy.test"
+) -> httpx.Response:
     return httpx.Response(
         status_code=status, json=json_body, request=httpx.Request("POST", url)
     )
@@ -113,3 +123,48 @@ class TestGithubRateLimitDetection:
 
     def test_non_http_error_is_not_a_rate_limit(self):
         assert not _is_github_rate_limit(httpx.ConnectError("dns"))
+
+
+class TestOperatorPdsCheck:
+    """The operator's PDS is checked where its DID document points, never at a
+    hardcoded host: zzstoatzz.io moved from pds.zzstoatzz.io to zds.zzstoatzz.io
+    on 2026-11-14 and the old hardcoded URL kept checking a deactivated server."""
+
+    def _proxy_echoing(self):
+        client = AsyncMock()
+
+        async def post(url, json):
+            return _response(
+                200,
+                [
+                    {"url": c["url"], "status": 200, "ok": True, "ms": 1}
+                    for c in json["checks"]
+                ],
+            )
+
+        client.post = AsyncMock(side_effect=post)
+        ctx = AsyncMock()
+        ctx.__aenter__ = AsyncMock(return_value=client)
+        ctx.__aexit__ = AsyncMock(return_value=False)
+        return ctx, client
+
+    async def test_the_pds_check_follows_the_did_document(self, _resolved_operator_pds):
+        ctx, client = self._proxy_echoing()
+        with patch.object(_helpers.httpx, "AsyncClient", return_value=ctx):
+            out = await _check_services_impl()
+        urls = [c["url"] for c in client.post.await_args.kwargs["json"]["checks"]]
+        assert "https://pds.test/xrpc/_health" in urls
+        assert not any("pds.zzstoatzz.io" in u for u in urls)
+        _resolved_operator_pds.assert_awaited_once_with(_helpers.settings.owner_did)
+        assert "DOWN" not in out
+
+    async def test_an_unresolvable_pds_is_logged_not_fatal(
+        self, _resolved_operator_pds, caplog
+    ):
+        _resolved_operator_pds.side_effect = ValueError("no PDS found")
+        ctx, client = self._proxy_echoing()
+        with patch.object(_helpers.httpx, "AsyncClient", return_value=ctx):
+            with caplog.at_level(logging.WARNING, logger="bot.tools"):
+                out = await _check_services_impl()
+        assert "services healthy" in out
+        assert any("operator PDS is unresolvable" in r.message for r in caplog.records)
