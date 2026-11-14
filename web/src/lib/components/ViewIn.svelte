@@ -45,9 +45,9 @@
 		menuOpen = false;
 	}
 
-	function favicon(domain: string): string {
+	function favicon(v: Viewer): string {
 		// Direct favicon — most clients have one. If it 404s the fallback monogram shows.
-		return `https://${domain}/favicon.ico`;
+		return v.icon ?? `https://${v.domain}/favicon.ico`;
 	}
 
 	function monogram(label: string): string {
@@ -82,7 +82,7 @@
 			<span class="favwrap">
 				<img
 					class="fav"
-					src={favicon(chosen.domain)}
+					src={favicon(chosen)}
 					alt=""
 					onerror={(e) => {
 						(e.currentTarget as HTMLImageElement).style.display = 'none';
@@ -116,7 +116,7 @@
 							<span class="favwrap small">
 								<img
 									class="fav"
-									src={favicon(v.domain)}
+									src={favicon(v)}
 									alt=""
 									onerror={(e) => {
 										(e.currentTarget as HTMLImageElement).style.display = 'none';

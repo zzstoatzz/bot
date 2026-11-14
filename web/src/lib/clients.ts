@@ -18,6 +18,7 @@ export interface Viewer {
 	id: string;
 	label: string;
 	domain: string; // for favicon resolution
+	icon?: string; // set when the favicon is not at /favicon.ico
 	url: (args: { handle: string; did?: string; collection?: string; rkey?: string }) => string;
 }
 
@@ -38,6 +39,7 @@ const BSKY_PROFILE_VIEWERS: Viewer[] = [
 		id: 'bsky',
 		label: 'bsky',
 		domain: 'bsky.app',
+		icon: 'https://web-cdn.bsky.app/static/apple-touch-icon.png',
 		url: ({ handle }) => `https://bsky.app/profile/${handle}`
 	},
 	{
@@ -50,12 +52,14 @@ const BSKY_PROFILE_VIEWERS: Viewer[] = [
 		id: 'blacksky',
 		label: 'blacksky',
 		domain: 'blacksky.community',
+		icon: 'https://blacksky.community/static/apple-touch-icon.png',
 		url: ({ handle }) => `https://blacksky.community/profile/${handle}`
 	},
 	{
 		id: 'witchsky',
 		label: 'witchsky',
 		domain: 'witchsky.app',
+		icon: 'https://witchsky.app/static/favicon.ico',
 		url: ({ handle }) => `https://witchsky.app/profile/${handle}`
 	},
 	PDSLS
@@ -66,6 +70,7 @@ const BSKY_POST_VIEWERS: Viewer[] = [
 		id: 'bsky',
 		label: 'bsky',
 		domain: 'bsky.app',
+		icon: 'https://web-cdn.bsky.app/static/apple-touch-icon.png',
 		url: ({ handle, rkey }) => `https://bsky.app/profile/${handle}/post/${rkey}`
 	},
 	{
