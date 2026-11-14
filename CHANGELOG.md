@@ -1,5 +1,21 @@
 # changelog
 
+## 2026-11-14 — judge and helpers move to gpt-6.1-terra and gpt-6-luna
+
+The OpenAI org behind the judge, the helper agents and embeddings ran out of
+credits at 02:08Z. Phi kept running on DeepSeek but every post was refused by
+a judge that could not answer, and memory could not embed a query. `/health`
+and the site reported her as online throughout.
+
+With credits restored, `policy_model` moves from gpt-5.6-terra to
+gpt-6.1-terra and `extraction_model` from gpt-5.6-luna to gpt-6-luna, each at
+half the token price. The eval suite passes on the new models with one case
+changed: gpt-6.1-terra blocks a short outage report that infers the tunnel
+"needs a restart", as a claimed cause from a failed read. The case now states
+the reading only. The "no reply needed" public-norms case blocks about half
+the time on both the old and new judge (8/16 and 7/16) and passes the suite
+only through retries; that is a standing weakness, not a regression.
+
 ## 2026-11-13 — writes are compared against permissioned material the run loaded
 
 In an operator DM run the policy judge saw the private conversation for four

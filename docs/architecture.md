@@ -65,8 +65,8 @@ checks contact, prior coverage and public delivery, including all split parts.
 |---|---|---|
 | `agent_model` | Main Phi and observation extractor | `openrouter:deepseek/deepseek-v4.1-flash` |
 | `chronicle_model` | Chronicle flushes and merges | `openrouter:deepseek/deepseek-v4.1-flash` |
-| `policy_model` | Independent policy judge | `openai-responses:gpt-5.6-terra` |
-| `extraction_model` | Episodic selector, reconciler, posting inventory and post-topic labels | `openai-responses:gpt-5.6-luna` |
+| `policy_model` | Independent policy judge | `openai-responses:gpt-6.1-terra` |
+| `extraction_model` | Episodic selector, reconciler, posting inventory and post-topic labels | `openai-responses:gpt-6-luna` |
 
 Settings hold full provider/model identifiers. The `openai-responses:` prefix
 selects the API needed for the configured reasoning/structured-output agents.

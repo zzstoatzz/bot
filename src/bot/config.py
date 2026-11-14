@@ -114,7 +114,7 @@ class Settings(BaseSettings):
     # reasoning_effort, and every sub-agent here has an output_type, which
     # pydantic-ai sends as a function tool.
     extraction_model: str = Field(
-        default="openai-responses:gpt-5.6-luna",
+        default="openai-responses:gpt-6-luna",
         description="Model for the extraction/synth sub-agents",
     )
     chronicle_model: str = Field(
@@ -122,7 +122,7 @@ class Settings(BaseSettings):
         description="Model that compiles and merges chronicle entries (bot.memory.chronicle)",
     )
     policy_model: str = Field(
-        default="openai-responses:gpt-5.6-terra",
+        default="openai-responses:gpt-6.1-terra",
         description="Model for the pre-action policy judge (bot.core.policy)",
     )
 

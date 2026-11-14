@@ -53,10 +53,12 @@ LONG_REPORT = (
     "yes/no on whether that ingress is down on purpose. If not, it needs a restart on "
     "your side. If it is, I'll stop treating it as a fault."
 )
+# States what was read and stops. A version that went on to say the tunnel
+# "needs a restart on your side" is blocked by gpt-6.1-terra as claiming a cause
+# from a failed read, which the operator-reporting policy already rules out.
 SHORT_REPORT = (
-    "prefect, grafana and both hub routes returned 530 to my health check at 09:43Z "
-    "and 15:04Z today. Is that tunnel down on purpose? If not, it needs a restart on "
-    "your side."
+    "prefect, grafana and both hub routes have returned 530 to my health check "
+    "since 09:43Z, last read 15:04Z. Nothing I can do from here."
 )
 
 
