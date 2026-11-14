@@ -35,7 +35,7 @@ export interface ActivityItem {
 	url?: string | null;
 }
 
-// --- /api/memory/graph ---
+// --- a person in the logbook ---
 
 export interface GraphNode {
 	id: string;
@@ -43,16 +43,6 @@ export interface GraphNode {
 	type: 'phi' | 'user';
 	x: number | null;
 	y: number | null;
-}
-
-export interface GraphEdge {
-	source: string;
-	target: string;
-}
-
-export interface GraphData {
-	nodes: GraphNode[];
-	edges: GraphEdge[];
 }
 
 // --- discovery pool (hub /api/agents/discovery-pool) ---

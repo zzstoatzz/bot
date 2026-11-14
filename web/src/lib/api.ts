@@ -1,5 +1,5 @@
 // Typed API client surface. Three backends:
-//   1. phi's own bot endpoints (relative URLs: /api/activity, /api/memory/graph, /health)
+//   1. phi's own bot endpoints (relative URLs: /api/activity, /health)
 //   2. phi's PDS records (public, no auth) via bsky.social
 //   3. external services: bsky public API, hub discovery pool, top chicken market
 
@@ -22,7 +22,6 @@ import type {
 	DiscoveryEntry,
 	Docket,
 	Goal,
-	GraphData,
 	HealthInfo,
 	Skill,
 	UserView,
@@ -118,12 +117,6 @@ export async function getActivity(): Promise<ActivityItem[]> {
 export async function getPeople(): Promise<string[]> {
 	const res = await fetch('/api/memory/people', { signal: AbortSignal.timeout(15000) });
 	if (!res.ok) throw new Error(`people: ${res.status}`);
-	return await res.json();
-}
-
-export async function getMemoryGraph(): Promise<GraphData> {
-	const res = await fetch('/api/memory/graph');
-	if (!res.ok) throw new Error(`memory graph: ${res.status}`);
 	return await res.json();
 }
 
