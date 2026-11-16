@@ -11,13 +11,35 @@ description: >
 # devlog-to-phi
 
 The operator talks to phi the way anyone does: by posting at it on bluesky.
-The **pdsx MCP is already authenticated as the devlog account**
-(`zzstoatzzdevlog.bsky.social`, `did:plc:o53crari67ge7bvbv273lxln`) — the
-operator's testing/dev account, which phi knows is theirs and weighs
-accordingly. So you post by creating an `app.bsky.feed.post` record with
-`mcp__pdsx__create_record`. No scripts, no SDK login. Verify with
-`mcp__pdsx__whoami` on the actual client before writing: the DID must be
+Use the devlog account (`zzstoatzzdevlog.bsky.social`,
+`did:plc:o53crari67ge7bvbv273lxln`), the operator's testing/dev account.
+PDSX MCP and the PDSX CLI are both supported; a missing MCP connector is
+not an access blocker. Never assume either client is already authenticated
+as devlog. Verify with its `whoami` before writing: the DID must be
 `did:plc:o53crari67ge7bvbv273lxln`. Stop the write if it differs.
+
+## connection and credentials
+
+Use an available PDSX MCP connection, or discover the installed CLI with
+`command -v pdsx` and `pdsx --help`. A local checkout can also provide it:
+`~/github.com/zzstoatzz/pdsx/.venv/bin/pdsx`. Check that path exists rather
+than installing another copy unnecessarily.
+
+Read the `secrets` skill before accessing credentials. The canonical devlog
+app password is `atproto.zzstoatzzdevlog.app-password` in
+`~/tangled.org/zzstoatzz.io/secrets/prod.yaml`. Decrypt that leaf into process
+memory with `sops decrypt --extract`; never print it or pass it as a command-line
+argument. For the CLI, pass `ATPROTO_HANDLE=zzstoatzzdevlog.bsky.social` and
+`ATPROTO_PASSWORD` in the child environment. Use a working directory without
+an unrelated `.env` and let PDSX discover the account's PDS.
+
+Run `pdsx whoami`, verify its returned DID, then reuse that executable and
+credential environment for `pdsx create app.bsky.feed.post`. The CLI accepts
+a record as JSON on stdin; inspect `create --help` for the installed version.
+Retain the returned URI and CID, and read the created record back. If a write
+times out, check whether it landed before retrying. MCP uses `whoami` and
+`create_record` for the same operations. No shared login configuration needs
+to change.
 
 Never post, like, repost, or approve work from Nate's main account
 (`zzstoatzz.io`, `did:plc:xbtmt2zjwlrfegqvch7fboei`). Never switch to another
@@ -44,7 +66,7 @@ Not for: changing phi's behavior (edit code/personality), inspecting phi
    `did:plc:65sucjiel52gefhcdcypynsr`. Put `@phi.zzstoatzz.io` in the text
    and add a mention facet whose `byteStart`/`byteEnd` cover that substring
    (UTF-8 byte offsets — for a leading `@phi.zzstoatzz.io` that's 0–17).
-3. Create the root post:
+3. Create the root post. For MCP:
 
    ```
    mcp__pdsx__create_record(
@@ -60,8 +82,9 @@ Not for: changing phi's behavior (edit code/personality), inspecting phi
    )
    ```
 
-   `$type` and `createdAt` are auto-added by pdsx. The call returns the
-   root's `uri` and `cid`.
+   For the CLI, send the same `record` object as JSON on stdin to
+   `pdsx create app.bsky.feed.post`. Include `$type` and `createdAt` explicitly
+   when constructing records. Retain the root's `uri` and `cid`.
 4. For a thread, post each follow-up as a reply, carrying the same `root`
    ref and pointing `parent` at the previous post:
 
@@ -98,7 +121,7 @@ Not for: changing phi's behavior (edit code/personality), inspecting phi
 ## notes
 
 - phi: `@phi.zzstoatzz.io` / `did:plc:65sucjiel52gefhcdcypynsr`.
-- devlog (pdsx auth): `zzstoatzzdevlog.bsky.social` / `did:plc:o53crari67ge7bvbv273lxln`.
+- devlog: `zzstoatzzdevlog.bsky.social` / `did:plc:o53crari67ge7bvbv273lxln`.
 - Byte offsets, not character offsets — matters if the mention isn't at the
   start or the text has multibyte chars before it.
 - This is an outward-facing public post. The operator asking you to send it
