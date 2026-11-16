@@ -292,3 +292,10 @@ The companion repo passes lint, formatting, typing, deployment-contract checks
 and 46 focused deployment/atlas tests. Production verification and downstream
 behavior across ordinary interactions remain rollout work, not claims supported
 by these local checks.
+
+Live retirement target verified at 09:37 UTC: deployment
+`a3d785e9-a88f-421d-837f-81e4eb7f535d` (`phi-memory-synthesis`), fed by enabled
+automation `a1d69735-40ed-490e-88c9-715b7d8bb557`
+(`phi-memory-synthesis__automation_1`) after `transform` completes. Its last
+five runs completed; the HeavyPad background worker is active. This is an
+intentional replacement of a functioning producer, not incident cleanup.
