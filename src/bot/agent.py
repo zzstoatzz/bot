@@ -13,9 +13,9 @@ from typing import Any, cast
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import httpx
-from pydantic_ai import Agent, AgentRunResult, ImageUrl, PromptedOutput, RunContext
+from pydantic_ai import Agent, AgentRunResult, ImageUrl, RunContext
 from pydantic_ai.tools import ToolDefinition
-from pydantic_ai.toolsets import AbstractToolset
+from pydantic_ai.toolsets import AbstractToolset, FunctionToolset
 from pydantic_ai.usage import RunUsage
 from pydantic_ai_skills import SkillsCapability
 
@@ -30,7 +30,6 @@ from bot.core.cache_stability import (
 )
 from bot.core.discovery_pool import get_discovery_pool_block
 from bot.core.export_guard import ExportGuard, Permissioned
-from bot.core.goals import list_goals as list_goal_records
 from bot.core.graze_client import GrazeClient
 from bot.core.mcp_skills import MCPSkillsRegistry
 from bot.core.mcp_tools import (
@@ -56,24 +55,19 @@ from bot.core.self_record import get_self_block
 from bot.core.self_state import get_inventory_block, get_state_block
 from bot.core.tool_usage import ToolUsage
 from bot.core.workflow_state import get_workflow_state_block
-from bot.memory.chronicle import get_chronicle_block
 from bot.memory.encounters import (
     ENCOUNTER_NAMESPACE,
     encounter_thread_states,
     read_recent_encounters,
     render_recent_encounters,
 )
-from bot.memory.extraction import EXTRACTION_SYSTEM_PROMPT, ExtractionResult
-from bot.memory.namespace_memory import InteractionRow
+from bot.memory.notebook import orientation
+from bot.memory.review import review as review_notebook
 from bot.memory.run_evidence import RunEvidence, current_run, run_status
 from bot.status import bot_status
 from bot.tools import PhiDeps, _check_services_impl, register_all
 from bot.tools._helpers import notification_input, notification_recall
 from bot.utils.time import humanize_duration
-
-# a tool-mode output makes pydantic-ai send tool_choice "any", which Claude
-# Sonnet 5.5 and later reject; prompted output carries the schema in text
-EXTRACTION_OUTPUT = PromptedOutput(ExtractionResult)
 
 logger = logging.getLogger("bot.agent")
 
@@ -358,11 +352,6 @@ def _format_notifications_block(notifications_context: dict) -> str:
     return "\n".join(lines)
 
 
-EXTRACTION_CHUNK = 8
-"""Exchanges per extraction call. Small enough that the extractor reads
-each one; the backlog, however long, is walked in these steps oldest first."""
-
-
 def render_recent_conversations(recent: list[dict], limit: int = 5) -> str:
     """[RECENT CONVERSATIONS] — a dated record of exchanges phi already had.
 
@@ -630,11 +619,9 @@ class PhiAgent:
             return await get_state_block(bot_client, self.memory)
 
         @_run_scoped
-        async def inject_chronicle() -> str:
-            """[CHRONICLE] — all recorded history, coarser with age. See memory/chronicle.py."""
-            if not self.memory:
-                return ""
-            return await get_chronicle_block(self.memory.client)
+        async def inject_notebook() -> str:
+            """[NOTEBOOK] — Phi's small authored index; pages are read on demand."""
+            return await asyncio.to_thread(orientation)
 
         @_run_scoped
         async def inject_recent_operations() -> str:
@@ -779,15 +766,8 @@ class PhiAgent:
                 query = ctx.deps.event_material or ctx.deps.run_prompt
             if not query.strip():
                 return ""
-            # Pass Phi's goals so note selection can rank by relevance to intent.
             try:
-                goals = await list_goal_records(bot_client)
-            except Exception:
-                goals = []
-            try:
-                episodic_context = await ctx.deps.memory.get_episodic_context(
-                    query, goals=goals
-                )
+                episodic_context = await ctx.deps.memory.get_episodic_context(query)
                 if episodic_context:
                     return episodic_context
             except Exception as e:
@@ -844,14 +824,6 @@ class PhiAgent:
         # --- register tools from tools/ package ---
 
         register_all(self.agent)
-
-        # Extraction agent — phi extracts its own observations using its own model
-        self._extraction_agent = Agent[None, ExtractionResult](
-            name="phi-extractor",
-            model=settings.agent_model,
-            system_prompt=EXTRACTION_SYSTEM_PROMPT,
-            output_type=EXTRACTION_OUTPUT,
-        )
 
         logger.info(
             "phi agent initialized with MCP servers: "
@@ -959,6 +931,7 @@ class PhiAgent:
                     f"{label}: {summary}",
                     tags=["run-summary", label],
                     source=f"run:{label}",
+                    run_receipt_id=f"{evidence.id}-completed" if evidence else "",
                 )
             except Exception as e:
                 logger.warning(f"episodic store after {label} failed: {e}")
@@ -1498,64 +1471,15 @@ class PhiAgent:
             context_blocks=[await get_self_block(bot_client)],
         )
 
-    async def process_extraction(self) -> int:
-        """Review recent unprocessed interactions and extract observations. Returns count stored."""
-        if settings.voice_reset or not self.memory:
-            return 0
-
-        unprocessed = await self.memory.get_unprocessed_interactions()
-        if not unprocessed:
-            logger.info("extraction: no unprocessed interactions")
-            return 0
-
-        logger.info(
-            f"extraction: reviewing {len(unprocessed)} unprocessed interactions"
+    async def process_memory_review(self) -> str:
+        if settings.voice_reset:
+            return "Memory review skipped during voice reset."
+        personality = await read_personality(bot_client, self.base_personality)
+        return await review_notebook(
+            [ts for ts in self.agent.toolsets if isinstance(ts, FunctionToolset)],
+            personality,
+            self.memory,
         )
-
-        # group by handle
-        by_handle: dict[str, list[InteractionRow]] = {}
-        for interaction in unprocessed:
-            by_handle.setdefault(interaction["handle"], []).append(interaction)
-
-        total_stored = 0
-        for handle, all_interactions in by_handle.items():
-            for start in range(0, len(all_interactions), EXTRACTION_CHUNK):
-                interactions = all_interactions[start : start + EXTRACTION_CHUNK]
-                total_stored += await self._extract_chunk(handle, interactions)
-
-        return total_stored
-
-    async def _extract_chunk(
-        self, handle: str, interactions: list[InteractionRow]
-    ) -> int:
-        """Extract + reconcile observations from one chunk of exchanges with
-        *handle*, oldest first. Returns the count reconciled."""
-        # the extraction agent doesn't see URIs (only the exchange text), so
-        # every observation from this chunk is attributed to every URI that
-        # fed it. coarse, but always true: it was justified by something in
-        # the chunk. dedup-preserve-order.
-        assert self.memory is not None
-        batch_uris = list(
-            dict.fromkeys(uri for i in interactions for uri in i["source_uris"])
-        )
-        prompt = f"recent exchanges with @{handle}:\n\n" + "\n\n---\n\n".join(
-            i["content"] for i in interactions
-        )
-        stored = 0
-        try:
-            result = await self._extraction_agent.run(prompt)
-        except Exception as e:
-            logger.warning(f"extraction failed for @{handle}: {e}")
-            return 0
-        for obs in result.output.observations:
-            if not obs.source_uris and batch_uris:
-                obs.source_uris = list(batch_uris)
-            try:
-                await self.memory._reconcile_observation(handle, obs)
-                stored += 1
-            except Exception as e:
-                logger.warning(f"reconciliation failed: {e}")
-        return stored
 
     async def render_context_preview(self) -> list[dict]:
         return await context_diagnostics.render_context_preview(self)

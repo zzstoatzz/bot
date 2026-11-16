@@ -359,76 +359,46 @@ async def test_correction_tag_exempt_from_recency_decay():
     )
 
 
-async def test_selected_context_preserves_original_wording_and_provenance(monkeypatch):
-    from pydantic_ai.models.test import TestModel
-
-    from bot.memory import namespace_memory
-    from bot.memory.namespace_memory import EpisodicSelection
-
+async def test_context_preserves_original_excerpts_and_provenance():
     mem, _ = _memory_with_episodic_ns()
-    notes = [
-        {
-            "id": "old",
-            "content": "Use the old voice.\nMaybe this never shipped.",
-            "created_at": "2026-09-01T00:00:00Z",
-            "source": "tool",
-            "source_uris": ["at://example/post/1"],
-            "tags": ["correction"],
-        },
-        {"id": "other", "content": "Unrelated gardening note."},
-    ]
-    mem.search_episodic = AsyncMock(return_value=notes)
-    model = TestModel(custom_output_args={"indices": [0, 0]})
-    monkeypatch.setattr(
-        namespace_memory,
-        "_episodic_selector",
-        Agent(model, output_type=EpisodicSelection),
-    )
+    note = {
+        "id": "old",
+        "content": "Use the old voice.\nMaybe this never shipped.",
+        "created_at": "2026-09-01T00:00:00Z",
+        "source": "tool",
+        "source_uris": ["at://example/post/1"],
+        "tags": ["correction"],
+    }
+    mem.search_episodic = AsyncMock(return_value=[note])
     result = await mem.get_episodic_context("Which voice instruction is current?")
     header, body = result.split("\n", 1)
     assert "historical" in header
-    assert json.loads(body) == {
-        "id": "old",
-        "recorded_at": notes[0]["created_at"],
-        "source": "tool",
-        "source_uris": notes[0]["source_uris"],
-        "tags": ["correction"],
-        "content": notes[0]["content"],
-    }
-    assert "gardening" not in result
-
-
-@pytest.mark.parametrize("indices", [[], [9]])
-async def test_empty_or_invalid_selection_cannot_invent_context(indices, monkeypatch):
-    from pydantic_ai.models.test import TestModel
-
-    from bot.memory import namespace_memory
-    from bot.memory.namespace_memory import EpisodicSelection, _select_episodic
-
-    model = TestModel(custom_output_args={"indices": indices})
-    monkeypatch.setattr(
-        namespace_memory,
-        "_episodic_selector",
-        Agent(model, output_type=EpisodicSelection),
+    assert "read_memory" in header
+    data = json.loads(body)
+    assert data["excerpt"] == note["content"]
+    assert data["source_uris"] == note["source_uris"]
+    assert data["truncated"] is False
+    mem.search_episodic.assert_awaited_once_with(
+        "Which voice instruction is current?", top_k=3
     )
-    assert await _select_episodic([], "question", [{"content": "old note"}]) == ""
 
 
-async def test_an_out_of_range_index_does_not_discard_the_valid_ones(monkeypatch):
-    from pydantic_ai.models.test import TestModel
-
-    from bot.memory import namespace_memory
-    from bot.memory.namespace_memory import EpisodicSelection, _select_episodic
-
-    model = TestModel(custom_output_args={"indices": [1, 17928, -1, 69]})
-    monkeypatch.setattr(
-        namespace_memory,
-        "_episodic_selector",
-        Agent(model, output_type=EpisodicSelection),
+async def test_context_marks_excerpt_and_keeps_exact_read_id():
+    mem, _ = _memory_with_episodic_ns()
+    mem.search_episodic = AsyncMock(
+        return_value=[{"id": "long", "content": "x" * 2000}]
     )
-    notes = [{"id": "a", "content": "first"}, {"id": "b", "content": "second"}]
-    result = await _select_episodic([], "question", notes)
-    assert json.loads(result)["id"] == "b"
+    result = await mem.get_episodic_context("question")
+    data = json.loads(result.split("\n", 1)[1])
+    assert data["id"] == "long"
+    assert data["truncated"] is True
+    assert len(data["excerpt"]) == 1200
+
+
+async def test_empty_search_does_not_invent_context():
+    mem, _ = _memory_with_episodic_ns()
+    mem.search_episodic = AsyncMock(return_value=[])
+    assert await mem.get_episodic_context("question") == ""
 
 
 @pytest.mark.parametrize("action", ["ADD", "UPDATE", "DELETE", "NOOP"])
@@ -576,11 +546,15 @@ async def test_run_summary_keeps_this_runs_actions_without_reconciliation():
     text = "Today: saved Moscow and wrestling cards. " + "detail " * 200
     with patch("bot.memory.namespace_memory.get_reconciliation_agent") as judge:
         await mem.store_episodic_memory(
-            text, ["run-summary", "editorial"], source="run:editorial"
+            text,
+            ["run-summary", "editorial"],
+            source="run:editorial",
+            run_receipt_id="run-example-completed",
         )
     judge.assert_not_called()
     mem._find_similar_episodic.assert_not_awaited()
     assert _upserted_rows(ns)[0]["content"] == text
+    assert _upserted_rows(ns)[0]["run_receipt_id"] == "run-example-completed"
     assert not _patched_rows(ns)
 
 

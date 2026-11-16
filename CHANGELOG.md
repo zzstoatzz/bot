@@ -1,5 +1,24 @@
 # changelog
 
+## unreleased — authored memory with source-checking review
+
+Replace the chronological summary chain, per-person extraction and episodic
+selector with a revisioned private notebook and one bounded review. Phi keeps
+a small orientation index and reads linked pages on demand. Original exchanges
+and run accounts remain searchable; new run accounts point to execution receipts.
+The review checks sources without publication or dispatch tools, and does not
+write its own receipt back into episodic memory. Private conversations cannot
+write shared pages. Familiarity follows actual exchanges rather than extracted
+observations.
+
+This follows Anthropic's components-of-agent-memory design while preserving
+Phi's choice about salience. The companion infrastructure change retires the
+relationship-synthesis producer in source. Existing memory state is preserved;
+live retirement and any approved data deletion remain separate operations.
+
+The devlog skill now supports the installed PDSX CLI with canonical SOPS
+credentials and verified account identity as well as MCP.
+
 ## 2026-11-14 — judge and helpers move to gpt-6.1-terra and gpt-6-luna
 
 The OpenAI org behind the judge, the helper agents and embeddings ran out of

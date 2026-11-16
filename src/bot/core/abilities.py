@@ -163,9 +163,17 @@ RISK: dict[str, Risk] = {
         "reason": "searches the open web via tavily; costs a metered request but changes nothing.",
     },
     # --- low: her own private state ---------------------------------------
-    "correct_chronicle": {
+    "read_notebook": {
+        "magnitude": "none",
+        "reason": "reads an authored notebook page or historical revision.",
+    },
+    "find_notebook": {
+        "magnitude": "none",
+        "reason": "lists or searches current notebook pages without changing them.",
+    },
+    "write_notebook": {
         "magnitude": "low",
-        "reason": "attaches a correction to a private chronicle entry; a wrong correction overrides true history in every later merge and has no undo tool.",
+        "reason": "revises private working memory; prior versions survive and concurrent stale edits are refused.",
     },
     "retire_memory": {
         "magnitude": "low",

@@ -35,6 +35,7 @@ async def read_note(namespace, note_id: str) -> dict:
             "content": row.content,
             "created_at": getattr(row, "created_at", None),
             "source": getattr(row, "source", None),
+            "run_receipt_id": getattr(row, "run_receipt_id", None),
             "status": getattr(row, "status", None),
             "tags": list(getattr(row, "tags", []) or []),
             "source_uris": list(getattr(row, "source_uris", []) or []),

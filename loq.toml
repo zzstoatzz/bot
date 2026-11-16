@@ -45,7 +45,7 @@ max_lines = 674
 
 [[rules]]
 path = "CHANGELOG.md"
-max_lines = 1276
+max_lines = 2324
 
 [[rules]]
 path = "src/bot/core/cache_stability.py"
@@ -57,7 +57,7 @@ max_lines = 547
 
 [[rules]]
 path = "src/bot/core/architecture.json"
-max_lines = 737
+max_lines = 821
 
 [[rules]]
 path = "evals/jev/cases.json"
@@ -69,8 +69,12 @@ max_lines = 568
 
 [[rules]]
 path = "src/bot/services/message_handler.py"
-max_lines = 518
+max_lines = 526
 
 [[rules]]
 path = "src/bot/tools/posting.py"
 max_lines = 668
+
+[[rules]]
+path = "tests/test_episodic_reconciliation.py"
+max_lines = 574

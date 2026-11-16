@@ -17,6 +17,7 @@ def register_all(agent):
         images,
         media,
         memory,
+        notebook,
         operator_reports,
         personality,
         posting,
@@ -32,6 +33,7 @@ def register_all(agent):
     operator_reports.register(agent)
     etiquette.register(agent)
     memory.register(agent)
+    notebook.register(agent)
     search.register(agent)
     feeds.register(agent)
     bluesky.register(agent)

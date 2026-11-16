@@ -42,15 +42,15 @@ of what any historical request received.
 | `inject_today` | `[NOW]`, `[WHERE]`, operator-local time | Per run; location only when supplied by the environment |
 | `inject_pause_history` | `[OPERATIONAL HISTORY]`: last pause/resume | Only during the 24 hours after resume |
 | `inject_goals` | `[GOALS]`: PDS goals/interests with dated progress | Five-minute cache, invalidated by writes; last-step notes show their recorded timestamp, including context for relative dates in authored text |
-| `inject_chronicle` | `[CHRONICLE]`: every episodic record since the first, summarized into dated entries that grow coarser with age (`memory/chronicle.py`); private runs can read this shared history without receiving a shared memory writer | Five-minute cache, invalidated by compaction and corrections; the newest records wait for the next flush; corrections render under their entry |
+| `inject_notebook` | `[NOTEBOOK]`: Phi’s authored orientation index, with named pages read on demand; private runs read it without a shared writer | Current SQLite revision per run; 2,500-character index; explicit unavailability on read failure |
 | `inject_recent_operations` | `[RECENT OPERATIONS]`: local Jetstream tail plus PDS gap recovery | 48-hour window; five-minute cache; routine tallies, topic labels, edit/delete provenance |
 | `inject_alert_watch` | `[ALERT WATCH]`: open/recently quieted incidents | Local status per run; firing history does not prove current workload failure |
 | `inject_discovery_pool` | `[DISCOVERY POOL]`: operator-liked writing from unfamiliar people | Batch-ranked top three; broader cached pool on scheduled paths; parent context for reply samples |
 | `inject_notifications` | `[NEW NOTIFICATIONS]`: received events grouped by thread | Current batch; delivered versions and hydration status remain distinct from verified reply targets |
 | `inject_recent_encounters` | `[RECENT ENCOUNTERS]`: captured events, mute state and prior replies | Newest eight within 48 hours; exact incoming event text is referenced rather than repeated; metadata and coverage remain |
-| `inject_user_memory` | Per-author synthesized impression, observations, historical exchanges; a post from any operator account recalls all of them | Query is the author's current material; summaries older than seven days omitted; source references retained |
+| `inject_user_memory` | Relevant original exchanges with dates and source references; a post from any operator account recalls all of them | Five semantic matches per author; excerpts are labelled and bounded; no synthesized impression |
 | `inject_prior_coverage` | `[PRIOR COVERAGE]`: Phi's published work relevant to incoming material | Batch/event material; feed/search reads also return coverage |
-| `inject_episodic` | `[RELEVANT MEMORIES]`: selected original historical records | Batch plus verified immediate parent, event material, or scheduled task seeds retrieval; empty without a query |
+| `inject_episodic` | `[RELEVANT MEMORIES]`: bounded original historical excerpts | Batch plus verified immediate parent, event material, or scheduled task seeds retrieval; empty without a query |
 | `inject_owned_feeds` | `[OWNED FEEDS]`: curated Graze names for `read_feed` | Cached directory; not a memory store |
 | `inject_posting_inventory` | `[POSTING INVENTORY]`: subjects, people and mode of the last ten top-level posts | One-hour persisted cache, invalidated by new post URI; overlapping renders share a compile |
 | `inject_persona` | `[PERSONA EXPERIMENT]`: temporary PDS voice experiment | Five-minute cache; absent when expired or unset |

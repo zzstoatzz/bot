@@ -14,11 +14,11 @@ Commit references without a repository name are in this repository.
 | Surface | Intended purpose and origin | Writer and current use |
 |---|---|---|
 | Per-person exchanges | Remember what was said, with both speakers preserved. They are historical speech, not current instructions. | The notification handler stores user/bot exchanges in `phi-users-{handle}`. Relevant exchanges accompany that person's incoming posts. |
-| Per-person observations | Retain facts without rereading every exchange. March reconciliation and April append-only changes addressed contradictory facts and extraction feedback (`715fb91`, `21a0b73`). | Daily extraction proposes observations; reconciliation compares three active neighbours and supersedes named versions. External `compact` also extracts observations from the operator's liked posts. These are inferences with source references, not verified facts. |
-| Relationship summaries | A compact impression of a person. Introduced March 24 by `my-prefect-server:8c6b846` and consumed by `08b6f32`. | External `phi-memory-synthesis` writes summaries from observations and exchanges. Only summaries under seven days old enter per-person context; absence is not forgetting the underlying records. |
-| Episodic notes | Deliberate private memory of events and useful knowledge (`0d6ce26`, February 12). | `save_memory` writes `phi-episodic`. Automatic recall ranks by relevance and recency, then a helper selects original records without rewriting them. Exact reads, correction, retirement and restoration preserve versions. |
+| Per-person observations | Legacy extracted inferences, with source references and revision history. | The bot no longer extracts or injects these. External `phi-memory-synthesis` still produces likes-derived observations until its dependent atlas/docket consumers are migrated. Existing rows remain searchable; they are not verified facts. |
+| Relationship summaries | Legacy compact impressions of people. | The bot no longer injects these. The external producer and atlas consumer still exist; retirement is tracked in the redesign investigation. Existing rows are preserved. |
+| Episodic notes | Deliberate private memory of events and useful knowledge (`0d6ce26`, February 12). | `save_memory` writes `phi-episodic`. Automatic recall shows three relevance/recency-ranked original excerpts, with exact reads for full text. Correction, retirement and restoration preserve versions. There is no selector model. |
 | Public-run summaries | Remember work even when it produced no post or explicit note. Added in August after repeated rediscovery of the same music catalogue; extended to notification batches November 3. | `_run_agent` stores each public run's complete summary as a separate `source=run:<label>` event in `phi-episodic`. Private DM summaries remain excluded. It remains searchable and eligible for recall. A model's account is not an execution receipt. |
-| Chronicle | Keep the whole history in view at a bounded size, with the recent past in detail and older spans folded into coarser entries. Added November 3 because every ambient block covered 48 hours or less; atlas and docket are read on demand. | Compaction in the poller reads `phi-episodic` in order. Thirty records, or any record two days old, become a level-1 entry, and a level holding more than four entries merges its oldest four into the next level. Each merge writes a new entry and marks its inputs `merged` in the same write. Entries are never rewritten. `correct_chronicle` attaches corrections, which override the entry in later merges. The summarizer sees only its inputs. Stored in private `phi-chronicle` and rendered every run as `[CHRONICLE]`. It closes a loop: a run that restates a chronicle claim writes it back into the episodic stream. A merge never carries a claim forward on its own, so a restated claim persists only while runs keep restating it. |
+| Working notebook | Authored organization of experience, replacing the chronological summary-of-summaries chain. | Phi writes revisioned private pages in `/data/memory.sqlite3`. Only the small `index` page is injected; named pages and search provide detail. A bounded private review precedes daily reflection. Legacy `phi-chronicle` state is preserved pending concrete deletion approval; its writer, injection and correction tool are removed. |
 | Encounters | Remember incoming events even when Phi never replied. Added September 5 (`1074da9`). | Capture precedes filtering/hydration in `phi-encounters`. Every ordinary memory-connected run sees eight recent events within 48 hours; search works across people. Processing receipts distinguish capture, exposure, completion and failure. |
 | Recent conversations | Show both sides of completed exchanges, so an old question does not look unanswered. Restored September 14 after encounters alone lost that information (`d9e8d6d`). | Cycle, people and reflection receive the five latest stored exchanges. This is a view of existing exchanges, not another store. |
 | Prior coverage | Answer “have I already said this?” beyond a short recency window. Added August 6 after the same post recurred 24 hours later (`cee8881`). | Jetstream and startup backfill index Phi's published posts in `phi-own-posts`. Incoming material and relevant tool results retrieve coverage; the posting gate independently compares the draft. Same-parent reply coverage uses Constellation plus AppView. |
@@ -49,13 +49,14 @@ Commit references without a repository name are in this repository.
 flowchart LR
     incoming[Incoming notifications] --> encounters[Captured encounters]
     incoming --> exchanges[Stored exchanges]
-    exchanges --> observations[Reconciled observations]
-    observations --> summaries[Relationship summaries]
+    exchanges --> review[Private source-checking review]
     runs[Public runs including notification batches] --> episodic[Episodic notes and run accounts]
-    episodic --> chronicle[Chronicle entries]
-    chronicle --> runs
+    episodic --> review
+    review --> notebook[Authored pages and small index]
+    runs --> notebook
+    notebook --> runs
     authored[Public sources and authored records] --> library[Semble library]
-    observations --> atlas[Atlas projection]
+    legacy[Legacy observations and external summaries] --> atlas[Atlas projection]
     episodic --> atlas
     authored --> atlas
     atlas --> docket[Docket suggestions]
@@ -81,25 +82,40 @@ pipeline and atlas/docket builders remain separate writers of their own outputs.
 |---|---|
 | Private Turbopuffer | `phi-users-{handle}`, `phi-episodic`, `phi-own-posts`, `phi-encounters`, processing/run receipts |
 | Public PDS | Personality, SELF, goals, persona, influences, strategy, editorial context, atlas/docket blobs, Cosmik and authored public records |
-| Fly volume | Operation log, schedule/status state, caches, private operator receipts, etiquette and tool-use journals |
+| Fly volume | Revisioned private notebook, operation log, schedule/status state, caches, private operator receipts, etiquette and tool-use journals |
 
 An intentional record can still be mistaken. Public visibility is not a higher
 truth level. Source references permit verification; they do not perform it.
 Current operator instructions, live state, historical speech and model accounts
 retain their different authority when rendered.
 
-Per-person observations are reconciled on write. Extraction walks interactions
-above the namespace high-water mark, oldest first in chunks of eight. Each
-proposal is compared with three fetched active neighbours; UPDATE/DELETE
-supersede every named row and preserve the nearest named predecessor. Different
-things of the same kind must remain distinct. Unretrieved contradictions can
-remain active; this is bounded reconciliation, not global consistency.
+The notebook is a private organizational layer, not a new source of facts or
+permission. `read_notebook` returns complete current or historical revisions;
+`find_notebook` searches literal text and lists pages with explicit pagination.
+`write_notebook` uses an atomic revision check. Existing pages require a current
+read; a new page can be created at revision zero without a separate lookup.
+Concurrent edits conflict rather than silently overwrite. The index is limited
+to 2,500 characters and pages to 12,000; oversized edits are rejected, never
+clipped. An empty page archives it from search while retaining every revision.
+Private conversations and runs containing permissioned material cannot write it.
+
+Before daily reflection, a separate review uses `memory_review_model` and Phi's live
+personality, the index, and at most twenty recent episodic accounts as leads.
+Its allowlist contains source readers and notebook tools only: no publication,
+trading, dispatch, personality changes or episodic writer. It can search older
+material, check sources, revise pages or make no change. The review is bounded
+to twelve model requests, twenty tool calls and three minutes. Failure is logged
+and does not suppress the existing reflection wake. Its final receipt is not
+stored as another memory. This is a bounded review, not a complete archive audit.
 
 Explicit `save_memory` notes retain submitted wording. Exact correction through
 `supersedes_id` requires an active target read first; original versions remain
 readable. A redundant save can retain different wording without displacing the
 old account. Scheduled summaries are separate timestamped events, never merged
-into another run. They remain in recall because silent work needs continuity.
+into another run. They remain in recall because silent work needs continuity. New public accounts
+carry `run_receipt_id`; `read_memory` exposes it and `read_encounter` opens the
+status receipt with its trace reference. A completed run still does not prove
+that each action described in its summary succeeded.
 
 `retire_memory` excludes a read note from ordinary recall without erasing its
 wording or citations; `restore_memory` reverses retirement. Superseded versions
@@ -110,9 +126,9 @@ not distributed compare-and-swap against external writers.
 
 Incoming text and its verified immediate parent seed per-person and episodic
 recall. Event wakes use event material; clock-only runs fall back to the task.
-Episodic candidates are recency-weighted (14-day half-life); the helper returns
-indices, and Python renders original wording, dates and references. It cannot
-rewrite history into present instructions. A diagnostic preview with no task has
+Episodic candidates are recency-weighted (14-day half-life); Python renders
+original excerpts, dates and references without another model interpretation.
+Truncated excerpts are labelled and exact reads retain the full account. A diagnostic preview with no task has
 no episodic query; that does not mean scheduled runs lack episodic recall.
 
 `search_memory` exposes stored accounts; `read_memory` opens an exact version.
@@ -179,7 +195,7 @@ nearby public material is not proof of verification or publication.
 
 ### Long-horizon coherence investigation, November 3
 
-The chronicle supplies orientation; receiving it does not establish that Phi
+At the time of this investigation, the chronicle supplied orientation; receiving it did not establish that Phi
 uses prior decisions correctly. The target applies to every interaction:
 public conversations, private operator turns and scheduled work. Evaluate
 whether she retains who did what, applies corrections, distinguishes a past
@@ -219,9 +235,9 @@ The first follow-up removes chronicle input clipping, retains public batch
 summaries and allows private runs to read shared history without granting
 them a shared memory writer. It does not rebuild existing entries or retain
 private decisions beyond the supplied conversation window. Daily reflection
-also remains: it is currently the only caller of conversation extraction.
+was retained as the only caller of conversation extraction at that time.
 
-The source-derived probes in `evals/chronicle.py` compare clipped and complete
+The former source-derived probes in `evals/chronicle.py` compared clipped and complete
 input through three consolidation levels using the production summarizer.
 In the first paired sample, the clipped stake correction remained unresolved
 at $226.50 through L3; complete input retained $22.65 through L3. Webcam

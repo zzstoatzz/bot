@@ -72,7 +72,14 @@ async def test_batch_run_leaves_an_episodic_account_even_without_save_memory():
         f"notification batch: {_FakeResult.output}",
         tags=["run-summary", "notification batch"],
         source="run:notification batch",
+        run_receipt_id=deps.memory.client.namespace.return_value.write.call_args.kwargs[
+            "upsert_rows"
+        ][0]["id"],
     )
+    receipt = deps.memory.client.namespace.return_value.write.call_args.kwargs[
+        "upsert_rows"
+    ][0]
+    assert receipt["kind"] == "run_status" and receipt["status"] == "completed"
 
 
 async def test_private_summary_never_enters_shared_memory_even_if_supplied():

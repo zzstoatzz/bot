@@ -115,11 +115,15 @@ class Settings(BaseSettings):
     # pydantic-ai sends as a function tool.
     extraction_model: str = Field(
         default="openai-responses:gpt-6-luna",
-        description="Model for the extraction/synth sub-agents",
+        description="Model for note reconciliation, posting inventory and topic labels",
     )
-    chronicle_model: str = Field(
-        default="openrouter:deepseek/deepseek-v4.1-flash",
-        description="Model that compiles and merges chronicle entries (bot.memory.chronicle)",
+    memory_notebook_path: str = Field(
+        default="/data/memory.sqlite3",
+        description="Private authored notebook on the persistent volume",
+    )
+    memory_review_model: str = Field(
+        default="openai-responses:gpt-6.1-terra",
+        description="Model for checking sources and organizing private memory",
     )
     policy_model: str = Field(
         default="openai-responses:gpt-6.1-terra",
@@ -253,10 +257,6 @@ class Settings(BaseSettings):
     owner_handle: Handle | Did = Field(
         default="zzstoatzz.io",
         description="Handle or DID of the bot's owner (permission-gated tools)",
-    )
-    chronicle_interval: int = Field(
-        default=600,
-        description="Seconds between chronicle compaction checks; 0 disables",
     )
     review_poll_interval: int = Field(
         default=60,

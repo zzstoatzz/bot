@@ -513,13 +513,11 @@ class MessageHandler:
         The agent uses the `post` tool inside its run if it decides to post.
         """
         with logfire.span("daily reflection"):
-            # First: review unprocessed interactions and extract observations
             try:
-                extracted = await self.agent.process_extraction()
-                if extracted:
-                    logger.info(f"daily reflection: extracted {extracted} observations")
-            except Exception as e:
-                logger.warning(f"extraction during reflection failed: {e}")
+                receipt = await self.agent.process_memory_review()
+                logger.info("memory review: %s", receipt)
+            except Exception:
+                logger.exception("memory review failed; daily reflection continues")
 
             try:
                 summary = await self.agent.process_reflection()

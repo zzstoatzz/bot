@@ -29,7 +29,6 @@ def private_run(monkeypatch):
     monkeypatch.setattr(agent_module.settings, "skill_mcp_urls", [])
     monkeypatch.setattr(agent_module.settings, "owner_did", OPERATOR)
     monkeypatch.setattr(agent_module, "CacheObservingModel", lambda _: TestModel())
-    monkeypatch.setattr(agent_module, "list_goal_records", AsyncMock(return_value=[]))
     phi = PhiAgent()
     memory = Mock()
     memory.get_episodic_context = AsyncMock(return_value="[RELEVANT MEMORIES]")
@@ -60,16 +59,16 @@ async def test_recall_is_cued_by_the_operators_new_messages(private_run):
     )
 
 
-async def test_chronicle_renders_and_the_discovery_pool_does_not(
+async def test_notebook_renders_and_the_discovery_pool_does_not(
     private_run, monkeypatch
 ):
     blocks, ctx, memory = private_run
-    read = AsyncMock(return_value="[CHRONICLE] Previous public work.")
-    monkeypatch.setattr(agent_module, "get_chronicle_block", read)
+    read = Mock(return_value="[NOTEBOOK] Previous public work.")
+    monkeypatch.setattr(agent_module, "orientation", read)
     pool = AsyncMock(return_value="[DISCOVERY POOL]")
     monkeypatch.setattr(agent_module, "get_discovery_pool_block", pool)
 
-    assert await blocks["inject_chronicle"](ctx) == "[CHRONICLE] Previous public work."
+    assert await blocks["inject_notebook"](ctx) == "[NOTEBOOK] Previous public work."
     assert await blocks["inject_discovery_pool"](ctx) == ""
     pool.assert_not_awaited()
 

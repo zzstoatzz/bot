@@ -63,15 +63,15 @@ checks contact, prior coverage and public delivery, including all split parts.
 
 | Setting | Agents | Default |
 |---|---|---|
-| `agent_model` | Main Phi and observation extractor | `openrouter:deepseek/deepseek-v4.1-flash` |
-| `chronicle_model` | Chronicle flushes and merges | `openrouter:deepseek/deepseek-v4.1-flash` |
+| `agent_model` | Main Phi | `openrouter:deepseek/deepseek-v4.1-flash` |
+| `memory_review_model` | Private source-checking notebook review | `openai-responses:gpt-6.1-terra` |
 | `policy_model` | Independent policy judge | `openai-responses:gpt-6.1-terra` |
-| `extraction_model` | Episodic selector, reconciler, posting inventory and post-topic labels | `openai-responses:gpt-6-luna` |
+| `extraction_model` | Reconciler, posting inventory and post-topic labels | `openai-responses:gpt-6-luna` |
 
 Settings hold full provider/model identifiers. The `openai-responses:` prefix
 selects the API needed for the configured reasoning/structured-output agents.
-The main extractor uses prompted structured output, which works on any
-provider. Provider credentials and helper-model choices are independent.
+The notebook review uses a separate model and Phi’s live personality with only source
+readers and notebook tools. Provider credentials and helper-model choices are independent.
 
 `model_cache_settings` supplies Anthropic's 1-hour tool/instruction and 5-minute
 message TTLs, or OpenAI's stable prompt-cache key. OpenRouter's DeepSeek

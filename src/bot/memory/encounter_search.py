@@ -65,7 +65,10 @@ async def read_encounter(
         response = await asyncio.to_thread(
             client.namespace(namespace).query,
             rank_by=("id", "asc"),
-            filters=("And", [("kind", "Eq", "encounter"), ("id", "Eq", event_id)]),
+            filters=(
+                "And",
+                [("kind", "In", ["encounter", "run_status"]), ("id", "Eq", event_id)],
+            ),
             top_k=1,
             include_attributes=True,
         )

@@ -1,40 +1,10 @@
 """Tests for memory source-uri citations: model validation, role inference, render."""
 
-from bot.memory.extraction import Observation
 from bot.memory.namespace_memory import _citation_tail, _source_role
 
 PHI_DID = "did:plc:65sucjiel52gefhcdcypynsr"
 OWNER_DID = "did:plc:xbtmt2zjwlrfegqvch7fboei"
 STRANGER_DID = "did:plc:abcdefghijklmnopqrstuvwx"
-
-
-# --- Observation.source_uris validation ---
-
-
-def test_observation_default_source_uris_empty():
-    obs = Observation(content="x cares about y", tags=["interest"])
-    assert obs.source_uris == []
-
-
-def test_observation_accepts_valid_at_uri():
-    obs = Observation(
-        content="x cares about y",
-        tags=["interest"],
-        source_uris=[f"at://{STRANGER_DID}/app.bsky.feed.post/3mjuabmoh2o22"],
-    )
-    assert len(obs.source_uris) == 1
-
-
-def test_observation_accepts_multiple_uris():
-    obs = Observation(
-        content="x cares about y",
-        tags=[],
-        source_uris=[
-            f"at://{STRANGER_DID}/app.bsky.feed.post/3mjuabmoh2o22",
-            f"at://{STRANGER_DID}/app.bsky.feed.post/3mjuabmoh2o23",
-        ],
-    )
-    assert len(obs.source_uris) == 2
 
 
 # --- _source_role match/case classification ---

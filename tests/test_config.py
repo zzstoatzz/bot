@@ -55,15 +55,10 @@ class TestSubAgentModelStrings:
 
     def _agents(self):
         from bot.core import policy, self_state
-        from bot.memory import extraction, namespace_memory
+        from bot.memory import extraction
 
         for mod, attr, factory in (
             (extraction, "_reconciliation_agent", extraction.get_reconciliation_agent),
-            (
-                namespace_memory,
-                "_episodic_selector",
-                namespace_memory._get_episodic_selector,
-            ),
             (self_state, "_inventory_agent", self_state._get_inventory_agent),
             (policy, "_judge", policy._get_judge),
         ):

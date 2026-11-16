@@ -54,7 +54,7 @@ async def test_exact_read_returns_original_body_without_reconstructing_it():
     def serve(request):
         assert json.loads(request.content)["filters"] == [
             "And",
-            [["kind", "Eq", "encounter"], ["id", "Eq", "source-id"]],
+            [["kind", "In", ["encounter", "run_status"]], ["id", "Eq", "source-id"]],
         ]
         return httpx.Response(
             200, json={"rows": [{"id": "source-id", "record_json": original}]}

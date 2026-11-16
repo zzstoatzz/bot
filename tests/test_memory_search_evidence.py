@@ -47,6 +47,20 @@ class Namespace:
         return SimpleNamespace(rows=rows)
 
 
+@pytest.mark.parametrize("exchanges,unfamiliar", [(0, True), (1, True), (2, False)])
+async def test_familiarity_uses_original_exchanges_without_extracted_observations(
+    exchanges, unfamiliar
+):
+    memory = NamespaceMemory.__new__(NamespaceMemory)
+    namespace = Mock()
+    namespace.query.return_value = SimpleNamespace(
+        rows=[{"kind": "interaction"}] * exchanges
+    )
+    memory.get_user_namespace = Mock(return_value=namespace)
+    assert await memory.is_stranger("alice.test") is unfamiliar
+    assert namespace.query.call_args.kwargs["filters"] == ("kind", "Eq", "interaction")
+
+
 def tool_with_memory(*, legacy=False):
     record = {
         "id": "example-exchange",
@@ -63,7 +77,9 @@ def tool_with_memory(*, legacy=False):
     episodic_ns = Namespace([{**record, "kind": "note"}])
     memory = NamespaceMemory.__new__(NamespaceMemory)
     memory._get_embedding = AsyncMock(return_value=[0.1] * 8)
-    memory.get_user_namespace = Mock(side_effect=lambda handle: user_ns if handle == ALI else Namespace([]))
+    memory.get_user_namespace = Mock(
+        side_effect=lambda handle: user_ns if handle == ALI else Namespace([])
+    )
     memory.namespaces = {"episodic": Mock(wraps=episodic_ns)}
     tools = {}
 
@@ -123,15 +139,12 @@ async def test_legacy_memory_without_references_is_still_readable(options):
 @pytest.mark.parametrize("legacy", [False, True])
 async def test_per_person_context_keeps_evidence(legacy, monkeypatch):
     _, _, memory = tool_with_memory(legacy=legacy)
-    monkeypatch.setattr(
-        memory, "get_relationship_summary", AsyncMock(return_value=None)
-    )
     block = await memory.build_user_context(ALI, "ten votes")
-    observations, exchanges = block.split("[PAST EXCHANGES", 1)
-    for section in (observations, exchanges):
-        assert "ten votes" in section
-        assert (PARENT in section) is not legacy
-        assert (REPLY in section) is not legacy
+    assert "[PAST EXCHANGES" in block
+    assert "OBSERVATIONS" not in block
+    assert "ten votes" in block
+    assert (PARENT in block) is not legacy
+    assert (REPLY in block) is not legacy
 
 
 @pytest.mark.parametrize("legacy", [False, True])
