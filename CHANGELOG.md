@@ -1,6 +1,6 @@
 # changelog
 
-## unreleased — authored memory with source-checking review
+## 2026-11-16 — authored memory with source-checking review
 
 Replace the chronological summary chain, per-person extraction and episodic
 selector with a revisioned private notebook and one bounded review. Phi keeps
@@ -13,8 +13,8 @@ useful understanding and source checks, with authority enforced separately.
 
 This follows Anthropic's components-of-agent-memory design while preserving
 Phi's choice about salience. The companion infrastructure change retires the
-relationship-synthesis producer in source. Existing memory state is preserved;
-live retirement and any approved data deletion remain separate operations.
+relationship-synthesis producer and its live Prefect trigger. Existing memory
+state is preserved; any later deletion still requires Phi's concrete approval.
 
 The devlog skill now supports the installed PDSX CLI with canonical SOPS
 credentials and verified account identity as well as MCP.

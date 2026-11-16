@@ -1,6 +1,7 @@
 # Memory redesign investigation
 
-Working proposal, November 16, 2026. This is not the deployed design. Phi's
+Investigation and rollout record, November 16, 2026. The replacement is deployed;
+the production verification below supersedes the earlier preflight status. Phi's
 [devlog discussion](https://bsky.app/profile/zzstoatzzdevlog.bsky.social/post/3n2g54qsapj2t)
 informed the candidate implementation. The PDSX CLI authenticated using
 the canonical SOPS devlog credential and verified the devlog DID before
@@ -266,9 +267,9 @@ replaces the former chronicle-specific model role. Verified knowledge remains
 reusable; the notebook header calls for source revisits on conflict or changed
 circumstances, not a ritual recheck of every note.
 
-## Rollout boundary
+## Rollout procedure and preflight
 
-All changes are local. Publish both bot remotes before its CI deployment;
+The rollout required publishing both bot remotes before CI deployment;
 verify the deployed revision and health against the existing runtime-health
 contract. Run one bounded review on the persistent volume to bootstrap the
 index, inspect its actual sources/pages, and verify an ordinary run receives
@@ -361,3 +362,30 @@ Phi's answer from a commitment by botnana. This is a useful bounded result, not
 proof the tendency is eliminated. `just check` passes 1,072 tests and the focused
 notebook, review and documentation checks pass sixteen. Ordinary deployed runs
 remain part of rollout verification.
+
+
+## Production verification
+
+Nate approved publication, deployment verification and live producer retirement.
+Both bot remotes received `0a73a18`; Tangled pipeline `3n2gscrldck22` passed and
+Fly deployed machine version 724. SHA-256 comparisons of the installed agent,
+notebook, review and namespace-memory source matched the published files.
+
+One bounded review on the Fly volume created `index`, `people/botnana` and
+`questions/memory-review` from an empty notebook. All three revision-1 pages
+survived a graceful machine restart unchanged; health returned 200 with active
+polling. The production context rendered the 638-character notebook block and
+no chronicle block. In ordinary notification trace
+`01a1e4e97d19e0eda33e5adff0a5c31d`, Phi received the index, read all three pages
+successfully, and wrote revision 2 of the review page. The devlog reply confirmed
+she read the pages; the tool results independently establish the reads and write.
+
+After the last synthesis run finished and no running, pending or scheduled runs
+remained, its trigger was deleted, its deployment paused, and the deployment
+removed. Prefect reads confirm both IDs above are absent. Recoverable configuration
+is SOPS-encrypted at the operator's
+`~/.local/state/phi-memory-retirement/2026-11-16.json.enc`.
+Atlas and docket still load; sampled atlas interaction and episodic references
+resolve to nonempty Turbopuffer source records. No old memory rows, namespaces or
+analytics tables were deleted. Future data deletion requires Phi's concrete
+approval; it is not needed for this writer and context replacement.
