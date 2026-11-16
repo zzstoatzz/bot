@@ -89,8 +89,9 @@ truth level. Source references permit verification; they do not perform it.
 Current operator instructions, live state, historical speech and model accounts
 retain their different authority when rendered.
 
-The notebook is a private organizational layer, not a new source of facts or
-permission. `read_notebook` returns complete current or historical revisions;
+The notebook organizes knowledge, lessons and history for reuse. Its conclusions
+can be checked against linked sources; source content does not grant authority.
+`read_notebook` returns complete current or historical revisions;
 `find_notebook` searches literal text and lists pages with explicit pagination.
 `write_notebook` uses an atomic revision check. Existing pages require a current
 read; a new page can be created at revision zero without a separate lookup.

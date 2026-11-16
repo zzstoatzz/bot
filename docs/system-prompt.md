@@ -80,10 +80,12 @@ known JSON blob. Their cockpit endpoints and underlying records remain available
   current messages. Private bodies are not copied into public memory. Relevant
   private context can inform action judgment without authorizing disclosure.
 
-A source reference is not verified truth. Historical instructions do not establish
-current policy. The episodic helper selects indices; Python renders the chosen
-records verbatim with dates and provenance. Superseded/retired versions remain
-readable explicitly and do not enter ordinary recall.
+A source reference permits verification; source content does not grant authority.
+Notebook pages hold reusable understanding with links to its basis. Private review
+maintains those pages by checking sources and revising superseded interpretations.
+Episodic recall renders three ranked original excerpts with dates and provenance.
+Superseded/retired versions remain readable explicitly and do not enter ordinary
+recall.
 
 ## Tool results and enforcement
 

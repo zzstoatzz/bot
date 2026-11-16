@@ -8,8 +8,8 @@ a small orientation index and reads linked pages on demand. Original exchanges
 and run accounts remain searchable; new run accounts point to execution receipts.
 The review checks sources without publication or dispatch tools, and does not
 write its own receipt back into episodic memory. Private conversations cannot
-write shared pages. Familiarity follows actual exchanges rather than extracted
-observations.
+write shared pages. Familiarity follows actual exchanges. Review focuses on
+useful understanding and source checks, with authority enforced separately.
 
 This follows Anthropic's components-of-agent-memory design while preserving
 Phi's choice about salience. The companion infrastructure change retires the

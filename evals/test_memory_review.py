@@ -80,13 +80,14 @@ async def test_review_checks_disputed_source_and_revises_page(
     write_page("questions/dispute", original, 0)
     source_reads = []
     post_reads = []
+    post_results = []
     tool_agent = Agent()
     register(tool_agent)
     search_tools.register(tool_agent)
 
     async def read_posts(uris):
         post_reads.extend(uris)
-        return {
+        result = {
             "posts": [
                 {
                     "uri": "at://did:plc:o53crari67ge7bvbv273lxln/app.bsky.feed.post/3mtkoold6pp2y",
@@ -95,6 +96,8 @@ async def test_review_checks_disputed_source_and_revises_page(
                 }
             ]
         }
+        post_results.append(result)
+        return result
 
     monkeypatch.setattr(search_tools, "read_post_batch", read_posts)
 
@@ -104,7 +107,9 @@ async def test_review_checks_disputed_source_and_revises_page(
         source_reads.append(note_id)
         return json.dumps(sources.get(note_id, {"status": "not_found"}))
 
-    personality = Path(runtime_settings.personality_file).read_text()
+    personality = json.loads(
+        (Path(__file__).parent / "fixtures/phi-personality-2026-11-16.json").read_text()
+    )["text"]
     allowed = {
         "read_notebook",
         "find_notebook",
@@ -141,6 +146,7 @@ async def test_review_checks_disputed_source_and_revises_page(
         json.dumps(
             {
                 "sources": sources,
+                "primary_posts_read": post_results,
                 "criteria": criteria,
                 "revised_page": page["content"],
                 "receipt": result.output,

@@ -299,3 +299,59 @@ automation `a1d69735-40ed-490e-88c9-715b7d8bb557`
 (`phi-memory-synthesis__automation_1`) after `transform` completes. Its last
 five runs completed; the HeavyPad background worker is active. This is an
 intentional replacement of a functioning producer, not incident cleanup.
+
+### Downstream replay and prompt simplification
+
+A frozen July 22 exchange and synthetic follow-up now exercise the production
+speaker with its native tool schemas, current public personality revision, and
+held delivery tools. The seeded notebook reverses the original sizing threshold;
+review correctly restores the requirement for two to three clean passes. The
+speaker nevertheless replies that “we never settled anything” when asked casually
+to recall the old agreement. The original exchange supports recalling Phi's
+answer; it does not warrant manufacturing a dispute about mutual agreement.
+
+The initial November 16 replay failed this criterion without retries while all
+three source-review evals pass. Explicit review guidance against boilerplate
+caveats and rewriting superseded claims did not resolve it; those prompt
+experiments were removed. Source accuracy alone is therefore insufficient
+evidence that the candidate improves continuity. Neither the main personality
+nor live memory was changed to hide it.
+
+Controlled follow-ups with a plain factual note produced natural answers from
+both the current speaker and Terra. Removing personality instructions from the
+reviewer still produced the unnecessary agreement disclaimer, which the speaker
+repeated. These bounded samples do not justify changing the main model or
+personality. An Astra review and a narrower rewrite of the historical-material
+warning also reproduced the problem.
+
+The replay initially retained a skill-loading tool after removing its registry;
+the isolated harness now uses the speaker instructions and native tool schemas
+with every tool held. It does not test the complete runtime or publication gate.
+The lightweight judge also accepted an unsolicited “not something we both
+signed” disclaimer; manual review rejected that verdict. Downstream judging now
+uses the policy model. The criterion permits Phi to retain her own preference;
+it rejects invented events and needless disputes, not unsupported demands for
+external proof of her preferences. A passing sampled verdict alone is not a
+completion claim.
+
+Devlog update `3n2gbhjkoj72l` explains the failure and the intent to make checked
+notes reusable. Phi's replies `3n2gbjj45s22n` and `3n2gbjjc3db2r` propose that a
+note's limitation became an overbroad world-claim. That is a hypothesis supported
+by the observed repetition, not authority to retain the disclaimer. The waiter
+completed and its temporary Rex session was removed. No state deletion was
+proposed or performed. Full repository checks again passed all 1,072 tests.
+
+The retained change shortens the review instructions from fifteen lines to ten:
+maintain useful understanding, read sources to resolve contradictions, revise
+superseded interpretations, and keep a small index. It removes repeated warnings
+about what notes cannot prove. The shared notebook header distinguishes source
+content from authority without describing knowledge as merely historical material.
+Tool restrictions, private-data checks and revision checks remain enforced in code.
+
+With that change, both downstream arms and all three source-correction cases pass
+without retries. Manual inspection confirms the generated reply recalls the July
+answer without disputing mutual agreement; the generated page still distinguishes
+Phi's answer from a commitment by botnana. This is a useful bounded result, not
+proof the tendency is eliminated. `just check` passes 1,072 tests and the focused
+notebook, review and documentation checks pass sixteen. Ordinary deployed runs
+remain part of rollout verification.
