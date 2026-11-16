@@ -300,6 +300,12 @@ automation `a1d69735-40ed-490e-88c9-715b7d8bb557`
 five runs completed; the HeavyPad background worker is active. This is an
 intentional replacement of a functioning producer, not incident cleanup.
 
+The subsequent preflight found the companion retirement commit `76ff704`
+published under main `e289088`. The live deployment and automation remain enabled;
+the job is pinned to `f2c4444` and its 10:02 UTC run completed. Bot remotes still
+point to `65fc5bd`; the replacement has not been published or deployed. Rollout
+and live producer retirement await the operator approval required above.
+
 ### Downstream replay and prompt simplification
 
 A frozen July 22 exchange and synthetic follow-up now exercise the production
