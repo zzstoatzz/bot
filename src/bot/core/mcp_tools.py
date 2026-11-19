@@ -52,6 +52,7 @@ MCP_DROPPED: dict[str, frozenset[str]] = {
 MCP_DEFERRED: dict[str, frozenset[str]] = {
     "tangled": frozenset({"pull request comment", "pull request review"}),
     "lexidraw": frozenset(),
+    "doodl": frozenset(),
 }
 
 
@@ -196,6 +197,23 @@ def build_toolsets(run_label: str = "") -> list[AbstractToolset[PhiDeps]]:
         # atproto-docs skill (core/mcp_skills.py), whose instructions name
         # these tools unprefixed.
         _server(settings.atproto_docs_mcp_url, "atproto-docs", run_label),
+        # doodl — phi draws pictures into her own repo with tool calls and
+        # sees a preview after each edit. Drafts, published drawings and
+        # deletions are public records in her name, so the guard treats
+        # every non-read as a mutation.
+        _offered(
+            "doodl",
+            _server(
+                settings.doodl_mcp_url,
+                "doodl",
+                run_label,
+                headers={
+                    "x-doodl-handle": settings.bluesky_handle,
+                    "x-doodl-app-password": settings.bluesky_password,
+                },
+            ).prefixed("doodl"),
+            run_label,
+        ),
     ]
     # Lexidraw — phi draws into her own repo (app.lexidraw.scene records,
     # viewable at lexidraw.app). Stdio server baked into the image; her

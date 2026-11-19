@@ -1,5 +1,17 @@
 # changelog
 
+## 2026-11-19 — draw with doodl
+
+Phi can draw pictures with the hosted doodl MCP: a draft is a
+`tech.waow.doodl.draft` record in her repo, edited stroke by stroke by name,
+and every edit returns a preview image she can look at before the next one.
+Publishing makes an ordinary doodl drawing she can share. Her credentials ride
+in `x-doodl-*` headers, as with tangled, so drawings attribute to her. The
+tools are deferred behind `search_tools` like lexidraw's, and the
+`doodl-craft` skill says how to find them and how the round pen behaves. The
+guard treats every doodl call except reads as a mutation, so safe mode stops
+drafts and publishing; `view` joins the read verbs for `doodl_view_draft`.
+
 ## 2026-11-16 — authored memory with source-checking review
 
 Replace the chronological summary chain, per-person extraction and episodic

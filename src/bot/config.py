@@ -377,6 +377,15 @@ class Settings(BaseSettings):
         description="URL of the atproto.com docs search MCP server",
     )
 
+    # doodl — drawings as tech.waow.doodl.drawing records in phi's own repo.
+    # Drafts in progress are tech.waow.doodl.draft records there too; her
+    # credentials ride per-request in x-doodl-* headers, so they attribute
+    # to her.
+    doodl_mcp_url: str = Field(
+        default="https://doodl-mcp.fastmcp.app/mcp",
+        description="URL of the doodl MCP server (fastmcp.app deployment)",
+    )
+
     xrpc_methods: dict[str, tuple[str, ...]] = Field(
         default={
             "did:web:api.delve.town#bsky_appview": (

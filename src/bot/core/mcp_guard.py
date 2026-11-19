@@ -69,12 +69,13 @@ _READ_VERBS = (
     "inspect",
     "schema",
     "open",
+    "view",
 )
 
 
 def _bare_verb(name: str) -> str:
     """Strip the tool prefix (``.prefixed()`` or a server's own) so verbs compare across servers."""
-    for prefix in ("pub_", "semble_", "tangled_", "prefect_", "lexidraw_"):
+    for prefix in ("pub_", "semble_", "tangled_", "prefect_", "lexidraw_", "doodl_"):
         if name.startswith(prefix):
             return name[len(prefix) :]
     return name
