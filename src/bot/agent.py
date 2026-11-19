@@ -39,6 +39,7 @@ from bot.core.mcp_tools import (
     _mcp_url,
     build_toolsets,
 )
+from bot.core.model_health import checked
 from bot.core.operator import get_operator_guidance_block, get_operator_profile
 from bot.core.operator_notes import get_operator_notes_block
 from bot.core.operator_reports import incoming_text
@@ -468,7 +469,7 @@ class PhiAgent:
         # action — actions happen as tool calls during the run (post,
         # reaction records, etc). The final string return is just a brief summary
         # for logging.
-        observed_model = CacheObservingModel(settings.agent_model)
+        observed_model = CacheObservingModel(checked(settings.agent_model))
         self.agent = Agent[PhiDeps, str](
             name="phi",
             model=observed_model,

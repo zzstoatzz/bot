@@ -69,6 +69,7 @@ export interface HealthInfo {
 	paused: boolean;
 	last_tick_age_s: number | null;
 	reason: string | null;
+	models_unavailable?: { model: string; reason: string; since: string }[];
 }
 
 // --- /api/abilities ---

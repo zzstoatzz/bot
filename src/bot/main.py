@@ -26,7 +26,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from turbopuffer import NotFoundError
 
 from bot.config import settings
-from bot.core import ops_log, prior_coverage, watchdog
+from bot.core import model_health, ops_log, prior_coverage, watchdog
 from bot.core.alert_watch import fold_firing, parse_webhook
 from bot.core.architecture import architecture_model
 from bot.core.atlas import atlas_preview, get_atlas
@@ -209,17 +209,27 @@ async def health():
     A failing check only stops fly routing to the machine; the watchdog
     task (core/watchdog.py) applies the same decision and exits the
     process so fly restarts it.
+
+    ``degraded`` (still 200) means the loop runs but a model's provider
+    refuses its account (core/model_health.py): out of credits, or a key it
+    rejects. A restart cannot fix that and a 503 would take the site off
+    routing, so it is reported, not acted on.
     """
     age = bot_status.last_tick_age_s
     reason = watchdog.stale_reason(bot_status, settings.health_stale_after)
+    down = model_health.unavailable()
+    status = "unhealthy" if reason else "degraded" if down else "healthy"
+    if not reason and down:
+        reason = "; ".join(f"{m.model}: {m.reason}" for m in down)
     body = {
-        "status": "unhealthy" if reason else "healthy",
+        "status": status,
         "polling_active": bot_status.polling_active,
         "paused": bot_status.paused,
         "last_tick_age_s": None if age is None else round(age, 1),
         "reason": reason,
+        "models_unavailable": [m.as_dict() for m in down],
     }
-    return JSONResponse(body, status_code=503 if reason else 200)
+    return JSONResponse(body, status_code=503 if status == "unhealthy" else 200)
 
 
 def _check_control_token(request: Request):

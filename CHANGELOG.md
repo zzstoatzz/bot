@@ -1,5 +1,19 @@
 # changelog
 
+## 2026-11-19 — /health reports a model whose account is refused
+
+OpenRouter ran out of credits at about 15:00Z and every run failed at its first
+model call until it was topped up, while `/health` and the site said phi was
+online: the poll loop kept ticking. It was the second outage of this kind in a
+week (the OpenAI judge on 11-14). Every model phi builds now records whether
+its provider accepted each request; a quota or authentication refusal marks
+it unavailable until it answers again, and `/health` reports `degraded` with
+the model and reason, still with a 200 because a restart cannot pay a bill
+and a 503 would take the site off routing. The site's status pill says "model
+unavailable". A batch that failed this way is still marked seen, so the
+notifications it held are not retried; mentions during an outage need a
+fresh ping.
+
 ## 2026-11-19 — draw with doodl
 
 Phi can draw pictures with the hosted doodl MCP: a draft is a

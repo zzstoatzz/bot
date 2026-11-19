@@ -32,6 +32,7 @@ from pydantic_ai import Agent, BinaryContent
 from bot.config import settings
 from bot.core import etiquette, operator_reports
 from bot.core.abilities import describe
+from bot.core.model_health import checked
 
 logger = logging.getLogger("bot.policy")
 private_conversation: ContextVar[str] = ContextVar("private_conversation", default="")
@@ -265,7 +266,7 @@ def _get_judge() -> Agent[None, PolicyVerdict]:
         return judge
     _judge = judge = Agent[None, PolicyVerdict](
         name="phi-policy-judge",
-        model=settings.policy_model,
+        model=checked(settings.policy_model),
         output_type=PolicyVerdict,
         system_prompt=(
             "you are the pre-action policy check for phi, a bluesky bot. "
@@ -494,7 +495,7 @@ the same run. character claims with honest receipts, in phi's voice, pass."""
 def _get_self_record_judge() -> Agent[None, SelfRecordVerdict]:
     return Agent[None, SelfRecordVerdict](
         name="phi-self-record-judge",
-        model=settings.policy_model,
+        model=checked(settings.policy_model),
         output_type=SelfRecordVerdict,
         system_prompt=(
             "you are the admissibility judge for phi's self record — the "

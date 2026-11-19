@@ -16,6 +16,7 @@ from pathlib import Path
 from pydantic_ai import Agent
 
 from bot.config import settings
+from bot.core.model_health import checked
 
 logger = logging.getLogger("bot.post_topics")
 
@@ -31,7 +32,7 @@ def _get_agent() -> Agent[None, str]:
     if _topic_agent is None:
         _topic_agent = Agent[None, str](
             name="phi-post-topic",
-            model=settings.extraction_model,
+            model=checked(settings.extraction_model),
             system_prompt=(
                 "Label the subject of one social media post for a deduplication "
                 "index. Output one line of at most twelve words: the concrete "

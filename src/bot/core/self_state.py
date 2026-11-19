@@ -12,6 +12,7 @@ from bot.config import settings
 from bot.core.atproto_client import BotClient
 from bot.core.goals import FIELD_CAPS
 from bot.core.goals import list_goals as list_goal_records
+from bot.core.model_health import checked
 from bot.memory import NamespaceMemory
 
 logger = logging.getLogger("bot.self_state")
@@ -53,7 +54,7 @@ def _get_inventory_agent() -> Agent[None, str]:
     if _inventory_agent is None:
         _inventory_agent = Agent[None, str](
             name="phi-posting-inventory",
-            model=settings.extraction_model,
+            model=checked(settings.extraction_model),
             system_prompt=(
                 "You are a lab tech compiling a recent-posting inventory of "
                 "phi's top-level posts. The output is a structured tally, not "

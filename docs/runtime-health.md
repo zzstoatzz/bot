@@ -8,3 +8,15 @@ policy `always`, so an upstream outage cannot exhaust a finite restart budget). 
 and exits the process non-zero. the check's `grace_period` covers startup (auth,
 schedule seeding — 60s is Fly's cap; bio refresh runs in the background) so a booting machine
 is not marked failing.
+
+`/health` reports `degraded` (still 200) when a model's provider refuses its
+account: out of credits or quota, or a key it rejects. Every model phi builds
+goes through `core/model_health.py`, which marks the model unavailable on
+such a refusal and clears it on that model's next answered request. The poll
+loop keeps ticking through an outage like that, so liveness alone reads
+healthy while every run fails; a restart cannot fix it and a 503 would take
+the site off routing, so the watchdog ignores it. `reason` and
+`models_unavailable` name the model, the site's status pill reads
+"model unavailable", and the Prefect `phi-trigger` validation, which requires
+`healthy`, refuses to start a pass. The state is per process: a restart
+reads healthy until the next refused request.

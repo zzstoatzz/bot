@@ -7,6 +7,7 @@ from pydantic_ai import Agent
 from turbopuffer.types import AttributeSchemaConfigParam
 
 from bot.config import settings
+from bot.core.model_health import checked
 
 
 class ReconciliationAction(BaseModel):
@@ -81,7 +82,7 @@ def get_reconciliation_agent() -> Agent[None, ReconciliationResult]:
     if _reconciliation_agent is None:
         _reconciliation_agent = Agent[None, ReconciliationResult](
             name="observation-reconciler",
-            model=settings.extraction_model,
+            model=checked(settings.extraction_model),
             output_type=ReconciliationResult,
             system_prompt=RECONCILIATION_SYSTEM_PROMPT,
         )

@@ -36,6 +36,8 @@
 
 	const status = $derived.by(() => {
 		if (!health) return { color: 'var(--text-dim)', label: 'status unavailable', pulse: false };
+		if (health.status === 'degraded')
+			return { color: 'var(--danger)', label: 'model unavailable', pulse: false };
 		if (health.status !== 'healthy')
 			return { color: 'var(--danger)', label: 'stalled', pulse: false };
 		if (health.paused) return { color: 'var(--warn)', label: 'paused', pulse: true };
@@ -56,7 +58,7 @@
 		<div class="name chrome">phi</div>
 		<div class="line">
 			<span class="dot" style="color: {status.color}" class:pulse={status.pulse}></span>
-			<span class="state chrome muted">{status.label}</span>
+			<span class="state chrome muted" title={health?.reason ?? undefined}>{status.label}</span>
 			<span class="sep">·</span>
 			<span class="handle">@{PHI_HANDLE}</span>
 		</div>

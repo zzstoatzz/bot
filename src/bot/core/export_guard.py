@@ -32,6 +32,7 @@ from pydantic_ai.tools import ToolDefinition
 from bot.config import settings
 from bot.core import etiquette
 from bot.core.abilities import RISK
+from bot.core.model_health import checked
 
 logger = logging.getLogger("bot.export_guard")
 
@@ -71,7 +72,7 @@ def _get_reviewer() -> Agent[None, Finding]:
     if _reviewer is None:
         _reviewer = Agent[None, Finding](
             name="phi-export-review",
-            model=settings.policy_model,
+            model=checked(settings.policy_model),
             output_type=Finding,
             system_prompt=(
                 "You check one thing for Phi, a Bluesky bot. You are not Phi. "

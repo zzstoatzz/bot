@@ -9,6 +9,7 @@ from pydantic_ai.usage import UsageLimits
 
 from bot.config import settings
 from bot.core.export_guard import ExportGuard
+from bot.core.model_health import checked
 from bot.core.tool_usage import ToolUsage
 from bot.memory.notebook import orientation
 from bot.tools._helpers import PhiDeps
@@ -46,7 +47,7 @@ def review_agent(
 ) -> Agent[PhiDeps, str]:
     return Agent(
         name="phi-memory-review",
-        model=settings.memory_review_model,
+        model=checked(settings.memory_review_model),
         deps_type=PhiDeps,
         instructions=personality + "\n\n" + REVIEW_INSTRUCTIONS,
         toolsets=[
