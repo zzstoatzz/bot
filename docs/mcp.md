@@ -45,7 +45,8 @@ a tool can be searched for again.
 - a run whose prompt sends phi straight to a server loads it. the two
   pull-request runs load tangled.
 - a skill that sends her to a deferred server says how to search for it
-  (`own-source`, `lexidraw-craft`, `doodl-craft`).
+  (`own-source`, `lexidraw-craft`). doodl's skill comes from the doodl
+  server itself and tells any client that defers its tools to search for `doodl`.
 - a discovery changes the tool list, which is the front of the cache prefix,
   so the request after it rewrites what follows. that is the price of
   deferral without native tool search and the reason only rarely used

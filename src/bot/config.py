@@ -51,7 +51,10 @@ class Settings(BaseSettings):
         description="Directory containing agentskills.io-format skill packages",
     )
     skill_mcp_urls: list[str] = Field(
-        default=["https://atproto-docs-mcp.fastmcp.app/mcp"],
+        default=[
+            "https://atproto-docs-mcp.fastmcp.app/mcp",
+            "https://doodl-mcp.fastmcp.app/mcp",
+        ],
         description="MCP servers whose skill:// resources join phi's skill catalog",
     )
     web_build_dir: str = Field(

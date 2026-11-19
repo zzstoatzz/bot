@@ -249,12 +249,12 @@ async def test_override_never_blocks_reads(monkeypatch, calls):
 @pytest.mark.parametrize(
     "tool",
     [
-        "doodl_new_draft",
-        "doodl_edit_draft",
-        "doodl_publish_draft",
-        "doodl_remix_drawing",
-        "doodl_delete_draft",
-        "doodl_delete_drawing",
+        "new_draft",
+        "edit_draft",
+        "publish_draft",
+        "remix_drawing",
+        "delete_draft",
+        "delete_drawing",
     ],
 )
 async def test_safe_mode_stops_doodl_drafts_and_drawings(monkeypatch, calls, tool):
@@ -268,7 +268,7 @@ async def test_safe_mode_stops_doodl_drafts_and_drawings(monkeypatch, calls, too
 async def test_safe_mode_lets_phi_look_at_drawings(monkeypatch, calls):
     monkeypatch.setattr(mcp_guard, "get_override", override(True))
     guard = mcp_guard.make_mcp_guard("doodl", "test")
-    for tool in ("doodl_view_draft", "doodl_list_drafts", "doodl_list_drawings", "doodl_get_drawing"):
+    for tool in ("view_draft", "list_drafts", "list_drawings", "get_drawing"):
         assert await guard(None, call_tool_stub(calls), tool, {}) == "ok", tool
 
 
