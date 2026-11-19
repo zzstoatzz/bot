@@ -10,10 +10,11 @@ in `x-doodl-*` headers, as with tangled, so drawings attribute to her. The
 tools are deferred behind `search_tools` like lexidraw's. The doodl server
 publishes its own `doodl` skill, which joins `skill_mcp_urls` beside
 atproto-docs, so the guidance on finding the tools and on how the round pen
-behaves ships with the server rather than in this repo; the tools stay
-unprefixed so the names in that skill match. The guard treats every doodl
-call except reads as a mutation, so safe mode stops drafts and publishing;
-`view` joins the read verbs for `view_draft`.
+behaves ships with the server rather than in this repo. Her doodl tools are
+prefixed `doodl_`, as FastMCP clients namespace servers, and the skill says
+its tools may appear that way. The guard treats every doodl call except reads
+as a mutation, so safe mode stops drafts and publishing; `view` joins the read
+verbs for `doodl_view_draft`.
 
 ## 2026-11-16 — authored memory with source-checking review
 

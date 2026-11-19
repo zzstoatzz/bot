@@ -200,8 +200,9 @@ def build_toolsets(run_label: str = "") -> list[AbstractToolset[PhiDeps]]:
         # doodl — phi draws pictures into her own repo with tool calls and
         # sees a preview after each edit. Drafts, published drawings and
         # deletions are public records in her name, so the guard treats
-        # every non-read as a mutation. Unprefixed: the server's own doodl
-        # skill (core/mcp_skills.py) names these tools as the server does.
+        # every non-read as a mutation. Prefixed with the server's name, as
+        # FastMCP clients namespace servers; the server's own doodl skill
+        # (core/mcp_skills.py) says its tools may appear that way.
         _offered(
             "doodl",
             _server(
@@ -212,7 +213,7 @@ def build_toolsets(run_label: str = "") -> list[AbstractToolset[PhiDeps]]:
                     "x-doodl-handle": settings.bluesky_handle,
                     "x-doodl-app-password": settings.bluesky_password,
                 },
-            ),
+            ).prefixed("doodl"),
             run_label,
         ),
     ]
