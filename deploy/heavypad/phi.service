@@ -1,0 +1,27 @@
+[Unit]
+Description=phi: Bluesky agent (docker, loopback :8801 behind cloudflared)
+After=network-online.target docker.service
+Wants=network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+Environment=DOCKER_HOST=unix:///var/run/docker.sock
+ExecStartPre=-/usr/bin/docker rm -f phi
+ExecStart=/usr/bin/docker run --rm --name phi \
+  --env-file %h/.config/phi/env \
+  --env PORT=8080 --env DEBUG=false --env BOT_NAME=phi \
+  --env PERSONALITY_FILE=personalities/phi.md \
+  --publish 127.0.0.1:8801:8080 \
+  --volume %h/.local/state/phi/data:/data \
+  --memory 1g \
+  phi:current
+ExecStop=/usr/bin/docker stop -t 20 phi
+# The watchdog exits the process when polling stalls; always restarting keeps
+# an upstream outage from exhausting a finite restart budget.
+Restart=always
+RestartSec=5
+TimeoutStopSec=30
+UMask=0077
+
+[Install]
+WantedBy=default.target
