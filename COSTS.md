@@ -32,8 +32,9 @@ wrong, fix the mapping in `my-prefect-server`
 (`packages/mps/src/mps/costs/projects.py`) rather than editing numbers here.
 
 ## how we might bring this down
-- biggest line is usually `zzstoatzz-phi` — check its utilization and right-size before anything else.
-- Fly figures are **estimates** from machine inventory — reconcile against the Fly dashboard, and enable auto-stop on bursty/idle machines.
+- phi no longer has a hosting line: she runs on heavypad. What remains is usage
+  billed by her model and memory providers, which this snapshot does not attribute.
 
 ## changelog
 - **2026-06-17** — initial cost notice; 1 service(s) attributed here. Run the command above for the live figure.
+- **2026-11-20** — moved from the Fly app `zzstoatzz-phi` (shared-cpu-1x, 1 GB, 1 GB volume, about $7.60/month) to a container on heavypad behind the home Cloudflare tunnel.

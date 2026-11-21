@@ -12,9 +12,9 @@ test:
 evals:
     uv run pytest evals/ -v
 
-# deployment — CI deploys on push to main (.tangled/workflows/deploy.yml); this is the manual path
+# deployment — builds and restarts phi on heavypad from origin/main; push first
 deploy:
-    flyctl deploy
+    ssh heavypad tangled.org/zzstoatzz.io/bot/deploy/heavypad/deploy.sh
 
 # code quality
 fmt:

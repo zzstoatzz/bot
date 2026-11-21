@@ -24,7 +24,7 @@ just run                # run the API and bot
 just dev                # run with hot reload
 just check              # lint, typecheck and test
 just evals              # run model-backed behavioral tests
-just deploy             # manual Fly deployment; CI also deploys pushes to main
+just deploy             # build and restart phi on heavypad from origin/main
 ```
 
 The web client lives in `web/`; use `bun install` and `bun run dev` there. The bot requires `BLUESKY_HANDLE`, `BLUESKY_PASSWORD` and credentials for its configured model providers. See [.env.example](.env.example).

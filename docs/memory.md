@@ -82,7 +82,7 @@ pipeline and atlas/docket builders remain separate writers of their own outputs.
 |---|---|
 | Private Turbopuffer | `phi-users-{handle}`, `phi-episodic`, `phi-own-posts`, `phi-encounters`, processing/run receipts |
 | Public PDS | Personality, SELF, goals, persona, influences, strategy, editorial context, atlas/docket blobs, Cosmik and authored public records |
-| Fly volume | Revisioned private notebook, operation log, schedule/status state, caches, private operator receipts, etiquette and tool-use journals |
+| heavypad data directory | Revisioned private notebook, operation log, schedule/status state, caches, private operator receipts, etiquette and tool-use journals |
 
 An intentional record can still be mistaken. Public visibility is not a higher
 truth level. Source references permit verification; they do not perform it.

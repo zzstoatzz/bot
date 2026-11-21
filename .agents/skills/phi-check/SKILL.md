@@ -2,14 +2,14 @@
 name: phi-check
 description: >
   Inspect Phi's health, behavior, and public history across AT Protocol
-  collections using PDS records, AppView context, Logfire, and Fly. Use for
+  collections using PDS records, AppView context, Logfire, and heavypad. Use for
   activity or voice reviews, capability checks, and specific interactions.
 ---
 
 # phi-check
 
-Phi is `phi.zzstoatzz.io`, DID `did:plc:65sucjiel52gefhcdcypynsr`, Fly app
-`zzstoatzz-phi`. Start with the operator's question and a bounded time window;
+Phi is `phi.zzstoatzz.io`, DID `did:plc:65sucjiel52gefhcdcypynsr`, running as
+`phi.service` on heavypad. Start with the operator's question and a bounded time window;
 record the observation time and relevant deployment boundary. A voice review
 needs complete writing and context; it does not need every infrastructure check.
 
@@ -68,7 +68,7 @@ range limits. Tool spans use `span_name LIKE 'execute_tool %'`, with the name in
 `invoke_agent phi` (formerly `agent run`). Inspect actual names and arguments: reactions
 can be MCP record writes, not a dedicated `like_post` tool.
 
-For health questions, add `/health`, Fly release/machine state, expected scheduled
+For health questions, add `/health`, `systemctl --user status phi` and the image tag on heavypad, expected scheduled
 runs, and grouped exceptions. Verify whether retries recovered before calling an
 error benign. Check the runtime pause separately from the operator override.
 

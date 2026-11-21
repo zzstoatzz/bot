@@ -46,9 +46,11 @@ and [the docs index](docs/README.md) for the relevant subsystem.
 
 ## deployment
 
-CI deploys every push to main through `.tangled/workflows/deploy.yml`.
-`just deploy` is the fallback when CI is unavailable. Push both Tangled `origin`
-and the `github` mirror, which Phi's changelog tool reads. Keep self-source
+Phi runs on heavypad as the `phi.service` user unit; see
+[deploy/heavypad](deploy/heavypad/README.md). CI tests every push to main but
+does not deploy: after pushing, run `just deploy`, which builds origin/main on
+heavypad and restores the previous image if the new one is not healthy. Push
+both Tangled `origin` and the `github` mirror, which Phi's changelog tool reads. Keep self-source
 references aligned if the repository moves. Read [runtime health](docs/runtime-health.md)
 when changing startup, polling or restart behavior. Keep secrets out of terminal
 output and Git. Record shipped rationale in `CHANGELOG.md`; keep current design in docs.

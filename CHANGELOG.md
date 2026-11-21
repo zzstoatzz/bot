@@ -1,5 +1,17 @@
 # changelog
 
+## 2026-11-20 — phi runs on heavypad
+
+Phi left her Fly machine for a container on heavypad, the home server that
+already ran her inference grants and her Prefect workflows. `phi.service`
+runs the same image on loopback, `phi.zzstoatzz.io` reaches it through the
+home Cloudflare tunnel, and her data directory was copied from the Fly volume
+with the sqlite files taken through the backup API. Being on the tailnet lets
+her reach tailnet-only services such as the alerts ledger. CI still tests
+every push but no longer deploys; `just deploy` builds origin/main on heavypad
+and restores the previous image when the new one is not healthy. `[WHERE]`
+is absent from her prompt until the environment supplies a location again.
+
 ## 2026-11-19 — /health reports a model whose account is refused
 
 OpenRouter ran out of credits at about 15:00Z and every run failed at its first
