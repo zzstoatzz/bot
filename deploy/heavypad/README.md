@@ -1,7 +1,9 @@
 # phi on heavypad
 
 Phi runs as the `phi.service` systemd user unit on heavypad: one Docker
-container from this repository's `Dockerfile`, published on `127.0.0.1:8801`.
+container from this repository's `Dockerfile`, on the host's network and
+listening on `127.0.0.1:8801`. Host networking lets tailnet services that admit
+peers by `tailscale whois` recognise her.
 
 - **public URL**: `phi.zzstoatzz.io` is a proxied CNAME to the home Cloudflare
   tunnel, whose ingress list (`~/home-mcp/home/deploy/cloudflared.yml` on
