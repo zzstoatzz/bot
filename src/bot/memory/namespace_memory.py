@@ -21,6 +21,7 @@ from bot.memory.extraction import (
     reconciliation_prompt,
     reconciliation_targets,
 )
+from bot.memory.projection import project_2d
 from bot.memory.search_status import IncompleteMemorySearch
 from bot.utils.time import relative_when
 
@@ -751,34 +752,6 @@ class NamespaceMemory:
             raise IncompleteMemorySearch(sorted(unavailable), results)
         return results
 
-    @staticmethod
-    def _project_2d(
-        centroids: dict[str, list[float]],
-    ) -> dict[str, tuple[float, float]]:
-        """Project high-dimensional centroids to 2D via PCA (top 2 principal components)."""
-        import numpy as np
-
-        if len(centroids) < 2:
-            return {nid: (0.0, 0.0) for nid in centroids}
-
-        ids = list(centroids.keys())
-        X = np.array([centroids[nid] for nid in ids])
-        X -= X.mean(axis=0)
-
-        # SVD on centered data — U[:, :2] * S[:2] gives the top-2 PC projections
-        U, S, _ = np.linalg.svd(X, full_matrices=False)
-        proj = U[:, :2] * S[:2]
-
-        # normalize to [-1, 1]
-        for col in range(2):
-            lo, hi = proj[:, col].min(), proj[:, col].max()
-            span = hi - lo or 1.0
-            proj[:, col] = 2 * (proj[:, col] - lo) / span - 1
-
-        return {
-            nid: (float(proj[i, 0]), float(proj[i, 1])) for i, nid in enumerate(ids)
-        }
-
     def _user_namespace_ids(self) -> list[str]:
         """Every user namespace id, across all listing pages.
 
@@ -851,7 +824,7 @@ class NamespaceMemory:
         for handle, vecs in user_vectors.items():
             centroids[f"user:{handle}"] = _centroid(vecs)
 
-        coords = self._project_2d(centroids)
+        coords = project_2d(centroids)
 
         for node in nodes:
             nid = node["id"]

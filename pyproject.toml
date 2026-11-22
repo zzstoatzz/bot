@@ -12,7 +12,6 @@ dependencies = [
     "fastmcp==4.2.0a1",
     "libipld>=3",
     "logfire[fastapi]",
-    "numpy>=2.4.4",
     "openai",
     "pillow>=12.3.0",
     "pydantic-ai>=2.64",
@@ -52,6 +51,7 @@ filterwarnings = [
 
 [dependency-groups]
 dev = [
+    "numpy>=2.5.5",
     "pytest-asyncio",
     "pytest-rerunfailures>=16.7",
     "pytest-sugar",

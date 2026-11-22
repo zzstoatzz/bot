@@ -1,5 +1,15 @@
 # changelog
 
+## 2026-11-22 — the memory graph is laid out without numpy
+
+numpy was a runtime dependency for one call: the SVD that places people on
+the memory graph. `bot.memory.projection` now finds the same two principal
+components by power iteration over the Gram matrix of the centroids, in the
+standard library, and 170 people at 1536 dimensions take about a quarter of a
+second. numpy stays as a dev dependency so a test can hold the layout to the
+SVD's. The graph may appear mirrored on an axis, since the sign of a
+principal component is arbitrary.
+
 ## 2026-11-22 — phi no longer runs a stdio MCP server
 
 Lexidraw was the one server phi started as a child process: a Node program
