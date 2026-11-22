@@ -24,7 +24,7 @@ class LogfireSettings(BaseSettings):
     # project UI root, used to deep-link a run to its trace from the
     # cockpit. the SDK doesn't expose this without a credentials fetch, so
     # it's configuration; set to None to render the cockpit without links.
-    ui_url: str | None = "https://logfire-us.pydantic.dev/waow/phi"
+    ui_url: str | None = "https://logfire-us.pydantic.dev/waow/infra"
 
 
 class Settings(BaseSettings):

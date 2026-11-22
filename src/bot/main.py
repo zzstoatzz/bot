@@ -50,6 +50,7 @@ from bot.utils.rate_limit import client_ip
 logger = logging.getLogger("bot.main")
 
 logfire.configure(
+    service_name="phi",
     send_to_logfire=settings.logfire.send_to_logfire,
     environment=settings.logfire.environment,
     token=settings.logfire.write_token,

@@ -35,7 +35,7 @@ logfire (pydantic-ai instrumentation), `/v1/query` with a read token:
 SELECT attributes->>'gen_ai.tool.name' AS tool,
        count(*) AS calls, count(DISTINCT trace_id) AS runs
 FROM records
-WHERE span_name LIKE 'execute_tool %' OR span_name = 'running tool'
+WHERE service_name = 'phi' AND (span_name LIKE 'execute_tool %' OR span_name = 'running tool')
 GROUP BY 1 ORDER BY 2 DESC
 ```
 

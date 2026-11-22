@@ -50,8 +50,9 @@ def register(agent):
             Field(
                 description=(
                     "SQL SELECT over the `records` table (DataFusion engine, "
-                    "postgres-like). Always include a LIMIT and only the "
-                    "columns you need."
+                    "postgres-like). The table is shared with other "
+                    "services: filter service_name = 'phi'. Always include a "
+                    "LIMIT and only the columns you need."
                 )
             ),
         ],

@@ -51,6 +51,10 @@ archive reads themselves do not change memory or authorize public contact.
   a firehose that will blow out your context. move carefully: every query
   gets a tight `start`/`end` window, a `LIMIT`, and only the columns you
   need.
+- the database is shared with other services. your rows are
+  `service_name = 'phi'`; put that in every `WHERE` unless you filter on a
+  `trace_id` or `span_id` you already found. rows before 2026-11-22 are in
+  the old `phi` project and are not reachable here.
 - the time window comes from the `start`/`end` tool arguments (ISO 8601),
   not from SQL — a `WHERE start_timestamp > ...` alone does not bound the
   scan.
@@ -88,7 +92,7 @@ locate a call (this lists requests, not their outcomes):
 ```sql
 SELECT start_timestamp, trace_id, span_id, attributes->>'gen_ai.tool.name' AS tool,
        left(attributes->>'gen_ai.tool.call.arguments', 200) AS args
-FROM records WHERE span_name LIKE 'execute_tool %'
+FROM records WHERE service_name = 'phi' AND span_name LIKE 'execute_tool %'
 ORDER BY start_timestamp LIMIT 50
 ```
 
@@ -101,7 +105,7 @@ SELECT start_timestamp, attributes->'gen_ai.tool.call.result'->>'error' AS error
        attributes->'gen_ai.tool.call.result'->>'fetched' AS fetched,
        attributes->'gen_ai.tool.call.result'->>'cursor' AS cursor,
        attributes->'gen_ai.tool.call.result'->>'message' AS message
-FROM records WHERE span_name LIKE 'execute_tool %'
+FROM records WHERE service_name = 'phi' AND span_name LIKE 'execute_tool %'
   AND attributes->>'gen_ai.tool.name' = 'list_records'
 ORDER BY start_timestamp LIMIT 20
 ```
@@ -119,7 +123,7 @@ what failed on me lately (weekly hygiene, or when something feels off):
 
 ```sql
 SELECT exception_type, left(exception_message, 150) AS msg, count(*) AS n
-FROM records WHERE is_exception
+FROM records WHERE service_name = 'phi' AND is_exception
 GROUP BY 1, 2 ORDER BY n DESC LIMIT 20
 ```
 
@@ -127,7 +131,7 @@ count tool calls over a period (activity totals, not proof of outcomes):
 
 ```sql
 SELECT attributes->>'gen_ai.tool.name' AS tool, count(*) AS n
-FROM records WHERE span_name LIKE 'execute_tool %'
+FROM records WHERE service_name = 'phi' AND span_name LIKE 'execute_tool %'
 GROUP BY 1 ORDER BY n DESC LIMIT 30
 ```
 
