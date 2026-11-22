@@ -34,7 +34,7 @@ to. the evidence is in `toolset-audit-2026-10.md`.
 
 ## deferred servers
 
-tangled, lexidraw and doodl are real capabilities phi reaches for in about one
+tangled and doodl are real capabilities phi reaches for in about one
 run in a hundred, so their tools are deferred (`MCP_DEFERRED`): the request
 carries a `search_tools` tool, and a tool it finds is added from the next
 request on. phi's model has no native tool search, so pydantic-ai runs its
@@ -45,7 +45,7 @@ a tool can be searched for again.
 - a run whose prompt sends phi straight to a server loads it. the two
   pull-request runs load tangled.
 - a skill that sends her to a deferred server says how to search for it
-  (`own-source`, `lexidraw-craft`). doodl's skill comes from the doodl
+  (`own-source`). doodl's skill comes from the doodl
   server itself and tells any client that defers its tools to search for `doodl`.
 - a discovery changes the tool list, which is the front of the cache prefix,
   so the request after it rewrites what follows. that is the price of

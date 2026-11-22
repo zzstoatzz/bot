@@ -1,10 +1,8 @@
 """MCP server construction, exposure and wrapper inspection for Phi runs."""
 
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any
 
-from fastmcp.client.transports import StdioTransport
 from pydantic_ai import RunContext
 from pydantic_ai.mcp import MCPToolset
 from pydantic_ai.toolsets import AbstractToolset, WrapperToolset
@@ -51,7 +49,6 @@ MCP_DROPPED: dict[str, frozenset[str]] = {
 # whose prompt sends her straight to them.
 MCP_DEFERRED: dict[str, frozenset[str]] = {
     "tangled": frozenset({"pull request comment", "pull request review"}),
-    "lexidraw": frozenset(),
     "doodl": frozenset(),
 }
 
@@ -217,30 +214,6 @@ def build_toolsets(run_label: str = "") -> list[AbstractToolset[PhiDeps]]:
             run_label,
         ),
     ]
-    # Lexidraw — phi draws into her own repo (app.lexidraw.scene records,
-    # viewable at lexidraw.app). Stdio server baked into the image; her
-    # own credentials, so scenes attribute to her. lexidraw_save is a
-    # public artifact in her name → guard treats it as a mutation.
-    if Path(settings.lexidraw_mcp_path).exists():
-        toolsets.append(
-            _offered(
-                "lexidraw",
-                _server(
-                    StdioTransport(
-                        command="node",
-                        args=[settings.lexidraw_mcp_path],
-                        keep_alive=False,
-                        env={
-                            "LEXIDRAW_HANDLE": settings.bluesky_handle,
-                            "LEXIDRAW_APP_PASSWORD": settings.bluesky_password,
-                        },
-                    ),
-                    "lexidraw",
-                    run_label,
-                ),
-                run_label,
-            )
-        )
     # Prefect MCP — only included when auth is configured, so phi degrades
     # gracefully in dev/local without the secret set.
     if settings.prefect_api_auth_string:

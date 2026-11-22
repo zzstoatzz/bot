@@ -1,5 +1,16 @@
 # changelog
 
+## 2026-11-22 — phi no longer runs a stdio MCP server
+
+Lexidraw was the one server phi started as a child process: a Node program
+baked into her image, which cost the image a 125 MB `node` binary and gave her
+a subprocess to leak (2026-11-06). Every other server she uses is reached over
+HTTP. The lexidraw toolset, its setting, its `lexidraw-craft` skill and the
+Node stages of the Dockerfile are gone, so she can no longer write
+`app.lexidraw.scene` records; doodl remains her drawing tool. Scenes she
+already saved stay in her repo. Lexidraw can return when its server speaks
+HTTP.
+
 ## 2026-11-20 — phi runs on heavypad
 
 Phi left her Fly machine for a container on heavypad, the home server that
