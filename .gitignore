@@ -43,3 +43,4 @@ threads.db
 
 # rendered prompt snapshots (hone-prompts skill) — never commit
 scratch/
+.ci-cache/

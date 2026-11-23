@@ -17,6 +17,22 @@ dependencies:
     # 2026-10-15 nixery.dev answers this exact package set with
     # "image build failure", though every subset and superset builds.
     - stdenv.cc.cc.lib
+    # saving the cache below needs zstd in the image
+    - zstd
+
+environment:
+  UV_CACHE_DIR: /tangled/workspace/.ci-cache/uv
+
+# uv's download cache persists between runs, so a run fetches only the wheels
+# a uv.lock change adds instead of the whole environment from PyPI.
+cache:
+  - key: uv
+    hash:
+      - uv.lock
+    fallback: true
+    compression-level: 1
+    paths:
+      - .ci-cache
 
 steps:
   # Settings() validates at import and requires the bot's credentials; the
