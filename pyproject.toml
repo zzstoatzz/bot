@@ -30,7 +30,10 @@ dependencies = [
 source = "vcs"
 
 [tool.ruff.lint]
-extend-select = ["I", "UP"]
+extend-select = ["I", "UP", "TID251"]
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"pytest.mark.asyncio".msg = "asyncio_mode is auto; drop the marker"
 
 [tool.pytest.ini_options]
 # bare `pytest` collects only the deterministic suite. evals/ calls a live
