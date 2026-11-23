@@ -329,6 +329,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "httpx2" },
     { name = "numpy" },
     { name = "pytest-asyncio" },
     { name = "pytest-rerunfailures" },
@@ -352,7 +353,7 @@ requires-dist = [
     { name = "pydantic-settings" },
     { name = "semble-api", specifier = ">=0.0.2" },
     { name = "slowapi", specifier = ">=0.1.9" },
-    { name = "turbopuffer", specifier = "<2" },
+    { name = "turbopuffer" },
     { name = "typesafe-sdk", specifier = ">=0.7.1" },
     { name = "uvicorn" },
     { name = "websockets", specifier = ">=15.0.1" },
@@ -361,6 +362,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "httpx2", specifier = ">=2.16.2" },
     { name = "numpy", specifier = ">=2.5.5" },
     { name = "pytest-asyncio" },
     { name = "pytest-rerunfailures", specifier = ">=16.7" },
@@ -3393,22 +3395,22 @@ wheels = [
 
 [[package]]
 name = "turbopuffer"
-version = "1.21.0"
+version = "3.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
     { name = "anyio" },
     { name = "distro" },
-    { name = "httpx" },
+    { name = "httpx2" },
     { name = "orjson" },
     { name = "pybase64" },
     { name = "pydantic" },
     { name = "sniffio" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/17/e5/c7df3bde9efbbafdcf10ba5ae2a0159e4a894183393e2dc02d2cb1c19792/turbopuffer-1.21.0.tar.gz", hash = "sha256:988ddfceab082190673a097edb1e32636a8958cc6ad6c5260b2990513c12ded9", size = 337493, upload-time = "2026-04-07T15:47:34.586Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a8/d1/28dd2b0f655f0c89e44a4f5e9e0a87f5a940f6854e8cdd004e0177be39af/turbopuffer-3.1.0.tar.gz", hash = "sha256:8ae6e7229063814e556026c79d0abebda0e2e5d9a833214bcefc709f64bfcf70", size = 349736, upload-time = "2026-10-28T22:27:20.703Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/39/30/995ae0edbb748d6a98bcbb0040ed354e2df31a06092a60e986763de52893/turbopuffer-1.21.0-py3-none-any.whl", hash = "sha256:adbea8fc118138e311047571f1438b4a2ce0d67aa759c1dd33fc3b90bdf2c424", size = 122566, upload-time = "2026-04-07T15:47:35.941Z" },
+    { url = "https://files.pythonhosted.org/packages/05/90/baf12c9cd88bb44da43fa968aeda756fe313b028f68a190ce485e70a43fb/turbopuffer-3.1.0-py3-none-any.whl", hash = "sha256:f5e44b540902f58e8201a62d0df0e98e8fe04987c41efec4bf8a83ea35254389", size = 162059, upload-time = "2026-10-28T22:27:19.115Z" },
 ]
 
 [[package]]

@@ -8,7 +8,7 @@ that honors attribute projection, so a renderer-only fix cannot pass.
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
-import httpx
+import httpx2 as httpx
 import pytest
 from turbopuffer import NotFoundError
 

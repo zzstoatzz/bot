@@ -4,7 +4,7 @@ from collections.abc import Mapping, Sequence
 
 from pydantic import BaseModel, Field
 from pydantic_ai import Agent
-from turbopuffer.types import AttributeSchemaConfigParam
+from turbopuffer.types import AttributeSchemaConfigParam, AttributeSchemaDropParam
 
 from bot.config import settings
 from bot.core.model_health import checked
@@ -91,7 +91,9 @@ def get_reconciliation_agent() -> Agent[None, ReconciliationResult]:
     return agent
 
 
-EPISODIC_SCHEMA: dict[str, str | AttributeSchemaConfigParam] = {
+EPISODIC_SCHEMA: dict[
+    str, str | AttributeSchemaConfigParam | AttributeSchemaDropParam
+] = {
     "content": {"type": "string", "full_text_search": True},
     "tags": {"type": "[]string", "filterable": True},
     "source": {"type": "string", "filterable": True},  # "tool", "run:<label>", ...
@@ -104,7 +106,9 @@ EPISODIC_SCHEMA: dict[str, str | AttributeSchemaConfigParam] = {
     "run_receipt_id": {"type": "string"},
 }
 
-USER_NAMESPACE_SCHEMA: dict[str, str | AttributeSchemaConfigParam] = {
+USER_NAMESPACE_SCHEMA: dict[
+    str, str | AttributeSchemaConfigParam | AttributeSchemaDropParam
+] = {
     "kind": {"type": "string", "filterable": True},
     "status": {"type": "string", "filterable": True},  # active, superseded
     "content": {"type": "string", "full_text_search": True},

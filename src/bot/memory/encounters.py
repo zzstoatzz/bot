@@ -14,12 +14,18 @@ from typing import Literal, TypedDict, cast
 
 from atproto import models
 from turbopuffer import NotFoundError, Turbopuffer
-from turbopuffer.types import AttributeSchemaConfigParam, RowParam
+from turbopuffer.types import (
+    AttributeSchemaConfigParam,
+    AttributeSchemaDropParam,
+    RowParam,
+)
 from turbopuffer.types.custom import Filter
 
 ENCOUNTER_NAMESPACE = "phi-encounters"
 logger = logging.getLogger("bot.memory.encounters")
-ENCOUNTER_SCHEMA: dict[str, str | AttributeSchemaConfigParam] = {
+ENCOUNTER_SCHEMA: dict[
+    str, str | AttributeSchemaConfigParam | AttributeSchemaDropParam
+] = {
     "content": {"type": "string", "full_text_search": True},
     "event_ids": {"type": "[]string"},
     "recorded_at": {"type": "string"},

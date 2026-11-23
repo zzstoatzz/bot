@@ -19,8 +19,7 @@ dependencies = [
     "pydantic-settings",
     "semble-api>=0.0.2",
     "slowapi>=0.1.9",
-    # 2.x+ moves to httpx2 and breaks the memory client; migrate separately
-    "turbopuffer<2",
+    "turbopuffer",
     "typesafe-sdk>=0.7.1",
     "uvicorn",
     "websockets>=15.0.1",
@@ -61,6 +60,7 @@ filterwarnings = [
 
 [dependency-groups]
 dev = [
+    "httpx2>=2.16.2",
     "numpy>=2.5.5",
     "pytest-asyncio",
     "pytest-rerunfailures>=16.7",

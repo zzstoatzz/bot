@@ -12,7 +12,7 @@ import json
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
 
-import httpx
+import httpx2 as httpx
 import pytest
 from pydantic_ai import Agent, RunContext
 from pydantic_ai.models.test import TestModel

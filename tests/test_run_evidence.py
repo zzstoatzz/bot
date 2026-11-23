@@ -5,7 +5,7 @@ import json
 from unittest.mock import Mock
 from uuid import uuid4
 
-import httpx
+import httpx2 as httpx
 import pytest
 from pydantic_ai import Agent
 from pydantic_ai.messages import ModelResponse, TextPart
