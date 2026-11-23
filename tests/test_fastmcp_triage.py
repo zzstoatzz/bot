@@ -84,13 +84,25 @@ def test_cohorts_and_stuck_prs_carry_their_meaning():
     text = format_triage(PAYLOAD)
     assert "not causal" in text
     assert "bots don't count" in text
-    assert "answered 1/5, merged 0/3 in 14d; median first response 2.5d, median to merge n/a" in text
+    assert (
+        "answered 1/5, merged 0/3 in 14d; median first response 2.5d, median to merge n/a"
+        in text
+    )
     assert "issue-link gate" in text
-    assert "#4745 90d, maintainer quiet since 2026-08-06: Add Authplane auth provider (muralx)" in text
+    assert (
+        "#4745 90d, maintainer quiet since 2026-08-06: Add Authplane auth provider (muralx)"
+        in text
+    )
 
 
 def test_an_empty_warehouse_says_so():
-    empty: Triage = {"repo": "PrefectHQ/fastmcp", "as_of": None, "days": [], "weeks": [], "stuck": []}
+    empty: Triage = {
+        "repo": "PrefectHQ/fastmcp",
+        "as_of": None,
+        "days": [],
+        "weeks": [],
+        "stuck": [],
+    }
     assert "has not synced" in format_triage(empty)
 
 

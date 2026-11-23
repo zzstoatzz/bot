@@ -22,7 +22,11 @@ def register(agent):
         ] = 12,
         stuck_limit: Annotated[
             int,
-            Field(description="How many stuck PRs to list, oldest first (1-50).", ge=1, le=50),
+            Field(
+                description="How many stuck PRs to list, oldest first (1-50).",
+                ge=1,
+                le=50,
+            ),
         ] = 15,
     ) -> str:
         """Read PrefectHQ/fastmcp's triage state from the operator's warehouse.

@@ -30,13 +30,17 @@ from bot.core import etiquette, operator_reports, policy
         ),
     ],
 )
-async def test_reporting_channel(tool, action, context, expected, tmp_path, monkeypatch):
+async def test_reporting_channel(
+    tool, action, context, expected, tmp_path, monkeypatch
+):
     monkeypatch.setattr(etiquette, "JOURNAL", tmp_path / "attempts.sqlite3")
     monkeypatch.setattr(
         operator_reports, "delivery_context", AsyncMock(return_value=context)
     )
     verdict = await policy.check_action(
-        action, "Operational incident requiring operator credential rotation.", tool=tool
+        action,
+        "Operational incident requiring operator credential rotation.",
+        tool=tool,
     )
     assert verdict["verdict"] == expected, verdict
 

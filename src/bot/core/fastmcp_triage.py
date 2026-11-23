@@ -105,7 +105,9 @@ def format_triage(data: Triage) -> str:
                 f"30-90d {d['open_30_90d']}, >90d {d['open_gt_90d']})"
             )
 
-    by_week: dict[str, dict[str, dict[str, int]]] = defaultdict(lambda: defaultdict(dict))
+    by_week: dict[str, dict[str, dict[str, int]]] = defaultdict(
+        lambda: defaultdict(dict)
+    )
     for d in days:
         monday = date.fromisoformat(d["day"])
         monday -= timedelta(days=monday.weekday())
@@ -154,5 +156,7 @@ def format_triage(data: Triage) -> str:
             else f"maintainer quiet since {(s['last_maintainer_activity_at'] or '')[:10]}"
         )
         reviewed = ", triage-reviewed" if s["triage_reviewed"] else ""
-        lines.append(f"  #{s['number']} {s['age_days']}d, {detail}{reviewed}: {s['title']} ({s['author']})")
+        lines.append(
+            f"  #{s['number']} {s['age_days']}d, {detail}{reviewed}: {s['title']} ({s['author']})"
+        )
     return "\n".join(lines)

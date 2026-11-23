@@ -107,7 +107,11 @@ async def test_a_native_write_does_not_run_when_refused(monkeypatch):
 
 @pytest.mark.parametrize(
     "tool,permissioned",
-    [("search_memory", [DM]), ("update_goal_progress", []), ("reply_operator_dm", [DM])],
+    [
+        ("search_memory", [DM]),
+        ("update_goal_progress", []),
+        ("reply_operator_dm", [DM]),
+    ],
 )
 async def test_reads_and_untainted_runs_are_not_reviewed(
     monkeypatch, tool, permissioned

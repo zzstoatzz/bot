@@ -119,7 +119,9 @@ def register(agent):
         ctx: RunContext[PhiDeps],
         action: Annotated[
             Literal["try", "drop"],
-            Field(description="'try' adopts a persona; 'drop' removes the current one early."),
+            Field(
+                description="'try' adopts a persona; 'drop' removes the current one early."
+            ),
         ],
         text: Annotated[
             str,

@@ -119,10 +119,7 @@ async def review(tool: str, args: Any, items: list[Permissioned]) -> str | None:
         [
             f"tool: {tool}",
             "the write:\n" + json.dumps(args, ensure_ascii=False, default=str),
-            *(
-                f"material Phi read ({item.source}):\n{item.text}"
-                for item in items
-            ),
+            *(f"material Phi read ({item.source}):\n{item.text}" for item in items),
         ]
     )
     try:

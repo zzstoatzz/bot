@@ -78,7 +78,9 @@ async def test_private_status_reads_live_state_without_dispatch(journal, monkeyp
     monkeypatch.setattr(workflows.settings, "prefect_api_auth_string", "test:local")
     agent = Agent("test")
     workflows.register(agent)
-    registered = {name: tool.function for name, tool in agent._function_toolset.tools.items()}
+    registered = {
+        name: tool.function for name, tool in agent._function_toolset.tools.items()
+    }
     workflow_receipts.reserve(
         {"request_key": "one", "repo": "bot", "workflow": "investigate"}, "dm:1"
     )
@@ -86,12 +88,17 @@ async def test_private_status_reads_live_state_without_dispatch(journal, monkeyp
     status = registered["operator_workflow_status"]
     owner = workflows.settings.owner_handle
     try:
-        public = await status(RunContext(deps=PhiDeps(author_handle=owner), model=TestModel(), usage=RunUsage()))
+        public = await status(
+            RunContext(
+                deps=PhiDeps(author_handle=owner), model=TestModel(), usage=RunUsage()
+            )
+        )
         assert "error" in public and not calls
         private = await status(
             RunContext(
-                model=TestModel(), usage=RunUsage(),
-                deps=PhiDeps(author_handle=owner, private_message_id="dm:2")
+                model=TestModel(),
+                usage=RunUsage(),
+                deps=PhiDeps(author_handle=owner, private_message_id="dm:2"),
             )
         )
         assert private["requests"][0]["live_status"]["state_name"] == "Degraded"
@@ -99,8 +106,9 @@ async def test_private_status_reads_live_state_without_dispatch(journal, monkeyp
         monkeypatch.setattr(workflows.settings, "prefect_api_auth_string", None)
         unavailable = await status(
             RunContext(
-                model=TestModel(), usage=RunUsage(),
-                deps=PhiDeps(author_handle=owner, private_message_id="dm:3")
+                model=TestModel(),
+                usage=RunUsage(),
+                deps=PhiDeps(author_handle=owner, private_message_id="dm:3"),
             )
         )
         assert unavailable["requests"][0]["live_status"] == "unavailable"

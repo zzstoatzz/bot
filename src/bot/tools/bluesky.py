@@ -38,6 +38,7 @@ def _is_github_rate_limit(exc: Exception) -> bool:
 COMMIT_BODY_LIMIT = 1400
 CHANGELOG_CHAR_BUDGET = 24000
 
+
 def register(agent):
     @agent.tool
     async def get_own_posts(ctx: RunContext[PhiDeps], limit: int = 10) -> str:
@@ -323,4 +324,3 @@ def register(agent):
             return "\n\n".join(entries)
 
         raise AssertionError(f"unhandled aspect {aspect}")
-

@@ -14,7 +14,9 @@ def harness(monkeypatch, tmp_path):
     monkeypatch.setattr(operator_reports, "JOURNAL", tmp_path / "operator.sqlite3")
     agent = Agent("test")
     workflows.register(agent)
-    registered = {name: tool.function for name, tool in agent._function_toolset.tools.items()}
+    registered = {
+        name: tool.function for name, tool in agent._function_toolset.tools.items()
+    }
     monkeypatch.setattr(workflows, "_is_owner", lambda ctx: True)
     monkeypatch.setattr(
         workflows, "get_override", AsyncMock(return_value={"active": False})

@@ -59,9 +59,7 @@ def test_marker_free_bio_is_untouched():
 def _manager_with_bio(bio: str) -> tuple[ProfileManager, Mock]:
     client = Mock()
     client.me.did = "did:plc:test"
-    record = models.AppBskyActorProfile.Record(
-        description=bio, display_name="phi"
-    )
+    record = models.AppBskyActorProfile.Record(description=bio, display_name="phi")
     client.com.atproto.repo.get_record.return_value = Mock(value=record)
     return ProfileManager(client), client
 
@@ -111,8 +109,12 @@ async def test_profile_updates_preserve_pinned_post_and_unrecognized_fields(oper
         expected = {**original, "description": "a new bio"}
     else:
         await pm.initialize()
-        expected = {**original, "labels": {
-            "$type": "com.atproto.label.defs#selfLabels", "values": [{"val": "bot"}]
-        }}
+        expected = {
+            **original,
+            "labels": {
+                "$type": "com.atproto.label.defs#selfLabels",
+                "values": [{"val": "bot"}],
+            },
+        }
     written = client.com.atproto.repo.put_record.call_args[0][0]["record"]
     assert written == expected

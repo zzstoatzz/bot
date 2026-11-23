@@ -141,8 +141,11 @@ def test_live_catalogue_distinguishes_whole_tool_and_mixed_authorization():
     register_all(phi.agent)
     catalogue = {item["name"]: item for item in phi.get_capabilities()}
     assert {name for name, item in catalogue.items() if item["operator_only"]} == {
-        "follow_user", "propose_goal_change", "write_self",
-        "request_workflow", "operator_workflow_status",
+        "follow_user",
+        "propose_goal_change",
+        "write_self",
+        "request_workflow",
+        "operator_workflow_status",
     }
     account = catalogue["manage_account"]
     assert account["operator_only"] is False

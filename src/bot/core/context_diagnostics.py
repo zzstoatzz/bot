@@ -76,7 +76,9 @@ async def render_context_preview(phi: PhiAgent) -> list[dict]:
 
 def function_tools(phi: PhiAgent) -> dict:
     """The `@agent.tool` registrations, by name."""
-    return next(ts for ts in phi.agent.toolsets if isinstance(ts, FunctionToolset)).tools
+    return next(
+        ts for ts in phi.agent.toolsets if isinstance(ts, FunctionToolset)
+    ).tools
 
 
 async def list_tool_definitions(phi: PhiAgent) -> list[tuple[str, ToolDefinition]]:

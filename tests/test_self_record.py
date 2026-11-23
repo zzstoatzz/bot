@@ -48,7 +48,8 @@ def _client(value: dict | None):
 @pytest.fixture(autouse=True)
 def _clear_cache(monkeypatch):
     monkeypatch.setattr(
-        self_record_tool, "get_override",
+        self_record_tool,
+        "get_override",
         AsyncMock(return_value={"active": False, "message": ""}),
     )
     self_record._cache.update({"text": "", "fetched_at": 0.0})
@@ -136,7 +137,11 @@ def _tool(name: str):
 
 
 def _ctx(author_handle: str) -> RunContext[PhiDeps]:
-    return RunContext(deps=PhiDeps(author_handle=author_handle, memory=None), model=TestModel(), usage=RunUsage())
+    return RunContext(
+        deps=PhiDeps(author_handle=author_handle, memory=None),
+        model=TestModel(),
+        usage=RunUsage(),
+    )
 
 
 async def test_a_stranger_cannot_rewrite_who_phi_is(monkeypatch):
@@ -144,7 +149,9 @@ async def test_a_stranger_cannot_rewrite_who_phi_is(monkeypatch):
     monkeypatch.setattr(self_record_tool, "write_self_record", called)
     monkeypatch.setattr(self_record_tool, "get_self_block", AsyncMock(return_value=""))
     ctx = _ctx("stranger.bsky.social")
-    await _tool("write_self").function(ctx, "text")  # first call: review, writes nothing
+    await _tool("write_self").function(
+        ctx, "text"
+    )  # first call: review, writes nothing
     result = await _tool("write_self").function(ctx, "text")
     assert settings.owner_handle in result
     called.assert_not_awaited()
@@ -158,7 +165,9 @@ async def test_the_owner_can_after_review(monkeypatch):
     )
     monkeypatch.setattr(self_record_tool, "get_self_block", AsyncMock(return_value=""))
     monkeypatch.setattr(
-        self_record_tool, "check_self_record", AsyncMock(return_value={"verdict": "allow"})
+        self_record_tool,
+        "check_self_record",
+        AsyncMock(return_value={"verdict": "allow"}),
     )
     ctx = _ctx(settings.owner_handle)
     await _tool("write_self").function(ctx, "text")
@@ -184,7 +193,9 @@ async def test_judge_block_stops_the_write_with_reasons(monkeypatch):
         AsyncMock(
             return_value={
                 "verdict": "block",
-                "reasons": ['"today i found a wrong flow name" — an event, not a trait'],
+                "reasons": [
+                    '"today i found a wrong flow name" — an event, not a trait'
+                ],
             }
         ),
     )

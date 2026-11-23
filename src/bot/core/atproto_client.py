@@ -150,7 +150,9 @@ class BotClient:
         except Exception as e:
             if not session_string:
                 raise
-            logger.warning(f"could not resolve the PDS, trusting the saved session: {e}")
+            logger.warning(
+                f"could not resolve the PDS, trusting the saved session: {e}"
+            )
         else:
             self.client.update_base_url(pds)
             saved = _session_pds(session_string)

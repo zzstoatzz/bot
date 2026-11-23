@@ -311,7 +311,12 @@ async def test_capture_cache_skips_only_successfully_stored_versions(monkeypatch
     ) as client:
         handler = MessageHandler.__new__(MessageHandler)
         handler._captured_versions = {}
-        monkeypatch.setattr(handler, "agent", SimpleNamespace(memory=SimpleNamespace(client=client)), raising=False)
+        monkeypatch.setattr(
+            handler,
+            "agent",
+            SimpleNamespace(memory=SimpleNamespace(client=client)),
+            raising=False,
+        )
         event = notification()
         with pytest.raises(InternalServerError):
             await handler.capture_notifications([event])

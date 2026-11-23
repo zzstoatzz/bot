@@ -23,7 +23,7 @@ GRACE_LINK = "bsky.app/profile/gracekind.net/post/3msecoumetsz7"
 PRIOR_POST = {
     "rkey": "3msejrfxzzn2d",
     "text": (
-        'grace (@gracekind.net) on AI safety plans that amount to "we\'ll '
+        "grace (@gracekind.net) on AI safety plans that amount to \"we'll "
         'outsmart it": you have to rule that out from the premise if the '
         "thing is actually superintelligent. " + GRACE_LINK
     ),
@@ -56,7 +56,7 @@ def test_extract_links_reads_facets_and_text():
 def test_gracekind_replay_semantic_hit():
     """24h later, the same material must surface the 08-05 post."""
     material = (
-        "@gracekind.net: most AI safety plans reduce to \"we'll outsmart it\", "
+        '@gracekind.net: most AI safety plans reduce to "we\'ll outsmart it", '
         "which is question-begging against something defined as smarter than you."
     )
     note = render_coverage([PRIOR_POST], links_in_text(material))
@@ -143,10 +143,20 @@ def test_render_coverage_carries_speech_act_kind():
 
     ts = (datetime.now(UTC) - timedelta(days=2)).isoformat()
     hits = [
-        {"text": "said in a thread", "links": [], "created_at": ts,
-         "distance": 0.2, "is_reply": True},
-        {"text": "said out loud", "links": [], "created_at": ts,
-         "distance": 0.2, "is_reply": False},
+        {
+            "text": "said in a thread",
+            "links": [],
+            "created_at": ts,
+            "distance": 0.2,
+            "is_reply": True,
+        },
+        {
+            "text": "said out loud",
+            "links": [],
+            "created_at": ts,
+            "distance": 0.2,
+            "is_reply": False,
+        },
     ]
     block = render_coverage(hits, [])
     assert "reply)" in block and "top-level post)" in block, (

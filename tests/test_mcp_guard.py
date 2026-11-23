@@ -261,14 +261,21 @@ async def test_safe_mode_stops_doodl_drafts_and_drawings(monkeypatch, calls, too
     """Drafts and drawings are public records in phi's repo."""
     monkeypatch.setattr(mcp_guard, "get_override", override(True))
     guard = mcp_guard.make_mcp_guard("doodl", "test")
-    assert "operator override is active" in await guard(None, call_tool_stub(calls), tool, {})
+    assert "operator override is active" in await guard(
+        None, call_tool_stub(calls), tool, {}
+    )
     assert calls == []
 
 
 async def test_safe_mode_lets_phi_look_at_drawings(monkeypatch, calls):
     monkeypatch.setattr(mcp_guard, "get_override", override(True))
     guard = mcp_guard.make_mcp_guard("doodl", "test")
-    for tool in ("doodl_view_draft", "doodl_list_drafts", "doodl_list_drawings", "doodl_get_drawing"):
+    for tool in (
+        "doodl_view_draft",
+        "doodl_list_drafts",
+        "doodl_list_drawings",
+        "doodl_get_drawing",
+    ):
         assert await guard(None, call_tool_stub(calls), tool, {}) == "ok", tool
 
 

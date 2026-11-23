@@ -277,7 +277,9 @@ class CacheMonitor:
         self._load()
 
     def begin_run(self, label: str) -> None:
-        self._state.set(CacheRunState(RunRecord(label=label, started_at=datetime.now(UTC))))
+        self._state.set(
+            CacheRunState(RunRecord(label=label, started_at=datetime.now(UTC)))
+        )
 
     def end_run(self) -> None:
         state = self._state.get()

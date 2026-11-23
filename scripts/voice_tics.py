@@ -23,6 +23,7 @@ def pds() -> str:
         services = json.load(response)["service"]
     return next(s["serviceEndpoint"] for s in services if s["id"] == "#atproto_pds")
 
+
 ALERT = re.compile(r"CRASHED|FAILED|RUNNING|run_id=")
 HABITS = {
     "em dash": re.compile(r"—"),
@@ -51,7 +52,9 @@ def fetch() -> list[dict]:
         query = {"repo": DID, "collection": "app.bsky.feed.post", "limit": 100}
         if cursor:
             query["cursor"] = cursor
-        url = f"{host}/xrpc/com.atproto.repo.listRecords?{urllib.parse.urlencode(query)}"
+        url = (
+            f"{host}/xrpc/com.atproto.repo.listRecords?{urllib.parse.urlencode(query)}"
+        )
         with urllib.request.urlopen(url, timeout=30) as response:
             page = json.load(response)
         records += page["records"]
