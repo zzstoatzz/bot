@@ -5,12 +5,13 @@ import hashlib
 import json
 import logging
 from datetime import UTC, datetime, timedelta
-from typing import ClassVar, TypedDict
+from typing import ClassVar, TypedDict, cast
 
 from atproto_core.exceptions import InvalidAtUriError
 from atproto_core.uri import AtUri
 from openai import AsyncOpenAI
 from turbopuffer import NotFoundError, Turbopuffer, omit
+from turbopuffer.types import RowParam
 
 from bot.config import settings
 from bot.memory.episodic_read import read_note
@@ -484,7 +485,7 @@ class NamespaceMemory:
                 )
             await asyncio.to_thread(
                 self.namespaces["episodic"].write,
-                patch_rows=[change],
+                patch_rows=[cast("RowParam", change)],
                 schema=EPISODIC_SCHEMA,
             )
             return await read_note(self.namespaces["episodic"], note_id)

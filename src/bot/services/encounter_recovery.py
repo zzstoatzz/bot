@@ -2,9 +2,11 @@
 
 import asyncio
 from datetime import UTC, datetime, timedelta
+from typing import cast
 from uuid import uuid4
 
 from turbopuffer import NotFoundError, Turbopuffer
+from turbopuffer.types import RowParam
 
 from bot.core.atproto_client import BotClient
 from bot.memory.encounters import (
@@ -76,7 +78,7 @@ async def recover_encounters(
 
     async def save() -> None:
         await asyncio.to_thread(
-            storage.namespace(namespace).write, upsert_rows=[dict(receipt)]
+            storage.namespace(namespace).write, upsert_rows=[cast("RowParam", receipt)]
         )
 
     receipt["covered_until"] = await covered_until(storage, namespace)

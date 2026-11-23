@@ -6,10 +6,12 @@ import logging
 from contextvars import ContextVar
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from typing import cast
 from uuid import uuid4
 
 from opentelemetry import trace
 from turbopuffer import Turbopuffer
+from turbopuffer.types import AttributeSchemaConfigParam, RowParam
 
 from bot.memory.encounters import ENCOUNTER_NAMESPACE
 
@@ -48,8 +50,8 @@ async def save_receipt(run: RunEvidence, row: dict) -> None:
     try:
         await asyncio.to_thread(
             run.storage.namespace(ENCOUNTER_NAMESPACE).write,
-            upsert_rows=[row],
-            schema={"event_ids": {"type": "[]string"}},
+            upsert_rows=[cast("RowParam", row)],
+            schema={"event_ids": AttributeSchemaConfigParam(type="[]string")},
         )
     except Exception:
         logger.exception("run evidence write failed: %s", row["id"])

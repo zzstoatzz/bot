@@ -10,11 +10,11 @@ import json
 import logging
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
-from typing import Literal, TypedDict
+from typing import Literal, TypedDict, cast
 
 from atproto import models
 from turbopuffer import NotFoundError, Turbopuffer
-from turbopuffer.types import AttributeSchemaConfigParam
+from turbopuffer.types import AttributeSchemaConfigParam, RowParam
 from turbopuffer.types.custom import Filter
 
 ENCOUNTER_NAMESPACE = "phi-encounters"
@@ -109,7 +109,7 @@ async def append_encounters(
         unique.setdefault(encounter["id"], encounter)
     result = await asyncio.to_thread(
         client.namespace(namespace).write,
-        upsert_rows=[dict(row) for row in unique.values()],
+        upsert_rows=[cast("RowParam", dict(row)) for row in unique.values()],
         upsert_condition=("id", "Eq", None),
         schema=ENCOUNTER_SCHEMA,
     )
