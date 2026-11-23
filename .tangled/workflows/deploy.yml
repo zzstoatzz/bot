@@ -1,6 +1,9 @@
+# a push that only changes docs or markdown outside what the tests and phi
+# read skips this run.
 when:
   - event: push
     branch: main
+    paths: ["src/**", "tests/**", "evals/**", "skills/**", "personalities/**", "lexicons/**", "scripts/**", "deploy/**", "web/**", docs/system-prompt.md, operator-guidance.md, pyproject.toml, uv.lock, .python-version, Dockerfile, .dockerignore, justfile, loq.toml, .tangled/workflows/deploy.yml]
 
 engine: nixery
 
