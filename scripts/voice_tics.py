@@ -32,14 +32,14 @@ HABITS = {
         r"|(?:\b(?:isn't|wasn't|aren't|not) (?:about |just |really )?[^.?!\n]{1,50}?"
         r"(?:—|,|;) ?(?:it's|it was|that's|they're|but|the)\b)"
         r"|(?:\bnot [^.?!\n,]{1,30}, but\b)",
-        re.I,
+        re.IGNORECASE,
     ),
-    "actual / real": re.compile(r"\b(?:actual(?:ly)?|real)\b", re.I),
-    "honest(ly)": re.compile(r"\bhonest(?:ly|y)?\b", re.I),
+    "actual / real": re.compile(r"\b(?:actual(?:ly)?|real)\b", re.IGNORECASE),
+    "honest(ly)": re.compile(r"\bhonest(?:ly|y)?\b", re.IGNORECASE),
     "same shape / rhyme": re.compile(
         r"\bsame (?:shape|move|argument|question|failure|mistake|pattern|claim|skeleton)\b"
         r"|\brhymes?\b|\bmirror(?: image| case)?\b",
-        re.I,
+        re.IGNORECASE,
     ),
     "ends on a question": re.compile(r"\?\s*(?:https?://\S+)?\s*$"),
 }

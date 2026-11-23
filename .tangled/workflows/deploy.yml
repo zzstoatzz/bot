@@ -3,7 +3,7 @@
 when:
   - event: push
     branch: main
-    paths: ["src/**", "tests/**", "evals/**", "skills/**", "personalities/**", "lexicons/**", "scripts/**", "deploy/**", "web/**", docs/system-prompt.md, operator-guidance.md, pyproject.toml, uv.lock, .python-version, Dockerfile, .dockerignore, justfile, loq.toml, .tangled/workflows/deploy.yml]
+    paths: ["src/**", "tests/**", "evals/**", "skills/**", "personalities/**", "lexicons/**", "scripts/**", "deploy/**", "web/**", docs/system-prompt.md, operator-guidance.md, pyproject.toml, uv.lock, .python-version, Dockerfile, .dockerignore, justfile, .tangled/workflows/deploy.yml]
 
 engine: nixery
 

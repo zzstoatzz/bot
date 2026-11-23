@@ -29,8 +29,8 @@ import urllib.request
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "src"))
 
-from bot.config import settings  # noqa: E402
-from bot.core import identity  # noqa: E402
+from bot.config import settings
+from bot.core import identity
 
 LEXICON_DIR = pathlib.Path(__file__).parent.parent / "lexicons"
 COLLECTION = "com.atproto.lexicon.schema"
