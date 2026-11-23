@@ -3,6 +3,7 @@
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
+import httpx
 import pytest
 from atproto import models
 from pydantic_ai import RunContext
@@ -99,9 +100,55 @@ async def test_unavailable_post_reaches_real_agent_entry_without_verified_target
     assert TARGET in block
     assert ("lookup failed" if failure else "not returned by lookup") in block
     assert "not a verified current reply target" in block
-    fetch_record = Mock(side_effect=RuntimeError("still unavailable"))
-    client = Mock()
-    client.client.com.atproto.repo.get_record = fetch_record
-    monkeypatch.setattr("bot.tools.posting.bot_client", client)
+    fetch_record = AsyncMock(side_effect=RuntimeError("still unavailable"))
+    monkeypatch.setattr("bot.tools.posting.fetch_record", fetch_record)
     assert await _resolve_post_ref(TARGET, deps.notifications_context) is None
-    fetch_record.assert_called_once()
+    fetch_record.assert_awaited_once()
+
+
+async def test_out_of_batch_post_is_verified_on_its_authors_pds(monkeypatch):
+    """Phi's PDS answers getRecord only for repos it hosts, so a like or reply
+    target must be read from the PDS in the author's DID document."""
+    did = "did:plc:alice"
+    uri = f"at://{did}/app.bsky.feed.post/3kabc"
+    root = {"uri": f"at://{did}/app.bsky.feed.post/3kroot", "cid": "root-cid"}
+    seen: list[httpx.URL] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        seen.append(request.url)
+        return httpx.Response(
+            200,
+            json={
+                "uri": uri,
+                "cid": "post-cid",
+                "value": {"text": "hello", "reply": {"root": root, "parent": root}},
+            },
+        )
+
+    real_client = httpx.AsyncClient
+    monkeypatch.setattr(
+        "bot.core.media.httpx.AsyncClient",
+        lambda **kw: real_client(transport=httpx.MockTransport(respond), **kw),
+    )
+    monkeypatch.setattr(
+        "bot.core.media.identity.pds_for",
+        AsyncMock(return_value="https://pds.alice.test"),
+    )
+    own_pds = Mock()
+    monkeypatch.setattr("bot.tools.posting.bot_client", own_pds)
+
+    assert await _resolve_post_ref(uri, {}) == (
+        "post-cid",
+        root["uri"],
+        "root-cid",
+        "",
+        "hello",
+    )
+    assert [(u.host, u.path, dict(u.params)) for u in seen] == [
+        (
+            "pds.alice.test",
+            "/xrpc/com.atproto.repo.getRecord",
+            {"repo": did, "collection": "app.bsky.feed.post", "rkey": "3kabc"},
+        )
+    ]
+    own_pds.client.com.atproto.repo.get_record.assert_not_called()

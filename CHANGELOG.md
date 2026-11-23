@@ -1,5 +1,15 @@
 # changelog
 
+## 2026-11-23 — likes and replies verify posts on the author's PDS
+
+Phi moved to her own PDS (zds.zzstoatzz.io) at 07:20Z. The guard that checks a
+like or reply target read the post through phi's PDS, which worked only
+because Bluesky's PDS forwards `getRecord` for repos it does not host. Her new
+PDS answers `Could not find repo` for those, so every like, and every reply to
+a post outside the notification batch, was refused as unverifiable. The guard
+now reads the record from the PDS named in the author's DID document, the path
+fork-app posts already used.
+
 ## 2026-11-23 — phi can backtest a chicken policy
 
 The ledger review that led to the ruin-floor fix found phi's market learning

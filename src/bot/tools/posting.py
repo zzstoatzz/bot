@@ -27,7 +27,6 @@ import logging
 from typing import Annotated
 
 from atproto_client import models
-from atproto_client.models.utils import get_model_as_dict
 from pydantic import Field
 from pydantic_ai import BinaryContent, RunContext
 
@@ -352,7 +351,7 @@ async def _resolve_post_ref(
     Fast path: the URI is in the current notifications batch — cid, author,
     text, and thread root are already loaded.
 
-    Fallback: fetch the record via ``get_record``. Used for replies to phi's
+    Fallback: fetch the record from its author's PDS. Used for replies to phi's
     own posts (threading) and for any other post URI phi got legitimately
     (e.g. from ``get_own_posts`` or ``search_posts``). If the record can't
     be fetched, the URI was probably hallucinated; return None.
@@ -375,38 +374,20 @@ async def _resolve_post_ref(
     parsed = _parse_at_uri(uri)
     if not parsed:
         return None
-    did, collection, rkey = parsed
+    _, collection, _ = parsed
     app = app_for_uri(uri)
-    if app is not None:
-        # a fork app's post lives on its author's PDS, which Bluesky's
-        # AppView behind get_record knows nothing about
-        if collection != app.post_collection:
-            return None
-        try:
-            fetched = await fetch_record(uri, timeout=10)
-        except Exception as e:
-            logger.info(f"verify failed for {uri}: {e}")
-            return None
-        parent_cid = str(fetched.get("cid") or "")
-        raw_value = fetched.get("value")
-        value = raw_value if isinstance(raw_value, dict) else {}
-    elif collection != "app.bsky.feed.post":
+    if collection != (app.post_collection if app else "app.bsky.feed.post"):
         return None
-    else:
-        try:
-            result = bot_client.client.com.atproto.repo.get_record(
-                {"repo": did, "collection": collection, "rkey": rkey}
-            )
-        except Exception as e:
-            logger.info(f"verify failed for {uri}: {e}")
-            return None
-        parent_cid = str(result.cid or "")
-        # result.value is an atproto DotDict — `isinstance(..., dict)` returns
-        # False for it even though it walks/looks like a dict. Deep-convert to
-        # plain dicts so the reply.root inheritance check actually fires;
-        # otherwise every reply past the first one sets root=parent and the
-        # thread chain looks disconnected to the AppView.
-        value = get_model_as_dict(result.value) if result.value else {}
+    # ask the author's own PDS: only Bluesky's PDS answers getRecord for
+    # repos it does not host, and phi's PDS refuses them
+    try:
+        fetched = await fetch_record(uri, timeout=10)
+    except Exception as e:
+        logger.info(f"verify failed for {uri}: {e}")
+        return None
+    parent_cid = str(fetched.get("cid") or "")
+    raw_value = fetched.get("value")
+    value = raw_value if isinstance(raw_value, dict) else {}
     if not parent_cid:
         return None
     reply = value.get("reply") if isinstance(value.get("reply"), dict) else None
