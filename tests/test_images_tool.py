@@ -29,5 +29,5 @@ def test_compress_converts_mode():
     img = Image.new("RGBA", (64, 64), (255, 0, 0, 128))
     buf = io.BytesIO()
     img.save(buf, format="PNG")
-    data, mime, w, h = _compress_to_limit(buf.getvalue())
+    _data, mime, w, h = _compress_to_limit(buf.getvalue())
     assert mime == "image/jpeg" and (w, h) == (64, 64)

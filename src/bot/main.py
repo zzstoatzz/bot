@@ -467,7 +467,7 @@ async def skills():
             continue
         try:
             content = skill_md.read_text()
-        except Exception:
+        except (OSError, UnicodeDecodeError):
             continue
         m = front_re.match(content)
         if not m:
@@ -521,7 +521,7 @@ async def user_view(handle: str):
         await bot_client.authenticate()
         profile = bot_client.client.app.bsky.actor.get_profile(params={"actor": handle})
         did = profile.did
-    except Exception:
+    except Exception:  # noqa: S110 - the status page renders without the DID
         pass
 
     user_ns = memory.get_user_namespace(handle)
@@ -558,8 +558,8 @@ async def user_view(handle: str):
         except NotFoundError:
             if kind == "interaction":
                 recent_interactions = []
-        except Exception:
-            pass  # A read failure stays distinct from an empty history.
+        except Exception:  # noqa: S110 - a read failure stays distinct from an empty history
+            pass
 
     # first_seen / last_seen across all kinds.
     first_seen: str | None = None
@@ -579,7 +579,7 @@ async def user_view(handle: str):
         )
         if earliest.rows:
             first_seen = getattr(earliest.rows[0], "created_at", None)
-    except Exception:
+    except Exception:  # noqa: S110 - first-seen stays unknown on a read failure
         pass
 
     # Summary — text + its created_at (one query, since we want both).
@@ -599,7 +599,7 @@ async def user_view(handle: str):
                 "created_at": created_at,
                 "recalled": summary_is_current(created_at or ""),
             }
-    except Exception:
+    except Exception:  # noqa: S110 - the summary stays absent on a read failure
         pass
 
     # Recent observations — content, tags, created_at, source_uris.
@@ -623,7 +623,7 @@ async def user_view(handle: str):
                     "source_uris": getattr(row, "source_uris", []) or [],
                 }
             )
-    except Exception:
+    except Exception:  # noqa: S110 - the list stays empty on a read failure
         pass
 
     is_stranger = await memory.is_stranger(handle)
@@ -684,9 +684,9 @@ _chicken_cache: dict[str, tuple[float, dict | list]] = {}
 _CHICKEN_CACHE_TTL = 60  # seconds
 _CHICKEN_API = "https://topchicken.cee.wtf/api"
 _CHICKEN_PATHS = {
-    "trader": lambda: f"trader/{bot_client.client.me.did}"
-    if bot_client.client.me
-    else None,
+    "trader": lambda: (
+        f"trader/{bot_client.client.me.did}" if bot_client.client.me else None
+    ),
     "market": lambda: "market",
     "results": lambda: "results",
 }
@@ -953,7 +953,7 @@ if WEB_DIR.is_dir():
     logger.info(f"frontend mounted from {WEB_DIR}")
 
     @app.exception_handler(404)
-    async def spa_fallback(request: Request, exc):  # noqa: ARG001
+    async def spa_fallback(request: Request, exc):
         # Only fall back for browser navigation requests; api/health 404s
         # should still return JSON.
         path = request.url.path

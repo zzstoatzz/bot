@@ -466,9 +466,11 @@ def register(agent):
                 )[:8]
 
                 lines = [
-                    f"coral {scope} entities ({stats.get('active', 0)} active, "
-                    f"{stats.get('clusters', 0)} clusters"
-                    f"{', percolating' if stats.get('percolates') else ''}):"
+                    (
+                        f"coral {scope} entities ({stats.get('active', 0)} active, "
+                        f"{stats.get('clusters', 0)} clusters"
+                        f"{', percolating' if stats.get('percolates') else ''}):"
+                    )
                 ]
                 for e in by_trend:
                     lines.append(

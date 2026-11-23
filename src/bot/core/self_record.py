@@ -79,7 +79,7 @@ async def get_self_block(client: BotClient) -> str:
             value = dict(resp.value)
             text = value.get("self", "")
             updated_at = value.get("updatedAt", "")
-    except Exception:
+    except Exception:  # noqa: S110 - no self record yet reads as empty
         pass
 
     block = (
@@ -106,7 +106,7 @@ def _age(updated_at: str) -> str:
     if not updated_at:
         return ""
     try:
-        then = datetime.fromisoformat(updated_at.replace("Z", "+00:00"))
+        then = datetime.fromisoformat(updated_at)
     except ValueError:
         return ""
     days = (datetime.now(UTC) - then).days
@@ -137,7 +137,7 @@ async def write_self_record(client: BotClient, text: str) -> str:
         )
         if existing.value:
             created_at = dict(existing.value).get("createdAt") or now_iso
-    except Exception:
+    except Exception:  # noqa: S110 - keep now_iso when the old record can't be read
         pass
 
     result = client.client.com.atproto.repo.put_record(

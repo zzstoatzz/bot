@@ -32,18 +32,18 @@ async def run(args):
     cases, config = load_cases()
     selected = [c for c in cases if c["split"] == args.split]
     budget = Budget(0.25, len(selected) * args.repeats)
-    manifest = dict(
-        started_at=datetime.now(UTC).isoformat(),
-        config=config,
-        corpus_sha256=fingerprint(cases),
-        config_sha256=fingerprint(config),
-        case_ids=[c["id"] for c in selected],
-        repeats=args.repeats,
-        ceiling_usd=0.25,
-        concurrency=1,
-        retries=0,
-        labels="agent-reviewed semantic properties; no final permission verdict",
-    )
+    manifest = {
+        "started_at": datetime.now(UTC).isoformat(),
+        "config": config,
+        "corpus_sha256": fingerprint(cases),
+        "config_sha256": fingerprint(config),
+        "case_ids": [c["id"] for c in selected],
+        "repeats": args.repeats,
+        "ceiling_usd": 0.25,
+        "concurrency": 1,
+        "retries": 0,
+        "labels": "agent-reviewed semantic properties; no final permission verdict",
+    }
     if not args.execute:
         print(json.dumps(manifest, indent=2))
         return
@@ -52,7 +52,7 @@ async def run(args):
         raise SystemExit("TYPESAFE_API_KEY required")
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
-    with output.open("x") as stream:
+    with output.open("x") as stream:  # noqa: ASYNC230 - one small JSONL line between model calls
         stream.write(json.dumps({"manifest": manifest}) + "\n")
     rows = []
     async with httpx.AsyncClient(
@@ -60,12 +60,12 @@ async def run(args):
     ) as client:
         for repeat in range(args.repeats):
             for case in selected:
-                row: dict = dict(
-                    id=case["id"],
-                    split=case["split"],
-                    repeat=repeat,
-                    expected=case["expected"],
-                )
+                row: dict = {
+                    "id": case["id"],
+                    "split": case["split"],
+                    "repeat": repeat,
+                    "expected": case["expected"],
+                }
                 start = time.perf_counter()
                 try:
                     response = await client.post(
@@ -85,11 +85,11 @@ async def run(args):
                     }
                     if set(row["predictions"]) != set(config["questions"]):
                         raise ValueError("Incomplete response")
-                except Exception as exc:
+                except Exception as exc:  # noqa: BLE001 - one failed case is recorded, the run goes on
                     row["error"] = type(exc).__name__
                 row["seconds"] = time.perf_counter() - start
                 rows.append(row)
-                with output.open("a") as stream:
+                with output.open("a") as stream:  # noqa: ASYNC230 - one small JSONL line between model calls
                     stream.write(json.dumps(row) + "\n")
                 if "error" in row:
                     break
@@ -114,13 +114,13 @@ async def run(args):
     complete = len(rows) == len(selected) * args.repeats and not any(
         "error" in r for r in rows
     )
-    result = dict(
-        summary=summary,
-        complete=complete,
-        spent_or_reserved_usd=budget.reserved,
-        calls=budget.calls,
-    )
-    with output.open("a") as stream:
+    result = {
+        "summary": summary,
+        "complete": complete,
+        "spent_or_reserved_usd": budget.reserved,
+        "calls": budget.calls,
+    }
+    with output.open("a") as stream:  # noqa: ASYNC230 - one small JSONL line between model calls
         stream.write(json.dumps(result) + "\n")
     print(json.dumps(result, indent=2))
     if not complete:

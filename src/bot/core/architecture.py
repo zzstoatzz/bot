@@ -96,9 +96,7 @@ def source_inventory() -> list[dict]:
         functions = [
             {"name": n.name, "line": n.lineno}
             for n in ast.walk(tree)
-            if isinstance(n, ast.FunctionDef)
-            or isinstance(n, ast.AsyncFunctionDef)
-            or isinstance(n, ast.ClassDef)
+            if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
         ]
         name = module_name(path)
         package = name if path.name == "__init__.py" else name.rpartition(".")[0]

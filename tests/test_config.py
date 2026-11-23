@@ -34,7 +34,7 @@ def test_logfire_instrumentation_degrades_gracefully():
         ):
             try:
                 _instrument()
-            except Exception:
+            except Exception:  # noqa: BLE001, S110 - mirrors the production instrumentation guard
                 pass  # this is what the production code does
 
     # App should still be importable and functional

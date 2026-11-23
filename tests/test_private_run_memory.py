@@ -62,7 +62,7 @@ async def test_recall_is_cued_by_the_operators_new_messages(private_run):
 async def test_notebook_renders_and_the_discovery_pool_does_not(
     private_run, monkeypatch
 ):
-    blocks, ctx, memory = private_run
+    blocks, ctx, _memory = private_run
     read = Mock(return_value="[NOTEBOOK] Previous public work.")
     monkeypatch.setattr(agent_module, "orientation", read)
     pool = AsyncMock(return_value="[DISCOVERY POOL]")

@@ -111,11 +111,13 @@ async def get_recent_flow_mentions_block(client: BotClient) -> str:
     mentions = mentions[:RENDER_LIMIT]
 
     lines = [
-        "[RECENT FLOW MENTIONS — what you've already posted about workflow "
-        "state recently. if [WORKFLOW STATE] still shows the same item you've "
-        "already raised here, the operator has already heard you. silence is "
-        "the right answer unless something has *changed* (newly broken, newly "
-        "recovered, or newly stuck) since your last mention.]"
+        (
+            "[RECENT FLOW MENTIONS — what you've already posted about workflow "
+            "state recently. if [WORKFLOW STATE] still shows the same item you've "
+            "already raised here, the operator has already heard you. silence is "
+            "the right answer unless something has *changed* (newly broken, newly "
+            "recovered, or newly stuck) since your last mention.]"
+        )
     ]
     for m in mentions:
         when = relative_when(m["created_at"]) if m["created_at"] else ""

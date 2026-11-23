@@ -137,20 +137,22 @@ async def test_replay_preserves_first_capture_and_same_batch_duplicates_are_safe
 
 
 async def test_failed_capture_is_not_reported_as_success():
-    with Turbopuffer(
-        api_key="test",
-        base_url="https://memory.test",
-        max_retries=0,
-        http_client=httpx.Client(
-            transport=httpx.MockTransport(
-                lambda _: httpx.Response(503, json={"error": "unavailable"})
-            )
-        ),
-    ) as client:
-        with pytest.raises(InternalServerError):
-            await append_encounters(
-                client, "test-encounters", [notification_encounter(notification(), NOW)]
-            )
+    with (
+        Turbopuffer(
+            api_key="test",
+            base_url="https://memory.test",
+            max_retries=0,
+            http_client=httpx.Client(
+                transport=httpx.MockTransport(
+                    lambda _: httpx.Response(503, json={"error": "unavailable"})
+                )
+            ),
+        ) as client,
+        pytest.raises(InternalServerError),
+    ):
+        await append_encounters(
+            client, "test-encounters", [notification_encounter(notification(), NOW)]
+        )
 
 
 async def test_silent_batch_is_captured_before_context_normalization(monkeypatch):

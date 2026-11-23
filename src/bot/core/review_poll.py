@@ -67,7 +67,7 @@ def _fresh_enough(created_at: str) -> bool:
     from bot.core.ops_log import _watched_cursor
 
     try:
-        ts = datetime.fromisoformat(created_at.replace("Z", "+00:00")).timestamp()
+        ts = datetime.fromisoformat(created_at).timestamp()
     except Exception:
         return True
     if ts < _started_at - _LOOKBACK_SECONDS:

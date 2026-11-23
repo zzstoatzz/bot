@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, patch
 
 import httpx
 
-import bot.main as main
+from bot import main
 
 
 async def test_refresh_fetches_upstream_even_with_a_warm_cache():

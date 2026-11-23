@@ -809,8 +809,8 @@ class NamespaceMemory:
                             vec = getattr(row, "vector", None)
                             if vec:
                                 user_vectors.setdefault(handle, []).append(vec)
-                except Exception:
-                    pass  # old namespace or no observations
+                except Exception:  # noqa: S110 - old namespace or no observations
+                    pass
         except Exception as e:
             logger.warning(f"failed to list user namespaces: {e}")
 
@@ -870,8 +870,8 @@ class NamespaceMemory:
                                     ),
                                 }
                             )
-                except Exception:
-                    pass  # old namespace or no interactions
+                except Exception:  # noqa: S110 - old namespace or no interactions
+                    pass
         except Exception as e:
             logger.warning(f"failed to list user namespaces for reflection: {e}")
 

@@ -177,7 +177,7 @@ async def evaluate(args):
         raise SystemExit("Both provider keys must be supplied; no requests made")
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
-    with output.open("x") as stream:
+    with output.open("x") as stream:  # noqa: ASYNC230 - one small JSONL line between model calls
         stream.write(json.dumps({"manifest": manifest}) + "\n")
     budget = Budget(args.budget, len(selected) * args.repeats * 2)
     rows = []
@@ -198,7 +198,7 @@ async def evaluate(args):
             {"policies": policy.POLICIES, "system": judge._system_prompts}
         )
         logging.getLogger("bot.policy").setLevel(logging.CRITICAL)
-        with output.open("a") as stream:
+        with output.open("a") as stream:  # noqa: ASYNC230 - one small JSONL line between model calls
             stream.write(
                 json.dumps({"baseline_policy_sha256": manifest["policy_sha256"]}) + "\n"
             )
@@ -259,13 +259,13 @@ async def evaluate(args):
                             row["verdict"] = verdict
                             row["prediction"] = verdict["verdict"] != "block"
                         row["correct"] = row["prediction"] == row["expected"]
-                    except Exception as exc:
+                    except Exception as exc:  # noqa: BLE001 - one failed case is recorded, the run goes on
                         row["error"] = type(exc).__name__
                         row["prediction"] = None
                     row["seconds"] = time.perf_counter() - start
                     row["calls"] = budget.calls[call_start:]
                     rows.append(row)
-                    with output.open("a") as stream:
+                    with output.open("a") as stream:  # noqa: ASYNC230 - one small JSONL line between model calls
                         stream.write(json.dumps(row) + "\n")
                     print(
                         row["id"],
@@ -291,7 +291,7 @@ async def evaluate(args):
         "complete": len(rows) == len(selected) * args.repeats * 2
         and all("error" not in r for r in rows),
     }
-    with output.open("a") as stream:
+    with output.open("a") as stream:  # noqa: ASYNC230 - one small JSONL line between model calls
         stream.write(json.dumps({"summary": report}) + "\n")
     print(json.dumps(report, indent=2))
     if not report["complete"]:

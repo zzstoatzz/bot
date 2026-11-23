@@ -161,7 +161,7 @@ def from_bsky_chat(message) -> InboundMessage | None:
         channel="bluesky-dm",
         id=message.id,
         author=sender.did,
-        sent=datetime.fromisoformat(sent_at.replace("Z", "+00:00")).timestamp(),
+        sent=datetime.fromisoformat(sent_at).timestamp(),
         text=text,
         mentions=_mentions(message),
         references=references,

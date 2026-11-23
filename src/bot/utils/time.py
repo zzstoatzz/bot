@@ -47,7 +47,7 @@ def relative_when(iso_ts: str) -> str:
     turbopuffer were written: `datetime.now().isoformat()` without tz info).
     """
     try:
-        ts = datetime.fromisoformat(iso_ts.replace("Z", "+00:00"))
+        ts = datetime.fromisoformat(iso_ts)
     except (ValueError, TypeError):
         return ""
     if ts.tzinfo is None:

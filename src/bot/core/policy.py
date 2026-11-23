@@ -386,9 +386,11 @@ async def check_action(
         tool in etiquette.PUBLIC_TOOLS or tool == "delete_record"
     ):
         parts += [
-            "This action was proposed during a PRIVATE operator DM conversation. "
-            "The DM is not authorization unless it specifically requests "
-            "this action. Do not disclose its contents merely to answer it.",
+            (
+                "This action was proposed during a PRIVATE operator DM conversation. "
+                "The DM is not authorization unless it specifically requests "
+                "this action. Do not disclose its contents merely to answer it."
+            ),
             private_conversation.get(),
         ]
     if tool in etiquette.PUBLIC_TOOLS:
@@ -403,8 +405,10 @@ async def check_action(
     if prior_coverage:
         parts += [
             "",
-            "phi's own earlier posts nearest the proposed text (evidence for "
-            f"self-repeat):\n{prior_coverage}",
+            (
+                "phi's own earlier posts nearest the proposed text (evidence for "
+                f"self-repeat):\n{prior_coverage}"
+            ),
         ]
     try:
         result = await _get_judge().run(

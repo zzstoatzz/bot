@@ -82,8 +82,10 @@ def _render(
             counts[uri] = counts.get(uri, 0) + 1
 
     lines = [
-        "[SEMBLE — your public library (cosmik). reference for saving and "
-        "filing, not posting register.]"
+        (
+            "[SEMBLE — your public library (cosmik). reference for saving and "
+            "filing, not posting register.]"
+        )
     ]
     if collections:
         lines.append("collections:")

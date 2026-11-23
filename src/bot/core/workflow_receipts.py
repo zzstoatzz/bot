@@ -63,4 +63,4 @@ def recent(key: str = "") -> list[dict]:
             rows = db.execute(
                 "SELECT * FROM workflow_requests ORDER BY requested DESC LIMIT 10"
             )
-        return [{k: row[k] for k in row.keys() if k != "fingerprint"} for row in rows]
+        return [{k: row[k] for k in row.keys() if k != "fingerprint"} for row in rows]  # noqa: SIM118 - sqlite3.Row iterates values, not keys

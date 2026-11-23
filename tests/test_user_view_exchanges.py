@@ -8,7 +8,7 @@ import httpx
 import pytest
 from turbopuffer import NotFoundError
 
-import bot.main as main
+from bot import main
 
 
 @pytest.mark.parametrize(

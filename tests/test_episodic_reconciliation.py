@@ -470,12 +470,14 @@ async def test_replacement_embedding_failure_keeps_previous_note_active():
     mem, ns = _memory_with_episodic_ns()
     mem._find_similar_episodic = AsyncMock(return_value=SIMILAR)
     mem._get_embedding.side_effect = [[0.1] * 8, RuntimeError("embedding unavailable")]
-    with patch(
-        "bot.memory.namespace_memory.get_reconciliation_agent",
-        return_value=_decision("UPDATE", new_content="replacement", new_tags=["t"]),
+    with (
+        patch(
+            "bot.memory.namespace_memory.get_reconciliation_agent",
+            return_value=_decision("UPDATE", new_content="replacement", new_tags=["t"]),
+        ),
+        pytest.raises(RuntimeError, match="embedding unavailable"),
     ):
-        with pytest.raises(RuntimeError, match="embedding unavailable"):
-            await mem.store_episodic_memory("new account", ["t"])
+        await mem.store_episodic_memory("new account", ["t"])
     ns.write.assert_not_called()
 
 

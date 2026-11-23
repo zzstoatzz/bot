@@ -114,9 +114,11 @@ def _format_goals_block(goals: list[dict]) -> str:
     if not goals:
         return ""
     lines = [
-        "[GOALS — io.zzstoatzz.phi.goal. Operator-approved scope; "
-        "progress and next steps are your account, not verified live state. "
-        "Relative dates inside a saved note refer to when it was recorded.]"
+        (
+            "[GOALS — io.zzstoatzz.phi.goal. Operator-approved scope; "
+            "progress and next steps are your account, not verified live state. "
+            "Relative dates inside a saved note refer to when it was recorded.]"
+        )
     ]
     for g in goals:
         rkey = g.get("_rkey", "")

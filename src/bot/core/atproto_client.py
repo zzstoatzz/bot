@@ -222,11 +222,11 @@ class BotClient:
             self.client.app.bsky.feed.get_post_thread, {"uri": uri, "depth": 0}
         )
         if not isinstance(response.thread, models.AppBskyFeedDefs.ThreadViewPost):
-            raise ValueError("thread is unavailable")
+            raise ValueError("thread is unavailable")  # noqa: TRY004 - bad upstream data; callers catch ValueError
         post = response.thread.post
         record = post.record
         if not isinstance(record, models.AppBskyFeedPost.Record):
-            raise ValueError("thread record is not a post")
+            raise ValueError("thread record is not a post")  # noqa: TRY004 - bad upstream data; callers catch ValueError
         root = record.reply.root.uri if record.reply else post.uri
         if root != post.uri:
             response = await asyncio.to_thread(
@@ -284,11 +284,11 @@ class BotClient:
                     text=text,
                     reply_to=reply_to,
                     facets=facets,
-                    **({"embed": embed} if embed else {}),
+                    embed=embed or None,
                 )
             else:
                 result = self.client.send_post(
-                    text=text, facets=facets, **({"embed": embed} if embed else {})
+                    text=text, facets=facets, embed=embed or None
                 )
             record_local_write(result.uri)
             return result
@@ -310,7 +310,7 @@ class BotClient:
                     text=chunk,
                     reply_to=reply_to,
                     facets=facets,
-                    **({"embed": embed} if embed else {}),
+                    embed=embed or None,
                 )
                 if root_ref is None:
                     root_ref = models.ComAtprotoRepoStrongRef.Main(
@@ -404,7 +404,7 @@ class BotClient:
             output_encoding="application/json",
         )
         if not isinstance(response.content, dict):
-            raise ValueError("searchPosts returned a non-object response")
+            raise ValueError("searchPosts returned a non-object response")  # noqa: TRY004 - bad upstream data; callers catch ValueError
         return response.content
 
     async def get_timeline(self, limit: int = 25):

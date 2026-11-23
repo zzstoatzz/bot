@@ -97,9 +97,11 @@ async def govern_app_record(
         strangers = _mentioned_dids(record) - set(settings.operator_dids) - {own_did}
         if strangers:
             return (
-                f"refused: mention consent is not set up for {app}, so a post "
-                "there cannot tag anyone but the operator. Write the post "
-                "without the mention facet.",
+                (
+                    f"refused: mention consent is not set up for {app}, so a post "
+                    "there cannot tag anyone but the operator. Write the post "
+                    "without the mention facet."
+                ),
                 "",
                 tool_args,
             )
@@ -123,8 +125,10 @@ async def govern_app_record(
     uri = str(subject.get("uri", ""))
     if not uri:
         return (
-            f"refused: a {tool} record needs record.subject.uri (the AT-URI of "
-            "the post); the guard fills in the cid.",
+            (
+                f"refused: a {tool} record needs record.subject.uri (the AT-URI of "
+                "the post); the guard fills in the cid."
+            ),
             "",
             tool_args,
         )

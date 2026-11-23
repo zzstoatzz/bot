@@ -366,9 +366,11 @@ def render_recent_conversations(recent: list[dict], limit: int = 5) -> str:
         return "[RECENT CONVERSATIONS]: no recent interactions"
     unique_handles = {i["handle"] for i in recent}
     lines = [
-        "[RECENT CONVERSATIONS — exchanges you already had and already "
-        f"replied to, newest first. a record, not open threads. "
-        f"{len(recent)} across {len(unique_handles)} people]"
+        (
+            "[RECENT CONVERSATIONS — exchanges you already had and already "
+            f"replied to, newest first. a record, not open threads. "
+            f"{len(recent)} across {len(unique_handles)} people]"
+        )
     ]
     for i in recent[:limit]:
         content = i.get("content") or ""
@@ -559,8 +561,10 @@ class PhiAgent:
             """
             now_utc = datetime.now(UTC)
             lines = [
-                f"[NOW]: {now_utc.strftime('%Y-%m-%d %H:%M %Z')} — "
-                f"your own clock. the machine you run on keeps UTC."
+                (
+                    f"[NOW]: {now_utc.strftime('%Y-%m-%d %H:%M %Z')} — "
+                    f"your own clock. the machine you run on keeps UTC."
+                )
             ]
 
             region = os.environ.get("FLY_REGION")
@@ -914,7 +918,7 @@ class PhiAgent:
             if evidence:
                 await run_status(evidence, "failed")
             err_type = type(e).__name__
-            logger.exception(f"agent.run failed during {label}: {err_type}: {e}")
+            logger.exception(f"agent.run failed during {label}: {err_type}")
             return f"{label} failed: {err_type}: {str(e)[:200]}"
         finally:
             # a failed run still spent (and may have cached) input tokens

@@ -208,10 +208,12 @@ def _render(
     # carries a point) was the wrong artifact in the wrong place — coaching
     # prose billed on every run. ×N below = operator likes in the window.
     lines = [
-        f"[DISCOVERY POOL — people the operator has been liking (×N, last "
-        f"date); {scope}. strangers worth knowing, and the clearest read you "
-        "get on his taste — the samples are their real writing. don't lift "
-        "anyone's sentences; attribute ideas you carry out. warm leads.]"
+        (
+            f"[DISCOVERY POOL — people the operator has been liking (×N, last "
+            f"date); {scope}. strangers worth knowing, and the clearest read you "
+            "get on his taste — the samples are their real writing. don't lift "
+            "anyone's sentences; attribute ideas you carry out. warm leads.]"
+        )
     ]
     for e in entries:
         likes = e.get("likes_in_window", 0)

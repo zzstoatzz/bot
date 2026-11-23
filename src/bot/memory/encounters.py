@@ -28,7 +28,7 @@ ENCOUNTER_SCHEMA: dict[str, str | AttributeSchemaConfigParam] = {
 
 def indexed_time(value: str) -> str:
     """Normalize the notification index timestamp for ordered string queries."""
-    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    parsed = datetime.fromisoformat(value)
     if parsed.tzinfo is None or parsed.utcoffset() is None:
         raise ValueError("notification index time must include a timezone")
     return parsed.astimezone(UTC).isoformat(timespec="microseconds")
@@ -179,14 +179,16 @@ def render_recent_encounters(
         return "[RECENT ENCOUNTERS] encounter capture has no stored history yet. Older memory may exist elsewhere."
     rows = result["rows"]
     lines = [
-        f"[RECENT ENCOUNTERS — notification index time {result['since']} through {result['until']}; "
-        f"{len(rows)} shown, newest indexed first"
-        f"{'; more records in this window' if result['has_more'] else ''}. "
-        "Received events are historical evidence. Attached reply coverage shows "
-        "published answers where available, not resolution or approval. "
-        "Historical context, not pending tasks or renewed requests. A displayed "
-        "request may already be answered; inspect its current thread before "
-        "following up. NEW NOTIFICATIONS identifies this run's incoming events.]"
+        (
+            f"[RECENT ENCOUNTERS — notification index time {result['since']} through {result['until']}; "
+            f"{len(rows)} shown, newest indexed first"
+            f"{'; more records in this window' if result['has_more'] else ''}. "
+            "Received events are historical evidence. Attached reply coverage shows "
+            "published answers where available, not resolution or approval. "
+            "Historical context, not pending tasks or renewed requests. A displayed "
+            "request may already be answered; inspect its current thread before "
+            "following up. NEW NOTIFICATIONS identifies this run's incoming events.]"
+        )
     ]
     if not rows:
         lines.append("No captured encounters in this window.")

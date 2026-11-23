@@ -56,9 +56,11 @@ class TestBlockedHostDegradation:
             _response(403, {"error": "blocked hosts", "blocked": [self.BLOCKED]}),
             _response(200, [{"url": ok_url, "status": 200, "ok": True, "ms": 12}]),
         )
-        with patch.object(_helpers.httpx, "AsyncClient", return_value=ctx):
-            with caplog.at_level(logging.WARNING, logger="bot.tools"):
-                out = await _check_services_impl()
+        with (
+            patch.object(_helpers.httpx, "AsyncClient", return_value=ctx),
+            caplog.at_level(logging.WARNING, logger="bot.tools"),
+        ):
+            out = await _check_services_impl()
 
         assert client.post.await_count == 2, "should retry without the blocked host"
         retried = client.post.await_args_list[1].kwargs["json"]["checks"]
@@ -76,9 +78,11 @@ class TestBlockedHostDegradation:
 
     async def test_unreachable_proxy_logs(self, caplog):
         ctx, _ = self._client_returning(httpx.ConnectError("boom"))
-        with patch.object(_helpers.httpx, "AsyncClient", return_value=ctx):
-            with caplog.at_level(logging.WARNING, logger="bot.tools"):
-                out = await _check_services_impl()
+        with (
+            patch.object(_helpers.httpx, "AsyncClient", return_value=ctx),
+            caplog.at_level(logging.WARNING, logger="bot.tools"),
+        ):
+            out = await _check_services_impl()
         assert "unreachable" in out
         assert any("unreachable" in r.message for r in caplog.records)
 
@@ -162,9 +166,11 @@ class TestOperatorPdsCheck:
         self, _resolved_operator_pds, caplog
     ):
         _resolved_operator_pds.side_effect = ValueError("no PDS found")
-        ctx, client = self._proxy_echoing()
-        with patch.object(_helpers.httpx, "AsyncClient", return_value=ctx):
-            with caplog.at_level(logging.WARNING, logger="bot.tools"):
-                out = await _check_services_impl()
+        ctx, _client = self._proxy_echoing()
+        with (
+            patch.object(_helpers.httpx, "AsyncClient", return_value=ctx),
+            caplog.at_level(logging.WARNING, logger="bot.tools"),
+        ):
+            out = await _check_services_impl()
         assert "services healthy" in out
         assert any("operator PDS is unresolvable" in r.message for r in caplog.records)

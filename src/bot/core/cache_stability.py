@@ -25,7 +25,7 @@ needs pydantic-ai 2.x capabilities; on 1.x the equivalent seam is a
 import json
 import logging
 from collections import deque
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass, field
@@ -517,7 +517,7 @@ class CacheObservingModel(WrapperModel):
         model_settings: ModelSettings | None,
         model_request_parameters: ModelRequestParameters,
         run_context: RunContext[Any] | None = None,
-    ) -> AsyncIterator[StreamedResponse]:
+    ) -> AsyncGenerator[StreamedResponse]:
         receipt = await request_prepared(
             self.wrapped.model_name,
             InstructionPart.join(model_request_parameters.instruction_parts or []),

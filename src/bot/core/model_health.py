@@ -9,7 +9,7 @@ reasons marks the model unavailable, and its next answered request clears it.
 """
 
 import logging
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -109,7 +109,7 @@ class AccountCheckedModel(WrapperModel):
         model_settings: ModelSettings | None,
         model_request_parameters: ModelRequestParameters,
         run_context: RunContext[Any] | None = None,
-    ) -> AsyncIterator[StreamedResponse]:
+    ) -> AsyncGenerator[StreamedResponse]:
         try:
             async with super().request_stream(
                 messages, model_settings, model_request_parameters, run_context

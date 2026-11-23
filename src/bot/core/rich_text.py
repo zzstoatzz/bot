@@ -63,7 +63,7 @@ def parse_mentions(
                     ],
                 }
             )
-        except Exception:
+        except Exception:  # noqa: S112 - an unresolvable handle just isn't linked
             # Skip if handle can't be resolved
             continue
 

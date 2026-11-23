@@ -7,6 +7,7 @@ Archive sequence and witnessed time are not a record's publication time.
 
 import asyncio
 import base64
+import itertools
 import json
 import struct
 import time
@@ -58,19 +59,19 @@ def decode_archive_block(raw: bytes) -> list[dict]:
     rows: list[dict] = []
     for i in range(n):
         rows.append(
-            dict(
-                seq=seq[i],
-                witnessed_us=witnessed[i],
-                indexed_us=indexed[i],
-                kind=kinds[i],
-                collection=blobs[0][i].decode(),
-                did=blobs[1][i].decode(),
-                rkey=blobs[2][i].decode(),
-                rev=blobs[3][i].decode(),
-                payload=blobs[4][i],
-            )
+            {
+                "seq": seq[i],
+                "witnessed_us": witnessed[i],
+                "indexed_us": indexed[i],
+                "kind": kinds[i],
+                "collection": blobs[0][i].decode(),
+                "did": blobs[1][i].decode(),
+                "rkey": blobs[2][i].decode(),
+                "rev": blobs[3][i].decode(),
+                "payload": blobs[4][i],
+            }
         )
-    if any(a["seq"] >= b["seq"] for a, b in zip(rows, rows[1:])):
+    if any(a["seq"] >= b["seq"] for a, b in itertools.pairwise(rows)):
         raise ValueError("unordered archive block")
     return rows
 
@@ -95,18 +96,18 @@ async def archive_page(
     """One plan page, at most 24 blocks, 8 MiB compressed, 24k output."""
     result = cast(
         dict[str, Any],
-        dict(
-            source=HOST,
-            did=did,
-            collection=collection,
-            after_seq=after_seq,
-            through_seq=through_seq,
-            next_after_seq=after_seq,
-            complete=False,
-            records=[],
-            blocks_read=0,
-            bytes_read=0,
-        ),
+        {
+            "source": HOST,
+            "did": did,
+            "collection": collection,
+            "after_seq": after_seq,
+            "through_seq": through_seq,
+            "next_after_seq": after_seq,
+            "complete": False,
+            "records": [],
+            "blocks_read": 0,
+            "bytes_read": 0,
+        },
     )
     headers = {"Authorization": f"Bearer {key}"}
 
@@ -131,12 +132,12 @@ async def archive_page(
             asyncio.timeout(45),
             httpx.AsyncClient(timeout=15, transport=transport) as client,
         ):
-            request = dict(
-                dids=[did],
-                collections=[collection],
-                kinds=["commit"],
-                afterSeq=after_seq,
-            )
+            request = {
+                "dids": [did],
+                "collections": [collection],
+                "kinds": ["commit"],
+                "afterSeq": after_seq,
+            }
             if through_seq is not None:
                 request["beforeSeq"] = through_seq
             body, _ = await fetch(client, "POST", "planSnapshot", json=request)

@@ -9,6 +9,7 @@ which is how phi re-posted a 24h-old subject verbatim (gracekind,
 
 import json
 import time
+from pathlib import Path
 
 import pytest
 
@@ -101,7 +102,7 @@ def test_prune_drops_expired_rows():
     ops_log.append_op(ancient)
     ops_log.append_op(fresh)
     ops_log.prune_log()
-    content = open(ops_log.settings.ops_log_path).read()
+    content = Path(ops_log.settings.ops_log_path).read_text()
     assert "3fresh" in content and "3anc" not in content
 
 
@@ -180,21 +181,21 @@ def test_distinct_revs_on_one_rkey_stay_distinct():
 def test_legacy_rows_without_rev_collapse_on_identical_body():
     base = int(time.time() * 1_000_000)
     with open(ops_log.settings.ops_log_path, "a") as f:
-        for offset in (0, 5_000):
-            f.write(
-                json.dumps(
-                    {
-                        "time_us": base + offset,
-                        "at": ops_log._iso_from_us(base + offset),
-                        "op": "create",
-                        "nsid": "app.bsky.feed.post",
-                        "rkey": "3legacy",
-                        "local": False,
-                        "record": {"text": "same"},
-                    }
-                )
-                + "\n"
+        f.writelines(
+            json.dumps(
+                {
+                    "time_us": base + offset,
+                    "at": ops_log._iso_from_us(base + offset),
+                    "op": "create",
+                    "nsid": "app.bsky.feed.post",
+                    "rkey": "3legacy",
+                    "local": False,
+                    "record": {"text": "same"},
+                }
             )
+            + "\n"
+            for offset in (0, 5_000)
+        )
     assert len(ops_log.read_ops(48)) == 1
 
 
@@ -233,22 +234,22 @@ def test_merge_prefers_event_rows_and_backfills_snapshot():
         [_op("create", "3a", nsid="app.bsky.feed.post", record={"text": "live"})]
     )
     snapshot: list[_Row] = [
-        dict(
-            rkey="3a",
-            nsid="app.bsky.feed.post",
-            created_at="2026-08-06T00:00:00",
-            summary="stale",
-            op="create",
-            local=False,
-        ),
-        dict(
-            rkey="3b",
-            nsid="app.bsky.feed.post",
-            created_at="2026-08-06T00:00:01",
-            summary="gap-fill",
-            op="create",
-            local=False,
-        ),
+        {
+            "rkey": "3a",
+            "nsid": "app.bsky.feed.post",
+            "created_at": "2026-08-06T00:00:00",
+            "summary": "stale",
+            "op": "create",
+            "local": False,
+        },
+        {
+            "rkey": "3b",
+            "nsid": "app.bsky.feed.post",
+            "created_at": "2026-08-06T00:00:01",
+            "summary": "gap-fill",
+            "op": "create",
+            "local": False,
+        },
     ]
     merged = _merge(event_rows, snapshot)  # type: ignore[arg-type]
     summaries = [r["summary"] for r in merged]
@@ -277,7 +278,7 @@ def test_op_rows_roundtrip_through_jsonl():
     row = ops_log.event_to_row(_event("create", record={"text": "persist me"}))
     assert row
     ops_log.append_op(row)
-    line = open(ops_log.settings.ops_log_path).read().strip()
+    line = Path(ops_log.settings.ops_log_path).read_text().strip()
     assert json.loads(line) == row
 
 

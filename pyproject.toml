@@ -32,6 +32,12 @@ source = "vcs"
 [tool.ruff.lint]
 extend-select = ["I", "UP", "TID251"]
 
+[tool.ruff.lint.per-file-ignores]
+# phi's tools, pollers, endpoints and memory calls are resilience boundaries:
+# a failed external call is logged or handed back to the model as text, never
+# raised into the event loop, so a broad except there is the design.
+"src/bot/**" = ["BLE001"]
+
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
 "pytest.mark.asyncio".msg = "asyncio_mode is auto; drop the marker"
 

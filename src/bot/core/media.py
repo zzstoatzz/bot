@@ -166,16 +166,18 @@ async def fetch_blob_bytes(
 ) -> bytes:
     """Fetch raw blob bytes through com.atproto.sync.getBlob on the DID's PDS."""
     pds = await identity.pds_for(did)
-    async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
-        async with client.stream(
+    async with (
+        httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client,
+        client.stream(
             "GET",
             f"{pds}/xrpc/com.atproto.sync.getBlob",
             params={"did": did, "cid": blob_cid},
-        ) as resp:
-            resp.raise_for_status()
-            data = bytearray()
-            async for chunk in resp.aiter_bytes():
-                data.extend(chunk)
-                if max_bytes is not None and len(data) > max_bytes:
-                    raise ValueError("blob exceeds the read limit")
-            return bytes(data)
+        ) as resp,
+    ):
+        resp.raise_for_status()
+        data = bytearray()
+        async for chunk in resp.aiter_bytes():
+            data.extend(chunk)
+            if max_bytes is not None and len(data) > max_bytes:
+                raise ValueError("blob exceeds the read limit")
+        return bytes(data)

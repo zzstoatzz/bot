@@ -204,7 +204,7 @@ def test_render_empty_when_no_incidents():
 
 
 def test_render_open_and_eligibility():
-    incidents, cursor = gate_firings([_state()], {}, {}, T0)
+    incidents, _cursor = gate_firings([_state()], {}, {}, T0)
     young = render_alert_watch(incidents, T0 + 60)
     assert "pub-search/p95 over 3s" in young
     assert "ESCALATION-ELIGIBLE" not in young.split("]", 1)[1]

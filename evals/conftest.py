@@ -99,7 +99,7 @@ def phi_agent(settings):
                     memory_context = await self.memory.build_user_context(
                         author_handle, query_text=mention_text
                     )
-                except Exception:
+                except Exception:  # noqa: BLE001, S110 - context seeding is best-effort in evals
                     pass
 
             parts = []

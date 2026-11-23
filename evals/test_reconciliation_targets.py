@@ -69,8 +69,10 @@ CASES = [
             ),
         ),
         (
-            "integrated edgewater lakeshore highrise webcam providing southern views "
-            "over osterman beach toward chicago loop",
+            (
+                "integrated edgewater lakeshore highrise webcam providing southern views "
+                "over osterman beach toward chicago loop"
+            ),
             ["webcams"],
         ),
         {"ADD"},
@@ -80,15 +82,19 @@ CASES = [
     pytest.param(
         _rows(
             (
-                "created @chef.cee.wtf, a tool that analyzes bluesky post engagement "
-                "by labeler",
+                (
+                    "created @chef.cee.wtf, a tool that analyzes bluesky post engagement "
+                    "by labeler"
+                ),
                 ["tools"],
             ),
             ("has strong aesthetic preferences for teal and orange", ["aesthetics"]),
         ),
         (
-            "created rite.mino.mobi/sharp, a tool for cycling through single-syllable "
-            "english words with an obscurity filter",
+            (
+                "created rite.mino.mobi/sharp, a tool for cycling through single-syllable "
+                "english words with an obscurity filter"
+            ),
             ["tools"],
         ),
         {"ADD"},

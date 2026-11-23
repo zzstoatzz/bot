@@ -37,7 +37,7 @@ async def _search_network(query: str) -> str:
                 line += f"\n  {desc[:200]}"
             lines.append(line)
         return "\n\n".join(lines)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - network probe skips on any failure
         return f"network search failed: {e}"
 
 

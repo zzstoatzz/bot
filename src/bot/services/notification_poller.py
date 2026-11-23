@@ -184,8 +184,8 @@ class NotificationPoller:
                         time.monotonic() + settings.alert_poll_interval
                     )
                     await self._check_alert_watch()
-            except Exception as e:
-                logger.error(f"alert watch poll error: {e}", exc_info=True)
+            except Exception:
+                logger.exception("alert watch poll error")
 
             try:
                 if settings.provider_watch_interval > 0 and (
@@ -195,8 +195,8 @@ class NotificationPoller:
                         time.monotonic() + settings.provider_watch_interval
                     )
                     await check_provider_watch()
-            except Exception as e:
-                logger.error(f"provider watch error: {e}", exc_info=True)
+            except Exception:
+                logger.exception("provider watch error")
 
             try:
                 if time.monotonic() >= self._next_review_poll:
@@ -204,8 +204,8 @@ class NotificationPoller:
                         time.monotonic() + settings.review_poll_interval
                     )
                     await self._check_review_comments()
-            except Exception as e:
-                logger.error(f"review poll error: {e}", exc_info=True)
+            except Exception:
+                logger.exception("review poll error")
 
             try:
                 await asyncio.sleep(settings.notification_poll_interval)

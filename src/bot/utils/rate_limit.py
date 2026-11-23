@@ -22,9 +22,10 @@ def client_ip(request: Request) -> str:
     """The caller's address, or a stable placeholder when it can't be found."""
     if fly_ip := request.headers.get(_CLIENT_IP_HEADER):
         return fly_ip.strip()
-    if forwarded := request.headers.get(_FORWARDED_FOR_HEADER):
-        if first := forwarded.split(",")[0].strip():
-            return first
+    if (forwarded := request.headers.get(_FORWARDED_FOR_HEADER)) and (
+        first := forwarded.split(",")[0].strip()
+    ):
+        return first
     if request.client and request.client.host:
         return request.client.host
     return "unknown"

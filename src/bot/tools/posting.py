@@ -293,31 +293,37 @@ async def _policy_gate(
         logger.warning(f"policy check unavailable: {e}")
         if unprompted or tool in PUBLIC_TOOLS or tool == "delete_record":
             return (
-                "policy check unavailable for this public action — "
-                "refusing (fail-closed). nothing was posted. lower-stakes "
-                "moves (a like record, save_memory) are still open, or try "
-                "again next cycle.",
+                (
+                    "policy check unavailable for this public action — "
+                    "refusing (fail-closed). nothing was posted. lower-stakes "
+                    "moves (a like record, save_memory) are still open, or try "
+                    "again next cycle."
+                ),
                 "",
             )
         return None, ""  # invited actions fail open
     if verdict["verdict"] == "block" and verdict.get("attempt_id"):
         return (
-            f"PUBLIC ACTION REJECTED. Nothing was published. Attempt {verdict['attempt_id']}. "
-            f"{verdict.get('policy')}: {verdict.get('reason')}\n"
-            "You may use document_public_revision with this attempt_id and your private "
-            "assessment, evidence, and next step. You may disagree with the "
-            "classifier; its verdict is not proof that its explanation is true. "
-            "A revised draft still needs a fresh check. "
-            "Do not publish the rejection report or retry the same draft.",
+            (
+                f"PUBLIC ACTION REJECTED. Nothing was published. Attempt {verdict['attempt_id']}. "
+                f"{verdict.get('policy')}: {verdict.get('reason')}\n"
+                "You may use document_public_revision with this attempt_id and your private "
+                "assessment, evidence, and next step. You may disagree with the "
+                "classifier; its verdict is not proof that its explanation is true. "
+                "A revised draft still needs a fresh check. "
+                "Do not publish the rejection report or retry the same draft."
+            ),
             "",
         )
     if verdict["verdict"] == "block":
         return (
-            f"blocked by policy '{verdict.get('policy', '?')}': "
-            f"{verdict.get('reason', '')}\n"
-            "nothing was posted. this is information, not punishment — "
-            "adapt rather than retry verbatim: a like, save_memory, or a "
-            "different post are all fine moves.",
+            (
+                f"blocked by policy '{verdict.get('policy', '?')}': "
+                f"{verdict.get('reason', '')}\n"
+                "nothing was posted. this is information, not punishment — "
+                "adapt rather than retry verbatim: a like, save_memory, or a "
+                "different post are all fine moves."
+            ),
             "",
         )
     if verdict["verdict"] == "warn":
@@ -597,7 +603,7 @@ def register(agent):
                     + warn_note
                 )
             except Exception as e:
-                logger.exception(f"post failed: {e}")
+                logger.exception("post failed")
                 return f"failed to post: {e}"
 
         ref = await _resolve_post_ref(in_reply_to, ctx.deps.notifications_context or {})
@@ -672,7 +678,7 @@ def register(agent):
                     text, reply_to=reply_ref, allowed_handles=allowed, **post_options
                 )
         except Exception as e:
-            logger.exception(f"post (reply) failed for {in_reply_to}: {e}")
+            logger.exception(f"post (reply) failed for {in_reply_to}")
             return f"failed to post reply: {e}"
 
         bot_status.record_response()

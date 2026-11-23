@@ -206,8 +206,10 @@ async def _portfolio_section(snapshot: dict | None = None) -> list[str]:
             if snapshot is not None:
                 snapshot["wallet"] = {"exists": False, "positions": []}
             return [
-                "you don't have a wallet yet — your first trade via "
-                "place_chicken_trade auto-creates one with $1,000 play money"
+                (
+                    "you don't have a wallet yet — your first trade via "
+                    "place_chicken_trade auto-creates one with $1,000 play money"
+                )
             ]
         raise
     except Exception as e:
@@ -243,8 +245,10 @@ async def _season_section() -> list[str]:
     info = board.get("season_info") or {}
     leaders = board.get("leaders", [])
     lines = [
-        f"season {info.get('num')} · day {info.get('day')}/{info.get('total_days')}"
-        f" · final round {info.get('end_round')} (settles ~13:00 UTC the day after)"
+        (
+            f"season {info.get('num')} · day {info.get('day')}/{info.get('total_days')}"
+            f" · final round {info.get('end_round')} (settles ~13:00 UTC the day after)"
+        )
     ]
 
     ends_at: object = info.get("ends_at")

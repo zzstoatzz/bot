@@ -115,7 +115,7 @@ def journal(monkeypatch):
 
 
 async def test_each_event_is_sent_once_across_polls(journal):
-    states, sent = journal
+    _states, sent = journal
     await provider_watch.check_provider_watch()
     await provider_watch.check_provider_watch()
     assert [key for key, _ in sent] == [

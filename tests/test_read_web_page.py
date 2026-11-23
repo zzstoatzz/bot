@@ -97,7 +97,7 @@ async def test_continuation_keeps_exact_source_while_page_changes(monkeypatch):
     assert "".join(chunks) == original
     assert len(fetches) == 2
     with pytest.raises(FrozenInstanceError):
-        setattr(ctx.deps.web_sources[first["source_id"]], "content", "rewritten")
+        ctx.deps.web_sources[first["source_id"]].content = "rewritten"
 
 
 async def test_invalid_capture_never_silently_fetches(monkeypatch):

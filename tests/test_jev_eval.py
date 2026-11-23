@@ -59,25 +59,25 @@ async def test_unknown_destination_or_model_never_consumes_budget():
 
 def test_uncertainty_and_errors_are_not_counted_as_success_or_false_blocks():
     rows = [
-        dict(
-            id="uncertain",
-            backend="jev",
-            split="dev",
-            dimension="attention",
-            seconds=1,
-            expected=True,
-            prediction=None,
-        ),
-        dict(
-            id="failed",
-            backend="jev",
-            split="dev",
-            dimension="attention",
-            seconds=2,
-            expected=False,
-            prediction=None,
-            error="Timeout",
-        ),
+        {
+            "id": "uncertain",
+            "backend": "jev",
+            "split": "dev",
+            "dimension": "attention",
+            "seconds": 1,
+            "expected": True,
+            "prediction": None,
+        },
+        {
+            "id": "failed",
+            "backend": "jev",
+            "split": "dev",
+            "dimension": "attention",
+            "seconds": 2,
+            "expected": False,
+            "prediction": None,
+            "error": "Timeout",
+        },
     ]
     result = runner.summary(rows)["jev/dev/attention"]
     assert result["abstentions"] == 1

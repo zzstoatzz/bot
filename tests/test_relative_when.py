@@ -89,4 +89,4 @@ def test_tz_naive_handled_as_utc():
     naive = datetime.now(UTC).replace(tzinfo=None, microsecond=0).isoformat()
     s = relative_when(naive)
     # Should parse cleanly; age is "0s ago" or near-zero.
-    assert s.endswith("s ago") or s.endswith("m ago")
+    assert s.endswith(("s ago", "m ago"))

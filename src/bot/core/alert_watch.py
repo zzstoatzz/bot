@@ -324,23 +324,25 @@ def render_alert_watch(incidents: dict[str, dict[str, Any]], now_ts: float) -> s
     if not open_items and not closed_items:
         return ""
     lines = [
-        "[ALERT WATCH — the operator's logfire alerts. they have MUTED the "
-        "raw channels and trust you to absorb this stream. "
-        "Alert age/count describe grouped notifications, not failure duration or retry count. "
-        "Matching rows may describe old failures. Check subsequent runs for the affected "
-        "workload before claiming a continuing failure or recovery. No matches, a snoozed "
-        "monitor, or quiet closure does not establish workload recovery. doctrine: "
-        "(1) default is silence — an open incident here is yours to carry, "
-        "not a prompt to speak; flapping, self-resolved, and known-cause "
-        "firings get absorbed without a word. "
-        "(2) only incidents marked ESCALATION-ELIGIBLE and needing the operator's "
-        "hands warrant a private report via report_operator with the exact incident key. "
-        "Check existing delivery before reporting. Public escalation requires verified "
-        "unanswered private contact and a continuing need for action; six hours "
-        "unanswered permits consideration, not automatic publication. "
-        "(3) tuning observations ('this alert flaps but looks benign') "
-        "belong in your daily reflection or retro, never a tag and never "
-        "a standalone post.]"
+        (
+            "[ALERT WATCH — the operator's logfire alerts. they have MUTED the "
+            "raw channels and trust you to absorb this stream. "
+            "Alert age/count describe grouped notifications, not failure duration or retry count. "
+            "Matching rows may describe old failures. Check subsequent runs for the affected "
+            "workload before claiming a continuing failure or recovery. No matches, a snoozed "
+            "monitor, or quiet closure does not establish workload recovery. doctrine: "
+            "(1) default is silence — an open incident here is yours to carry, "
+            "not a prompt to speak; flapping, self-resolved, and known-cause "
+            "firings get absorbed without a word. "
+            "(2) only incidents marked ESCALATION-ELIGIBLE and needing the operator's "
+            "hands warrant a private report via report_operator with the exact incident key. "
+            "Check existing delivery before reporting. Public escalation requires verified "
+            "unanswered private contact and a continuing need for action; six hours "
+            "unanswered permits consideration, not automatic publication. "
+            "(3) tuning observations ('this alert flaps but looks benign') "
+            "belong in your daily reflection or retro, never a tag and never "
+            "a standalone post.]"
+        )
     ]
     for key, inc in open_items[:RENDER_LIMIT]:
         age = humanize_duration(

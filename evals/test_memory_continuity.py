@@ -117,7 +117,7 @@ async def test_reviewed_memory_guides_the_next_reply(
 
         calls = []
 
-        def hold(name):
+        def hold(name, calls=calls):
             def execute(**args):
                 calls.append({"tool": name, "args": args})
                 if name == "read_notebook":

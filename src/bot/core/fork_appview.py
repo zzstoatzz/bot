@@ -109,7 +109,7 @@ class ForkAppView:
         await self.client.authenticate()
         content = await asyncio.to_thread(self._call, "query", method, arguments)
         if not isinstance(content, dict):
-            raise ValueError(f"{self.app.name} {method} returned no JSON")
+            raise ValueError(f"{self.app.name} {method} returned no JSON")  # noqa: TRY004 - bad upstream data; callers catch ValueError
         return as_bluesky(content, self.app)
 
     async def get_notifications(

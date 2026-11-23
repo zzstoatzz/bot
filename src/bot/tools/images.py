@@ -95,7 +95,7 @@ def register(agent):
             from openai import AsyncOpenAI
 
             client = AsyncOpenAI(api_key=settings.openai_api_key)
-            w, h = _SIZES[aspect]
+            _w, _h = _SIZES[aspect]
             result = await client.images.generate(
                 model="gpt-image-1",
                 prompt=prompt,
@@ -112,13 +112,13 @@ def register(agent):
             return f"image generation failed: {type(e).__name__}: {str(e)[:200]}"
 
         try:
-            data, mime, width, height = _compress_to_limit(raw)
+            data, _mime, width, height = _compress_to_limit(raw)
             await bot_client.authenticate()
             resp = bot_client.client.upload_blob(data)
             blob = resp.blob.model_dump(mode="json", by_alias=True)
             remember_image(blob["ref"]["$link"], data)
         except Exception as e:
-            logger.exception(f"blob upload failed: {e}")
+            logger.exception("blob upload failed")
             return (
                 f"generated, but blob upload failed: {type(e).__name__}: {str(e)[:200]}"
             )

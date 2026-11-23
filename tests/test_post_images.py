@@ -63,9 +63,11 @@ async def test_invalid_images_are_rejected_before_review(defect):
         image.blob.mime_type = "image/jpeg"
     if defect == "invalid":
         data = b"x" * image.blob.size
-    with patch.object(post_images, "fetch_blob_bytes", AsyncMock(return_value=data)):
-        with pytest.raises((ValueError, OSError)):
-            await prepare_images(DID, [image])
+    with (
+        patch.object(post_images, "fetch_blob_bytes", AsyncMock(return_value=data)),
+        pytest.raises((ValueError, OSError)),
+    ):
+        await prepare_images(DID, [image])
 
 
 async def test_judge_receives_actual_image_bytes_and_caption():

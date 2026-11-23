@@ -119,7 +119,7 @@ async def test_reads_and_untainted_runs_are_not_reviewed(
     review = AsyncMock(return_value="refused")
     monkeypatch.setattr(export_guard, "review", review)
 
-    result, handler = await _execute(tool, permissioned)
+    result, _handler = await _execute(tool, permissioned)
 
     assert result == "done"
     review.assert_not_awaited()

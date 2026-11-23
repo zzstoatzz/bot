@@ -181,7 +181,7 @@ def register(agent):
                     if not isinstance(run, dict) or not isinstance(
                         run.get("state_type"), str
                     ):
-                        raise ValueError("Incomplete workflow state")
+                        raise ValueError("Incomplete workflow state")  # noqa: TRY004 - bad upstream data; callers catch ValueError
                     receipt["live_status"] = {
                         k: run.get(k)
                         for k in ("state_type", "state_name", "start_time", "end_time")

@@ -426,8 +426,8 @@ class MessageHandler:
                     author_lookups=author_lookups,
                     image_urls_by_uri=image_urls_by_uri or None,
                 )
-            except Exception as e:
-                logger.exception(f"batch handler error: {e}")
+            except Exception:
+                logger.exception("batch handler error")
                 bot_status.record_error()
 
     async def _run_scheduled(self, span_name: str, call):
@@ -436,8 +436,8 @@ class MessageHandler:
             try:
                 summary = await call()
                 logger.info(f"{span_name}: {summary[:200]}")
-            except Exception as e:
-                logger.exception(f"{span_name} failed: {e}")
+            except Exception:
+                logger.exception(f"{span_name} failed")
 
     async def cycle(self):
         """One cognitive cycle — see :meth:`PhiAgent.process_cycle`."""
@@ -522,5 +522,5 @@ class MessageHandler:
             try:
                 summary = await self.agent.process_reflection()
                 logger.info(f"daily reflection: {summary[:200]}")
-            except Exception as e:
-                logger.exception(f"daily reflection failed: {e}")
+            except Exception:
+                logger.exception("daily reflection failed")

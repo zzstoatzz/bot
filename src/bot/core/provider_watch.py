@@ -42,7 +42,7 @@ _LEAD = {
 def _when(iso: str | None) -> str:
     if not iso:
         return ""
-    stamp = datetime.fromisoformat(iso.replace("Z", "+00:00"))
+    stamp = datetime.fromisoformat(iso)
     return stamp.strftime("%b %-d %H:%M UTC")
 
 

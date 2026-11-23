@@ -1,7 +1,7 @@
 """Public delivery contract and private, durable classifier attempt journal."""
 
 import sqlite3
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
@@ -42,7 +42,7 @@ SUMMARY = (
 
 
 @contextmanager
-def connect() -> Iterator[sqlite3.Connection]:
+def connect() -> Generator[sqlite3.Connection]:
     JOURNAL.parent.mkdir(parents=True, exist_ok=True)
     db = sqlite3.connect(JOURNAL)
     db.row_factory = sqlite3.Row

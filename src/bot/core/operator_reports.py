@@ -61,9 +61,7 @@ async def send_report(incident: str, text: str) -> dict:
                 api.send_message,
                 {"convo_id": conversation.convo.id, "message": {"text": text}},
             )
-            sent = datetime.fromisoformat(
-                message.sent_at.replace("Z", "+00:00")
-            ).timestamp()
+            sent = datetime.fromisoformat(message.sent_at).timestamp()
             with connect() as db:
                 db.execute(
                     "UPDATE reports SET state=?,convo=?,message=?,sent=? WHERE incident=?",
@@ -107,7 +105,7 @@ async def report_state(incident: str) -> dict:
             sent_at = getattr(message, "sent_at", None)
             if not sent_at:
                 continue
-            ts = datetime.fromisoformat(sent_at.replace("Z", "+00:00")).timestamp()
+            ts = datetime.fromisoformat(sent_at).timestamp()
             if ts <= state["sent"]:
                 return state
             sender = getattr(message, "sender", None)

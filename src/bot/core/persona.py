@@ -27,7 +27,7 @@ def invalidate_persona_cache() -> None:
 
 def _parse(ts: str) -> datetime | None:
     try:
-        parsed = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(ts)
     except (ValueError, AttributeError):
         return None
     return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)

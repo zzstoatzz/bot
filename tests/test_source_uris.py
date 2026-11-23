@@ -1,5 +1,7 @@
 """Tests for memory source-uri citations: model validation, role inference, render."""
 
+from typing import ClassVar
+
 from bot.memory.namespace_memory import _citation_tail, _source_role
 
 PHI_DID = "did:plc:65sucjiel52gefhcdcypynsr"
@@ -201,7 +203,7 @@ def test_links_survive_atproto_model_objects():
         uri = "https://example.com/from-a-model"
 
     class Facet:
-        features = [Feature()]
+        features: ClassVar = [Feature()]
 
     assert _links_in({"text": "see this", "facets": [Facet()]}) == [
         "example.com/from-a-model"

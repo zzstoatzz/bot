@@ -131,7 +131,7 @@ def selection_state(state: dict) -> dict:
     leaders = sorted(contenders, key=lambda c: c.get("p") or 0, reverse=True)[:12]
     movers = sorted(
         contenders,
-        key=lambda c: (((c.get("deltas") or {}).get("1h") or {}).get("likes") or 0),
+        key=lambda c: ((c.get("deltas") or {}).get("1h") or {}).get("likes") or 0,
         reverse=True,
     )[:6]
     selected = {c["did"] for c in leaders + movers}

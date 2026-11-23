@@ -38,9 +38,11 @@ async def get_owned_feeds_block(graze: GrazeClient) -> str:
         return ""
 
     lines = [
-        "[OWNED FEEDS — read with read_feed(name=...). these are curated; "
-        "they reflect what's worth attention on a specific topic, not "
-        "ambient timeline.]"
+        (
+            "[OWNED FEEDS — read with read_feed(name=...). these are curated; "
+            "they reflect what's worth attention on a specific topic, not "
+            "ambient timeline.]"
+        )
     ]
     for f in feeds:
         display = f.get("display_name") or f.get("name") or "unnamed"
