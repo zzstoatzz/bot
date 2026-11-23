@@ -8,8 +8,8 @@ Python bot with a FastAPI web surface. Work from the repository root.
 - `just check` runs lint, typechecking and tests; `just evals` runs behavioral evaluations.
 - Use `just loq-relax <file>` for justified line-limit changes; do not edit
   `loq.toml` manually or compress code to satisfy it.
-- Imports belong at the top except for circular dependencies. Tests do not use
-  `pytest.mark.asyncio`. Tool parameters use `Annotated[T, Field(description=...)]`.
+- Imports belong at the top except for circular dependencies. Tool parameters use
+  `Annotated[T, Field(description=...)]`.
 
 ## behavior and authority
 
