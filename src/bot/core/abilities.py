@@ -246,6 +246,10 @@ RISK: dict[str, Risk] = {
         "magnitude": "high",
         "reason": "spends real money per call and uploads a blob to her PDS.",
     },
+    "backtest_chicken_policy": {
+        "magnitude": "low",
+        "reason": "adds newly settled public market rounds to a local cache; it places no orders and publishes nothing.",
+    },
     "place_chicken_trade": {
         "magnitude": "high",
         "reason": "spends real money on a live market; a filled order cannot be recalled.",

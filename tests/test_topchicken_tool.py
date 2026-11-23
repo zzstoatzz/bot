@@ -513,3 +513,42 @@ async def test_leaderboard_does_not_inject_full_doctrine():
     assert "season scheduled end: 2026-09-07 13:00 UTC" in out
     assert "leaderboard settling: false" in out
     assert "← you" in out
+
+
+async def test_backtest_runs_on_stored_history_when_the_sync_fails(
+    tmp_path, monkeypatch
+):
+    from bot.core import chicken_backtest, chicken_history
+
+    db = tmp_path / "history.sqlite3"
+    conn = chicken_history.connect(db)
+    ws = 1_795_132_800
+    with conn:
+        conn.execute(
+            "INSERT INTO rounds VALUES (?, ?, ?, ?, ?)",
+            ("2026-11-20", "settled", ws, ws + 30 * 3600, "did:a"),
+        )
+        conn.execute(
+            "INSERT INTO charts VALUES (?, ?, ?, ?, ?)",
+            (
+                "2026-11-20",
+                "did:a",
+                "a.test",
+                300,
+                chicken_history._pack([[ws + 7 * 3600, 0.02, 40, 10.0]]),
+            ),
+        )
+    conn.close()
+    monkeypatch.setattr(chicken_history, "DB_PATH", db)
+    monkeypatch.setattr(
+        chicken_history, "sync", AsyncMock(side_effect=httpx.ConnectError("down"))
+    )
+
+    fn = _register()["backtest_chicken_policy"]
+    out = await fn(
+        SimpleNamespace(),
+        policy=chicken_backtest.Policy(start_hour=8, end_hour=9),
+        holdout=10,
+    )
+    assert out.startswith("holdout (from 2026-11-20): 1 rounds, traded 1")
+    assert "couldn't fetch newly settled rounds" in out

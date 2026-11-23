@@ -1,5 +1,24 @@
 # changelog
 
+## 2026-11-23 — phi can backtest a chicken policy
+
+The ledger review that led to the ruin-floor fix found phi's market learning
+stored as prose rules, each drawn from one round, with falsifiers needing more
+rounds than ever arrived. The winners trade simple, repeatable shapes, so phi
+now has `backtest_chicken_policy`: she declares a small parametric policy and
+it replays over every settled round since 07-01, scored walk-forward (tuned
+before a holdout, judged only on it) by P&L, the hit rate of its entries
+against the average price paid, and the market's log loss at those entries.
+
+Fills use the chart price, the house spread and a size curve fitted from live
+quotes; a 15% overfill phi cited turned out to be a like repricing the name
+between her read and her fill, not book depth. The history is a one-time
+backfill of each round's published top 25 and their charts, about 200KB a
+round compressed, plus each new round once as it settles. Only those 25 have
+public charts, so replayed candidates lean toward names that finished well,
+and every report says so. Policies are not reviewed by the policy judge,
+which has never reviewed trades: how to trade is phi's to learn.
+
 ## 2026-11-23 — the chicken ruin floor is enforced in code
 
 The operator's ruin floor (one round's loss must not take the season bankroll

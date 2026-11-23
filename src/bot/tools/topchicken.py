@@ -29,6 +29,7 @@ from pydantic import Field
 from pydantic_ai import RunContext
 
 from bot.config import settings
+from bot.core import chicken_backtest, chicken_history
 from bot.core.atproto_client import bot_client
 from bot.core.chicken_strategy import (
     Heuristic,
@@ -607,3 +608,47 @@ def register(agent):
             "compensate; re-check with check_top_chicken and flag it to the operator "
             "if the fill never lands"
         )
+
+    @agent.tool
+    async def backtest_chicken_policy(
+        ctx: RunContext[PhiDeps],
+        policy: Annotated[
+            chicken_backtest.Policy,
+            Field(description="The policy to replay; every field has a default."),
+        ],
+        holdout: Annotated[
+            int,
+            Field(
+                ge=10,
+                le=120,
+                description="How many of the most recent settled rounds are held out for scoring.",
+            ),
+        ] = 30,
+    ) -> str:
+        """Replay a declared trading policy over every settled round and score it walk-forward.
+
+        Tune a policy on the rounds before the holdout; the holdout line is the
+        result that counts, and every look at it spends some of it. Edge is the
+        hit rate of the policy's entries minus the average price it paid, with
+        its standard error; market log loss shows how well the price at those
+        entries already predicted them. Fills use the chart price, the house
+        spread and a size curve fitted from live quotes. Every candidate is a
+        name that finished in the round's top 25, the only names with public
+        charts, so keep top_k small. Newly settled rounds are fetched first,
+        which can take a minute.
+        """
+        try:
+            added = await chicken_history.sync(chicken_history.DB_PATH, limit=3)
+        except Exception as exc:
+            logger.warning("chicken history sync failed: %s", type(exc).__name__)
+            added = None
+        text = await asyncio.to_thread(
+            lambda: chicken_backtest.report(
+                policy, chicken_history.load(chicken_history.DB_PATH), holdout
+            )
+        )
+        if added is None:
+            text += (
+                "\ncouldn't fetch newly settled rounds; this ran on the stored history."
+            )
+        return text

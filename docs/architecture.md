@@ -118,4 +118,14 @@ The TypeSafe client in `services/typesafe.py` selects relevant market heuristics
 against a current snapshot. `core/chicken_strategy.py` owns those questions and
 PDS rule records. The shared client makes no automatic retries and closes at
 shutdown. Selection failures are explicit; they do not append the old doctrine.
-Trade restrictions are enforced by the trade tool, outside heuristic retrieval.
+Trade restrictions are enforced by the trade tool, outside heuristic retrieval:
+`place_chicken_trade` refuses a buy that could leave cash under the $500 ruin floor.
+
+`core/chicken_history.py` keeps a local copy of settled market rounds in
+`/data/chicken_history.sqlite3`: each round's result, its published top 25 and
+their price/likes charts, fetched once at a pace the market's small API can take.
+`core/chicken_backtest.py` replays a parametric policy over that copy with a fill
+model fitted from live quotes, and scores it walk-forward: tuned before a holdout,
+judged only on it. Phi reaches it through `backtest_chicken_policy`. Only the
+final top 25 of a past round have public charts, so replayed candidates are
+biased toward names that finished well; the report says so.
