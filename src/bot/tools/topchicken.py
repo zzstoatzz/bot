@@ -48,10 +48,40 @@ TRADER_URL = "https://topchicken.cee.wtf/api/trader/{did}"
 LEADERBOARD_URL = "https://topchicken.cee.wtf/api/leaderboard"
 QUOTE_URL = "https://topchicken.cee.wtf/api/quote/{round}/{did}"
 ORDER_COLLECTION = "wtf.cee.topchicken.order"
+STARTING_BALANCE_SUBC = 10_000_000
+RUIN_FLOOR_SUBC = STARTING_BALANCE_SUBC // 2
 
 
 def _fmt_subc(subc: int) -> str:
     return f"${subc / 10000:.2f}"
+
+
+async def _ruin_floor_refusal(did: str, max_cost_subc: int) -> str | None:
+    """Refuse a buy whose worst case would leave cash below the ruin floor.
+
+    Money already spent on open positions is out of the cash balance, so
+    keeping cash at or above the floor means even losing every open position
+    leaves the season bankroll at the floor.
+    """
+    try:
+        trader = await _get_json(TRADER_URL.format(did=did))
+        balance = trader.get("balance_subc", 0)
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code != 404:
+            return "couldn't read your wallet, so the ruin floor can't be checked — not placing the buy. try again in a bit"
+        balance = STARTING_BALANCE_SUBC
+    except Exception as e:
+        logger.warning(f"chicken trader fetch failed: {e}")
+        return "couldn't read your wallet, so the ruin floor can't be checked — not placing the buy. try again in a bit"
+    if balance - max_cost_subc >= RUIN_FLOOR_SUBC:
+        return None
+    room = max(balance - RUIN_FLOOR_SUBC, 0)
+    return (
+        f"refused by the operator ruin floor: this buy could cost up to "
+        f"{_fmt_subc(max_cost_subc)} against {_fmt_subc(balance)} cash, and cash "
+        f"must stay at or above {_fmt_subc(RUIN_FLOOR_SUBC)}. room for at most "
+        f"{_fmt_subc(room)} more in buys — size down and re-quote"
+    )
 
 
 async def _get_json(url: str, params: dict | None = None) -> dict:
@@ -450,7 +480,8 @@ def register(agent):
         OPERATOR INVARIANTS (few, and only these):
         - ruin-avoidance: size so a single round's total loss cannot take the
           season bankroll below half its starting $1,000. losing is playable;
-          being unable to keep playing is not.
+          being unable to keep playing is not. this tool refuses any buy that
+          could take cash below $500.
         - pre-register: estimated hit probability and the miss-plan, stated in
           your strategy or goal record before the bet. a strategy that only
           explains results afterward can't be trusted — by you or anyone.
@@ -519,6 +550,8 @@ def register(agent):
         await bot_client.authenticate()
         assert bot_client.client.me is not None
         did = bot_client.client.me.did
+        if side == "buy" and (refusal := await _ruin_floor_refusal(did, cap)):
+            return refusal
         placed_at = datetime.now(UTC)
         bot_client.client.com.atproto.repo.create_record(
             data={

@@ -234,7 +234,8 @@ def _trade_patches(bc, quote, trader=None):
             {
                 topchicken.MARKET_URL: OPEN_MARKET,
                 QUOTE_URL_GOOSE: quote,
-                TRADER_URL_PHI: trader or {"balance_subc": 0, "trades": []},
+                TRADER_URL_PHI: trader
+                or {"balance_subc": topchicken.STARTING_BALANCE_SUBC, "trades": []},
             }
         )
     )
@@ -362,6 +363,81 @@ async def test_fill_confirmed_only_when_the_trade_lands_in_the_ledger():
         if not expect_confirmed:
             assert "no matching" in out
             assert "do NOT re-trade" in out
+
+
+GOOSE_QUOTE = {
+    "shares": 100,
+    "total_subc": 400_000,
+    "avg_price_subc": 4000,
+    "slippage_pct": 2.0,
+    "filled_fully": True,
+}
+
+
+async def test_buy_that_could_take_cash_below_the_ruin_floor_is_refused():
+    """Regression: the $500 ruin floor lived only in the docstring; nothing in
+    place_chicken_trade read the balance before writing the order."""
+    fn = _register()["place_chicken_trade"]
+    bc = _mock_bot_client()
+    trader = {"balance_subc": 5_300_000, "trades": []}
+    with _trade_patches(bc, GOOSE_QUOTE, trader=trader):
+        out = await fn(
+            SimpleNamespace(), contender="@goose.art", side="buy", shares=100
+        )
+    assert "ruin floor" in out
+    assert "$30.00" in out
+    bc.client.com.atproto.repo.create_record.assert_not_called()
+
+
+async def test_buy_that_leaves_cash_at_the_floor_goes_through():
+    fn = _register()["place_chicken_trade"]
+    bc = _mock_bot_client()
+    cap = math.ceil(GOOSE_QUOTE["total_subc"] * 1.02)
+    trader = {"balance_subc": topchicken.RUIN_FLOOR_SUBC + cap, "trades": []}
+    with _trade_patches(bc, GOOSE_QUOTE, trader=trader):
+        out = await fn(
+            SimpleNamespace(), contender="@goose.art", side="buy", shares=100
+        )
+    assert "order placed" in out
+    bc.client.com.atproto.repo.create_record.assert_called_once()
+
+
+async def test_sell_below_the_floor_is_still_allowed():
+    fn = _register()["place_chicken_trade"]
+    bc = _mock_bot_client()
+    trader = {"balance_subc": 1_000_000, "trades": []}
+    with _trade_patches(bc, GOOSE_QUOTE, trader=trader):
+        out = await fn(
+            SimpleNamespace(), contender="@goose.art", side="sell", shares=100
+        )
+    assert "order placed" in out
+
+
+async def test_buy_is_refused_when_the_wallet_cannot_be_read():
+    fn = _register()["place_chicken_trade"]
+    bc = _mock_bot_client()
+    with _trade_patches(bc, GOOSE_QUOTE, trader=httpx.ConnectError("down")):
+        out = await fn(
+            SimpleNamespace(), contender="@goose.art", side="buy", shares=100
+        )
+    assert "ruin floor can't be checked" in out
+    bc.client.com.atproto.repo.create_record.assert_not_called()
+
+
+async def test_first_buy_without_a_wallet_uses_the_starting_balance():
+    fn = _register()["place_chicken_trade"]
+    bc = _mock_bot_client()
+    missing = httpx.HTTPStatusError(
+        "404",
+        request=httpx.Request("GET", TRADER_URL_PHI),
+        response=httpx.Response(404),
+    )
+    with _trade_patches(bc, GOOSE_QUOTE, trader=missing):
+        out = await fn(
+            SimpleNamespace(), contender="@goose.art", side="buy", shares=100
+        )
+    assert "order placed" in out
+    bc.client.com.atproto.repo.create_record.assert_called_once()
 
 
 async def test_trade_refuses_under_operator_override():

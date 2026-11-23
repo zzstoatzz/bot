@@ -1,5 +1,16 @@
 # changelog
 
+## 2026-11-23 — the chicken ruin floor is enforced in code
+
+The operator's ruin floor (one round's loss must not take the season bankroll
+below $500) was stated in `place_chicken_trade`'s docstring, and
+`update_chicken_strategy` said the trade tool enforced it, but nothing read the
+wallet before an order was written. phi found the same gap on her own when
+asked. A buy is now refused when its quoted maximum cost would leave cash under
+$500; money in open positions is already out of cash, so losing every open
+position still leaves the floor. A wallet that can't be read refuses the buy,
+a missing wallet counts as the starting $1,000, and sells are never blocked.
+
 ## 2026-11-22 — the memory graph is laid out without numpy
 
 numpy was a runtime dependency for one call: the SVD that places people on
