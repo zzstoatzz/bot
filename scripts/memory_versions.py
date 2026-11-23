@@ -36,6 +36,7 @@ def get_deploy_windows() -> list[dict]:
     result = subprocess.run(
         ["fly", "releases", "-a", "zzstoatzz-phi", "--json"],
         capture_output=True,
+        check=False,
         text=True,
     )
     if result.returncode != 0:
@@ -55,6 +56,7 @@ def get_deploy_windows() -> list[dict]:
             "--format=%(creatordate:iso-strict) %(refname:short)",
         ],
         capture_output=True,
+        check=False,
         text=True,
         cwd=".",
     )
@@ -71,11 +73,9 @@ def get_deploy_windows() -> list[dict]:
     # build windows: each release's window is [its start, next release's start)
     windows = []
     for i, rel in enumerate(releases):
-        start = datetime.fromisoformat(rel["CreatedAt"].replace("Z", "+00:00"))
+        start = datetime.fromisoformat(rel["CreatedAt"])
         if i + 1 < len(releases):
-            end = datetime.fromisoformat(
-                releases[i + 1]["CreatedAt"].replace("Z", "+00:00")
-            )
+            end = datetime.fromisoformat(releases[i + 1]["CreatedAt"])
         else:
             end = datetime.now(UTC)
 

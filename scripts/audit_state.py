@@ -137,7 +137,7 @@ def audit_tpuf() -> dict:
             for row in resp.rows or []:
                 kinds_total[getattr(row, "kind", None) or "<missing>"] += 1
                 status_total[getattr(row, "status", None) or "<missing>"] += 1
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - one namespace's failure is reported in the audit
             out["namespaces"][ns_id] = {"error": str(e)}
             continue
         out["namespaces"][ns_id] = {
@@ -167,7 +167,7 @@ def audit_tpuf() -> dict:
                 "by_label": dict(kinds),
                 "total": sum(kinds.values()),
             }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - one namespace's failure is reported in the audit
             out["namespaces"][shared] = {"error": str(e)}
 
     return out

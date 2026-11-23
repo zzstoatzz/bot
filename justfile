@@ -21,7 +21,7 @@ fmt:
     uv run ruff format src/ evals/ tests/
 
 lint:
-    uv run ruff check src/ evals/ tests/
+    uv run ruff check .
 
 typecheck:
     uv run ty check src/ evals/ tests/

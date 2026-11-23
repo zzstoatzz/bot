@@ -45,6 +45,6 @@ steps:
     command: |
       export LD_LIBRARY_PATH="$(dirname "$(ls /nix/store/*-gcc-*-lib/lib/libstdc++.so.6 | head -1)")"
       uv sync --frozen
-      uv run ruff check src/ evals/ tests/
+      uv run ruff check .
       uv run ruff format --check
       uv run pytest -q

@@ -108,7 +108,7 @@ def main() -> None:
         )
         print(f"published {nsid} -> {result['uri']}")
 
-    print(f"\nnow point _lexicon.{sorted(authorities)[0]} TXT at did={did}")
+    print(f"\nnow point _lexicon.{min(authorities)} TXT at did={did}")
 
 
 if __name__ == "__main__":
