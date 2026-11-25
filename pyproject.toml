@@ -9,7 +9,7 @@ dependencies = [
     "anthropic",
     "atproto>=0.0.71",
     "fastapi",
-    "fastmcp==4.2.0a1",
+    "fastmcp[events]==4.2.6",
     "libipld>=3",
     "logfire[fastapi]",
     "openai",
