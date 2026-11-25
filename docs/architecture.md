@@ -22,6 +22,7 @@ in `.agents/skills/`, with a `.claude/skills` discovery symlink for Claude Code.
 | Bio | First unpaused tick when due, then every 24 hours | Review profile description; include avatar/header review weekly |
 | Network activity | Five-minute external Prefect watcher | Investigate sustained activity above twice the hourly baseline; one wake per episode |
 | Alert | Logfire webhook or watched relay incident; hourly alert reconciliation | Inspect the incident with fresh workload context |
+| Failed automatic recovery | Private MCP event from the Prefect alerts server | Recheck Pollz and send a private report if it is still down |
 | Pull review | Explicit review trigger | Read and review the identified patch |
 | Chicken scout/precheck | External Prefect schedules/control triggers | Assess the current play-money market and act within trade restrictions |
 | Publication curation / likes review | External weekly triggers | Read and curate material Phi wants to retain or recommend |

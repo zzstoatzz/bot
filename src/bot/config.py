@@ -157,6 +157,9 @@ class Settings(BaseSettings):
         "polls — firings arrive by webhook push (/api/alerts); the poll "
         "catches missed deliveries and drives quiet-close",
     )
+    recovery_mcp_url: str | None = None
+    recovery_mcp_token: SecretStr | None = None
+
     alert_webhook_token: str | None = Field(
         default=None,
         description="Shared secret in the /api/alerts webhook URL; the "

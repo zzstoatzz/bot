@@ -41,6 +41,7 @@ from bot.logging_config import _clear_uvicorn_handlers
 from bot.memory import NamespaceMemory
 from bot.memory.namespace_memory import summary_is_current
 from bot.services.notification_poller import NotificationPoller
+from bot.services.recovery_events import start_recovery_watch
 from bot.services.typesafe import close_client as close_typesafe_client
 from bot.status import bot_status
 from bot.ui import activity_router
@@ -94,6 +95,7 @@ async def lifespan(app: FastAPI):
     await poller.start()
     watchdog_task = asyncio.create_task(watchdog.run(), name="watchdog")
     budget_task = asyncio.create_task(context_budget_loop(), name="context-budget")
+    recovery_watch = start_recovery_watch()
 
     # Tail phi's own repo commits from jetstream: [RECENT OPERATIONS] renders
     # from this event log (deletes and edits are invisible to listRecords),
@@ -138,6 +140,9 @@ async def lifespan(app: FastAPI):
     logger.info("shutting down phi")
     watchdog_task.cancel()
     budget_task.cancel()
+    if recovery_watch:
+        recovery_watch.cancel()
+        await asyncio.gather(recovery_watch, return_exceptions=True)
     if backfill_task:
         backfill_task.cancel()
     if ops_consumer:

@@ -1,5 +1,11 @@
 # changelog
 
+## 2026-11-25 — watch for failed Cellar recovery
+
+Phi can subscribe to a dedicated private MCP feed from the Prefect alerts
+service. When Fly exhausts Cellar's restart budget and Pollz is still
+unhealthy, she checks the endpoint herself and can send one private report.
+
 ## 2026-11-25 — retire automatic pull-comment wake-ups
 
 The Jetstream comment watcher and its knot polling fallback had no observed

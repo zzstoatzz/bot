@@ -83,14 +83,16 @@ async def send_report(incident: str, text: str) -> dict:
         }
 
 
-async def report_state(incident: str) -> dict:
+def delivery_record(incident: str) -> dict:
     with connect() as db:
         row = db.execute(
             "SELECT * FROM reports WHERE incident=?", (incident,)
         ).fetchone()
-    if row is None:
-        return {"incident": incident, "state": "not-sent"}
-    state = dict(row)
+    return dict(row) if row else {"incident": incident, "state": "not-sent"}
+
+
+async def report_state(incident: str) -> dict:
+    state = delivery_record(incident)
     if state["state"] != "sent" or state["acknowledged"]:
         return state
     # Any operator response since the ping stops automatic public escalation.

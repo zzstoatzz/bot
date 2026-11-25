@@ -21,3 +21,11 @@ the site off routing, so the watchdog ignores it. `reason` and
 "model unavailable", and the Prefect `phi-trigger` validation, which requires
 `healthy`, refuses to start a pass. The state is per process: a restart
 reads healthy until the next refused request.
+
+## private recovery watch
+
+Set `RECOVERY_MCP_URL` to the alerts service's `/phi/mcp` and
+`RECOVERY_MCP_TOKEN` to Phi's dedicated bearer to enable the background
+watch. Poll failures retain the cursor in the operator report database.
+Phi respects pause and operator override, probes Pollz again, and records
+the private DM through the existing receipt ledger.
