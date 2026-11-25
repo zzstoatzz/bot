@@ -65,7 +65,6 @@ class NotificationPoller:
         self._background_tasks: set[asyncio.Task] = set()
         self._next_alert_watch_poll = 0.0
         self._next_provider_watch_poll = 0.0
-        self._next_review_poll = 0.0
         self._next_dm_poll = 0.0
         self._dm_task: asyncio.Task | None = None
         self._bio_task: asyncio.Task | None = None
@@ -199,15 +198,6 @@ class NotificationPoller:
                 logger.exception("provider watch error")
 
             try:
-                if time.monotonic() >= self._next_review_poll:
-                    self._next_review_poll = (
-                        time.monotonic() + settings.review_poll_interval
-                    )
-                    await self._check_review_comments()
-            except Exception:
-                logger.exception("review poll error")
-
-            try:
                 await asyncio.sleep(settings.notification_poll_interval)
             except asyncio.CancelledError:
                 logger.info("notification poller shutting down")
@@ -270,38 +260,6 @@ class NotificationPoller:
                 operator_reports.mark_messages_handled(ids)
         except Exception as error:
             logger.error("operator DM check failed: %s", type(error).__name__)
-
-    async def _check_review_comments(self):
-        """Wake phi for review comments on her pull requests that jetstream
-        did not deliver (see core/review_poll.py). One wake per comment,
-        dispatched in the background so the poll loop keeps its cadence."""
-        import httpx
-
-        from bot.core import review_poll
-        from bot.core.ops_log import pull_comment_material
-
-        me = getattr(self.client.client, "me", None)
-        if not me or not settings.reviewer_dids:
-            return
-        async with httpx.AsyncClient() as http:
-            comments = await review_poll.new_review_comments(
-                me.did, tuple(settings.reviewer_dids), http
-            )
-        for comment in comments:
-            review_poll.mark_handled(comment["uri"])
-            handle = comment["did"]
-            try:
-                profile = self.client.client.app.bsky.actor.get_profile(
-                    {"actor": comment["did"]}
-                )
-                handle = profile.handle or handle
-            except Exception as e:
-                logger.debug(f"commenter handle lookup failed: {e}")
-            material = pull_comment_material(comment["record"], handle, comment["pull"])
-            logger.info(f"review poll: waking for {comment['uri']}")
-            task = asyncio.create_task(self.handler.pull_comment(material))
-            self._background_tasks.add(task)
-            task.add_done_callback(self._background_tasks.discard)
 
     async def _check_notifications(self):
         """Check for new notifications and dispatch the whole batch as one task.

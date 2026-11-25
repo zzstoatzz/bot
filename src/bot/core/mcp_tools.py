@@ -48,7 +48,7 @@ MCP_DROPPED: dict[str, frozenset[str]] = {
 # of the request until she finds them with `search_tools`, except in a run
 # whose prompt sends her straight to them.
 MCP_DEFERRED: dict[str, frozenset[str]] = {
-    "tangled": frozenset({"pull request comment", "pull request review"}),
+    "tangled": frozenset({"pull request review"}),
     "doodl": frozenset(),
 }
 

@@ -436,169 +436,7 @@ def test_anomalies_never_tally():
     assert "likes ×1" in block
 
 
-class TestPullCommentWake:
-    """2026-08-21: the operator reviews phi's pull requests on tangled, and
-    the only way a review comment reached her was someone posting about it
-    on bluesky. The jetstream socket now also watches the operator's repo
-    for sh.tangled.repo.pull.comment records on her pulls and wakes her."""
-
-    PHI = "did:plc:phi"
-    OWNER = "did:plc:owner"
-
-    @pytest.fixture(autouse=True)
-    def _isolated_state(self, monkeypatch, tmp_path):
-        """the handled set and both cursors default to /data, which a CI
-        container can write — one test's mark_handled leaked into the next
-        on the first spindle run (2026-08-23)."""
-        from bot.core import review_poll
-
-        monkeypatch.setattr(review_poll, "HANDLED_FILE", tmp_path / "handled.json")
-        monkeypatch.setattr(ops_log, "WATCHED_CURSOR_FILE", tmp_path / "watched.json")
-        monkeypatch.setattr(ops_log, "STREAM_CURSOR_FILE", tmp_path / "stream.json")
-
-    def _consumer(self, calls, appended):
-        async def on_pull_comment(did, record):
-            calls.append((did, record))
-
-        c = ops_log.OpsLogConsumer(
-            self.PHI, watch_dids=(self.OWNER,), on_pull_comment=on_pull_comment
-        )
-        return c
-
-    def _event(self, did, collection, record, op="create"):
-        import json
-
-        return json.dumps(
-            {
-                "did": did,
-                "kind": "commit",
-                "time_us": 1,
-                "commit": {
-                    "operation": op,
-                    "collection": collection,
-                    "rkey": "r",
-                    "record": record,
-                },
-            }
-        )
-
-    def test_url_watches_both_repos(self):
-        c = self._consumer([], [])
-        url = c._url()
-        assert f"wantedDids={self.PHI}" in url and f"wantedDids={self.OWNER}" in url
-
-    async def test_owner_comment_on_phis_pull_wakes(self, monkeypatch, tmp_path):
-        calls, appended = [], []
-        monkeypatch.setattr(ops_log, "append_op", lambda row: appended.append(row))
-        monkeypatch.setattr(ops_log, "WATCHED_CURSOR_FILE", tmp_path / "w.json")
-        c = self._consumer(calls, appended)
-        record = {
-            "pull": f"at://{self.PHI}/sh.tangled.repo.pull/3abc",
-            "body": "2/10. more feynman.",
-        }
-        await c._handle(self._event(self.OWNER, ops_log.PULL_COMMENT_NSID, record))
-        assert calls == [(self.OWNER, record)]
-        assert appended == []
-
-    async def test_owner_comment_on_someone_elses_pull_is_ignored(self, monkeypatch):
-        calls, appended = [], []
-        monkeypatch.setattr(ops_log, "append_op", lambda row: appended.append(row))
-        c = self._consumer(calls, appended)
-        record = {
-            "pull": "at://did:plc:stranger/sh.tangled.repo.pull/3abc",
-            "body": "nice",
-        }
-        await c._handle(self._event(self.OWNER, ops_log.PULL_COMMENT_NSID, record))
-        assert calls == [] and appended == []
-
-    async def test_owner_other_writes_never_enter_the_ops_log(self, monkeypatch):
-        calls, appended = [], []
-        monkeypatch.setattr(ops_log, "append_op", lambda row: appended.append(row))
-        c = self._consumer(calls, appended)
-        await c._handle(self._event(self.OWNER, "app.bsky.feed.post", {"text": "hi"}))
-        assert calls == [] and appended == []
-
-    def test_material_names_the_commenter_and_the_pull(self):
-        m = ops_log.pull_comment_material(
-            {
-                "pull": "at://did:plc:phi/sh.tangled.repo.pull/3abc",
-                "body": "  tighter.  ",
-            },
-            "zzstoatzz.io",
-        )
-        assert (
-            m
-            == "@zzstoatzz.io commented on your pull request at://did:plc:phi/sh.tangled.repo.pull/3abc:\n\ntighter."
-        )
-
-    async def test_replayed_comment_does_not_wake_twice(self, monkeypatch, tmp_path):
-        calls, appended = [], []
-        monkeypatch.setattr(ops_log, "append_op", lambda row: appended.append(row))
-        monkeypatch.setattr(ops_log, "WATCHED_CURSOR_FILE", tmp_path / "w.json")
-        c = self._consumer(calls, appended)
-        record = {"pull": f"at://{self.PHI}/sh.tangled.repo.pull/3abc", "body": "again"}
-        ev = self._event(self.OWNER, ops_log.PULL_COMMENT_NSID, record)
-        await c._handle(ev)
-        await c._handle(ev)
-        assert len(calls) == 1
-        # the same comment re-delivered with a newer time_us is still the same
-        # comment (the handled set is keyed by its at-uri); a new comment wakes
-        newer = json.loads(ev)
-        newer["time_us"] = 2
-        await c._handle(json.dumps(newer))
-        assert len(calls) == 1
-        fresh = json.loads(ev)
-        fresh["time_us"] = 3
-        fresh["commit"]["rkey"] = "r2"
-        await c._handle(json.dumps(fresh))
-        assert len(calls) == 2
-
-    async def test_current_lexicon_feed_comment_on_phis_pull_wakes(
-        self, monkeypatch, tmp_path
-    ):
-        """2026-08-21 08:24 UTC: the operator's review on PR #4 landed as a
-        sh.tangled.feed.comment (subject.uri + markdown body object), not the
-        legacy pull.comment the first version watched. Nothing fired."""
-        calls, appended = [], []
-        monkeypatch.setattr(ops_log, "append_op", lambda row: appended.append(row))
-        monkeypatch.setattr(ops_log, "WATCHED_CURSOR_FILE", tmp_path / "w.json")
-        c = self._consumer(calls, appended)
-        record = {
-            "subject": {
-                "uri": f"at://{self.PHI}/sh.tangled.repo.pull/3mtlca37pf2qr",
-                "cid": "bafy",
-            },
-            "body": {
-                "$type": "sh.tangled.markup.markdown",
-                "text": "this is slop-coded",
-                "original": "this is slop-coded",
-            },
-            "pullRoundIdx": 0,
-        }
-        await c._handle(self._event(self.OWNER, ops_log.FEED_COMMENT_NSID, record))
-        assert len(calls) == 1
-        assert ops_log.pull_comment_material(record, "zzstoatzz.io").endswith(
-            "3mtlca37pf2qr:\n\nthis is slop-coded"
-        )
-
-    async def test_feed_comment_on_an_issue_is_ignored(self, monkeypatch, tmp_path):
-        calls, appended = [], []
-        monkeypatch.setattr(ops_log, "append_op", lambda row: appended.append(row))
-        monkeypatch.setattr(ops_log, "WATCHED_CURSOR_FILE", tmp_path / "w.json")
-        c = self._consumer(calls, appended)
-        record = {
-            "subject": {"uri": f"at://{self.OWNER}/sh.tangled.repo.issue/3x"},
-            "body": {"text": "hi"},
-        }
-        await c._handle(self._event(self.OWNER, ops_log.FEED_COMMENT_NSID, record))
-        assert calls == []
-
-
 class TestResumeCursor:
-    """2026-08-21: the socket resumed from phi's newest logged op (her
-    profile, 08:34) and skipped the operator's 08:24 review comment. Resume
-    from the last event read across every watched repo instead."""
-
     def test_read_position_wins_when_older_than_her_last_op(
         self, monkeypatch, tmp_path
     ):
@@ -611,6 +449,30 @@ class TestResumeCursor:
         monkeypatch.setattr(ops_log, "STREAM_CURSOR_FILE", tmp_path / "missing.json")
         monkeypatch.setattr(ops_log, "last_cursor_us", lambda: 10 * 60 * 60 * 1_000_000)
         assert ops_log.resume_cursor_us() == 9 * 60 * 60 * 1_000_000
+
+    async def test_other_repository_cannot_advance_the_read_position(
+        self, monkeypatch, tmp_path
+    ):
+        monkeypatch.setattr(ops_log, "STREAM_CURSOR_FILE", tmp_path / "s.json")
+        appended = []
+        monkeypatch.setattr(ops_log, "append_op", appended.append)
+        consumer = ops_log.OpsLogConsumer("did:plc:phi")
+        await consumer._handle(
+            json.dumps(
+                {
+                    "did": "did:plc:reviewer",
+                    "kind": "commit",
+                    "time_us": 5_000_000,
+                    "commit": {
+                        "operation": "create",
+                        "collection": "org.tangled.feed.comment",
+                        "rkey": "review",
+                    },
+                }
+            )
+        )
+        assert appended == []
+        assert ops_log._stream_cursor() == 0
 
     async def test_handle_advances_the_read_position(self, monkeypatch, tmp_path):
         monkeypatch.setattr(ops_log, "STREAM_CURSOR_FILE", tmp_path / "s.json")

@@ -261,13 +261,6 @@ class Settings(BaseSettings):
         default="zzstoatzz.io",
         description="Handle or DID of the bot's owner (permission-gated tools)",
     )
-    review_poll_interval: int = Field(
-        default=60,
-        description=(
-            "Seconds between polls of the reviewers' PDSes for new comments on "
-            "phi's pull requests — the authoritative path; jetstream is the fast one."
-        ),
-    )
     operator_dids: tuple[Did, ...] = Field(
         default=(
             "did:plc:xbtmt2zjwlrfegqvch7fboei",  # zzstoatzz.io
@@ -288,26 +281,6 @@ class Settings(BaseSettings):
             "under the devlog's post was blocked as uninvited contact)."
         ),
     )
-    reviewer_dids: tuple[Did, ...] = Field(
-        default=(
-            "did:plc:xbtmt2zjwlrfegqvch7fboei",  # zzstoatzz.io
-            "did:plc:mkqt76xvfgxuemlwlx6ruc3w",  # zat.dev
-            "did:plc:o53crari67ge7bvbv273lxln",  # zzstoatzzdevlog.bsky.social
-        ),
-        description=(
-            "DIDs whose pull-request comments on phi's repo wake her. The "
-            "operator has more than one identity and reviews from whichever "
-            "is logged in (2026-08-21: a review left as zat.dev went nowhere)."
-        ),
-    )
-    review_repo_dids: tuple[Did, ...] = Field(
-        default=("did:plc:ebajxjsw7iuwstddnxt6lt3m",),  # zzstoatzz.io/bot
-        description=(
-            "Tangled repository DIDs whose comments the review poll reads. "
-            "Comments live on the repository's own account on its knot."
-        ),
-    )
-
     # relay-eval, read by the relay_eval tool. Alerting on the operator's
     # relays is my-prefect-server's relay-health flow, not phi.
     relay_eval_url: str = Field(

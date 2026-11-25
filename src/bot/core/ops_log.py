@@ -228,12 +228,6 @@ def event_to_row(event: dict[str, Any]) -> OpRow | None:
     )
 
 
-PULL_COMMENT_NSID = "sh.tangled.repo.pull.comment"
-FEED_COMMENT_NSID = "sh.tangled.feed.comment"
-COMMENT_NSIDS = frozenset({PULL_COMMENT_NSID, FEED_COMMENT_NSID})
-
-
-WATCHED_CURSOR_FILE = Path("/data/watched_cursor.json")
 STREAM_CURSOR_FILE = Path("/data/jetstream_cursor.json")
 _FIRST_RUN_REWIND_US = 60 * 60 * 1_000_000
 _CURSOR_WRITE_INTERVAL_US = 2_000_000
@@ -255,15 +249,7 @@ def _set_stream_cursor(time_us: int) -> None:
 
 
 def resume_cursor_us() -> int | None:
-    """Where to resume the socket: the last event *read*, not phi's last op.
-
-    Resuming from her newest logged op skipped the operator's 08:24 review
-    on 2026-08-21 — her profile was touched at 08:34, so the replay began
-    after the comment. The stream cursor is the read position across every
-    watched repo; phi's own op cursor is the floor when no read position
-    exists yet, rewound an hour so a first deploy of this code still sees
-    recent events about her.
-    """
+    """Resume from the saved read position without skipping unlogged operations."""
     stream = _stream_cursor()
     own = last_cursor_us()
     if stream:
@@ -273,71 +259,16 @@ def resume_cursor_us() -> int | None:
     return None
 
 
-def _watched_cursor() -> int:
-    try:
-        return int(json.loads(WATCHED_CURSOR_FILE.read_text())["time_us"])
-    except Exception:
-        return 0
-
-
-def _set_watched_cursor(time_us: int) -> None:
-    try:
-        WATCHED_CURSOR_FILE.parent.mkdir(parents=True, exist_ok=True)
-        WATCHED_CURSOR_FILE.write_text(json.dumps({"time_us": time_us}))
-    except Exception as e:
-        logger.warning(f"failed to persist watched cursor: {e}")
-
-
-def comment_target(record: dict[str, Any]) -> str:
-    """The at-uri a tangled comment is about: `sh.tangled.feed.comment`
-    (current — subject.uri, body as a markup object) or the legacy
-    `sh.tangled.repo.pull.comment` (pull, body as a string)."""
-    subject = record.get("subject")
-    if isinstance(subject, dict) and subject.get("uri"):
-        return str(subject["uri"])
-    return str(record.get("pull") or "")
-
-
-def comment_text(record: dict[str, Any]) -> str:
-    body = record.get("body")
-    if isinstance(body, dict):
-        body = body.get("text") or body.get("original") or ""
-    return str(body or "").strip()
-
-
-def pull_comment_material(
-    record: dict[str, Any], commenter: str, pull: str | None = None
-) -> str:
-    """The event content a pull-request comment wakes phi with."""
-    return (
-        f"@{commenter} commented on your pull request {pull or comment_target(record)}:"
-        f"\n\n{comment_text(record)}"
-    )
-
-
 class OpsLogConsumer:
-    """Long-lived jetstream tail of phi's own repo, symmetric with the
-    notification poller: constructed in the lifespan, start()/stop().
-
-    The same socket can watch other repos for events *about* phi. The first
-    such event: a `sh.tangled.repo.pull.comment` in a watched repo (the
-    operator's) whose `pull` is one of phi's pull requests. Those are not
-    ops on her repo and never enter the ops log; they go to
-    ``on_pull_comment`` and wake her, so a review comment reaches her the
-    way a mention does — without anyone posting on bluesky about it.
-    """
+    """Follow Phi's own repository operations on Jetstream."""
 
     def __init__(
         self,
         did: str,
         on_post: Callable[[OpRow], Awaitable[None]] | None = None,
-        watch_dids: tuple[str, ...] = (),
-        on_pull_comment: Callable[[str, dict[str, Any]], Awaitable[None]] | None = None,
     ):
         self.did = did
         self.on_post = on_post
-        self.watch_dids = tuple(d for d in watch_dids if d and d != did)
-        self.on_pull_comment = on_pull_comment
         self._task: asyncio.Task | None = None
         self._attempt = 0
 
@@ -360,8 +291,6 @@ class OpsLogConsumer:
 
     def _url(self) -> str:
         url = f"{self._endpoint()}?wantedDids={self.did}"
-        for did in self.watch_dids:
-            url += f"&wantedDids={did}"
         cursor = resume_cursor_us()
         if cursor:
             # rewind 5s so a crash between receive and append can't skip ops;
@@ -412,10 +341,9 @@ class OpsLogConsumer:
             event = json.loads(message)
         except json.JSONDecodeError:
             return
-        self._advance_cursor(int(event.get("time_us") or 0))
         if event.get("did") not in (None, self.did):
-            await self._handle_watched(event)
             return
+        self._advance_cursor(int(event.get("time_us") or 0))
         row = event_to_row(event)
         if row is None:
             return
@@ -434,46 +362,9 @@ class OpsLogConsumer:
     _last_cursor_write_us: int = 0
 
     def _advance_cursor(self, time_us: int) -> None:
-        """Persist the read position, throttled — the operator's repo alone
-        can emit several events a second."""
+        """Throttle writes of the saved read position."""
         if not time_us:
             return
         if time_us - self._last_cursor_write_us >= _CURSOR_WRITE_INTERVAL_US:
             _set_stream_cursor(time_us)
             self._last_cursor_write_us = time_us
-
-    def is_own_pull(self, uri: str) -> bool:
-        return uri.startswith(f"at://{self.did}/sh.tangled.repo.pull/")
-
-    async def _handle_watched(self, event: dict[str, Any]) -> None:
-        """An event from a watched repo. Only pull-request comments on phi's
-        own pulls matter; everything else from those repos is ignored."""
-        if self.on_pull_comment is None or event.get("kind") != "commit":
-            return
-        commit = event.get("commit") or {}
-        if (
-            commit.get("collection") not in COMMENT_NSIDS
-            or commit.get("operation") != "create"
-        ):
-            return
-        record = commit.get("record") or {}
-        if not self.is_own_pull(comment_target(record)):
-            return
-        from bot.core import review_poll
-
-        uri = f"at://{event.get('did')}/{commit.get('collection')}/{commit.get('rkey')}"
-        if review_poll.was_handled(uri):
-            return
-        review_poll.mark_handled(uri)
-        # jetstream resumes from phi's own last op, which can be hours old
-        # when she has been quiet; without this, every reconnect would
-        # replay the same review comment and wake her again.
-        time_us = int(event.get("time_us") or 0)
-        if time_us and time_us <= _watched_cursor():
-            return
-        if time_us:
-            _set_watched_cursor(time_us)
-        try:
-            await self.on_pull_comment(str(event.get("did")), record)
-        except Exception as e:
-            logger.warning(f"pull-comment wake failed: {e}")

@@ -1,5 +1,11 @@
 # changelog
 
+## 2026-11-25 — retire automatic pull-comment wake-ups
+
+The Jetstream comment watcher and its knot polling fallback had no observed
+wake-ups in November telemetry. Phi's operations stream follows her own
+repository. The explicit pull-review trigger still accepts review requests.
+
 ## 2026-11-23 — likes and replies verify posts on the author's PDS
 
 Phi moved to her own PDS (zds.zzstoatzz.io) at 07:20Z. The guard that checks a

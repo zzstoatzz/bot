@@ -449,26 +449,6 @@ class TestSelfRepeat:
         assert "evidence for self-repeat" not in seen["prompt"]
 
 
-async def test_pull_comment_text_reaches_the_prompt():
-    """2026-08-21 18:46: woken for the devlog's reset comment, phi reported on
-    the operator's older comment instead — event_material only keyed memory
-    recall and was never rendered, so every review run worked blind."""
-    from unittest.mock import AsyncMock
-
-    from bot.agent import PhiAgent
-
-    agent = PhiAgent.__new__(PhiAgent)
-    agent.memory = None
-    agent._run_agent = AsyncMock(return_value="ok")
-    material = "@zzstoatzzdevlog.bsky.social commented on your pull request at://x/sh.tangled.repo.pull/1:\n\nstart over from round 1"
-    await agent.process_pull_comment(material)
-    assert agent._run_agent.await_args is not None
-    prompt = agent._run_agent.await_args.kwargs["prompt"]
-    assert "[REVIEW COMMENT]" in prompt and "start over from round 1" in prompt
-    assert agent._run_agent.await_args is not None
-    assert agent._run_agent.await_args.kwargs["deps"].event_material == material
-
-
 def test_devlog_target_outside_batch_is_operator_even_if_profile_lookup_fails():
     with patch.object(
         posting.bot_client.client.app.bsky.actor,

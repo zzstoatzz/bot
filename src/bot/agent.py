@@ -1201,41 +1201,6 @@ class PhiAgent:
             ),
         )
 
-    async def process_pull_comment(self, material: str = "") -> str:
-        """The operator left a review comment on one of phi's pull requests.
-
-        The comment is the event; it rides in as ``event_material`` so the
-        run keys on what was said. The work happens on tangled, not on
-        bluesky: read the pull and the file as they are now, address the
-        comment, push the revision as a new round on the same pull request
-        when the content changes, and answer on the pull request either way.
-        """
-        return await self._run_agent(
-            label="pull request comment",
-            prompt=(
-                "a reviewer commented on one of your open pull requests. the "
-                "comment, verbatim:\n\n[REVIEW COMMENT]\n"
-                f"{material}\n\n"
-                "that comment is the whole ask — answer it, not an older one. "
-                "read the pull request "
-                "(tangled_get_pull) and the file AS THE PULL LEAVES IT "
-                "(tangled_get_pull_file — the branch does not have your "
-                "changes; reading it there throws away every earlier round), "
-                "address what was said, and answer on the pull request with "
-                "tangled_comment_on_pull. if the content should change, push "
-                "the revision onto the same pull request with "
-                "tangled_update_pull — the reviewer commented on this pull, so "
-                "this pull is where the next version goes. never close it and "
-                "open another. this conversation lives on tangled; post on "
-                "bluesky only if the operator asks you to."
-            ),
-            deps=PhiDeps(
-                author_handle="",
-                memory=self.memory,
-                event_material=material,
-            ),
-        )
-
     async def process_pull_review(self, material: str = "") -> str:
         """Review a pull request someone else opened on the operator's repo.
 

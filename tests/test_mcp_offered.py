@@ -88,7 +88,6 @@ def _servers_for(run_label: str) -> dict[str, Any]:
 def test_tangled_is_deferred_except_where_the_prompt_names_its_tools():
     assert _is_deferred(_servers_for("batch processing")["tangled"])
     assert not _is_deferred(_servers_for("pull request review")["tangled"])
-    assert not _is_deferred(_servers_for("pull request comment")["tangled"])
     assert not _is_deferred(_servers_for("batch processing")["pub"])
 
 
